@@ -1,0 +1,31 @@
+.htmlContent {
+  transition: all 0.2s;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.contentPanel {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.welcomePanel {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  width: 400px;
+  text-align: center;
+}
+
+.aboutPanel {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  width: 300px;
+  text-align: left;
+}
+
+.projectsPanel {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  width: 300px;
+  text-align: right;
+} 

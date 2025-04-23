@@ -1,0 +1,206 @@
+.card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  padding: clamp(1.5rem, 2vw, 2rem);
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transform-style: preserve-3d;
+  transform: perspective(1000px) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg));
+  will-change: transform, opacity;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    300px circle at var(--mouse-x) var(--mouse-y),
+    rgba(255, 255, 255, 0.1),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: -150%;
+  background: radial-gradient(
+    80px circle at var(--mouse-x) var(--mouse-y),
+    rgba(255, 255, 255, 0.4),
+    transparent 20%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 1;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  transform: translateZ(5px);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card:hover::after {
+  opacity: 1;
+}
+
+/* Interactive elements base styles */
+[data-interactive="true"] {
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+}
+
+[data-interactive="true"]::after {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: radial-gradient(
+    60px circle at var(--mouse-x) var(--mouse-y),
+    rgba(255, 255, 255, 0.5),
+    transparent 20%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 1;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+[data-interactive="true"][data-lit="true"]::after {
+  opacity: calc(var(--intensity, 0) * 1);
+}
+
+/* Enhanced LED glow effects */
+.title[data-lit="true"] {
+  color: #fff;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.8)),
+    0 0 20px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.4)),
+    0 0 30px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.2)),
+    0 0 40px rgba(99, 102, 241, calc(var(--intensity, 0) * 0.1));
+  transform: translateZ(2px);
+}
+
+.text[data-lit="true"] {
+  color: rgba(255, 255, 255, 1);
+  text-shadow: 
+    0 0 15px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.3)),
+    0 0 30px rgba(99, 102, 241, calc(var(--intensity, 0) * 0.2));
+}
+
+.statValue[data-lit="true"] {
+  color: #fff;
+  text-shadow: 
+    0 0 15px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.7)),
+    0 0 30px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.3)),
+    0 0 45px rgba(99, 102, 241, calc(var(--intensity, 0) * 0.2));
+  transform: translateY(-2px) translateZ(2px);
+}
+
+.tag[data-lit="true"] {
+  background: rgba(255, 255, 255, calc(0.05 + (var(--intensity, 0) * 0.1)));
+  border-color: rgba(255, 255, 255, calc(0.2 + (var(--intensity, 0) * 0.3)));
+  box-shadow: 
+    0 0 20px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.2)),
+    0 0 30px rgba(99, 102, 241, calc(var(--intensity, 0) * 0.15)),
+    inset 0 0 10px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.1));
+  transform: translateY(-1px) translateZ(2px);
+}
+
+/* Content layout */
+.content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.title {
+  font-size: clamp(1.25rem, 1.5vw, 1.75rem);
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.text {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: auto;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+}
+
+.statValue {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tagsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tag {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Add this new rule for edge glow */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: radial-gradient(
+    100px circle at var(--mouse-x) var(--mouse-y),
+    rgba(255, 255, 255, 0.4),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  border-radius: inherit;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.card:hover::before {
+  opacity: 1;
+} 

@@ -1,0 +1,84 @@
+/* Arrow between Home and About */
+#homeToAboutArrow {
+  position: fixed;
+  left: 18rem;
+  transform: translateX(-50%);
+  width: 100px;
+  top: 66vh;
+  z-index: 100;
+  cursor: pointer;
+}
+
+#homeToAboutArrow .curveWrapper {
+  width: 100px;
+  height: 300px;
+  overflow: hidden;
+  position: relative;
+}
+
+#homeToAboutArrow .curve {
+  border: 2px solid #00ffc2;
+  border-color: transparent transparent transparent #00ffc2;
+  height: 300px;
+  width: 1200px;
+  border-radius: 230px 0 0 150px;
+  filter: drop-shadow(0 0 5px #00ffc2);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+  left: 0;
+  transform-origin: left center;
+  will-change: transform, filter;
+}
+
+#homeToAboutArrow .point {
+  position: absolute;
+  left: 34px;
+  top: 362px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  will-change: transform;
+}
+
+#homeToAboutArrow .point:before, #homeToAboutArrow .point:after {
+  border: 1px solid #00ffc2;
+  height: 25px;
+  content: "";
+  position: absolute;
+  filter: drop-shadow(0 0 5px #00ffc2);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, filter;
+}
+
+#homeToAboutArrow .point:before {
+  top: -11px;
+  left: -11px;
+  -webkit-transform: rotate(-74deg);
+  -moz-transform: rotate(-74deg);
+  -ms-transform: rotate(-74deg);
+  transform: rotate(-74deg);
+}
+
+#homeToAboutArrow .point:after {
+  top: -20px;
+  left: 5px;
+  -webkit-transform: rotate(12deg);
+  -moz-transform: rotate(12deg);
+  -ms-transform: rotate(12deg);
+  transform: rotate(12deg);
+}
+
+#homeToAboutArrow:hover .curve {
+  border-color: transparent transparent transparent #ffffff;
+  filter: drop-shadow(0 0 8px #ffffff) brightness(1.5);
+  transform: scale(1.02);
+}
+
+#homeToAboutArrow:hover .point {
+  transform: scale(1.1);
+}
+
+#homeToAboutArrow:hover .point:before,
+#homeToAboutArrow:hover .point:after {
+  border-color: #ffffff;
+  filter: drop-shadow(0 0 8px #ffffff) brightness(1.5) drop-shadow(0 0 12px #ffffff);
+} 
