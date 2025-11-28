@@ -5,7 +5,7 @@
   flex-direction: column;
   justify-content: center;
   padding: 0 max(2rem, 5vw) 8rem;
-  margin: 0;
+  margin: -8rem 0 0 0;
   overflow: hidden;
   mix-blend-mode: difference;
   pointer-events: none;
@@ -35,7 +35,7 @@
   font-weight: 500;
   margin: 0;
   padding-bottom: 20px;
-  color: #ffffff;
+  color: var(--strong-text);
   text-transform: uppercase;
   letter-spacing: -0.02em;
 }
@@ -54,15 +54,15 @@
 .filterTabs {
   display: flex;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--pill-rail-bg);
   padding: 0.5rem;
   border-radius: 100px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--pill-rail-border);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   box-shadow: 
     0 4px 24px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgba(var(--text-color), 0.1);
   overflow-x: auto;
   scrollbar-width: none;
   position: relative;
@@ -78,7 +78,7 @@
   background: transparent;
   border: none;
   border-radius: 100px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--text-color), 0.7);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -89,11 +89,11 @@
 }
 
 .filterTab:hover {
-  color: rgba(255, 255, 255, 0.95);
+  color: rgb(var(--text-color));
 }
 
 .activeTab {
-  color: rgba(0, 0, 0, 0.9);
+  color: var(--pill-active-text);
   font-weight: 600;
 }
 
@@ -102,11 +102,11 @@
   position: absolute;
   top: 0.5rem;
   bottom: 0.5rem;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--pill-active-bg);
   border-radius: 100px;
   z-index: 1;
   box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.08),
     0 1px 2px rgba(0, 0, 0, 0.06);
   pointer-events: none;
 }
@@ -159,8 +159,8 @@
 
 .projectContent {
   position: relative;
-  background: rgba(var(--text-color), 0.03);
-  border: 1px solid rgba(var(--text-color), 0.1);
+  background: var(--surface-color);
+  border: 1px solid var(--surface-border);
   border-radius: 1rem;
   overflow: hidden;
   -webkit-backdrop-filter: blur(10px);
@@ -181,7 +181,7 @@
   background: linear-gradient(
     45deg,
     rgba(var(--text-color), 0.03),
-    rgba(var(--primary-color), 0.05),
+    rgba(var(--primary-color), 0.08),
     rgba(var(--text-color), 0.03)
   );
   mix-blend-mode: overlay;
@@ -244,7 +244,7 @@
 .projectDescription {
   font-size: clamp(0.75rem, 0.9vw, 0.875rem);
   line-height: 1.5;
-  color: rgba(var(--text-color), 0.6);
+  color: var(--muted-text);
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -310,6 +310,15 @@
     justify-content: center;
   }
 
+  .filterTab {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+  
+  .filterTabs {
+    padding: 0.25rem;
+  }
+
   .carousel {
     width: 100%;
     margin-left: 0;
@@ -349,14 +358,21 @@
 
 .longDescription {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--muted-text);
   line-height: 1.6;
   margin-bottom: 1rem;
+  white-space: pre-wrap;
+}
+
+.linksContainer {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .githubLink {
   display: inline-block;
-  margin-top: 0.5rem;
   padding: 0.5rem 1rem;
   background: var(--primary-color);
   color: rgb(var(--bg-color));
@@ -376,4 +392,68 @@
 .project.expanded .projectContent {
   border-color: var(--primary-color);
   box-shadow: 0 0 30px rgba(var(--primary-color), 0.1);
+}
+
+:global([data-theme='light']) .projects,
+:global([data-theme='light']) .projects *,
+:global([data-theme='light']) .filterContainer,
+:global([data-theme='light']) .filterContainer * {
+  mix-blend-mode: normal !important;
+}
+
+.scrollIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  opacity: 0.8;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  color: rgba(var(--text-color), 0.8);
+}
+
+.scrollText {
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: currentColor;
+  font-weight: 300;
+}
+
+.scrollArrow {
+  display: flex;
+  align-items: center;
+  color: currentColor;
+}
+
+:global([data-theme='light']) .scrollIndicator {
+  color: #000000;
+  mix-blend-mode: normal;
+}
+
+:global([data-theme='light']) .scrollArrow {
+  color: #059669; /* Green */
+}
+
+:global([data-theme='light']) .filterTab {
+  color: #000000 !important;
+}
+
+:global([data-theme='light']) .filterTab:hover {
+  color: #000000 !important;
+}
+
+:global([data-theme='light']) .activeTab {
+  color: #000000 !important;
+}
+
+@media (max-width: 768px) {
+  .scrollIndicator {
+    margin-top: 1.5rem;
+  }
+  
+  .scrollText {
+    font-size: 0.75rem;
+  }
 }

@@ -12,23 +12,34 @@ export interface Project {
 
 export const projectsData: Project[] = [
   {
+    id: 23,
+    title: "Ignition",
+    description: "Mission-control platform for tactical goal breakdown",
+    longDescription: "**IGNITION** (aka GOAL_BREAKER.EXE) is a mission-control platform that transforms vague objectives into precise, executable tactical plans. It takes a signal like 'Launch a startup' and returns a **5-step tactical breakdown** with complexity scores, filtering out the noise.\n\n• **Precision Breakdown**: Generates 5 chronological, high-impact steps. No fluff.\n• **Deep Dive Subroutines**: Recursively breaks down any step into 3 specific tactical sub-actions.\n• **Active Guardrails**: Dedicated AI model classifies input as OK, GIBBERISH, or ABUSE, handling errors in-character.\n• **Bilingual Ops**: Native support for **English** and **Amharic**, adapting the 'Dark Technical' tone to both.\n• **Haptic Audio Layer**: Immersive feedback with mechanical key clicks, processing hums, and success chimes.\n\nBuilt with a **Dark Technical** UI for focused execution.",
+    tech: "NEXT.JS, REACT, FASTAPI, GOOGLE GEMINI, POSTGRESQL",
+    image: "/images/projects/ignition.png",
+    githubUrl: "https://github.com/LeulTew/Ignition",
+    demoUrl: "https://ignition-ivory.vercel.app",
+    categories: ["AI/ML & Data Science", "Web Development"]
+  },
+  {
     id: 1,
     title: "Car Rental Platform",
     description: "Full-stack app with 3D vehicle visualization",
     longDescription: "Advanced car rental system featuring **interactive 3D vehicle models** and a robust feature set:\n\n• **Secure Authentication**: Google OAuth & JWT implementation\n• **Payments**: Integrated PayPal for secure transactions\n• **Search & Booking**: Multi-criteria filtering, availability checks, and email notifications\n• **User System**: Reviews, ratings, and profile management\n\nDemonstrates full-stack proficiency with **ASP.NET Core** and **Three.js** integration.",
     tech: "ASP.NET Core MVC, Three.js, Entity Framework Core",
-    image: "/images/projects/car-rental.jpg",
+    image: "/images/projects/car-rental.png",
     githubUrl: "https://github.com/LeulTew/CarRental-ThreeJS-MVC",
     categories: ["Web Development", "Graphics & Algorithms"]
   },
   {
     id: 22,
     title: "ROUTEGNA",
-    description: "Microhybrid Shuttle Management System",
-    longDescription: "Innovative transportation platform with a **microhybrid architecture** blending monolithic and microservices:\n\n• **AI Chat Helper**: User support powered by **BetterAuth MCP** authorization\n• **Core Microservice**: FastAPI service solving **VRP** (Vehicle Routing Problem) for employee grouping and **TSP** for optimized routing\n• **Mapping**: Mapbox API fallback for reliable visualization\n• **Features**: Scheduling, real-time tracking, bookings, and cross-platform efficiency\n\nBuilt for streamlined logistics and operational efficiency.",
-    tech: "FLUTTER, DART, FASTAPI, BETTERAUTH, MAPBOX API",
+    description: "Multi-Fleet Management System",
+    longDescription: "Comprehensive full-stack platform featuring a **Hybrid Architecture** that blends monolithic and microservices. Manages multiple organizations, drivers, vehicles, and routes in a **multi-tenant setup**.\n\n• **Core Features**: **FastAPI** microservice solving **VRP** (Vehicle Routing Problem) and a custom service for **TSP** routing with **Mapbox API fallback**.\n• **Optimization**: Real-time tracking and route optimization using clustering algorithms and **Google OR-Tools**.\n• **Operations**: Automated payroll, KPI dashboards, notifications, bulk imports, and PDF reports.\n• **Architecture**: Scalable design with **data isolation**, job queues (Redis), and robust integrations.",
+    tech: "REACT, TYPESCRIPT, EXPRESS.JS, PRISMA, POSTGRESQL, REDIS, FASTAPI, OR-TOOLS, BETTER AUTH",
     image: "/images/projects/routegna.png",
-    githubUrl: "https://github.com/kidusm001/shuttle-management",
+    githubUrl: "https://github.com/kidusm001/multi-fleet-managment/",
     categories: ["Mobile Apps", "AI/ML & Data Science", "Web Development"]
   },
   {
@@ -227,7 +238,7 @@ export const projectsData: Project[] = [
     description: "Hyper-Modern Exit Exam Interface",
     longDescription: "A modern web application providing an interactive interface for practicing Computer Science exit exams, targeted at students preparing for university or professional assessments. Hosted on Wasmer Edge for efficient, serverless deployment.",
     tech: "WebAssembly",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/exit.png",
     githubUrl: "",
     demoUrl: "https://exitpractice.wasmer.app/",
     categories: ["Web Development"]

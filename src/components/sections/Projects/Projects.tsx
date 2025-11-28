@@ -172,16 +172,12 @@ export function Projects({ theme }: { theme?: string }) {
                 <motion.div 
                   key={uniqueId}
                   className={`${styles.project} ${isExpanded ? styles.expanded : ''}`}
-                  animate={{
-                    height: isExpanded ? 'auto' : 'auto'
-                  }}
                   whileHover={{ scale: 1.02 }}
                   transition={{ 
                     duration: 0.5,
                     ease: [0.76, 0, 0.24, 1]
                   }}
                   onClick={() => handleProjectClick(uniqueId)}
-                  layout={isExpanded}
                 >
                   <div className={styles.projectContent}>
                     <div className={styles.projectImage}>
@@ -203,16 +199,37 @@ export function Projects({ theme }: { theme?: string }) {
                             transition={{ duration: 0.3 }}
                             className={styles.expandedDetails}
                           >
-                            <p className={styles.longDescription}>{project.longDescription}</p>
-                            <a 
-                              href={project.githubUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className={styles.githubLink}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              View on GitHub →
-                            </a>
+                            <p className={styles.longDescription}>
+                              {project.longDescription?.split(/(\*\*.*?\*\*)/g).map((part, i) => 
+                                part.startsWith('**') && part.endsWith('**') 
+                                  ? <strong key={i}>{part.slice(2, -2)}</strong> 
+                                  : part
+                              )}
+                            </p>
+                            <div className={styles.linksContainer}>
+                              {project.demoUrl && (
+                                <a 
+                                  href={project.demoUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={styles.githubLink}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Visit Site →
+                                </a>
+                              )}
+                              {project.githubUrl && (
+                                <a 
+                                  href={project.githubUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={styles.githubLink}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {project.demoUrl ? 'GitHub' : 'View on GitHub'} →
+                                </a>
+                              )}
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
