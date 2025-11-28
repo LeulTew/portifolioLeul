@@ -50,4 +50,24 @@ export default defineConfig({
       allow: ['..']
     }
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.d.ts',
+        '**/*.css',
+        'vite.config.ts',
+        'postcss.config.js',
+        'tailwind.config.js',
+        'eslint.config.js',
+        'tsconfig*.json'
+      ],
+    },
+  },
 });

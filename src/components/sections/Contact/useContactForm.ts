@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ContactFormData, FormErrors } from './types';
 
-export function useContactForm() {
+export function useContactForm(submitFn?: () => Promise<void>) {
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
@@ -42,7 +42,11 @@ export function useContactForm() {
 
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (submitFn) {
+        await submitFn();
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
       setSubmitStatus('success');
       setFormData({ name: '', email: '', message: '' });
     } catch {
