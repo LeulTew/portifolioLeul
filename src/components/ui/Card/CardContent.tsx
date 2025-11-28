@@ -11,8 +11,8 @@ export const CardTitle = ({ children }: { children: React.ReactNode }) => (
   </h3>
 );
 
-export const CardText = ({ children }: { children: React.ReactNode }) => (
-  <p className={styles.text} data-interactive="true">
+export const CardText = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <p className={`${styles.text} ${className || ''}`} data-interactive="true">
     {children}
   </p>
 );
@@ -30,8 +30,8 @@ export const StatItem = ({ value, label }: StatItemProps) => (
   </div>
 );
 
-export const TagsGrid = ({ children }: { children: React.ReactNode }) => (
-  <div className={styles.tagsGrid}>
+export const TagsGrid = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <div className={`${styles.tagsGrid} ${className || ''}`}>
     {children}
   </div>
 );

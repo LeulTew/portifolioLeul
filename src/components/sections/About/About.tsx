@@ -4,79 +4,7 @@ import { Card } from '../../ui/Card';
 import { CardTitle, CardText, StatsGrid, StatItem, TagsGrid, Tag } from '../../ui/Card';
 import { CursorGlow } from '../../ui/CursorGlow/CursorGlow';
 import styles from './About.module.css';
-
-interface AboutSection {
-  title: string;
-  description: string;
-  stats: {
-    value: string;
-    label: string;
-  }[];
-  highlights: string[];
-}
-
-interface Education {
-  school: string;
-  degree: string;
-  period: string;
-  details: string[];
-}
-
-const aboutContent: AboutSection[] = [
-  {
-    title: "Creative Developer",
-    description: "Passionate about crafting innovative digital experiences that push the boundaries of web technology",
-    stats: [
-      { value: "3+", label: "Years Experience" },
-      { value: "50+", label: "Projects" },
-      { value: "20+", label: "Happy Clients" }
-    ],
-    highlights: [
-      "Full-stack Development",
-      "3D Web Experiences",
-      "Modern UI/UX Design"
-    ]
-  },
-  {
-    title: "Problem Solver",
-    description: "Turning complex challenges into elegant solutions through innovative thinking and technical expertise",
-    stats: [
-      { value: "100+", label: "Solutions Delivered" },
-      { value: "15+", label: "Technologies" },
-      { value: "24/7", label: "Dedication" }
-    ],
-    highlights: [
-      "Performance Optimization",
-      "Clean Architecture",
-      "Technical Leadership"
-    ]
-  }
-];
-
-const educationContent: Education[] = [
-  {
-    school: "HiLCoE School of Computer Science & Technology",
-    degree: "BSc in Computer Science",
-    period: "Expected Graduation: August 2025",
-    details: [
-      "Advanced Programming & Data Structures",
-      "Web Development & Cloud Computing",
-      "Software Engineering & Design Patterns",
-      "Database Management & System Design"
-    ]
-  },
-  {
-    school: "Saint Joseph School",
-    degree: "High School Diploma",
-    period: "2008-2020",
-    details: [
-      "Advanced Mathematics & Physics",
-      "Computer Science Fundamentals",
-      "Scientific Research & Projects",
-      "Leadership & Team Activities"
-    ]
-  }
-];
+import { cvData } from '../../../data/cv';
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
@@ -94,9 +22,8 @@ export function About() {
   });
 
   const containerY = useTransform(smoothProgress, [0, 1], ["10%", "-10%"]);
-  const containerOpacity = useTransform(smoothProgress, [0, 0.2, 0.8, 1], [0.7, 1, 1, 0.7]);
   const headerX = useTransform(smoothProgress, [0, 0.5], ["0%", "10%"]);
-  const headerOpacity = useTransform(smoothProgress, [0, 0.5], [1, 0]);
+  const headerOpacity = useTransform(smoothProgress, [0, 0.5], [0.7, 0]);
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
@@ -104,8 +31,7 @@ export function About() {
       <motion.div 
         className={styles.content}
         style={{ 
-          y: containerY,
-          opacity: containerOpacity
+          y: containerY
         }}
       >
         <motion.div 
@@ -118,35 +44,61 @@ export function About() {
         >
           <h2 className={styles.title}>About Me</h2>
           <p className={styles.subtitle}>
-            Crafting digital experiences with passion and precision
+            {cvData.about.subtitle}
           </p>
         </motion.div>
 
         <div className={styles.aboutGrid}>
-          {aboutContent.map((section, index) => (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+          >
+            <Card>
+              <div className={styles.cardContent}>
+                <CardTitle>{cvData.about.title}</CardTitle>
+                <CardText className={styles.description}>{cvData.about.description}</CardText>
+                <StatsGrid>
+                  {cvData.about.stats.map((stat, i) => (
+                    <StatItem key={i} value={stat.value} label={stat.label} />
+                  ))}
+                </StatsGrid>
+                <TagsGrid className={styles.highlights}>
+                  {cvData.about.highlights.map((highlight, i) => (
+                    <Tag key={i}>{highlight}</Tag>
+                  ))}
+                </TagsGrid>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
+
+        <div className={styles.sectionTitle}>Education</div>
+        <div className={styles.educationGrid}>
+          {cvData.education.map((edu, index) => (
             <motion.div
-              key={section.title}
+              key={edu.school}
+              className={edu.school.includes('HiLCoE') ? styles.wide : ''}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ 
                 duration: 0.8, 
                 ease: [0.76, 0, 0.24, 1],
-                delay: 0.2 + (index * 0.1)
+                delay: index * 0.1
               }}
             >
               <Card>
                 <div className={styles.cardContent}>
-                  <CardTitle>{section.title}</CardTitle>
-                  <CardText>{section.description}</CardText>
-                  <StatsGrid>
-                    {section.stats.map((stat, i) => (
-                      <StatItem key={i} value={stat.value} label={stat.label} />
-                    ))}
-                  </StatsGrid>
+                  <CardTitle>{edu.school}</CardTitle>
+                  <div className={styles.educationMeta}>
+                    <CardText>{edu.degree}</CardText>
+                    <CardText>{edu.period}</CardText>
+                  </div>
                   <TagsGrid>
-                    {section.highlights.map((highlight, i) => (
-                      <Tag key={i}>{highlight}</Tag>
+                    {edu.details.map((detail, i) => (
+                      <Tag key={i}>{detail}</Tag>
                     ))}
                   </TagsGrid>
                 </div>
@@ -155,41 +107,38 @@ export function About() {
           ))}
         </div>
 
-        <Card>
-          <div className={styles.cardContent}>
-            <CardTitle>Education</CardTitle>
-            <div className={styles.educationGrid}>
-              {educationContent.map((edu, index) => (
-                <motion.div
-                  key={edu.school}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ 
-                    duration: 0.8, 
-                    ease: [0.76, 0, 0.24, 1],
-                    delay: 0.2 + (index * 0.1)
-                  }}
-                >
-                  <Card>
-                    <div className={styles.cardContent}>
-                      <CardTitle>{edu.school}</CardTitle>
-                      <div className={styles.educationMeta}>
-                        <CardText>{edu.degree}</CardText>
-                        <CardText>{edu.period}</CardText>
-                      </div>
-                      <TagsGrid>
-                        {edu.details.map((detail, i) => (
-                          <Tag key={i}>{detail}</Tag>
-                        ))}
-                      </TagsGrid>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </Card>
+        <div className={styles.sectionTitle} style={{ marginTop: '3rem' }}>Certifications</div>
+        <div className={styles.educationGrid}>
+          {cvData.certifications.map((cert, index) => (
+            <motion.div
+              key={cert.issuer}
+              className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ 
+                duration: 0.8, 
+                ease: [0.76, 0, 0.24, 1],
+                delay: index * 0.1
+              }}
+            >
+              <Card>
+                <div className={styles.cardContent}>
+                  <CardTitle>{cert.issuer}</CardTitle>
+                  <div className={styles.educationMeta}>
+                    <CardText>{cert.year}</CardText>
+                  </div>
+                  <CardText>{cert.description}</CardText>
+                  <TagsGrid>
+                    {cert.items.map((item, i) => (
+                      <Tag key={i}>{item}</Tag>
+                    ))}
+                  </TagsGrid>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </motion.div>
     </section>
   );

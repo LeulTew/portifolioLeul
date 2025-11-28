@@ -17,9 +17,6 @@ importers:
       '@react-three/postprocessing':
         specifier: ^2.16.3
         version: 2.16.3(@react-three/fiber@8.17.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.161.0))(@types/three@0.161.2)(react@18.3.1)(three@0.161.0)
-      '@studio-freight/react-lenis':
-        specifier: ^0.0.47
-        version: 0.0.47(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1200,27 +1197,6 @@ packages:
     peerDependencies:
       react: '>= 16.3.0'
 
-  '@studio-freight/hamo@0.6.33':
-    resolution: {integrity: sha512-U3Nvw5wDvB/jps2/ZbGL2TFL+CcZvJF/tkjL7S7ajuzDi9T5VkqCguws6tuWHttZ74Z6DfXxV1b8F1EB30AyJg==}
-    deprecated: Please use @darkroom.engineering/hamo instead
-    peerDependencies:
-      react: ^18.2.0
-      react-dom: ^18.2.0
-
-  '@studio-freight/lenis@1.0.42':
-    resolution: {integrity: sha512-HJAGf2DeM+BTvKzHv752z6Z7zy6bA643nZM7W88Ft9tnw2GsJSp6iJ+3cekjyMIWH+cloL2U9X82dKXgdU8kPg==}
-    deprecated: '''@studio-freight/lenis'' has been renamed to just ''lenis'', run ''npx @darkroom.engineering/codemods'' to update your dependecies accordingly.'
-
-  '@studio-freight/react-lenis@0.0.47':
-    resolution: {integrity: sha512-h+IAqiyiNo8mRo/CA3/sHCqX2IV0tTLyzZRWsdRaLPtM2aBaRqK0+ISYWTUmktQfcf3qvp4hsn0Oeyt9uXwLTQ==}
-    peerDependencies:
-      react: ^17 || ^18
-      react-dom: ^17 || ^18
-
-  '@studio-freight/tempus@0.0.38':
-    resolution: {integrity: sha512-AO1O2fEmfUqWGjEofmPNMQRlwgZ96eB5OFsVJjeH8/RKd1/Yf4zbPnXO+r2TD4aueA6X9JRCJU2GUprI9+m8uQ==}
-    deprecated: Please use @darkroom.engineering/tempus instead
-
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
     engines: {node: '>=18'}
@@ -2082,9 +2058,6 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  just-debounce-it@3.2.0:
-    resolution: {integrity: sha512-WXzwLL0745uNuedrCsCs3rpmfD6DBaf7uuVwaq98/8dafURfgQaBsSpjiPp5+CW6Vjltwy9cOGI6qE71b3T8iQ==}
-
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
@@ -2224,10 +2197,6 @@ packages:
     peerDependencies:
       postprocessing: '>=6.30.0'
       three: '>=0.137'
-
-  nanoevents@9.1.0:
-    resolution: {integrity: sha512-Jd0fILWG44a9luj8v5kED4WI+zfkkgwKyRQKItTtlPfEsh7Lznfi1kr8/iZ+XAIss4Qq5GqRB0qtWbaz9ceO/A==}
-    engines: {node: ^18.0.0 || >=20.0.0}
 
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
@@ -3839,30 +3808,6 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  '@studio-freight/hamo@0.6.33(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@studio-freight/tempus': 0.0.38
-      just-debounce-it: 3.2.0
-      nanoevents: 9.1.0
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
-  '@studio-freight/lenis@1.0.42': {}
-
-  '@studio-freight/react-lenis@0.0.47(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@studio-freight/hamo': 0.6.33(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@studio-freight/lenis': 1.0.42
-      '@types/react': 18.3.12
-      clsx: 2.1.1
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      zustand: 4.5.5(@types/react@18.3.12)(react@18.3.1)
-    transitivePeerDependencies:
-      - immer
-
-  '@studio-freight/tempus@0.0.38': {}
-
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.26.2
@@ -4786,8 +4731,6 @@ snapshots:
 
   json5@2.2.3: {}
 
-  just-debounce-it@3.2.0: {}
-
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -4929,8 +4872,6 @@ snapshots:
     dependencies:
       postprocessing: 6.36.4(three@0.161.0)
       three: 0.161.0
-
-  nanoevents@9.1.0: {}
 
   nanoid@3.3.11: {}
 

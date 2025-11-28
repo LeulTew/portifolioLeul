@@ -4,6 +4,7 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { LucideIcon } from "lucide-react";
+import { ThemeContext } from "../sections/theme/ThemeContext";
 
 interface Tab {
   title: string;
@@ -24,6 +25,7 @@ interface ExpandableTabsProps {
   className?: string;
   activeColor?: string;
   onChange?: (index: number | null) => void;
+  theme?: string;
 }
 
 const buttonVariants = {
@@ -51,8 +53,17 @@ export function ExpandableTabs({
   tabs,
   className,
   onChange,
+  theme: propTheme,
 }: ExpandableTabsProps) {
   const [selected, setSelected] = React.useState<number | null>(0);
+  const context = React.useContext(ThemeContext);
+  const theme = propTheme || context?.theme || 'dark';
+  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+
+  React.useEffect(() => {
+    // Force re-render when theme changes
+    forceUpdate();
+  }, [theme]);
 
   const handleSelect = (index: number) => {
     setSelected(index);
@@ -62,6 +73,8 @@ export function ExpandableTabs({
   const Separator = () => (
     <div className="mx-1 h-[24px] w-[1.2px] bg-white/20" aria-hidden="true" />
   );
+
+  const isLight = theme === 'light';
 
   return (
     <div
@@ -89,10 +102,24 @@ export function ExpandableTabs({
               "relative flex items-center rounded-full px-4 py-3 text-sm font-medium transition-colors duration-300",
               selected === index
                 ? "bg-white/95 text-black shadow-md"
-                : "text-white/70 hover:bg-white/5 hover:text-white/95"
+                : isLight
+                  ? "text-black/60 hover:bg-black/5 hover:text-black"
+                  : "text-white/70 hover:bg-white/5 hover:text-white/95"
             )}
+            style={
+              selected !== index && isLight
+                ? { color: 'rgba(0, 0, 0, 0.6)' }
+                : undefined
+            }
           >
-            <Icon size={20} />
+            <Icon 
+              size={20} 
+              style={
+                selected !== index && isLight
+                  ? { color: 'rgba(0, 0, 0, 0.6)', stroke: 'rgba(0, 0, 0, 0.6)' }
+                  : undefined
+              }
+            />
             <AnimatePresence initial={false}>
               {selected === index && (
                 <motion.span

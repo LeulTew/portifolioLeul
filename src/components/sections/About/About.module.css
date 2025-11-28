@@ -16,11 +16,10 @@
 .content {
   position: relative;
   z-index: 2;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0;
   width: 100%;
   padding: 0 max(2rem, 5vw);
-  padding-left: max(4rem, 10vw);
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -37,7 +36,7 @@
   font-weight: 600;
   line-height: 0.9;
   letter-spacing: -0.03em;
-  color: #ffffff;
+  color: var(--strong-text);
   margin: 0;
   mix-blend-mode: difference;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
@@ -46,7 +45,8 @@
 .subtitle {
   font-size: clamp(1rem, 1.2vw, 1.2rem);
   line-height: 1.4;
-  color: #ffffff;
+  color: rgb(var(--text-color));
+  opacity: 0.9;
   margin: 1rem 0 0;
   max-width: 600px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
@@ -63,10 +63,11 @@
   width: 100%;
 }
 
-.educationTitle {
+.educationTitle,
+.sectionTitle {
   font-size: clamp(1.75rem, 3vw, 3rem);
   font-weight: 600;
-  color: #ffffff;
+  color: var(--strong-text);
   margin: 0 0 2rem;
   letter-spacing: -0.02em;
   mix-blend-mode: difference;
@@ -82,14 +83,63 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  color: #ffffff;
+  color: rgb(var(--text-color));
 }
 
 .educationMeta {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  color: #ffffff;
+  color: rgb(var(--text-color));
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1024px) {
+  .content {
+    margin-top: -18vh;
+    padding-left: 10vw;
+  }
+
+  .educationGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .wide {
+    grid-column: span 3;
+  }
+
+  .educationGrid > div:not(.wide) {
+    grid-column: span 2;
+  }
+
+  .cardContent {
+    gap: 2rem;
+  }
+  
+  .educationMeta {
+    font-size: 1.1rem;
+  }
+}
+
+:global([data-theme='light']) .about {
+  mix-blend-mode: normal;
+}
+
+:global([data-theme='light']) .about .title,
+:global([data-theme='light']) .about .subtitle,
+:global([data-theme='light']) .about .sectionTitle,
+:global([data-theme='light']) .about .cardContent,
+:global([data-theme='light']) .about .educationMeta,
+:global([data-theme='light']) .about .text,
+:global([data-theme='light']) .about .statValue,
+:global([data-theme='light']) .about .statLabel,
+:global([data-theme='light']) .about .tag {
+  color: #000000 !important;
+  font-weight: 600;
+  text-shadow: none;
 }
 
 @media (max-width: 768px) {
@@ -101,6 +151,7 @@
   .content {
     padding: 0 1rem;
     gap: 3rem;
+    margin-top: 0;
   }
 
   .header {
@@ -112,5 +163,20 @@
   .educationGrid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+    width: 100%;
+    margin-left: 0;
   }
+  
+  .sectionTitle {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+.highlights {
+  justify-content: center;
+}
+
+:global([data-theme='light']) .about .description {
+  font-weight: 400 !important;
 } 

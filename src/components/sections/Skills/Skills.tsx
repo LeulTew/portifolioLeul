@@ -51,11 +51,7 @@ export function Skills() {
                 ease: [0.76, 0, 0.24, 1], 
                 delay: 0.3 + (categoryIndex * 0.1) 
               }}
-              whileHover={{ 
-                scale: 0.98,
-                backgroundColor: "rgba(255, 255, 255, 0.05)",
-                borderColor: "rgba(255, 255, 255, 0.2)"
-              }}
+              whileHover={{ scale: 0.98 }}
             >
               <h3 className={styles.categoryTitle}>{category.title}</h3>
               <div className={styles.skillList}>
@@ -73,9 +69,7 @@ export function Skills() {
                     }}
                     whileHover={{
                       scale: 1.05,
-                      y: -4,
-                      backgroundColor: "rgba(255, 255, 255, 0.08)",
-                      borderColor: "rgba(255, 255, 255, 0.3)"
+                      y: -4
                     }}
                   >
                     {skill}

@@ -1,7 +1,7 @@
 .card {
   position: relative;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-color);
+  border: 1px solid var(--surface-border);
   border-radius: 1.25rem;
   padding: clamp(1.5rem, 2vw, 2rem);
   transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
@@ -19,7 +19,7 @@
   inset: 0;
   background: radial-gradient(
     300px circle at var(--mouse-x) var(--mouse-y),
-    rgba(255, 255, 255, 0.1),
+    rgba(var(--text-color), 0.2),
     transparent 40%
   );
   opacity: 0;
@@ -34,7 +34,7 @@
   inset: -150%;
   background: radial-gradient(
     80px circle at var(--mouse-x) var(--mouse-y),
-    rgba(255, 255, 255, 0.4),
+    rgba(var(--text-color), 0.4),
     transparent 20%,
     transparent 100%
   );
@@ -83,7 +83,7 @@
 
 /* Enhanced LED glow effects */
 .title[data-lit="true"] {
-  color: #fff;
+  color: var(--strong-text);
   text-shadow: 
     0 0 10px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.8)),
     0 0 20px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.4)),
@@ -93,14 +93,14 @@
 }
 
 .text[data-lit="true"] {
-  color: rgba(255, 255, 255, 1);
+  color: var(--strong-text);
   text-shadow: 
     0 0 15px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.3)),
     0 0 30px rgba(99, 102, 241, calc(var(--intensity, 0) * 0.2));
 }
 
 .statValue[data-lit="true"] {
-  color: #fff;
+  color: var(--strong-text);
   text-shadow: 
     0 0 15px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.7)),
     0 0 30px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.3)),
@@ -109,8 +109,8 @@
 }
 
 .tag[data-lit="true"] {
-  background: rgba(255, 255, 255, calc(0.05 + (var(--intensity, 0) * 0.1)));
-  border-color: rgba(255, 255, 255, calc(0.2 + (var(--intensity, 0) * 0.3)));
+  background: rgba(var(--text-color), calc(0.05 + (var(--intensity, 0) * 0.1)));
+  border-color: rgba(var(--text-color), calc(0.2 + (var(--intensity, 0) * 0.3)));
   box-shadow: 
     0 0 20px rgba(255, 255, 255, calc(var(--intensity, 0) * 0.2)),
     0 0 30px rgba(99, 102, 241, calc(var(--intensity, 0) * 0.15)),
@@ -131,13 +131,14 @@
 .title {
   font-size: clamp(1.25rem, 1.5vw, 1.75rem);
   font-weight: 600;
-  color: #ffffff;
+  color: var(--strong-text);
   margin: 0;
 }
 
 .text {
   font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgb(var(--text-color));
+  opacity: 0.9;
   line-height: 1.6;
   margin: 0;
 }
@@ -160,12 +161,13 @@
 .statValue {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--strong-text);
 }
 
 .statLabel {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgb(var(--text-color));
+  opacity: 0.8;
 }
 
 .tagsGrid {
@@ -176,11 +178,11 @@
 
 .tag {
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-color);
+  border: 1px solid var(--surface-border);
   border-radius: 2rem;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgb(var(--text-color));
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -191,7 +193,7 @@
   inset: -1px;
   background: radial-gradient(
     100px circle at var(--mouse-x) var(--mouse-y),
-    rgba(255, 255, 255, 0.4),
+    rgba(var(--text-color), 0.4),
     transparent 40%
   );
   opacity: 0;
@@ -203,4 +205,23 @@
 
 .card:hover::before {
   opacity: 1;
+}
+
+@media (min-width: 1024px) {
+  .title {
+    font-size: 2rem;
+  }
+  .text {
+    font-size: 1.1rem;
+  }
+  .statValue {
+    font-size: 1.75rem;
+  }
+  .statLabel {
+    font-size: 0.9rem;
+  }
+  .tag {
+    font-size: 0.9rem;
+    padding: 0.6rem 1.2rem;
+  }
 } 

@@ -1,12 +1,14 @@
 import { useRef, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useLenis } from '@studio-freight/react-lenis';
 import styles from './Home.module.css';
 
-export function Home() {
+interface HomeProps {
+  onNavigate?: (sectionId: string) => void;
+}
+
+export function Home({ onNavigate }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
   const aboutRef = useRef<HTMLElement | null>(null);
-  const lenis = useLenis();
 
   useEffect(() => {
     aboutRef.current = document.getElementById('about');
@@ -57,12 +59,12 @@ export function Home() {
   });
 
   const scrollToAbout = () => {
-    if (!lenis || !aboutRef.current) return;
-    lenis.scrollTo(aboutRef.current, {
-      offset: -100,
-      duration: 1.5,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
-    });
+    if (onNavigate) {
+      onNavigate('about');
+      return;
+    }
+
+    aboutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (

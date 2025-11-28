@@ -14,7 +14,7 @@ const categories = [
   { title: 'Desktop & Games', icon: Gamepad2 }
 ];
 
-export function Projects() {
+export function Projects({ theme }: { theme?: string }) {
   const containerRef = useRef<HTMLElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -99,7 +99,7 @@ export function Projects() {
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize();
+    handleResize(); // Initial calculation
 
     const carousel = carouselRef.current;
     if (carousel) {
@@ -138,6 +138,7 @@ export function Projects() {
         <div className={styles.filterContainer}>
           <ExpandableTabs
             tabs={categories}
+            theme={theme}
             onChange={(index) => {
               if (index !== null) {
                 setActiveCategory(categories[index].title);
@@ -221,6 +222,43 @@ export function Projects() {
               );
             })}
           </motion.div>
+        </motion.div>
+
+        <motion.div 
+          className={styles.scrollIndicator}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1, duration: 1 }}
+        >
+          <span className={styles.scrollText}>SCROLL ON CARD</span>
+          <motion.svg 
+            width="50" 
+            height="10" 
+            viewBox="0 0 50 10" 
+            fill="none" 
+            xmlns="http://www.w3.org/2000/svg"
+            className={styles.scrollArrow}
+            style={{ filter: 'drop-shadow(0 0 2px currentColor)' }}
+          >
+            <motion.path 
+              d="M0 5H48M48 5L44 1M48 5L44 9" 
+              stroke="currentColor" 
+              strokeWidth="1"
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ 
+                pathLength: [0, 1],
+                opacity: [0, 1, 0],
+                x: [0, 3]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+          </motion.svg>
         </motion.div>
       </div>
     </section>

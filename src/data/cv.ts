@@ -1,35 +1,36 @@
 export const cvData = {
   about: {
-    title: "Creative Developer",
-    subtitle: "Crafting digital experiences with passion and precision",
-    description: "Passionate about crafting innovative digital experiences that push the boundaries of web technology. [Add more details from your CV here]",
+    title: "Software Engineer & Creative Developer",
+    subtitle: "Bridging the gap between complex algorithms and engaging user experiences",
+    description: "Motivated Computer Science graduate (BSc, HiLCoE) with hands-on expertise in AI/ML, full-stack web development, mobile applications, and real-time graphics. Proficient in building production-ready solutions using Python (PyTorch, scikit-learn), Flutter/Dart, React/TypeScript, ASP.NET, PHP, and OpenGL/Three.js. Complemented by creative design skills in Adobe tools and Figma, I deliver technically robust and visually polished products. Passionate about solving real-world problems through innovative technology, with a track record of developing impactful applications from concept to deployment.",
     stats: [
       { value: "3+", label: "Years Experience" },
       { value: "50+", label: "Projects" },
       { value: "20+", label: "Happy Clients" }
     ],
     highlights: [
+      "AI/ML & Data Science",
       "Full-stack Development",
-      "3D Web Experiences",
-      "Modern UI/UX Design"
+      "Real-time Graphics",
+      "Mobile Applications"
     ]
   },
   education: [
     {
       school: "HiLCoE School of Computer Science & Technology",
       degree: "BSc in Computer Science",
-      period: "Expected Graduation: August 2025",
+      period: "08/2025",
       details: [
+        "GPA: 3.92 / 4.00",
         "Advanced Programming & Data Structures",
         "Web Development & Cloud Computing",
-        "Software Engineering & Design Patterns",
-        "Database Management & System Design"
+        "Software Engineering & Design Patterns"
       ]
     },
     {
       school: "Saint Joseph School",
       degree: "High School Diploma",
-      period: "2008-2020",
+      period: "06/2020",
       details: [
         "Advanced Mathematics & Physics",
         "Computer Science Fundamentals",
@@ -38,8 +39,35 @@ export const cvData = {
       ]
     }
   ],
+  certifications: [
+    {
+      issuer: "Bootdev",
+      year: "2025",
+      description: "A comprehensive series of courses focused on backend development and computer science fundamentals in Python.",
+      items: [
+        "Build a Static Site Generator in Python (Sept 2025)",
+        "Learn Data Structures and Algorithms in Python (Sept 2025)",
+        "Build an AI Agent in Python (Aug 2025)",
+        "Learn Functional Programming in Python (Aug 2025)",
+        "Build Asteroids using Python and Pygame (Aug 2025)",
+        "Learn Object Oriented Programming in Python (Aug 2025)",
+        "Build a Bookbot in Python (July 2025)",
+        "Learn Git (July 2025)",
+        "Learn Linux (July 2025)",
+        "Learn to Code in Python (July 2025)"
+      ]
+    },
+    {
+      issuer: "freeCodeCamp",
+      year: "2024",
+      description: "Each certification represents approximately 300 hours of coursework in core web and software development principles.",
+      items: [
+        "JavaScript Algorithms and Data Structures (Beta)",
+        "Responsive Web Design"
+      ]
+    }
+  ],
   experience: [
-    // Add your experience here
     {
       role: "Software Developer Intern",
       company: "Example Company",

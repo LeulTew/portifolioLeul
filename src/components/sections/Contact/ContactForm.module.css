@@ -14,7 +14,7 @@
 .label {
   font-size: 0.875rem;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--subtle-text);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -23,20 +23,25 @@
 .textarea {
   width: 100%;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.5rem;
-  color: #ffffff;
+  background: rgba(var(--text-color), 0.03);
+  border: 1px solid rgba(var(--text-color), 0.12);
+  border-radius: 0.75rem;
+  color: rgb(var(--text-color));
   font-size: 1rem;
   font-family: inherit;
   transition: all 0.3s ease;
 }
 
+.input::placeholder,
+.textarea::placeholder {
+  color: rgba(var(--text-color), 0.45);
+}
+
 .input:focus,
 .textarea:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--primary-color);
+  background: rgba(var(--text-color), 0.05);
 }
 
 .textarea {
@@ -45,15 +50,21 @@
 }
 
 .submitButton {
+  width: 100%;
   padding: 1rem;
-  background: #ffffff;
-  color: #000000;
+  border-radius: 0.75rem;
   border: none;
-  border-radius: 0.5rem;
+  background: var(--primary-color);
+  color: rgb(var(--bg-color));
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(var(--primary-color), 0.3);
 }
 
 .submitButton:disabled {
@@ -62,9 +73,8 @@
 }
 
 .message {
-  margin-top: 1rem;
-  font-size: 0.875rem;
-  text-align: center;
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .success {
@@ -79,19 +89,19 @@
   .form {
     gap: 1.5rem;
   }
-  
+
   .input,
   .textarea {
     padding: 0.875rem;
     font-size: 0.875rem;
   }
-  
+
   .textarea {
     min-height: 120px;
   }
-  
+
   .submitButton {
     padding: 0.875rem;
-    font-size: 0.875rem;
+    font-size: 0.9rem;
   }
-} 
+}

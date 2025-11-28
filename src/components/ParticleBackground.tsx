@@ -1,10 +1,16 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { Theme } from './sections/theme/ThemeContext';
 
-const ParticleBackground = () => {
+interface ParticleBackgroundProps {
+  theme: Theme;
+}
+
+const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
   const count = 2000;
   const particlesRef = useRef<THREE.Points>(null);
+  const isLight = theme === 'light';
 
   const particles = useMemo(() => {
     const positions = new Float32Array(count * 3);
@@ -20,9 +26,14 @@ const ParticleBackground = () => {
       // Vary the size of particles
       sizes[i] = Math.random() * 0.2;
 
-      // Create a gradient from teal to darker green
       const mixedColor = new THREE.Color();
-      mixedColor.setHSL(0.4 + Math.random() * 0.1, 0.8, 0.3 + Math.random() * 0.2);
+      const baseHue = isLight ? 0.08 : 0.4;
+      const baseLightness = isLight ? 0.6 : 0.3;
+      mixedColor.setHSL(
+        baseHue + Math.random() * (isLight ? 0.04 : 0.1),
+        isLight ? 0.65 : 0.8,
+        baseLightness + Math.random() * (isLight ? 0.2 : 0.15)
+      );
       
       colors[i3] = mixedColor.r;
       colors[i3 + 1] = mixedColor.g;
@@ -34,7 +45,7 @@ const ParticleBackground = () => {
       sizes,
       colors,
     };
-  }, [count]);
+  }, [count, isLight]);
 
   useFrame((state) => {
     if (!particlesRef.current) return;

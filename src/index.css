@@ -20,6 +20,21 @@
   --text-color: var(--text-color-dark);
   --primary-color: var(--primary-color-dark);
   --secondary-color: var(--secondary-color-dark);
+  --muted-text: rgba(255, 255, 255, 0.6);
+  --subtle-text: rgba(255, 255, 255, 0.4);
+  --strong-text: rgba(255, 255, 255, 0.95);
+  --surface-color: rgba(255, 255, 255, 0.03);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  --surface-border: rgba(255, 255, 255, 0.12);
+  --chip-border-strong: rgba(255, 255, 255, 0.3);
+  --pill-active-bg: rgba(255, 255, 255, 0.95);
+  --pill-active-text: #0f172a;
+  --pill-rail-bg: rgba(255, 255, 255, 0.08);
+  --pill-rail-border: rgba(255, 255, 255, 0.15);
+  --footer-blend-mode: difference;
+  --footer-text-color: rgba(255, 255, 255, 0.4);
+  --footer-line-color: rgba(255, 255, 255, 0.2);
+  --footer-line-glow: rgba(255, 255, 255, 0.6);
 }
 
 [data-theme='light'] {
@@ -27,6 +42,21 @@
   --text-color: var(--text-color-light);
   --primary-color: var(--primary-color-light);
   --secondary-color: var(--secondary-color-light);
+  --muted-text: rgba(17, 24, 39, 0.65);
+  --subtle-text: rgba(17, 24, 39, 0.45);
+  --strong-text: rgba(17, 24, 39, 0.95);
+  --surface-color: rgba(17, 24, 39, 0.05);
+  --surface-strong: rgba(17, 24, 39, 0.08);
+  --surface-border: rgba(17, 24, 39, 0.12);
+  --chip-border-strong: rgba(17, 24, 39, 0.25);
+  --pill-active-bg: rgba(17, 24, 39, 0.08);
+  --pill-active-text: rgba(17, 24, 39, 0.9);
+  --pill-rail-bg: rgba(17, 24, 39, 0.05);
+  --pill-rail-border: rgba(17, 24, 39, 0.12);
+  --footer-blend-mode: normal;
+  --footer-text-color: rgba(17, 24, 39, 0.55);
+  --footer-line-color: rgba(17, 24, 39, 0.2);
+  --footer-line-glow: rgba(17, 24, 39, 0.6);
 }
 
 html {

@@ -10,11 +10,16 @@ import {
   PointMaterial
 } from '@react-three/drei';
 import * as THREE from 'three';
+import { Theme } from './sections/theme/ThemeContext';
 
 // Preload the terrain model
 useGLTF.preload('/models/terrain-1k.glb');
 
-function Terrain() {
+interface TerrainProps {
+  surfaceColor: string;
+}
+
+function Terrain({ surfaceColor }: TerrainProps) {
   const { scene } = useGLTF('/models/terrain-1k.glb');
   
   const terrain = useMemo(() => {
@@ -22,7 +27,7 @@ function Terrain() {
     clone.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         const material = new THREE.MeshStandardMaterial({
-          color: '#0a1a1a',
+          color: surfaceColor,
           roughness: 0.5,
           metalness: 0.8,
           envMapIntensity: 1.5,
@@ -43,7 +48,7 @@ function Terrain() {
       }
     });
     return clone;
-  }, [scene]);
+  }, [scene, surfaceColor]);
 
   return (
     <primitive 
@@ -56,7 +61,11 @@ function Terrain() {
   );
 }
 
-function Particles() {
+interface ParticlesProps {
+  color: string;
+}
+
+function Particles({ color }: ParticlesProps) {
   const count = 1000;
   const positions = useMemo(() => {
     const positions = new Float32Array(count * 3);
@@ -77,7 +86,7 @@ function Particles() {
         sizeAttenuation={true}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        color="#00ff9d"
+        color={color}
       />
       <bufferGeometry>
         <bufferAttribute
@@ -91,10 +100,47 @@ function Particles() {
   );
 }
 
-export function BackgroundScene() {
+interface BackgroundSceneProps {
+  theme: Theme;
+}
+
+export function BackgroundScene({ theme }: BackgroundSceneProps) {
   const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
+  const palette = useMemo(() => {
+    const isLight = theme === 'light';
+    return {
+      background: isLight ? '#f4f7ff' : '#001a1a',
+      fog: isLight ? '#f6f8ff' : '#001a1a',
+      terrain: isLight ? '#e9e2d4' : '#0a1a1a',
+      ground: isLight ? '#3a5f5f' : '#001a1a',
+      highlight: '#00ff9d',
+      environment: (isLight ? 'city' : 'night') as 'city' | 'night',
+      ambient: isLight ? 0.6 : 0.2,
+      directional: isLight ? 1.1 : 0.5,
+      spotIntensity: isLight ? 0.8 : 1,
+      spotColor: '#00ff9d',
+      pointIntensity: isLight ? 4 : 5,
+    };
+  }, [theme]);
+  const prismAppearance = useMemo(() => {
+    return theme === 'light'
+      ? {
+          solid: '#0a6b4a',
+          glow: '#11b978',
+          light: '#00d17a',
+          emissive: '#04402a',
+          opacity: 1,
+        }
+      : {
+          solid: '#00ff9d',
+          glow: '#00ff9d',
+          light: '#00ff9d',
+          emissive: '#004428',
+          opacity: 0.9,
+        };
+  }, [theme]);
 
   useFrame((state) => {
     if (!sceneRef.current || !prismRef.current) return;
@@ -115,11 +161,11 @@ export function BackgroundScene() {
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 5, 30]} fov={50} near={0.1} far={1000} />
-      <color attach="background" args={['#001a1a']} />
-      <fog attach="fog" args={['#001a1a', 30, 70]} />
+      <color attach="background" args={[palette.background]} />
+      <fog attach="fog" args={[palette.fog, 30, 70]} />
 
       <group ref={sceneRef}>
-        <Environment preset="night" />
+        <Environment preset={palette.environment} />
 
         {/* Reflective Ground */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -4, 0]} receiveShadow>
@@ -133,14 +179,14 @@ export function BackgroundScene() {
             depthScale={1.2}
             minDepthThreshold={0.4}
             maxDepthThreshold={1.4}
-            color="#001a1a"
+            color={palette.ground}
             metalness={0.9}
             mirror={0.75}
           />
         </mesh>
 
         <Suspense fallback={null}>
-          <Terrain />
+          <Terrain surfaceColor={palette.terrain} />
         </Suspense>
 
         {/* Neon Prism */}
@@ -152,51 +198,62 @@ export function BackgroundScene() {
           {/* Main prism body */}
           <mesh scale={[0.3, 12, 0.3]} castShadow>
             <boxGeometry />
-            <meshBasicMaterial
-              color="#00ff9d"
-              wireframe={false}
-              transparent
-              opacity={0.9}
-              blending={THREE.AdditiveBlending}
-            />
+            {theme === 'light' ? (
+              <meshStandardMaterial
+                color={prismAppearance.solid}
+                metalness={0.15}
+                roughness={0.4}
+                emissive={prismAppearance.emissive}
+                emissiveIntensity={0.4}
+                transparent={false}
+              />
+            ) : (
+              <meshBasicMaterial
+                color={prismAppearance.solid}
+                wireframe={false}
+                transparent
+                opacity={prismAppearance.opacity}
+                blending={THREE.AdditiveBlending}
+              />
+            )}
           </mesh>
           {/* Outer glow */}
           <mesh scale={[0.4, 12.2, 0.4]}>
             <boxGeometry />
             <meshBasicMaterial
-              color="#00ff9d"
+              color={prismAppearance.glow}
               wireframe={true}
               transparent
-              opacity={0.4}
+              opacity={theme === 'light' ? 0.25 : 0.4}
               blending={THREE.AdditiveBlending}
             />
           </mesh>
           {/* Inner point light */}
           <pointLight
-            intensity={5.0}
-            color="#00ff9d"
+            intensity={palette.pointIntensity}
+            color={prismAppearance.light}
             distance={20}
             decay={2}
           />
         </group>
 
         {/* Ambient Particles */}
-        <Particles />
+        <Particles color={palette.highlight} />
 
         {/* Enhanced Lighting */}
-        <ambientLight intensity={0.2} />
+        <ambientLight intensity={palette.ambient} />
         <directionalLight 
           position={[10, 20, 10]} 
-          intensity={0.5} 
+          intensity={palette.directional} 
           color="#ffffff" 
           castShadow
         />
         <spotLight
           position={[0, 15, 0]}
-          intensity={1.0}
+          intensity={palette.spotIntensity}
           angle={0.6}
           penumbra={1}
-          color="#00ff9d"
+          color={palette.spotColor}
           castShadow
         />
       </group>
