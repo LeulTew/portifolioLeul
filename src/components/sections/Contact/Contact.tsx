@@ -1,103 +1,152 @@
-import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { Mail, Phone, MapPin, Github, Linkedin, Send } from 'lucide-react';
+import { TelegramIcon } from '../../ui/TelegramIcon';
 import styles from './Contact.module.css';
+import { cvData } from '../../../data/cv';
 
 export function Contact() {
   const containerRef = useRef<HTMLElement>(null);
   
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end end"]
-  });
 
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 0.8]);
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
+
+  const [formState, setFormState] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    setSubmitStatus('success');
+    setIsSubmitting(false);
+    setFormState({ name: '', email: '', message: '' });
+    
+    setTimeout(() => setSubmitStatus('idle'), 3000);
+  };
 
   return (
     <section ref={containerRef} className={styles.contact} id="contact">
-      <motion.div 
-        className={styles.content}
-        style={{ opacity, scale, y }}
-      >
-        <motion.div 
-          className={styles.header}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
-        >
-          <h2 className={styles.title}>Let's Connect</h2>
-          <p className={styles.subtitle}>Get in touch for opportunities or just to say hi</p>
-        </motion.div>
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <motion.h2 
+            className={styles.title}
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            Let's Connect
+          </motion.h2>
+          <motion.p 
+            className={styles.subtitle}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+          >
+            Get in touch for opportunities or just to say hi
+          </motion.p>
+        </div>
 
         <div className={styles.grid}>
           <motion.div 
             className={styles.formContainer}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.2 }}
           >
-            <form className={styles.form}>
+            <form onSubmit={handleSubmit} className={styles.form}>
               <div className={styles.inputGroup}>
-                <input 
-                  type="text" 
-                  placeholder="Name" 
-                  className={styles.input} 
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={formState.name}
+                  onChange={e => setFormState({...formState, name: e.target.value})}
+                  className={styles.input}
+                  required
                 />
-                <input 
-                  type="email" 
-                  placeholder="Email" 
-                  className={styles.input} 
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={formState.email}
+                  onChange={e => setFormState({...formState, email: e.target.value})}
+                  className={styles.input}
+                  required
                 />
               </div>
-              <textarea 
-                placeholder="Message" 
+              <textarea
+                placeholder="Message"
+                value={formState.message}
+                onChange={e => setFormState({...formState, message: e.target.value})}
                 className={styles.textarea}
+                required
               />
-              <button type="submit" className={styles.submitButton}>
-                Send Message
+              <button 
+                type="submit" 
+                className={styles.submitButton}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Sending...' : (
+                  <>
+                    Send Message <Send size={18} />
+                  </>
+                )}
               </button>
+              {submitStatus === 'success' && (
+                <p className={styles.successMessage}>Message sent successfully!</p>
+              )}
             </form>
           </motion.div>
 
           <motion.div 
             className={styles.contactInfo}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.3 }}
           >
-            <div className={styles.infoGroup}>
-              <h3 className={styles.infoTitle}>Phone</h3>
-              <a href="tel:+25196623533" className={styles.infoLink}>
-                +251 966 23533
-              </a>
-            </div>
-            <div className={styles.infoGroup}>
-              <h3 className={styles.infoTitle}>Email</h3>
-              <a href="mailto:leulman2@gmail.com" className={styles.infoLink}>
-                leulman2@gmail.com
-              </a>
-            </div>
-            <div className={styles.infoGroup}>
-              <h3 className={styles.infoTitle}>Location</h3>
-              <span className={styles.infoText}>
-                Addis Ababa, Ethiopia
-              </span>
-            </div>
-            <div className={styles.infoGroup}>
-              <h3 className={styles.infoTitle}>Follow</h3>
-              <div className={styles.socialLinks}>
-                <a href="https://github.com/yourusername" target="_blank" rel="noopener noreferrer" className={styles.socialLink}>GitHub</a>
-                <a href="https://linkedin.com/in/yourusername" target="_blank" rel="noopener noreferrer" className={styles.socialLink}>LinkedIn</a>
-                <a href="https://twitter.com/yourusername" target="_blank" rel="noopener noreferrer" className={styles.socialLink}>Twitter</a>
+            <div className={styles.infoItem}>
+              <Phone className={styles.icon} />
+              <div>
+                <h3 className={styles.infoLabel}>Phone</h3>
+                <p className={styles.infoValue}>{cvData.contact.phone}</p>
               </div>
+            </div>
+            <div className={styles.infoItem}>
+              <Mail className={styles.icon} />
+              <div>
+                <h3 className={styles.infoLabel}>Email</h3>
+                <p className={styles.infoValue}>{cvData.contact.email}</p>
+              </div>
+            </div>
+            <div className={styles.infoItem}>
+              <MapPin className={styles.icon} />
+              <div>
+                <h3 className={styles.infoLabel}>Location</h3>
+                <p className={styles.infoValue}>{cvData.contact.location}</p>
+              </div>
+            </div>
+
+            <div className={styles.socialLinks}>
+              <a href={cvData.contact.social.github} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+                <Github size={24} />
+              </a>
+              <a href={cvData.contact.social.linkedin} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+                <Linkedin size={24} />
+              </a>
+              <a href={cvData.contact.social.telegram} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+                <TelegramIcon />
+              </a>
             </div>
           </motion.div>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
-} 
+}

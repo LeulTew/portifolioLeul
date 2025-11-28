@@ -17,6 +17,7 @@
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",
     "@studio-freight/react-lenis": "^0.0.47",
+    "clsx": "^2.1.1",
     "framer-motion": "^11.12.0",
     "gsap": "^3.12.5",
     "leva": "^0.9.35",
@@ -24,7 +25,9 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-error-boundary": "^4.1.2",
-    "three": "^0.161.0"
+    "tailwind-merge": "^3.4.0",
+    "three": "^0.161.0",
+    "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

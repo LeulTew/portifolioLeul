@@ -16,8 +16,8 @@ export function Home() {
   const { scrollY } = useScroll();
 
   // Transform values for the image
-  const imageTransform = useTransform(scrollY, (value) => {
-    if (!aboutRef.current) return { y: 0, opacity: 1 };
+  const imageY = useTransform(scrollY, (value) => {
+    if (typeof window === 'undefined' || !aboutRef.current) return 0;
     
     // Get About section position
     const aboutTop = aboutRef.current.offsetTop;
@@ -28,18 +28,32 @@ export function Home() {
     const stopMoving = aboutTop + (aboutHeight * 0.3); // Stop at 30% into About section
     
     // If before start or after end, maintain position
-    if (value < startMoving) return { y: 0, opacity: 1 };
-    if (value > stopMoving) return { y: aboutTop - window.innerHeight/2, opacity: 0 };
+    if (value < startMoving) return 0;
+    if (value > stopMoving) return aboutTop - window.innerHeight/2;
     
     // Calculate progress
     const progress = (value - startMoving) / (stopMoving - startMoving);
-    const yMove = progress * (aboutTop - window.innerHeight/2);
-    const opacity = 1 - progress;
+    return progress * (aboutTop - window.innerHeight/2);
+  });
+
+  const imageOpacity = useTransform(scrollY, (value) => {
+    if (typeof window === 'undefined' || !aboutRef.current) return 1;
     
-    return {
-      y: yMove,
-      opacity: opacity
-    };
+    // Get About section position
+    const aboutTop = aboutRef.current.offsetTop;
+    const aboutHeight = aboutRef.current.offsetHeight;
+    
+    // Calculate distances
+    const startMoving = 0; // Start from top of page
+    const stopMoving = aboutTop + (aboutHeight * 0.3); // Stop at 30% into About section
+    
+    // If before start or after end, maintain position
+    if (value < startMoving) return 1;
+    if (value > stopMoving) return 0;
+    
+    // Calculate progress
+    const progress = (value - startMoving) / (stopMoving - startMoving);
+    return 1 - progress;
   });
 
   const scrollToAbout = () => {
@@ -128,8 +142,8 @@ export function Home() {
       <motion.div 
         className={styles.profileImage}
         style={{
-          y: imageTransform.y,
-          opacity: imageTransform.opacity,
+          y: imageY,
+          opacity: imageOpacity,
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -139,7 +153,7 @@ export function Home() {
           delay: 0.2
         }}
       >
-        <img src="/images/leul-profile.jpg" alt="Leul" />
+        <img src="/images/leul-profile.png" alt="Leul" />
       </motion.div>
 
       <div 

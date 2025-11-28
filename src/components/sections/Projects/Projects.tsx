@@ -1,54 +1,33 @@
 import { useRef, useState, useEffect } from 'react';
-import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
+import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from 'framer-motion';
+import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
+import { projectsData } from '../../../data/projects';
+import { ExpandableTabs } from '../../ui/expandable-tabs';
 
-const projects = [
-  {
-    id: 1,
-    title: "Music Album Management System",
-    description: "File-handling-based music album organizer",
-    tech: "C++",
-    image: "https://images.unsplash.com/photo-1483412033650-1015ddeb83d1?auto=format&fit=crop&w=1920&q=80"
-  },
-  {
-    id: 2,
-    title: "Digital Pharmacy",
-    description: "Desktop app for pharmacy inventory and prescriptions",
-    tech: "C#",
-    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1920&q=80"
-  },
-  {
-    id: 3,
-    title: "Luna - Movie Website",
-    description: "Responsive movie browsing and review website",
-    tech: "HTML5, CSS3, JavaScript",
-    image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=1920&q=80"
-  },
-  {
-    id: 4,
-    title: "Car Rental Platform",
-    description: "Full-stack app with 3D vehicle visualization",
-    tech: "React, Three.js",
-    image: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1920&q=80"
-  },
-  {
-    id: 5,
-    title: "University Choice Helper",
-    description: "JavaScript tool for informed university decisions",
-    tech: "JavaScript",
-    image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80"
-  }
+const categories = [
+  { title: 'All', icon: Grid3x3 },
+  { title: 'Web Development', icon: Globe },
+  { title: 'AI/ML & Data Science', icon: Brain },
+  { title: 'Mobile Apps', icon: Smartphone },
+  { title: 'Graphics & Algorithms', icon: Shapes },
+  { title: 'Desktop & Games', icon: Gamepad2 }
 ];
 
 export function Projects() {
   const containerRef = useRef<HTMLElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState('All');
   const dragX = useMotionValue(0);
   const dragStartX = useRef(0);
   const projectWidth = useRef(0);
 
-  const duplicatedProjects = [...projects, ...projects, ...projects];
+  // Filter projects based on active category
+  const filteredProjects = activeCategory === 'All' 
+    ? projectsData 
+    : projectsData.filter(project => project.categories.includes(activeCategory));
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -67,7 +46,7 @@ export function Projects() {
     setIsDragging(true);
     dragStartX.current = e.clientX;
     projectWidth.current = carouselRef.current.offsetWidth * 0.45;
-    e.preventDefault();
+    // e.preventDefault(); // Removed to allow clicks
   };
 
   const handleDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -80,6 +59,44 @@ export function Projects() {
   };
 
   const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleProjectClick = (id: string) => {
+    if (isDragging) return;
+    
+    // Toggle expansion: if already expanded, collapse it
+    if (expandedId === id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+    const delta = e.deltaY;
+    const newX = dragX.get() - delta;
+    dragX.set(newX);
+    return false;
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    setIsDragging(true);
+    dragStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const delta = e.touches[0].clientX - dragStartX.current;
+    const newX = dragX.get() + delta;
+    dragX.set(newX);
+    dragStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
     setIsDragging(false);
   };
 
@@ -106,6 +123,21 @@ export function Projects() {
             Projects
           </motion.h2>
         </header>
+        
+        {/* Category Filter Tabs */}
+        <div className={styles.filterContainer}>
+          <ExpandableTabs
+            tabs={categories}
+            onChange={(index) => {
+              if (index !== null) {
+                setActiveCategory(categories[index].title);
+                setExpandedId(null);
+                dragX.set(0);
+              }
+            }}
+          />
+        </div>
+
         <motion.div 
           ref={carouselRef}
           className={styles.carousel}
@@ -113,33 +145,72 @@ export function Projects() {
           onMouseMove={handleDragMove}
           onMouseUp={handleDragEnd}
           onMouseLeave={handleDragEnd}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onWheel={handleWheel}
         >
           <motion.div 
             className={`${styles.carouselTrack} ${isDragging ? styles.dragging : ''}`}
             style={{ x }}
           >
-            {duplicatedProjects.map((project, index) => (
-              <motion.div 
-                key={`${project.id}-${index}`}
-                className={styles.project}
-                whileHover={{ scale: 1.02 }}
-                transition={{ 
-                  duration: 0.5,
-                  ease: [0.76, 0, 0.24, 1]
-                }}
-              >
-                <div className={styles.projectContent}>
-                  <div className={styles.projectImage}>
-                    <img src={project.image} alt={project.title} />
+            {filteredProjects.map((project, index) => {
+              const uniqueId = `${project.id}-${index}`;
+              const isExpanded = expandedId === uniqueId;
+
+              return (
+                <motion.div 
+                  key={uniqueId}
+                  className={`${styles.project} ${isExpanded ? styles.expanded : ''}`}
+                  animate={{
+                    height: isExpanded ? 'auto' : 'auto'
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ 
+                    duration: 0.5,
+                    ease: [0.76, 0, 0.24, 1]
+                  }}
+                  onClick={() => handleProjectClick(uniqueId)}
+                  layout={isExpanded}
+                >
+                  <div className={styles.projectContent}>
+                    <div className={styles.projectImage}>
+                      <img src={project.image} alt={project.title} onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80';
+                      }}/>
+                    </div>
+                    <div className={styles.projectInfo}>
+                      <h3 className={styles.projectTitle}>{project.title}</h3>
+                      <p className={styles.projectDescription}>{project.description}</p>
+                      <div className={styles.projectTech}>{project.tech}</div>
+                      
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className={styles.expandedDetails}
+                          >
+                            <p className={styles.longDescription}>{project.longDescription}</p>
+                            <a 
+                              href={project.githubUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className={styles.githubLink}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View on GitHub →
+                            </a>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
-                  <div className={styles.projectInfo}>
-                    <h3 className={styles.projectTitle}>{project.title}</h3>
-                    <p className={styles.projectDescription}>{project.description}</p>
-                    <div className={styles.projectTech}>{project.tech}</div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </motion.div>
         </motion.div>
       </div>
