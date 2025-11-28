@@ -30,7 +30,6 @@ export function Skills() {
   });
 
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
-  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0.5, 1, 1, 0.5]);
 
   return (
     <section ref={containerRef} className={styles.skills}>
