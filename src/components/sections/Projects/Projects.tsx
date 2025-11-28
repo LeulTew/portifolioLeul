@@ -73,15 +73,7 @@ export function Projects() {
     }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.nativeEvent.stopImmediatePropagation();
-    const delta = e.deltaY;
-    const newX = dragX.get() - delta;
-    dragX.set(newX);
-    return false;
-  };
+
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     setIsDragging(true);
@@ -108,6 +100,24 @@ export function Projects() {
 
     window.addEventListener('resize', handleResize);
     handleResize();
+
+    const carousel = carouselRef.current;
+    if (carousel) {
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = e.deltaY;
+        const newX = dragX.get() - delta;
+        dragX.set(newX);
+      };
+
+      carousel.addEventListener('wheel', onWheel, { passive: false });
+      
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        carousel.removeEventListener('wheel', onWheel);
+      };
+    }
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -148,7 +158,6 @@ export function Projects() {
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          onWheel={handleWheel}
         >
           <motion.div 
             className={`${styles.carouselTrack} ${isDragging ? styles.dragging : ''}`}

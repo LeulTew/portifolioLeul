@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Canvas } from '@react-three/fiber';
 import { ThemeProvider } from './components/sections/theme/ThemeProvider';
@@ -30,22 +30,39 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const scrollToAbout = () => {
-    if (!lenis) return;
-    const aboutSection = document.getElementById('about');
-    if (!aboutSection) return;
+  const scrollToSection = useCallback((id: string) => {
+    const target = id === 'home' ? null : document.getElementById(id);
+    if (id !== 'home' && !target) return;
 
-    lenis.scrollTo(aboutSection, {
-      offset: -100,
-      duration: 1.5,
+    const options = {
+      offset: id === 'home' ? 0 : -100,
+      duration: 1.2,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+    } as const;
+
+    if (lenis) {
+      if (target) {
+        lenis.scrollTo(target, options);
+      } else {
+        lenis.scrollTo(0, options);
+      }
+      return;
+    }
+
+    const top = target
+      ? target.getBoundingClientRect().top + window.scrollY + options.offset
+      : 0;
+
+    window.scrollTo({
+      top,
+      behavior: 'smooth'
     });
-  };
+  }, [lenis]);
 
   return (
     <ThemeProvider>
       <div className={styles.container}>
-        <Navigation scrollToSection={scrollToAbout} />
+        <Navigation scrollToSection={scrollToSection} />
         <Canvas
           dpr={[1, 1.5]}
           camera={{
@@ -72,7 +89,7 @@ function App() {
                 ) : (
                   <main className={styles.main}>
                     <Home />
-                    <div id="homeToAboutArrow" onClick={scrollToAbout}>
+                    <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
                       <div className="curveWrapper">
                         <div className="curve"></div>
                       </div>

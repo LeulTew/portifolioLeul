@@ -18,10 +18,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem max(2rem, 5vw);
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 1.5rem clamp(1rem, 4vw, 3rem);
   width: 100%;
+  margin: 0;
+  max-width: none;
 }
 
 .logo {
@@ -40,6 +40,7 @@
   display: flex;
   align-items: center;
   gap: 2rem;
+  margin-left: auto;
 }
 
 .navItems {

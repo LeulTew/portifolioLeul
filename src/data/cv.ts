@@ -49,16 +49,28 @@ export const cvData = {
   ],
   skills: [
     {
-      title: "Languages & Frameworks",
-      items: ["C++", "C#", "JavaScript", "HTML", "CSS", "PHP", "ASP.NET", "Three.js", "React", "Next.js"]
+      title: "Languages",
+      items: ["Python", "C++", "C#", "Dart", "JavaScript", "TypeScript", "HTML", "CSS", "PHP"]
     },
     {
-      title: "Tools & Software",
-      items: ["Visual Studio", "Git", "Figma", "Adobe Photoshop", "Adobe Express"]
+      title: "Frameworks & Web",
+      items: ["React", "Three.js", "ASP.NET", "Entity Framework Core", "Web & Mobile Development"]
     },
     {
-      title: "Multimedia Editing",
-      items: ["Adobe Premiere Pro", "CapCut"]
+      title: "AI & Data Science",
+      items: ["PyTorch", "Scikit-learn", "AI & Machine Learning", "NLP", "Information Retrieval", "Data Analysis"]
+    },
+    {
+      title: "Databases",
+      items: ["MSSQL", "MySQL", "PostgreSQL", "SQLite", "Database Management"]
+    },
+    {
+      title: "Tools & Design",
+      items: ["Git", "Visual Studio", "CLI Tooling", "API Integrations", "Figma", "Adobe Creative Suite"]
+    },
+    {
+      title: "Professional Skills",
+      items: ["Software Methodologies", "Team Collaboration", "Problem-solving", "Cross-platform Development"]
     }
   ],
   contact: {

@@ -2,25 +2,9 @@ import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import styles from './Skills.module.css';
 
-interface SkillCategory {
-  title: string;
-  items: string[];
-}
+import { cvData } from '../../../data/cv';
 
-const skillCategories: SkillCategory[] = [
-  {
-    title: "Languages & Frameworks",
-    items: ["C++", "C#", "JavaScript", "HTML", "CSS", "PHP", "ASP.NET", "Three.js"]
-  },
-  {
-    title: "Tools & Software",
-    items: ["Visual Studio", "Git", "Figma", "Adobe Photoshop", "Adobe Express"]
-  },
-  {
-    title: "Multimedia Editing",
-    items: ["Adobe Premiere Pro", "CapCut"]
-  }
-];
+const skillCategories = cvData.skills;
 
 export function Skills() {
   const containerRef = useRef<HTMLElement>(null);
@@ -32,7 +16,7 @@ export function Skills() {
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
 
   return (
-    <section ref={containerRef} className={styles.skills}>
+    <section ref={containerRef} className={styles.skills} id="skills">
       <motion.div 
         className={styles.content}
         style={{ y }}

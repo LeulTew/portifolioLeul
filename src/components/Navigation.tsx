@@ -23,32 +23,63 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   const { theme, toggleTheme } = useContext(ThemeContext);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      setIsScrolled(scrollPosition > 50);
-      
-      menuItems.forEach(({ id }) => {
-        const element = document.getElementById(id);
-        if (!element) return;
-        
-        const rect = element.getBoundingClientRect();
-        const top = rect.top + scrollPosition;
-        const offset = window.innerHeight * 0.3;
-        
-        if (scrollPosition >= top - offset) {
-          setActiveSection(id);
-        }
-      });
-    };
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     handleScroll();
-    
+
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    let observer: IntersectionObserver | null = null;
+    let retryId: number | null = null;
+
+    const initObserver = () => {
+      const sections = menuItems
+        .map(({ id }) => document.getElementById(id))
+        .filter((section): section is HTMLElement => Boolean(section));
+
+      if (!sections.length) {
+        retryId = window.setTimeout(initObserver, 250);
+        return;
+      }
+
+      if (retryId) {
+        window.clearTimeout(retryId);
+        retryId = null;
+      }
+
+      observer = new IntersectionObserver(
+        entries => {
+          const visibleEntry = entries
+            .filter(entry => entry.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+          if (visibleEntry?.target?.id) {
+            setActiveSection(prev => (prev === visibleEntry.target.id ? prev : visibleEntry.target.id));
+          }
+        },
+        {
+          root: null,
+          threshold: [0.15, 0.35, 0.55],
+          rootMargin: '-35% 0px -35% 0px',
+        }
+      );
+
+      sections.forEach(section => observer?.observe(section));
+    };
+
+    initObserver();
+
+    return () => {
+      if (observer) observer.disconnect();
+      if (retryId) window.clearTimeout(retryId);
+    };
   }, []);
 
   const handleNavClick = (id: string) => {
     scrollToSection(id);
+    setActiveSection(id);
     setIsMobileMenuOpen(false);
   };
 

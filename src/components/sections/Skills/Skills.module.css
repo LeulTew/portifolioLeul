@@ -1,18 +1,16 @@
 .skills {
   position: relative;
   min-height: 100vh;
-  height: 100vh;
+  height: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0 max(2rem, 5vw) 2rem;
+  padding: 4rem max(2rem, 5vw);
   overflow: visible;
   mix-blend-mode: difference;
   pointer-events: none;
   background: transparent;
-  margin-top: 0;
-  margin-bottom: 0;
 }
 
 .content {
@@ -107,7 +105,8 @@
 
 @media (max-width: 768px) {
   .skills {
-    margin-top: -15vh;
+    margin-top: 6rem;
+    padding-top: 10rem;
   }
 
   .content {
@@ -141,7 +140,7 @@
 
 @media (max-height: 700px) {
   .skills {
-    margin-top: -20vh;
+    margin-top: 0;
   }
 
   .header {
