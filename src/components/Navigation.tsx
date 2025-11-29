@@ -51,6 +51,14 @@ export function Navigation({ scrollToSection }: NavigationProps) {
 
       observer = new IntersectionObserver(
         entries => {
+          // Check if we are at the bottom of the page
+          const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100;
+          
+          if (isAtBottom) {
+            setActiveSection('contact');
+            return;
+          }
+
           const visibleEntry = entries
             .filter(entry => entry.isIntersecting)
             .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -67,12 +75,27 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       );
 
       sections.forEach(section => observer?.observe(section));
+      
+      // Also add a scroll listener to check for bottom
+      const handleScrollCheck = () => {
+        const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100;
+        if (isAtBottom) {
+          setActiveSection('contact');
+        }
+      };
+      window.addEventListener('scroll', handleScrollCheck);
+      
+      // Store the listener cleanup
+      (observer as any)._scrollHandler = handleScrollCheck;
     };
 
     initObserver();
 
     return () => {
-      if (observer) observer.disconnect();
+      if (observer) {
+        window.removeEventListener('scroll', (observer as any)._scrollHandler);
+        observer.disconnect();
+      }
       if (retryId) window.clearTimeout(retryId);
     };
   }, []);
