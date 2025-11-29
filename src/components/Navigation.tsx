@@ -52,7 +52,8 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       observer = new IntersectionObserver(
         entries => {
           // Check if we are at the bottom of the page
-          const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100;
+          // Added scrollY check to prevent triggering at the top if page height is small initially
+          const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
           
           if (isAtBottom) {
             setActiveSection('contact');
@@ -78,7 +79,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       
       // Also add a scroll listener to check for bottom
       const handleScrollCheck = () => {
-        const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100;
+        const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
         if (isAtBottom) {
           setActiveSection('contact');
         }
