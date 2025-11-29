@@ -11,6 +11,7 @@ import {
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { Theme } from './sections/theme/ThemeContext';
+import { MeModel } from './MeModel';
 
 // Preload the terrain model
 useGLTF.preload('/models/terrain-1k.glb');
@@ -228,17 +229,27 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
               blending={THREE.AdditiveBlending}
             />
           </mesh>
-          {/* Inner point light */}
           <pointLight
             intensity={palette.pointIntensity}
             color={prismAppearance.light}
             distance={20}
             decay={2}
+            castShadow
           />
         </group>
 
         {/* Ambient Particles */}
         <Particles color={palette.highlight} />
+
+        <Suspense fallback={null}>
+          {/* Placed next to the prism [12, 2, -15] */}
+          {/* Adjusted Y to be on ground (-4) */}
+          <MeModel 
+            position={[18, 1.8, -15]} 
+            scale={[7, 7, 7]} 
+            rotation={[0, -Math.PI / 2.2, 0]} 
+          />
+        </Suspense>
 
         {/* Enhanced Lighting */}
         <ambientLight intensity={palette.ambient} />

@@ -48,7 +48,7 @@ export const projectsData: Project[] = [
     description: "Mobile marketplace for Ethiopian trade",
     longDescription: "Cross-platform mobile marketplace designed to facilitate local commerce:\n\n• **Real-time Data**: Instant updates for product listings and prices\n• **User Experience**: Responsive UI with intuitive search and filtering\n• **Features**: User profiles, secure messaging, and product management\n\nHighlights expertise in **Flutter** mobile development and **Firebase** backend integration.",
     tech: "Flutter, Dart, Firebase",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/ethio-trading.png",
     githubUrl: "https://github.com/LeulTew/EthioTrading",
     categories: ["Mobile Apps"]
   },
@@ -58,7 +58,7 @@ export const projectsData: Project[] = [
     description: "NLP/IR system for Amharic language",
     longDescription: "Enhanced Information Retrieval pipeline specifically for the Amharic language:\n\n• **NLP Optimization**: Hybrid stemming, optimized indexing, and TF-IDF ranking\n• **AI Integration**: AI-powered summarization and query expansion\n• **Architecture**: Web scrapers for corpus generation and a bilingual UI\n\nShowcases advanced **NLP** techniques and **AI** application for low-resource languages.",
     tech: "Flask, PyTorch, Google Gemini",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/amharic-ir.png",
     githubUrl: "https://github.com/LeulTew/Amharic-IR-Improved",
     categories: ["AI/ML & Data Science", "Web Development"]
   },
@@ -78,7 +78,7 @@ export const projectsData: Project[] = [
     description: "Web decision tool for students",
     longDescription: "App aiding Ethiopian students in selecting universities and fields based on rankings and user inputs for informed choices.",
     tech: "HTML, CSS, JavaScript",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/uni-college-choice.png",
     githubUrl: "https://github.com/LeulTew/Uni-College-Choice",
     categories: ["Web Development"]
   },
@@ -88,7 +88,7 @@ export const projectsData: Project[] = [
     description: "Python static site generator",
     longDescription: "Tool converting Markdown to secure, fast websites for blogs/portfolios, with templating, CLI tooling, and API integrations for easy deployability.",
     tech: "Python",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/tera-site.png",
     githubUrl: "https://github.com/LeulTew/TeraSite",
     categories: ["Web Development", "Desktop & Games"]
   },
@@ -118,7 +118,7 @@ export const projectsData: Project[] = [
     description: "Desktop card game implementation",
     longDescription: "Polished Spider Solitaire with event-driven UI, save/load, scoring, and modular logic/UI separation.",
     tech: "C#",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/spider-solitaire-csharp.png",
     githubUrl: "https://github.com/LeulTew/Spider-Solitaire-CSharp",
     categories: ["Desktop & Games"]
   },
@@ -128,7 +128,7 @@ export const projectsData: Project[] = [
     description: "Algorithms-focused card game",
     longDescription: "Classic Solitaire emphasizing data structures, algorithms, and documented logic for educational purposes.",
     tech: "C++",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/solitaire-cpp.png",
     githubUrl: "https://github.com/LeulTew/Solitaire-CPP",
     categories: ["Desktop & Games", "Graphics & Algorithms"]
   },
@@ -138,7 +138,7 @@ export const projectsData: Project[] = [
     description: "Space game prototype",
     longDescription: "Python game demonstrating event loops, basic physics, and rapid prototyping in a space theme.",
     tech: "Python, Pygame",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/asteroidz.png",
     githubUrl: "https://github.com/LeulTew/Asteroidz",
     categories: ["Desktop & Games"]
   },
@@ -148,7 +148,7 @@ export const projectsData: Project[] = [
     description: "AI deepfake video detection",
     longDescription: "Next-gen tool with modular CLI, configurable weights, and cross-platform support for accurate deepfake analysis in research/production.",
     tech: "PyTorch, EfficientNet",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/deepFakeAlew.png",
     githubUrl: "https://github.com/LeulTew/DeepFakeAlew",
     categories: ["AI/ML & Data Science"]
   },
@@ -158,7 +158,7 @@ export const projectsData: Project[] = [
     description: "AI CLI assistant",
     longDescription: "Command-line tool for task automation, file editing, Amharic support, and developer productivity boosts via intelligent workflows.",
     tech: "Python, Gemini API",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/fikirFix.png",
     githubUrl: "https://github.com/LeulTew/FikirFix",
     categories: ["AI/ML & Data Science"]
   },
@@ -168,7 +168,7 @@ export const projectsData: Project[] = [
     description: "ML experiments on Iris dataset",
     longDescription: "Applied models like KNN, Decision Trees, Perceptron, Clustering with visualizations and analysis in Jupyter.",
     tech: "Python, Scikit-Learn",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/IrisDatasetML.png",
     githubUrl: "https://github.com/LeulTew/Iris-Dataset-Machine-Learning",
     categories: ["AI/ML & Data Science"]
   },
@@ -178,7 +178,7 @@ export const projectsData: Project[] = [
     description: "Data analysis clustering demo",
     longDescription: "Demo of clustering algorithms with visualizations for exploratory data insights.",
     tech: "Python",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/Clustering.png",
     githubUrl: "https://github.com/LeulTew/clustering-demo",
     categories: ["AI/ML & Data Science"]
   },
@@ -188,7 +188,7 @@ export const projectsData: Project[] = [
     description: "Automation script for books",
     longDescription: "Tool managing book lists and reading workflows through scripted automation.",
     tech: "Python",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/Bookbot.png",
     githubUrl: "https://github.com/LeulTew/Bookbot",
     categories: ["Desktop & Games"]
   },
@@ -198,7 +198,7 @@ export const projectsData: Project[] = [
     description: "Graphics visualization of puzzle",
     longDescription: "3D rendering of 8-Queens puzzle with textures, mouse interactions, and algorithmic highlights.",
     tech: "C++, OpenGL",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/3D8Queen.png",
     githubUrl: "https://github.com/LeulTew/3D-8-Queens-OpenGL",
     categories: ["Graphics & Algorithms"]
   },
@@ -208,7 +208,7 @@ export const projectsData: Project[] = [
     description: "Interactive solar system simulation",
     longDescription: "Model with hierarchical transforms, rotations, lighting, and animations for immersive visualization.",
     tech: "C++, OpenGL",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/SolarSystem.png",
     githubUrl: "https://github.com/LeulTew/Solar-System-OpenGL-c-",
     categories: ["Graphics & Algorithms"]
   },
@@ -218,7 +218,7 @@ export const projectsData: Project[] = [
     description: "Algorithm visualization tool",
     longDescription: "Maze generator/solver using recursive backtracking and GUI for real-time display.",
     tech: "Python, Tkinter",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/Maze.png",
     githubUrl: "https://github.com/LeulTew/Maze",
     categories: ["Graphics & Algorithms", "Desktop & Games"]
   },
@@ -228,7 +228,7 @@ export const projectsData: Project[] = [
     description: "Relational database design",
     longDescription: "Schema for celestial bodies with queries, normalization, and exercises from FreeCodeCamp.",
     tech: "SQL",
-    image: "/images/projects/nanobanana.jpg",
+    image: "/images/projects/CelestialDB.png",
     githubUrl: "https://github.com/LeulTew/Celestial-Bodies-Database",
     categories: ["AI/ML & Data Science"]
   },
