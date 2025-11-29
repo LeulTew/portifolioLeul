@@ -12,6 +12,7 @@ import {
 import * as THREE from 'three';
 import { Theme } from './sections/theme/ThemeContext';
 import { MeModel } from './MeModel';
+import { TVModel } from './TVModel';
 
 // Preload the terrain model
 useGLTF.preload('/models/terrain-1k.glb');
@@ -248,6 +249,13 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
             position={[18, 1.8, -15]} 
             scale={[7, 7, 7]} 
             rotation={[0, -Math.PI / 2.2, 0]} 
+          />
+          
+          {/* TV Model with Video */}
+          <TVModel 
+            position={[-10, 0.5, -14]} 
+            rotation={[0.1, Math.PI * 0.2, 0.1]} 
+            scale={[8, 8, 8]} 
           />
         </Suspense>
 
