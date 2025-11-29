@@ -12,6 +12,14 @@
   background: transparent;
 }
 
+/* Fix for 1080p screens where overlap occurs */
+@media (min-width: 769px) and (max-width: 1920px) {
+  .projects {
+    padding-top: 15rem; /* Increase padding to push content down */
+    margin-top: -4rem; /* Adjust negative margin */
+  }
+}
+
 .content {
   position: relative;
   z-index: 1;
@@ -292,9 +300,77 @@
   box-shadow: 0 0 10px rgba(var(--primary-color), 0.5);
 }
 
+/* 720p / Small Laptop Adjustments (Very Small) */
+@media (min-width: 769px) and (max-width: 1366px) {
+  .projects {
+    padding-top: 10rem !important; /* Push content down */
+  }
+  .title {
+    font-size: 1.75rem;
+    padding-bottom: 8px;
+    margin-top: 5rem !important; /* Add more space to prevent filter tab overlap */
+  }
+  .projectTitle {
+    font-size: 0.9rem;
+  }
+  .projectInfo {
+    padding: 0.75rem;
+    gap: 0.4rem;
+  }
+  .projectDescription {
+    font-size: 0.7rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .projectTech {
+    font-size: 0.6rem;
+  }
+  .filterContainer {
+    margin-top: 2rem !important;
+    justify-content: flex-start !important; /* Align left to avoid title overlap */
+    padding-left: 0;
+  }
+  .filterTab {
+    padding: 0.3rem 0.6rem !important; /* Smaller padding */
+    font-size: 0.65rem !important; /* Smaller font */
+  }
+  .carousel {
+    padding: 1.5rem 0;
+  }
+  .content {
+    padding-left: max(2rem, 8vw);
+  }
+}
+
+/* 1080p / Standard Desktop Adjustments (Small) */
+@media (min-width: 1367px) and (max-width: 1920px) {
+  .title {
+    font-size: 2.75rem;
+  }
+  .projectTitle {
+    font-size: 1.15rem;
+  }
+  .projectInfo {
+    padding: 1.25rem;
+  }
+  .filterContainer {
+    margin-top: 3.5rem;
+  }
+  .filterTab {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+  }
+}
+
 @media (max-width: 768px) {
   .projects {
-    padding: 4rem 1rem;
+    padding: 4rem 1rem 0; /* Remove bottom padding */
+    min-height: auto;
+  }
+
+  .title {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
   }
 
   .content {
@@ -311,12 +387,13 @@
   }
 
   .filterTab {
-    padding: 0.5rem 1rem;
-    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.65rem;
   }
   
   .filterTabs {
-    padding: 0.25rem;
+    padding: 0.2rem;
+    gap: 0.3rem;
   }
 
   .carousel {
@@ -421,6 +498,19 @@
   font-weight: 300;
 }
 
+.mobileText {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktopText {
+    display: none;
+  }
+  .mobileText {
+    display: inline;
+  }
+}
+
 .scrollArrow {
   display: flex;
   align-items: center;
@@ -450,7 +540,9 @@
 
 @media (max-width: 768px) {
   .scrollIndicator {
-    margin-top: 1.5rem;
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+    padding-left: 1rem;
   }
   
   .scrollText {

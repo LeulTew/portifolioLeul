@@ -20,7 +20,7 @@ export const projectsData: Project[] = [
     image: "/images/projects/ignition.png",
     githubUrl: "https://github.com/LeulTew/Ignition",
     demoUrl: "https://ignition-ivory.vercel.app",
-    categories: ["AI/ML & Data Science", "Web Development"]
+    categories: ["AI/DataScience", "Web Development"]
   },
   {
     id: 1,
@@ -40,7 +40,7 @@ export const projectsData: Project[] = [
     tech: "REACT, TYPESCRIPT, EXPRESS.JS, PRISMA, POSTGRESQL, REDIS, FASTAPI, OR-TOOLS, BETTER AUTH",
     image: "/images/projects/routegna.png",
     githubUrl: "https://github.com/kidusm001/multi-fleet-managment/",
-    categories: ["Mobile Apps", "AI/ML & Data Science", "Web Development"]
+    categories: ["Mobile Apps", "AI/DataScience", "Web Development"]
   },
   {
     id: 2,
@@ -60,7 +60,7 @@ export const projectsData: Project[] = [
     tech: "Flask, PyTorch, Google Gemini",
     image: "/images/projects/amharic-ir.png",
     githubUrl: "https://github.com/LeulTew/Amharic-IR-Improved",
-    categories: ["AI/ML & Data Science", "Web Development"]
+    categories: ["AI/DataScience", "Web Development"]
   },
   {
     id: 4,
@@ -150,7 +150,7 @@ export const projectsData: Project[] = [
     tech: "PyTorch, EfficientNet",
     image: "/images/projects/deepFakeAlew.png",
     githubUrl: "https://github.com/LeulTew/DeepFakeAlew",
-    categories: ["AI/ML & Data Science"]
+    categories: ["AI/DataScience"]
   },
   {
     id: 13,
@@ -160,7 +160,7 @@ export const projectsData: Project[] = [
     tech: "Python, Gemini API",
     image: "/images/projects/fikirFix.png",
     githubUrl: "https://github.com/LeulTew/FikirFix",
-    categories: ["AI/ML & Data Science"]
+    categories: ["AI/DataScience"]
   },
   {
     id: 14,
@@ -170,7 +170,7 @@ export const projectsData: Project[] = [
     tech: "Python, Scikit-Learn",
     image: "/images/projects/IrisDatasetML.png",
     githubUrl: "https://github.com/LeulTew/Iris-Dataset-Machine-Learning",
-    categories: ["AI/ML & Data Science"]
+    categories: ["AI/DataScience"]
   },
   {
     id: 15,
@@ -180,7 +180,7 @@ export const projectsData: Project[] = [
     tech: "Python",
     image: "/images/projects/Clustering.png",
     githubUrl: "https://github.com/LeulTew/clustering-demo",
-    categories: ["AI/ML & Data Science"]
+    categories: ["AI/DataScience"]
   },
   {
     id: 16,
@@ -230,7 +230,7 @@ export const projectsData: Project[] = [
     tech: "SQL",
     image: "/images/projects/CelestialDB.png",
     githubUrl: "https://github.com/LeulTew/Celestial-Bodies-Database",
-    categories: ["AI/ML & Data Science"]
+    categories: ["AI/DataScience"]
   },
   {
     id: 21,

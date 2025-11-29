@@ -6,12 +6,12 @@ import { projectsData } from '../../../data/projects';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
 
 const categories = [
-  { title: 'All', icon: Grid3x3 },
-  { title: 'Web Development', icon: Globe },
-  { title: 'AI/ML & Data Science', icon: Brain },
-  { title: 'Mobile Apps', icon: Smartphone },
-  { title: 'Graphics & Algorithms', icon: Shapes },
-  { title: 'Desktop & Games', icon: Gamepad2 }
+  { title: 'All', mobileTitle: 'All', icon: Grid3x3 },
+  { title: 'Web Development', mobileTitle: 'Web', icon: Globe },
+  { title: 'AI/DataScience', mobileTitle: 'AI/DS', icon: Brain },
+  { title: 'Mobile Apps', mobileTitle: 'Mobile', icon: Smartphone },
+  { title: 'Graphics & Algorithms', mobileTitle: 'Graphics', icon: Shapes },
+  { title: 'Desktop & Games', mobileTitle: 'Games', icon: Gamepad2 }
 ];
 
 export function Projects({ theme }: { theme?: string }) {
@@ -170,6 +170,7 @@ export function Projects({ theme }: { theme?: string }) {
 
               return (
                 <motion.div 
+                  layout
                   key={uniqueId}
                   className={`${styles.project} ${isExpanded ? styles.expanded : ''}`}
                   whileHover={{ scale: 1.02 }}
@@ -247,7 +248,10 @@ export function Projects({ theme }: { theme?: string }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 1 }}
         >
-          <span className={styles.scrollText}>SCROLL ON CARD</span>
+          <span className={styles.scrollText}>
+            <span className={styles.desktopText}>SCROLL ON CARD</span>
+            <span className={styles.mobileText}>SWIPE ON CARD</span>
+          </span>
           <motion.svg 
             width="50" 
             height="10" 

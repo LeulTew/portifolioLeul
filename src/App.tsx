@@ -20,7 +20,25 @@ import './components/Arrow.css';
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
-  const [scrollPages, setScrollPages] = useState(5.2);
+  const [scrollPages, setScrollPages] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const width = window.innerWidth;
+      if (width <= 380) {
+        console.log('SETTING SCROLL PAGES TO 11 for narrow mobile, width:', width);
+        return 11; // Narrow mobile - needs more scroll
+      } else if (width < 768) {
+        console.log('SETTING SCROLL PAGES TO 8.5 for mobile, width:', width);
+        return 8.5; // Standard Mobile
+      } else if (width >= 768 && width <= 1366) {
+        console.log('SETTING SCROLL PAGES TO 9.5 for 720p, width:', width);
+        return 9.5; // 720p - needs more scroll
+      } else if (width > 1366 && width < 2000) {
+        console.log('SETTING SCROLL PAGES TO 6.5 for 1080p, width:', width);
+        return 6.5; // 1080p
+      }
+    }
+    return 5.2; // 1440p+
+  });
   const mainRef = useRef<HTMLDivElement | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
 
@@ -39,11 +57,47 @@ function App() {
   const updateScrollPages = useCallback(() => {
     if (!mainRef.current) return;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight || 1 : 1;
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth || 1 : 1;
+    const isMobile = viewportWidth < 768;
+    const is720p = viewportWidth >= 768 && viewportWidth <= 1366;
+    const is1080p = viewportWidth > 1366 && viewportWidth < 2000;
+    
     const contentHeight = mainRef.current.scrollHeight || viewportHeight;
-    const calculatedPages = Math.max(contentHeight / viewportHeight, 1.2);
+    // Add extra buffer for mobile and standard desktop to ensure we reach the end
+    // CHANGE THESE VALUES TO ADJUST SCROLL LENGTH:
+    // Mobile (< 768px): 3.2
+    // 720p (768px - 1366px): Increased to 16.5 to accommodate larger spacing
+    // 1080p (1367px - 2000px): 15.0
+    // Large Screens (>= 2000px): 0
+    
+    let extraBuffer = 0;
+    if (isMobile) extraBuffer = 3.2;
+    else if (is720p) extraBuffer = 16.5; // Increased for 720p
+    else if (is1080p) extraBuffer = 15.0;
+    
+    const calculatedPages = Math.max(contentHeight / viewportHeight, 1.2) + extraBuffer;
 
-    setScrollPages(prev => Math.abs(prev - calculatedPages) > 0.05 ? calculatedPages : prev);
-  }, []);
+    // Increased threshold to 0.5 to prevent re-renders on small content changes (like card expansion)
+    const shouldUpdate = Math.abs(scrollPages - calculatedPages) > 0.5;
+    
+    // DEBUG: Log scroll calculation
+    console.log('=== SCROLL DEBUG ===', {
+      viewportWidth,
+      viewportHeight,
+      contentHeight,
+      isMobile,
+      is720p,
+      is1080p,
+      extraBuffer,
+      calculatedPages,
+      currentScrollPages: scrollPages,
+      shouldUpdate
+    });
+
+    if (shouldUpdate) {
+      setScrollPages(calculatedPages);
+    }
+  }, [scrollPages]);
 
   useLayoutEffect(() => {
     if (isLoading) return;
@@ -108,7 +162,7 @@ function App() {
         }}
       >
         <ThemeContext.Provider value={{ theme, toggleTheme }}>
-          <ScrollControls pages={scrollPages} damping={0.3} distance={1}>
+          <ScrollControls pages={scrollPages} damping={0.3}>
             <ScrollManager onReady={handleScrollElement} />
             <BackgroundScene theme={theme} />
             <ParticleBackground theme={theme} />

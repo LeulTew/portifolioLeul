@@ -1,5 +1,5 @@
 import { useRef, useMemo, Suspense } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { 
   useScroll, 
   Environment, 
@@ -102,6 +102,34 @@ function Particles({ color }: ParticlesProps) {
   );
 }
 
+function ResponsiveTV() {
+  const { viewport } = useThree();
+  const isMobile = viewport.width < 10; // Adjust threshold as needed
+
+  return (
+    <TVModel 
+      position={isMobile ? [0, -1, -10] : [-10, 0.5, -14]} 
+      rotation={isMobile ? [0, Math.PI, 0] : [0.1, Math.PI * 0.2, 0.1]} 
+      scale={isMobile ? [5, 5, 5] : [8, 8, 8]} 
+    />
+  );
+}
+
+function ResponsiveCamera() {
+  const { viewport } = useThree();
+  const isMobile = viewport.width < 10;
+
+  return (
+    <PerspectiveCamera 
+      makeDefault 
+      position={isMobile ? [0, 5, 45] : [0, 5, 30]} 
+      fov={50} 
+      near={0.1} 
+      far={1000} 
+    />
+  );
+}
+
 interface BackgroundSceneProps {
   theme: Theme;
 }
@@ -162,7 +190,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[0, 5, 30]} fov={50} near={0.1} far={1000} />
+      <ResponsiveCamera />
       <color attach="background" args={[palette.background]} />
       <fog attach="fog" args={[palette.fog, 30, 70]} />
 
@@ -252,11 +280,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           />
           
           {/* TV Model with Video */}
-          <TVModel 
-            position={[-10, 0.5, -14]} 
-            rotation={[0.1, Math.PI * 0.2, 0.1]} 
-            scale={[8, 8, 8]} 
-          />
+          <ResponsiveTV />
         </Suspense>
 
         {/* Enhanced Lighting */}

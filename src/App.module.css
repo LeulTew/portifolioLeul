@@ -100,6 +100,14 @@
   .scroll {
     display: none;
   }
+  
+  .footer {
+    justify-content: flex-end; /* Align (c)2025 to right */
+  }
+  
+  .spacer {
+    height: 100vh; /* Decrease spacer height on mobile */
+  }
 }
 
 /* First section styling */

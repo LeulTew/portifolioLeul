@@ -8,6 +8,7 @@ import { ThemeContext } from "../sections/theme/ThemeContext";
 
 interface Tab {
   title: string;
+  mobileTitle?: string;
   icon: LucideIcon;
   type?: never;
 }
@@ -15,6 +16,7 @@ interface Tab {
 interface Separator {
   type: "separator";
   title?: never;
+  mobileTitle?: never;
   icon?: never;
 }
 
@@ -34,10 +36,10 @@ const buttonVariants = {
     paddingLeft: ".5rem",
     paddingRight: ".5rem",
   },
-  animate: (isSelected: boolean) => ({
-    gap: isSelected ? ".5rem" : 0,
-    paddingLeft: isSelected ? "1rem" : ".5rem",
-    paddingRight: isSelected ? "1rem" : ".5rem",
+  animate: (custom: { isSelected: boolean; is720p: boolean }) => ({
+    gap: custom.isSelected ? (custom.is720p ? ".4rem" : ".5rem") : 0,
+    paddingLeft: custom.isSelected ? (custom.is720p ? ".8rem" : "1rem") : (custom.is720p ? ".4rem" : ".5rem"),
+    paddingRight: custom.isSelected ? (custom.is720p ? ".8rem" : "1rem") : (custom.is720p ? ".4rem" : ".5rem"),
   }),
 };
 
@@ -56,6 +58,8 @@ export function ExpandableTabs({
   theme: propTheme,
 }: ExpandableTabsProps) {
   const [selected, setSelected] = React.useState<number | null>(0);
+  const [isMobile, setIsMobile] = React.useState(false);
+  const [is720p, setIs720p] = React.useState(false);
   const context = React.useContext(ThemeContext);
   const theme = propTheme || context?.theme || 'dark';
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
@@ -64,6 +68,17 @@ export function ExpandableTabs({
     // Force re-render when theme changes
     forceUpdate();
   }, [theme]);
+
+  React.useEffect(() => {
+    const checkResponsive = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIs720p(width >= 768 && width <= 1366);
+    };
+    checkResponsive();
+    window.addEventListener('resize', checkResponsive);
+    return () => window.removeEventListener('resize', checkResponsive);
+  }, []);
 
   const handleSelect = (index: number) => {
     setSelected(index);
@@ -89,17 +104,22 @@ export function ExpandableTabs({
         }
 
         const Icon = tab.icon;
+        const displayTitle = isMobile && tab.mobileTitle ? tab.mobileTitle : tab.title;
+        const isSelected = selected === index;
+        
         return (
           <motion.button
             key={tab.title}
             variants={buttonVariants}
             initial={false}
             animate="animate"
-            custom={selected === index}
+            custom={{ isSelected, is720p }}
             onClick={() => handleSelect(index)}
             transition={transition}
             className={cn(
-              "relative flex items-center rounded-full px-4 py-3 text-sm font-medium transition-colors duration-300",
+              "relative flex items-center rounded-full transition-colors duration-300",
+              is720p ? "text-sm font-medium py-2" : "text-sm font-medium py-3", // Added vertical padding
+              // Horizontal padding is handled by variants
               selected === index
                 ? "bg-white/95 text-black shadow-md"
                 : isLight
@@ -113,7 +133,7 @@ export function ExpandableTabs({
             }
           >
             <Icon 
-              size={20} 
+              size={is720p ? 18 : 20} // Slightly smaller icon for 720p
               style={
                 selected !== index && isLight
                   ? { color: 'rgba(0, 0, 0, 0.6)', stroke: 'rgba(0, 0, 0, 0.6)' }
@@ -130,7 +150,7 @@ export function ExpandableTabs({
                   transition={transition}
                   className="overflow-hidden"
                 >
-                  {tab.title}
+                  {displayTitle}
                 </motion.span>
               )}
             </AnimatePresence>

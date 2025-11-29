@@ -97,7 +97,7 @@
   grid-column: 1 / -1;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1367px) {
   .content {
     margin-top: -18vh;
     padding-left: 10vw;
@@ -117,10 +117,18 @@
 
   .cardContent {
     gap: 2rem;
+    font-size: 1.25rem; /* Increased slightly for 1440p */
   }
   
   .educationMeta {
-    font-size: 1.1rem;
+    font-size: 1.3rem; /* Increased slightly for 1440p */
+  }
+}
+
+/* Fix for 1080p screens where overlap occurs */
+@media (min-width: 1024px) and (max-width: 1920px) {
+  .content {
+    margin-top: -12vh; /* Move down slightly to avoid arrow overlap */
   }
 }
 
@@ -131,15 +139,98 @@
 :global([data-theme='light']) .about .title,
 :global([data-theme='light']) .about .subtitle,
 :global([data-theme='light']) .about .sectionTitle,
+:global([data-theme='light']) .about .tag {
+  color: #000000 !important;
+  font-weight: 600;
+  text-shadow: none;
+}
+
 :global([data-theme='light']) .about .cardContent,
 :global([data-theme='light']) .about .educationMeta,
 :global([data-theme='light']) .about .text,
 :global([data-theme='light']) .about .statValue,
 :global([data-theme='light']) .about .statLabel,
-:global([data-theme='light']) .about .tag {
-  color: #000000 !important;
-  font-weight: 600;
+:global([data-theme='light']) .subtitle {
+  font-size: 1rem;
+  color: rgba(var(--text-color), 0.7);
+  font-weight: 400;
   text-shadow: none;
+}
+
+/* 720p / Small Laptop Adjustments (Very Small) */
+@media (min-width: 769px) and (max-width: 1366px) {
+  .about {
+    padding-top: 32vh !important; /* Move section down significantly to clear arrow - Force override */
+  }
+  
+  .title {
+    font-size: 2.5rem; /* Restored to large header size */
+  }
+  
+  .sectionTitle, .educationTitle {
+    font-size: 2rem; /* Restored to large header size */
+    margin-bottom: 0.5rem;
+  }
+  
+  .content {
+    gap: 0.6rem;
+    margin-top: 0 !important; /* Force override any negative margins */
+    padding: 0 15vw; /* Decrease width by increasing padding */
+  }
+  
+  .cardContent {
+    gap: 0.5rem;
+    font-size: 0.75rem !important; /* Proportional body text */
+    line-height: 1.4;
+  }
+
+  /* Target paragraphs inside cardContent (overriding Card.module.css) */
+  .cardContent p,
+  .description {
+    font-size: 0.85rem !important; /* Larger than tags */
+    line-height: 1.5;
+  }
+  
+  .subtitle {
+    font-size: 0.9rem !important; /* Slightly larger for hierarchy */
+    margin-top: 0.5rem;
+    font-weight: 500;
+  }
+  
+  .educationMeta {
+    font-size: 0.7rem !important; /* Proportional meta text */
+    gap: 0.2rem;
+  }
+  
+  .header {
+    margin-bottom: 1rem;
+  }
+  
+  .statValue {
+    font-size: 1.5rem;
+  }
+  
+  .statLabel {
+    font-size: 0.7rem !important;
+  }
+  
+  .tag {
+    font-size: 0.7rem !important;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+/* 1080p / Standard Desktop Adjustments (Small) */
+@media (min-width: 1367px) and (max-width: 1920px) {
+  .title {
+    font-size: 3.5rem;
+  }
+  .sectionTitle, .educationTitle {
+    font-size: 2rem;
+  }
+  .content {
+    margin-top: -12vh;
+  }
 }
 
 @media (max-width: 768px) {
@@ -151,7 +242,7 @@
   .content {
     padding: 0 1rem;
     gap: 3rem;
-    margin-top: 0;
+    margin-top: -5vh;
   }
 
   .header {

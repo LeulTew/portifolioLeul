@@ -125,6 +125,20 @@ export function Home({ onNavigate }: HomeProps) {
           </motion.div>
         </motion.div>
 
+        {/* Mobile-only Profile Image */}
+        <motion.div 
+          className={styles.mobileProfileImage}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ 
+            duration: 1,
+            ease: [0.76, 0, 0.24, 1],
+            delay: 0.45
+          }}
+        >
+          <img src="/images/leul-profile.png" alt="Leul" />
+        </motion.div>
+
         <motion.p 
           className={styles.description}
           initial={{ opacity: 0, x: -20 }}
@@ -135,9 +149,9 @@ export function Home({ onNavigate }: HomeProps) {
             delay: 0.5
           }}
         >
-          Motivated Computer Science student at HiLCoE School of Computer Science & Technology, 
-          with hands-on experience in software development and digital design. 
-          Eager to contribute to impactful projects while gaining industry experience.
+          Computer Science graduate from HiLCoE School of Computer Science & Technology, 
+          with hands-on experience in software development and digital design. Eager to contribute 
+          to impactful projects while gaining industry experience.
         </motion.p>
       </motion.div>
 
