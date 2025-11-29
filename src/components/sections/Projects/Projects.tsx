@@ -120,7 +120,7 @@ export function Projects({ theme }: { theme?: string }) {
     }
 
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [dragX]);
 
   return (
     <section ref={containerRef} className={styles.projects} id="projects">

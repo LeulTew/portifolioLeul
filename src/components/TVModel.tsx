@@ -2,7 +2,7 @@ import { useGLTF, useVideoTexture } from '@react-three/drei';
 import { useEffect } from 'react';
 import * as THREE from 'three';
 
-export function TVModel(props: any) {
+export function TVModel(props: JSX.IntrinsicElements['group']) {
   const { scene } = useGLTF('/models/crt.glb');
   const texture = useVideoTexture('/videos/Spy_Movie_Live_Wallpaper_Video.mp4', {
     start: true,
