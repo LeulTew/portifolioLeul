@@ -220,7 +220,11 @@ function App() {
           <div className={styles.iphoneScrollContainer} style={{ overflowY: 'auto', height: '100vh', scrollBehavior: 'smooth' }}>
              <main ref={mainRef} className={styles.main}>
                 <Home onNavigate={scrollToSection} />
-                <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
+                <div 
+                  id="homeToAboutArrow" 
+                  className={isIPhone ? styles.iphoneArrow : undefined}
+                  onClick={() => scrollToSection('about')}
+                >
                   <div className="curveWrapper">
                     <div className="curve"></div>
                   </div>
@@ -252,7 +256,7 @@ function App() {
           </div>
         )}
       </ErrorBoundary>
-      {!isLoading && (
+      {!isLoading && !isIPhone && (
         <motion.div 
           className={styles.footer}
           initial={{ opacity: 0 }}

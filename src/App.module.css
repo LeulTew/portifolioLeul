@@ -300,3 +300,11 @@
   z-index: -1;
   transition: background 0.5s ease-in-out;
 }
+
+.iphoneArrow {
+  position: relative !important;
+  z-index: 1 !important;
+  margin-top: -50px !important; /* Reduced negative margin */
+  margin-bottom: 0 !important; /* Reset bottom margin */
+  pointer-events: auto;
+}

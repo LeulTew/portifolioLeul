@@ -7,8 +7,16 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('theme');
-    return (savedTheme as Theme) || 'dark';
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        return savedTheme as Theme;
+      }
+      // Default to light mode on iPhone, dark mode otherwise
+      const isIPhone = /iPhone/i.test(navigator.userAgent);
+      return isIPhone ? 'light' : 'dark';
+    }
+    return 'dark';
   });
 
   useEffect(() => {
