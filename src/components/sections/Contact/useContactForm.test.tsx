@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useContactForm } from './useContactForm';
 
@@ -139,5 +139,24 @@ describe('useContactForm', () => {
 
     expect(mockSubmit).toHaveBeenCalled();
     expect(screen.getByTestId('success-message')).toHaveTextContent('Success!');
+  });
+
+  it('handles default submission behavior', async () => {
+    const user = userEvent.setup();
+    render(<TestComponent />);
+
+    await user.type(screen.getByTestId('name-input'), 'John');
+    await user.type(screen.getByTestId('email-input'), 'john@example.com');
+    await user.type(screen.getByTestId('message-input'), 'Message');
+
+    await user.click(screen.getByTestId('submit-button'));
+    
+    // Should be submitting
+    expect(screen.getByTestId('submit-button')).toBeDisabled();
+    
+    // Wait for success message (timeout is 1500ms)
+    await waitFor(() => {
+      expect(screen.getByTestId('success-message')).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 });

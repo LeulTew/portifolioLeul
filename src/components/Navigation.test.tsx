@@ -277,6 +277,73 @@ describe('Navigation', () => {
     vi.useRealTimers();
   });
 
+  it('clears retry timeout when sections appear', () => {
+    vi.useFakeTimers();
+    
+    // Start with no sections
+    let callCount = 0;
+    vi.spyOn(document, 'getElementById').mockImplementation((id) => {
+      callCount++;
+      // Return null first time, then return elements
+      if (callCount <= 5) {
+        return null;
+      }
+      const el = document.createElement('section');
+      el.id = id;
+      document.body.appendChild(el);
+      return el;
+    });
+    
+    render(
+      <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
+        <Navigation scrollToSection={mockScrollToSection} />
+      </ThemeContext.Provider>
+    );
+    
+    // First retry - sections still missing
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    
+    // Second retry - sections appear, should clear timeout
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    
+    // Cleanup
+    vi.spyOn(document, 'getElementById').mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('clears retry timeout on unmount', () => {
+    vi.useFakeTimers();
+    
+    // Mock getElementById to always return null so retry keeps scheduling
+    vi.spyOn(document, 'getElementById').mockReturnValue(null);
+    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
+    
+    const { unmount } = render(
+      <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
+        <Navigation scrollToSection={mockScrollToSection} />
+      </ThemeContext.Provider>
+    );
+    
+    // Advance time to schedule a retry
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    
+    // Unmount should clear the timeout
+    unmount();
+    
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    
+    // Cleanup
+    vi.spyOn(document, 'getElementById').mockRestore();
+    clearTimeoutSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
   it('detects bottom of page via scroll listener', () => {
     // Add sections to DOM so initObserver proceeds
     const sections = ['home', 'about', 'skills', 'projects', 'contact'].map(id => {

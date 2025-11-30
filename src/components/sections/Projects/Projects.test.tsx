@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent, act, createEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Projects } from './Projects';
 import { vi, describe, it, expect } from 'vitest';
 
@@ -297,5 +298,50 @@ describe('Projects', () => {
     
     // Force re-render to test ref updates
     rerender(<Projects />);
+  });
+
+  it('handles image load errors with fallback', () => {
+    render(<Projects />);
+    
+    const images = screen.getAllByRole('img');
+    if (images.length > 0) {
+      const img = images[0] as HTMLImageElement;
+      const originalSrc = img.src;
+      
+      // Trigger error event
+      fireEvent.error(img);
+      
+      // Should have fallback image
+      expect(img.src).not.toBe(originalSrc);
+      expect(img.src).toContain('unsplash.com');
+    }
+  });
+
+  it('cleans up resize listener on unmount', () => {
+    const { unmount } = render(<Projects />);
+    const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+    
+    unmount();
+    
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function));
+    removeEventListenerSpy.mockRestore();
+  });
+
+  it('handles stopPropagation on links', () => {
+    render(<Projects />);
+
+    // Expand a project to see links
+    const project = screen.getByText('Car Rental Platform');
+    fireEvent.click(project);
+
+    // Find a link
+    const links = screen.getAllByText(/Visit Site|GitHub/);
+    if (links.length > 0) {
+      const link = links[0];
+      const event = createEvent.click(link);
+      event.stopPropagation = vi.fn();
+      fireEvent(link, event);
+      expect(event.stopPropagation).toHaveBeenCalled();
+    }
   });
 });

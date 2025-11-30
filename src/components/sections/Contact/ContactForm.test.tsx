@@ -65,7 +65,7 @@ describe('ContactForm', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Message sent successfully!')).toBeInTheDocument();
-    });
+    }, { timeout: 2000 });
 
     // Form should be cleared
     expect(nameInput).toHaveValue('');

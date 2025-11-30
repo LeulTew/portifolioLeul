@@ -1,39 +1,15 @@
-import { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import styles from './ContactForm.module.css';
-
-interface FormData {
-  name: string;
-  email: string;
-  message: string;
-}
+import { useContactForm } from './useContactForm';
 
 export function ContactForm() {
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    message: ''
-  });
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitStatus('idle');
-
-    try {
-      // Replace with your actual form submission logic
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSubmitStatus('success');
-      setFormData({ name: '', email: '', message: '' });
-    } catch {
-      setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const {
+    formData,
+    handleChange,
+    handleSubmit,
+    isSubmitting,
+    submitStatus,
+  } = useContactForm();
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
@@ -46,7 +22,7 @@ export function ContactForm() {
           required
           className={styles.input}
           value={formData.name}
-          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+          onChange={handleChange}
         />
       </div>
 
@@ -59,7 +35,7 @@ export function ContactForm() {
           required
           className={styles.input}
           value={formData.email}
-          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+          onChange={handleChange}
         />
       </div>
 
@@ -71,7 +47,7 @@ export function ContactForm() {
           required
           className={styles.textarea}
           value={formData.message}
-          onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+          onChange={handleChange}
         />
       </div>
 
