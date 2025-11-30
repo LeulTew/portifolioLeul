@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useContext } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Canvas } from '@react-three/fiber';
+import { ErrorBoundary } from 'react-error-boundary';
 import { Loader } from './components/Loader';
 import { Navigation } from './components/Navigation';
 import { Home } from './components/sections/Home/Home';
@@ -147,53 +148,110 @@ function App() {
   return (
     <div className={styles.container}>
       <Navigation scrollToSection={scrollToSection} />
-      <Canvas
-        dpr={[1, typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 1.5]}
-        camera={{
-          position: [0, 0, 10],
-          fov: 50,
-          near: 0.1,
-          far: 100
-        }}
-        gl={{
-          antialias: true,
-          alpha: true,
-          powerPreference: 'high-performance',
-          stencil: false,
-          depth: true,
-        }}
-      >
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
-          <ScrollControls pages={scrollPages} damping={0.3}>
-            <ScrollManager onReady={handleScrollElement} />
-            <BackgroundScene theme={theme} />
-            <ParticleBackground theme={theme} />
-            <Scroll html style={{ width: '100%' }}>
-              <AnimatePresence mode="wait">
-                {isLoading ? (
-                  <Loader key="loader" />
-                ) : (
-                  <main ref={mainRef} className={styles.main}>
-                    <Home onNavigate={scrollToSection} />
-                    <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
-                      <div className="curveWrapper">
-                        <div className="curve"></div>
-                      </div>
-                      <div className="point"></div>
-                    </div>
-                    <About />
-                    <Skills />
-                    <Projects theme={theme} />
-                    <div className={styles.spacer} />
-                    <Contact />
-                  </main>
-                )}
-              </AnimatePresence>
-            </Scroll>
-          </ScrollControls>
-          <Preload all />
-        </ThemeContext.Provider>
-      </Canvas>
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        {isIPhone ? (
+          <div 
+            className={styles.staticBackground}
+            style={{
+              background: theme === 'light' 
+                ? 'linear-gradient(to bottom, #f4f7ff 0%, #e9e2d4 100%)' 
+                : 'linear-gradient(to bottom, #001a1a 0%, #004428 100%)',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: -1,
+              transition: 'background 0.5s ease-in-out'
+            }}
+          />
+        ) : (
+          <Canvas
+            dpr={[1, typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 1.5]}
+            camera={{
+              position: [0, 0, 10],
+              fov: 50,
+              near: 0.1,
+              far: 100
+            }}
+            gl={{
+              antialias: true,
+              alpha: true,
+              powerPreference: 'high-performance',
+              stencil: false,
+              depth: true,
+            }}
+          >
+            <ThemeContext.Provider value={{ theme, toggleTheme }}>
+              <ScrollControls pages={scrollPages} damping={0.3}>
+                <ScrollManager onReady={handleScrollElement} />
+                <BackgroundScene theme={theme} />
+                <ParticleBackground theme={theme} />
+                <Scroll html style={{ width: '100%' }}>
+                  <AnimatePresence mode="wait">
+                    {isLoading ? (
+                      <Loader key="loader" />
+                    ) : (
+                      <main ref={mainRef} className={styles.main}>
+                        <Home onNavigate={scrollToSection} />
+                        <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
+                          <div className="curveWrapper">
+                            <div className="curve"></div>
+                          </div>
+                          <div className="point"></div>
+                        </div>
+                        <About />
+                        <Skills />
+                        <Projects theme={theme} />
+                        <div className={styles.spacer} />
+                        <Contact />
+                      </main>
+                    )}
+                  </AnimatePresence>
+                </Scroll>
+              </ScrollControls>
+              <Preload all />
+            </ThemeContext.Provider>
+          </Canvas>
+        )}
+        
+        {/* For iPhone, we need to render the content outside the Canvas ScrollControls */}
+        {isIPhone && !isLoading && (
+          <div className={styles.iphoneScrollContainer} style={{ overflowY: 'auto', height: '100vh', scrollBehavior: 'smooth' }}>
+             <main ref={mainRef} className={styles.main}>
+                <Home onNavigate={scrollToSection} />
+                <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
+                  <div className="curveWrapper">
+                    <div className="curve"></div>
+                  </div>
+                  <div className="point"></div>
+                </div>
+                <About />
+                <Skills />
+                <Projects theme={theme} />
+                <div className={styles.spacer} />
+                <Contact />
+                
+                <motion.div 
+                  className={styles.footer}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ 
+                    duration: 1,
+                    ease: [0.76, 0, 0.24, 1],
+                    delay: 0.4
+                  }}
+                >
+                  <div className={styles.scroll}>
+                    <div className={styles.scrollText}>Scroll to explore</div>
+                    <div className={styles.scrollLine} />
+                  </div>
+                  <div className={styles.year}>© {new Date().getFullYear()}</div>
+                </motion.div>
+             </main>
+          </div>
+        )}
+      </ErrorBoundary>
       {!isLoading && (
         <motion.div 
           className={styles.footer}
@@ -227,4 +285,27 @@ function ScrollManager({ onReady }: { onReady: (el: HTMLDivElement | null) => vo
   }, [scroll, onReady]);
 
   return null;
+}
+
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div style={{ 
+      padding: '20px', 
+      textAlign: 'center', 
+      background: 'rgba(0,0,0,0.8)', 
+      color: 'white',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999
+    }}>
+      <h2>Something went wrong</h2>
+      <p>Please refresh the page or try on a different device.</p>
+      <details style={{ whiteSpace: 'pre-wrap' }}>
+        {error.message}
+      </details>
+    </div>
+  );
 }

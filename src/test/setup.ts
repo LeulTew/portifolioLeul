@@ -24,10 +24,14 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
+  root: Element | null = null;
+  rootMargin: string = '';
+  thresholds: ReadonlyArray<number> = [];
   constructor() {}
   observe() {}
   unobserve() {}
   disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] { return []; }
 };
 
 // Mock emailjs

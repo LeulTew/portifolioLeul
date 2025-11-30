@@ -35,7 +35,7 @@ vi.mock('three', () => {
     },
     VideoTexture: class {
       flipY: boolean = true;
-      constructor(video: any) {}
+      constructor(_video: any) {}
     },
     DoubleSide: 2,
   };
