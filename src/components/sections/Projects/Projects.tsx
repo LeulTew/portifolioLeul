@@ -151,6 +151,7 @@ export function Projects({ theme }: { theme?: string }) {
 
         <motion.div 
           ref={carouselRef}
+          data-testid="carousel"
           className={styles.carousel}
           onMouseDown={handleDragStart}
           onMouseMove={handleDragMove}

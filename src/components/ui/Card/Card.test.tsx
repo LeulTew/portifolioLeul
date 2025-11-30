@@ -4,9 +4,10 @@ import { Card } from './Card';
 describe('Card', () => {
   beforeEach(() => {
     // Mock requestAnimationFrame
+    let rafId = 1;
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => {
       cb(0);
-      return 0;
+      return rafId++;
     });
 
     // Mock cancelAnimationFrame
@@ -48,8 +49,9 @@ describe('Card', () => {
 
     const card = screen.getByText('Content').parentElement!;
     fireEvent.mouseMove(card, { clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(card, { clientX: 110, clientY: 110 });
 
-    expect(mockOnMouseMove).toHaveBeenCalled();
+    expect(mockOnMouseMove).toHaveBeenCalledTimes(2);
   });
 
   it('updates CSS custom properties on mouse move', () => {

@@ -27,7 +27,7 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
     }, 8000); // Switch every 8 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [textures.length]);
 
   useEffect(() => {
     scene.traverse((child) => {

@@ -33,6 +33,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   useEffect(() => {
     let observer: IntersectionObserver | null = null;
     let retryId: number | null = null;
+    let scrollHandler: (() => void) | null = null;
 
     const initObserver = () => {
       const sections = menuItems
@@ -85,16 +86,16 @@ export function Navigation({ scrollToSection }: NavigationProps) {
         }
       };
       window.addEventListener('scroll', handleScrollCheck);
-      
-      // Store the listener cleanup
-      (observer as any)._scrollHandler = handleScrollCheck;
+      scrollHandler = handleScrollCheck;
     };
 
     initObserver();
 
     return () => {
+      if (scrollHandler) {
+        window.removeEventListener('scroll', scrollHandler);
+      }
       if (observer) {
-        window.removeEventListener('scroll', (observer as any)._scrollHandler);
         observer.disconnect();
       }
       if (retryId) window.clearTimeout(retryId);
