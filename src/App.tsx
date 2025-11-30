@@ -146,7 +146,7 @@ function App() {
     <div className={styles.container}>
       <Navigation scrollToSection={scrollToSection} />
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={[1, typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 1.5]}
         camera={{
           position: [0, 0, 10],
           fov: 50,
