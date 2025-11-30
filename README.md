@@ -31,14 +31,14 @@ Welcome to my **Interactive 3D Portfolio**. This project is more than just a sho
 
 ## 🏆 Key Highlights
 
-- **Interactive 3D Experience**: Powered by **React Three Fiber** and **Drei**, featuring a custom-optimized 3D avatar and environment.
-- **100% Test Coverage**: Fully tested codebase (Statements, Branches, Functions, Lines) ensuring reliability and stability.
-- **Performance First**: Heavily optimized assets for lightning-fast load times.
-- **Modern Stack**: React 18, TypeScript, Tailwind CSS, Framer Motion, and EmailJS.
+- **Immersive 3D Experience**: A fully interactive 3D world powered by **React Three Fiber**, featuring a custom-optimized avatar and dynamic environment that pushes the boundaries of web performance.
+- **Engineering Excellence**: A bulletproof codebase with **100% Test Coverage** across all metrics, ensuring rock-solid reliability and maintainability.
+- **Performance Masterclass**: Achieved a massive **97% payload reduction** (130MB → 3.3MB) through aggressive asset optimization, delivering a lightning-fast experience even on mobile.
+- **Modern & Scalable Architecture**: Built with the latest tech stack—**React 18, TypeScript, Tailwind CSS**—and designed for scalability, accessibility, and developer experience.
 
 ## ⚡ Performance Optimization
 
-We achieved a **97% reduction** in initial load payload through aggressive asset optimization.
+I achieved a **97% reduction** in initial load payload through aggressive asset optimization.
 
 | Asset Type   | File Name           | Original Size | Optimized Size | Reduction |
 | :----------- | :------------------ | :------------ | :------------- | :-------- |
