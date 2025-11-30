@@ -304,7 +304,8 @@
 .iphoneArrow {
   position: relative !important;
   z-index: 1 !important;
-  margin-top: -50px !important; /* Reduced negative margin */
-  margin-bottom: 0 !important; /* Reset bottom margin */
+  margin-top: -3rem !important; /* Tighter top margin to reduce gap after Hero */
+  margin-bottom: -8rem !important; /* Larger negative bottom to pull About closer */
   pointer-events: auto;
+  transform: scale(0.7); /* Smaller on mobile for cleaner look */
 }

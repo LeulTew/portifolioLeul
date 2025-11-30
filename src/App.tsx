@@ -236,27 +236,12 @@ function App() {
                 <div className={styles.spacer} />
                 <Contact />
                 
-                <motion.div 
-                  className={styles.footer}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ 
-                    duration: 1,
-                    ease: [0.76, 0, 0.24, 1],
-                    delay: 0.4
-                  }}
-                >
-                  <div className={styles.scroll}>
-                    <div className={styles.scrollText}>Scroll to explore</div>
-                    <div className={styles.scrollLine} />
-                  </div>
-                  <div className={styles.year}>© {new Date().getFullYear()}</div>
-                </motion.div>
              </main>
           </div>
         )}
       </ErrorBoundary>
-      {!isLoading && !isIPhone && (
+      <DesktopExperiencePopup />
+      {!isLoading && (
         <motion.div 
           className={styles.footer}
           initial={{ opacity: 0 }}
@@ -311,5 +296,91 @@ function ErrorFallback({ error }: { error: Error }) {
         {error.message}
       </details>
     </div>
+  );
+}
+
+function DesktopExperiencePopup() {
+  const [isVisible, setIsVisible] = useState(false);
+  const isIPhone = typeof navigator !== 'undefined' && /iPhone/i.test(navigator.userAgent);
+
+  useEffect(() => {
+    if (isIPhone) {
+      const hasSeenPopup = localStorage.getItem('hasSeenDesktopPopup');
+      if (!hasSeenPopup) {
+        // Small delay to show after load
+        const timer = setTimeout(() => setIsVisible(true), 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isIPhone]);
+
+  const handleDismiss = () => {
+    setIsVisible(false);
+    localStorage.setItem('hasSeenDesktopPopup', 'true');
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 50 }}
+      style={{
+        position: 'fixed',
+        bottom: '80px',
+        left: '20px',
+        right: '20px',
+        background: 'rgba(20, 20, 20, 0.95)',
+        backdropFilter: 'blur(10px)',
+        padding: '20px',
+        borderRadius: '16px',
+        zIndex: 10000,
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'start', gap: '15px' }}>
+        <div style={{ 
+          background: 'rgba(255,255,255,0.1)', 
+          padding: '10px', 
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ margin: '0 0 4px 0', color: 'white', fontSize: '16px', fontWeight: 600 }}>Best on Desktop</h3>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '14px', lineHeight: '1.4' }}>
+            This portfolio features a rich 3D experience that really shines on a larger screen. You can still browse here, but we recommend visiting on a computer for the full journey.
+          </p>
+        </div>
+      </div>
+      <button 
+        onClick={handleDismiss}
+        style={{
+          background: 'white',
+          color: 'black',
+          border: 'none',
+          padding: '12px',
+          borderRadius: '10px',
+          fontSize: '14px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          marginTop: '4px'
+        }}
+      >
+        Got it, thanks
+      </button>
+    </motion.div>
   );
 }
