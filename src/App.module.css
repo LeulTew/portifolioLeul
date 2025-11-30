@@ -280,3 +280,23 @@
   z-index: 1;
   pointer-events: none;
 }
+
+.iphoneScrollContainer {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  z-index: 2;
+}
+
+.staticBackground {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  transition: background 0.5s ease-in-out;
+}

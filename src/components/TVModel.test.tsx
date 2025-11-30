@@ -33,6 +33,10 @@ vi.mock('three', () => {
     Texture: class {
       flipY: boolean = true;
     },
+    VideoTexture: class {
+      flipY: boolean = true;
+      constructor(video: any) {}
+    },
     DoubleSide: 2,
   };
   return { ...THREE, default: THREE, ...THREE };
@@ -48,6 +52,23 @@ vi.mock('@react-three/drei', () => ({
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }));
+
+// Mock document.createElement for video
+const originalCreateElement = document.createElement;
+document.createElement = vi.fn((tagName: string) => {
+  if (tagName === 'video') {
+    return {
+      src: '',
+      crossOrigin: '',
+      loop: false,
+      muted: false,
+      play: vi.fn(),
+      pause: vi.fn(),
+      setAttribute: vi.fn(),
+    } as unknown as HTMLVideoElement;
+  }
+  return originalCreateElement.call(document, tagName);
+}) as any;
 
 describe('TVModel', () => {
   beforeEach(() => {

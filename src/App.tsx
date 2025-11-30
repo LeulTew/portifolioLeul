@@ -41,6 +41,8 @@ function App() {
   });
   const mainRef = useRef<HTMLDivElement | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
+  
+  const isIPhone = typeof navigator !== 'undefined' && /iPhone/i.test(navigator.userAgent);
 
   const handleScrollElement = useCallback((element: HTMLDivElement | null) => {
     setScrollElement(element);

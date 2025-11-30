@@ -29,3 +29,10 @@ global.IntersectionObserver = class IntersectionObserver {
   unobserve() {}
   disconnect() {}
 };
+
+// Mock emailjs
+vi.mock('@emailjs/browser', () => ({
+  default: {
+    send: vi.fn().mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ status: 200, text: 'OK' }), 100))),
+  },
+}));
