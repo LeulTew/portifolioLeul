@@ -17,7 +17,7 @@ export const projectsData: Project[] = [
     description: "Mission-control platform for tactical goal breakdown",
     longDescription: "**IGNITION** (aka GOAL_BREAKER.EXE) is a mission-control platform that transforms vague objectives into precise, executable tactical plans. It takes a signal like 'Launch a startup' and returns a **5-step tactical breakdown** with complexity scores, filtering out the noise.\n\n• **Precision Breakdown**: Generates 5 chronological, high-impact steps. No fluff.\n• **Deep Dive Subroutines**: Recursively breaks down any step into 3 specific tactical sub-actions.\n• **Active Guardrails**: Dedicated AI model classifies input as OK, GIBBERISH, or ABUSE, handling errors in-character.\n• **Bilingual Ops**: Native support for **English** and **Amharic**, adapting the 'Dark Technical' tone to both.\n• **Haptic Audio Layer**: Immersive feedback with mechanical key clicks, processing hums, and success chimes.\n\nBuilt with a **Dark Technical** UI for focused execution.",
     tech: "NEXT.JS, REACT, FASTAPI, GOOGLE GEMINI, POSTGRESQL",
-    image: "/images/projects/ignition.png",
+    image: "/images/projects/ignition.webp",
     githubUrl: "https://github.com/LeulTew/Ignition",
     demoUrl: "https://ignition-ivory.vercel.app",
     categories: ["AI/DataScience", "Web Development"]
@@ -38,7 +38,7 @@ export const projectsData: Project[] = [
     description: "Multi-Fleet Management System",
     longDescription: "Comprehensive full-stack platform featuring a **Hybrid Architecture** that blends monolithic and microservices. Manages multiple organizations, drivers, vehicles, and routes in a **multi-tenant setup**.\n\n• **Core Features**: **FastAPI** microservice solving **VRP** (Vehicle Routing Problem) and a custom service for **TSP** routing with **Mapbox API fallback**.\n• **Optimization**: Real-time tracking and route optimization using clustering algorithms and **Google OR-Tools**.\n• **Operations**: Automated payroll, KPI dashboards, notifications, bulk imports, and PDF reports.\n• **Architecture**: Scalable design with **data isolation**, job queues (Redis), and robust integrations.",
     tech: "REACT, TYPESCRIPT, EXPRESS.JS, PRISMA, POSTGRESQL, REDIS, FASTAPI, OR-TOOLS, BETTER AUTH",
-    image: "/images/projects/routegna.png",
+    image: "/images/projects/routegna.webp",
     githubUrl: "https://github.com/kidusm001/multi-fleet-managment/",
     categories: ["Mobile Apps", "AI/DataScience", "Web Development"]
   },
@@ -58,7 +58,7 @@ export const projectsData: Project[] = [
     description: "NLP/IR system for Amharic language",
     longDescription: "Enhanced Information Retrieval pipeline specifically for the Amharic language:\n\n• **NLP Optimization**: Hybrid stemming, optimized indexing, and TF-IDF ranking\n• **AI Integration**: AI-powered summarization and query expansion\n• **Architecture**: Web scrapers for corpus generation and a bilingual UI\n\nShowcases advanced **NLP** techniques and **AI** application for low-resource languages.",
     tech: "Flask, PyTorch, Google Gemini",
-    image: "/images/projects/amharic-ir.png",
+    image: "/images/projects/amharic-ir.webp",
     githubUrl: "https://github.com/LeulTew/Amharic-IR-Improved",
     categories: ["AI/DataScience", "Web Development"]
   },
@@ -148,7 +148,7 @@ export const projectsData: Project[] = [
     description: "AI deepfake video detection",
     longDescription: "Next-gen tool with modular CLI, configurable weights, and cross-platform support for accurate deepfake analysis in research/production.",
     tech: "PyTorch, EfficientNet",
-    image: "/images/projects/deepFakeAlew.png",
+    image: "/images/projects/deepFakeAlew.webp",
     githubUrl: "https://github.com/LeulTew/DeepFakeAlew",
     categories: ["AI/DataScience"]
   },
@@ -158,7 +158,7 @@ export const projectsData: Project[] = [
     description: "AI CLI assistant",
     longDescription: "Command-line tool for task automation, file editing, Amharic support, and developer productivity boosts via intelligent workflows.",
     tech: "Python, Gemini API",
-    image: "/images/projects/fikirFix.png",
+    image: "/images/projects/fikirFix.webp",
     githubUrl: "https://github.com/LeulTew/FikirFix",
     categories: ["AI/DataScience"]
   },
@@ -168,7 +168,7 @@ export const projectsData: Project[] = [
     description: "ML experiments on Iris dataset",
     longDescription: "Applied models like KNN, Decision Trees, Perceptron, Clustering with visualizations and analysis in Jupyter.",
     tech: "Python, Scikit-Learn",
-    image: "/images/projects/IrisDatasetML.png",
+    image: "/images/projects/IrisDatasetML.webp",
     githubUrl: "https://github.com/LeulTew/Iris-Dataset-Machine-Learning",
     categories: ["AI/DataScience"]
   },
@@ -178,7 +178,7 @@ export const projectsData: Project[] = [
     description: "Data analysis clustering demo",
     longDescription: "Demo of clustering algorithms with visualizations for exploratory data insights.",
     tech: "Python",
-    image: "/images/projects/Clustering.png",
+    image: "/images/projects/Clustering.webp",
     githubUrl: "https://github.com/LeulTew/clustering-demo",
     categories: ["AI/DataScience"]
   },
@@ -188,7 +188,7 @@ export const projectsData: Project[] = [
     description: "Automation script for books",
     longDescription: "Tool managing book lists and reading workflows through scripted automation.",
     tech: "Python",
-    image: "/images/projects/Bookbot.png",
+    image: "/images/projects/Bookbot.webp",
     githubUrl: "https://github.com/LeulTew/Bookbot",
     categories: ["Desktop & Games"]
   },
@@ -198,7 +198,7 @@ export const projectsData: Project[] = [
     description: "Graphics visualization of puzzle",
     longDescription: "3D rendering of 8-Queens puzzle with textures, mouse interactions, and algorithmic highlights.",
     tech: "C++, OpenGL",
-    image: "/images/projects/3D8Queen.png",
+    image: "/images/projects/3D8Queen.webp",
     githubUrl: "https://github.com/LeulTew/3D-8-Queens-OpenGL",
     categories: ["Graphics & Algorithms"]
   },
@@ -208,7 +208,7 @@ export const projectsData: Project[] = [
     description: "Interactive solar system simulation",
     longDescription: "Model with hierarchical transforms, rotations, lighting, and animations for immersive visualization.",
     tech: "C++, OpenGL",
-    image: "/images/projects/SolarSystem.png",
+    image: "/images/projects/SolarSystem.webp",
     githubUrl: "https://github.com/LeulTew/Solar-System-OpenGL-c-",
     categories: ["Graphics & Algorithms"]
   },
@@ -218,7 +218,7 @@ export const projectsData: Project[] = [
     description: "Algorithm visualization tool",
     longDescription: "Maze generator/solver using recursive backtracking and GUI for real-time display.",
     tech: "Python, Tkinter",
-    image: "/images/projects/Maze.png",
+    image: "/images/projects/Maze.webp",
     githubUrl: "https://github.com/LeulTew/Maze",
     categories: ["Graphics & Algorithms", "Desktop & Games"]
   },
@@ -228,7 +228,7 @@ export const projectsData: Project[] = [
     description: "Relational database design",
     longDescription: "Schema for celestial bodies with queries, normalization, and exercises from FreeCodeCamp.",
     tech: "SQL",
-    image: "/images/projects/CelestialDB.png",
+    image: "/images/projects/CelestialDB.webp",
     githubUrl: "https://github.com/LeulTew/Celestial-Bodies-Database",
     categories: ["AI/DataScience"]
   },
@@ -238,7 +238,7 @@ export const projectsData: Project[] = [
     description: "Hyper-Modern Exit Exam Interface",
     longDescription: "A modern web application providing an interactive interface for practicing Computer Science exit exams, targeted at students preparing for university or professional assessments. Hosted on Wasmer Edge for efficient, serverless deployment.",
     tech: "WebAssembly",
-    image: "/images/projects/exit.png",
+    image: "/images/projects/exit.webp",
     githubUrl: "",
     demoUrl: "https://exitpractice.wasmer.app/",
     categories: ["Web Development"]

@@ -13,6 +13,7 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@react-spring/three": "^9.7.5",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",

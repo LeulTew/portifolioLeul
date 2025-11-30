@@ -6,17 +6,19 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
   const { scene } = useGLTF('/models/crt.glb');
   const [videoIndex, setVideoIndex] = useState(0);
   
-  const texture1 = useVideoTexture('/videos/Spy_Movie_Live_Wallpaper_Video.mp4', {
+  const texture1 = useVideoTexture('/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4', {
     start: true,
     muted: true,
     loop: true
   });
   
-  const texture2 = useVideoTexture('/videos/Significant.mp4', {
-    start: true,
-    muted: true,
-    loop: true
-  });
+  const video = document.createElement('video');
+  video.src = '/videos/Significant-opt.mp4';
+  video.crossOrigin = 'Anonymous';
+  video.loop = true;
+  video.muted = true;
+  video.play();
+  const texture2 = new THREE.VideoTexture(video);
 
   const textures = [texture1, texture2];
   const currentTexture = textures[videoIndex];
