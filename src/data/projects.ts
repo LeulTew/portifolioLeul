@@ -28,7 +28,7 @@ export const projectsData: Project[] = [
     description: "Full-stack app with 3D vehicle visualization",
     longDescription: "Advanced car rental system featuring **interactive 3D vehicle models** and a robust feature set:\n\n• **Secure Authentication**: Google OAuth & JWT implementation\n• **Payments**: Integrated PayPal for secure transactions\n• **Search & Booking**: Multi-criteria filtering, availability checks, and email notifications\n• **User System**: Reviews, ratings, and profile management\n\nDemonstrates full-stack proficiency with **ASP.NET Core** and **Three.js** integration.",
     tech: "ASP.NET Core MVC, Three.js, Entity Framework Core",
-    image: "/images/projects/car-rental.png",
+    image: "/images/projects/car-rental.webp",
     githubUrl: "https://github.com/LeulTew/CarRental-ThreeJS-MVC",
     categories: ["Web Development", "Graphics & Algorithms"]
   },
@@ -48,7 +48,7 @@ export const projectsData: Project[] = [
     description: "Mobile marketplace for Ethiopian trade",
     longDescription: "Cross-platform mobile marketplace designed to facilitate local commerce:\n\n• **Real-time Data**: Instant updates for product listings and prices\n• **User Experience**: Responsive UI with intuitive search and filtering\n• **Features**: User profiles, secure messaging, and product management\n\nHighlights expertise in **Flutter** mobile development and **Firebase** backend integration.",
     tech: "Flutter, Dart, Firebase",
-    image: "/images/projects/ethio-trading.png",
+    image: "/images/projects/ethio-trading.webp",
     githubUrl: "https://github.com/LeulTew/EthioTrading",
     categories: ["Mobile Apps"]
   },
@@ -78,7 +78,7 @@ export const projectsData: Project[] = [
     description: "Web decision tool for students",
     longDescription: "App aiding Ethiopian students in selecting universities and fields based on rankings and user inputs for informed choices.",
     tech: "HTML, CSS, JavaScript",
-    image: "/images/projects/uni-college-choice.png",
+    image: "/images/projects/uni-college-choice.webp",
     githubUrl: "https://github.com/LeulTew/Uni-College-Choice",
     categories: ["Web Development"]
   },
@@ -88,7 +88,7 @@ export const projectsData: Project[] = [
     description: "Python static site generator",
     longDescription: "Tool converting Markdown to secure, fast websites for blogs/portfolios, with templating, CLI tooling, and API integrations for easy deployability.",
     tech: "Python",
-    image: "/images/projects/tera-site.png",
+    image: "/images/projects/tera-site.webp",
     githubUrl: "https://github.com/LeulTew/TeraSite",
     categories: ["Web Development", "Desktop & Games"]
   },
@@ -108,7 +108,7 @@ export const projectsData: Project[] = [
     description: "Desktop pharmacy management system",
     longDescription: "Mature app with database integration, transactional workflows for inventory, prescriptions, sales, user-friendly UI, and role-based access for real-world operations.",
     tech: "C#, T-SQL",
-    image: "/images/projects/pharmacy.jpg",
+    image: "/images/projects/pharmacy.webp",
     githubUrl: "https://github.com/LeulTew/Pharmacy-THE-HIVE-",
     categories: ["Desktop & Games"]
   },
@@ -118,7 +118,7 @@ export const projectsData: Project[] = [
     description: "Desktop card game implementation",
     longDescription: "Polished Spider Solitaire with event-driven UI, save/load, scoring, and modular logic/UI separation.",
     tech: "C#",
-    image: "/images/projects/spider-solitaire-csharp.png",
+    image: "/images/projects/spider-solitaire-csharp.webp",
     githubUrl: "https://github.com/LeulTew/Spider-Solitaire-CSharp",
     categories: ["Desktop & Games"]
   },
@@ -128,7 +128,7 @@ export const projectsData: Project[] = [
     description: "Algorithms-focused card game",
     longDescription: "Classic Solitaire emphasizing data structures, algorithms, and documented logic for educational purposes.",
     tech: "C++",
-    image: "/images/projects/solitaire-cpp.png",
+    image: "/images/projects/solitaire-cpp.webp",
     githubUrl: "https://github.com/LeulTew/Solitaire-CPP",
     categories: ["Desktop & Games", "Graphics & Algorithms"]
   },
@@ -138,7 +138,7 @@ export const projectsData: Project[] = [
     description: "Space game prototype",
     longDescription: "Python game demonstrating event loops, basic physics, and rapid prototyping in a space theme.",
     tech: "Python, Pygame",
-    image: "/images/projects/asteroidz.png",
+    image: "/images/projects/asteroidz.webp",
     githubUrl: "https://github.com/LeulTew/Asteroidz",
     categories: ["Desktop & Games"]
   },

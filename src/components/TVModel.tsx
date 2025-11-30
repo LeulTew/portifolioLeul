@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 
 export function TVModel(props: JSX.IntrinsicElements['group']) {
-  const { scene } = useGLTF('/models/crt.glb');
+  const { scene } = useGLTF('/models/crt-opt.glb');
   const [videoIndex, setVideoIndex] = useState(0);
   
   const texture1 = useVideoTexture('/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4', {

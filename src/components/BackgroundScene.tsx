@@ -15,14 +15,14 @@ import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 
 // Preload the terrain model
-useGLTF.preload('/models/terrain-1k.glb');
+useGLTF.preload('/models/terrain-1k-opt.glb');
 
 interface TerrainProps {
   surfaceColor: string;
 }
 
 function Terrain({ surfaceColor }: TerrainProps) {
-  const { scene } = useGLTF('/models/terrain-1k.glb');
+  const { scene } = useGLTF('/models/terrain-1k-opt.glb');
   
   const terrain = useMemo(() => {
     const clone = scene.clone();
