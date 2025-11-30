@@ -115,11 +115,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
           className={styles.logo}
           onClick={() => handleNavClick('home')}
         >
-          <img 
-            src="/images/leul-profile.webp" 
-            alt="Leul" 
-            className={styles.logoImage}
-          />
+          LT
         </div>
 
         {/* Desktop Navigation */}

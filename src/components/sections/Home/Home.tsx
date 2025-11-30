@@ -91,7 +91,12 @@ export function Home({ onNavigate }: HomeProps) {
             }}
           >
             <div className={styles.imagePlaceholder}>
-              <span>L</span>
+              <span className={styles.circleText}>L</span>
+              <img 
+                src="/images/leul-profile.webp" 
+                alt="Leul" 
+                className={styles.circleImage}
+              />
             </div>
           </motion.div>
           <motion.h1 
