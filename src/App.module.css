@@ -304,13 +304,13 @@
 .iphoneArrow {
   position: relative !important;
   z-index: 1 !important;
-  margin-top: -3rem !important; /* Tighter top margin to reduce gap after Hero */
-  margin-bottom: -8rem !important; /* Larger negative bottom to pull About closer */
+  margin-top: 0 !important; /* Zero gap from Hero */
+  margin-bottom: -10rem !important; /* Pull About much closer */
   pointer-events: auto;
   transform: scale(0.7); /* Smaller on mobile for cleaner look */
 }
 
 .iphoneHome :global(.home) {
-  margin-bottom: -2rem !important; /* Reduce gap before arrow on iPhone only */
-  padding-bottom: 0 !important; /* Remove bottom padding to eliminate gap */
+  margin-bottom: 0 !important; /* Zero gap before arrow */
+  padding-bottom: 0 !important; /* Remove bottom padding */
 }

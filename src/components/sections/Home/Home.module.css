@@ -248,6 +248,19 @@
   }
 }
 
+/* iPhone-specific overrides - must come after mobile styles */
+@supports (-webkit-touch-callout: none) {
+  /* This targets iOS Safari specifically */
+  @media (max-width: 768px) {
+    .home {
+      padding-top: 8rem !important; /* Reduce top padding */
+      padding-bottom: 0 !important; /* Remove bottom padding */
+      margin-bottom: 0 !important; /* Remove bottom margin */
+      min-height: auto !important; /* Don't force height */
+    }
+  }
+}
+
 @media (max-height: 700px) {
   .description {
     font-size: 0.875rem;
