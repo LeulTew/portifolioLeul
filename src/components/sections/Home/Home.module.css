@@ -249,6 +249,7 @@
 
   .home {
     margin-bottom: -2rem; /* Reduce gap before arrow on mobile */
+    padding-bottom: 0; /* Remove bottom padding to eliminate gap */
   }
 }
 
