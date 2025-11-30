@@ -71,7 +71,7 @@ function App() {
     // Large Screens (>= 2000px): 0
     
     let extraBuffer = 0;
-    if (isMobile) extraBuffer = 3.2;
+    if (isMobile) extraBuffer = 5.0; // Increased from 3.2 to fix iPhone scroll truncation
     else if (is720p) extraBuffer = 16.5; // Increased for 720p
     else if (is1080p) extraBuffer = 15.0;
     

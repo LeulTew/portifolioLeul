@@ -14,7 +14,31 @@ import { Theme } from './sections/theme/ThemeContext';
 import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 
-// Preload the terrain model
+// Adaptive loading logic
+const getTerrainUrl = () => {
+  if (typeof window === 'undefined') return '/models/terrain-1k-opt.glb';
+  
+  // Check network connection
+  if ('connection' in navigator) {
+    const conn = (navigator as any).connection;
+    if (conn.saveData || conn.effectiveType === '2g' || conn.effectiveType === '3g') {
+      return '/models/terrain-mobile.glb';
+    }
+  }
+  
+  // Check device width (mobile usually benefits from smaller assets)
+  if (window.innerWidth < 768) {
+    return '/models/terrain-mobile.glb';
+  }
+  
+  return '/models/terrain-1k-opt.glb';
+};
+
+const TERRAIN_URL = getTerrainUrl();
+
+// Preload both to be safe, or just the default? 
+// Preloading the specific one might be better but dynamic preloading is tricky.
+// We'll preload the optimized one as fallback/default.
 useGLTF.preload('/models/terrain-1k-opt.glb');
 
 interface TerrainProps {
@@ -22,7 +46,7 @@ interface TerrainProps {
 }
 
 function Terrain({ surfaceColor }: TerrainProps) {
-  const { scene } = useGLTF('/models/terrain-1k-opt.glb');
+  const { scene } = useGLTF(TERRAIN_URL);
   
   const terrain = useMemo(() => {
     const clone = scene.clone();
