@@ -309,3 +309,8 @@
   pointer-events: auto;
   transform: scale(0.7); /* Smaller on mobile for cleaner look */
 }
+
+.iphoneHome {
+  margin-bottom: -2rem; /* Reduce gap before arrow on iPhone only */
+  padding-bottom: 0; /* Remove bottom padding to eliminate gap */
+}

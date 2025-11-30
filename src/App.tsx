@@ -217,9 +217,11 @@ function App() {
         
         {/* For iPhone, we need to render the content outside the Canvas ScrollControls */}
         {isIPhone && !isLoading && (
-          <div className={styles.iphoneScrollContainer} style={{ overflowY: 'auto', height: '100vh', scrollBehavior: 'smooth' }}>
-             <main ref={mainRef} className={styles.main}>
-                <Home onNavigate={scrollToSection} />
+           <div className={styles.iphoneScrollContainer} style={{ overflowY: 'auto', height: '100vh', scrollBehavior: 'smooth' }}>
+              <main ref={mainRef} className={styles.main}>
+                 <div className={styles.iphoneHome}>
+                   <Home onNavigate={scrollToSection} />
+                 </div>
                 <div 
                   id="homeToAboutArrow" 
                   className={isIPhone ? styles.iphoneArrow : undefined}
