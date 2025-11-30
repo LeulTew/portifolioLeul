@@ -34,6 +34,23 @@
   letter-spacing: -0.05em;
   position: relative;
   z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoImage {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(var(--text-color), 0.2);
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.logo:hover .logoImage {
+  transform: scale(1.1);
+  border-color: var(--primary-color);
 }
 
 .desktopNav {

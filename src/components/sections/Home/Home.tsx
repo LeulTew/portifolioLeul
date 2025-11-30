@@ -169,7 +169,7 @@ export function Home({ onNavigate }: HomeProps) {
           delay: 0.2
         }}
       >
-        <img src="/images/leul-profile.png" alt="Leul" />
+        <img src="/images/leul-profile.webp" alt="Leul" />
       </motion.div>
 
       <div 
