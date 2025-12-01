@@ -42,7 +42,8 @@ I achieved a **97% reduction** in initial load payload through aggressive asset 
 
 | Asset Type   | File Name           | Original Size | Optimized Size | Reduction |
 | :----------- | :------------------ | :------------ | :------------- | :-------- |
-| **3D Model** | `me-standing.glb`   | **130 MB**    | **3.3 MB**     | **~97%**  |
+| **3D Model** | `me.glb`            | **18 MB**     | **1.3 MB**     | **~93%**  |
+| **3D Model** | `terrain-1k.glb`    | **83 MB**     | **19 MB**      | **~77%**  |
 | **Video**    | `Significant.mp4`   | 27 MB         | 4.4 MB         | ~84%      |
 | **Video**    | `Spy_Movie...mp4`   | 1.6 MB        | 713 KB         | ~55%      |
 | **Image**    | `Clustering.png`    | 6.1 MB        | 272 KB         | ~95%      |

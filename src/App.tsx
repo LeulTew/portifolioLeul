@@ -43,7 +43,38 @@ function App() {
   const mainRef = useRef<HTMLDivElement | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
   
-  const isIPhone = typeof navigator !== 'undefined' && /iPhone/i.test(navigator.userAgent);
+  const [shouldUseStaticMode, setShouldUseStaticMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
+
+    const ua = navigator.userAgent;
+    const isIPhone = /iPhone/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const isMobile = /Mobi|Android/i.test(ua);
+    const isTablet = /Tablet|iPad/i.test(ua) || window.innerWidth > 768;
+    
+    // Heuristic for high-end devices:
+    // 1. High core count (usually 8+)
+    // 2. High RAM (8GB+) - This filters out mid-range phones like A-series which often have 4-6GB
+    // Note: deviceMemory is not standard, so we cast navigator to any. 
+    // If undefined, we assume low memory to be safe for Androids.
+    const deviceMemory = (navigator as any).deviceMemory;
+    const hasHighMemory = typeof deviceMemory === 'number' ? deviceMemory >= 8 : false;
+    
+    // For Android, we require BOTH high cores and high memory to be considered "High End"
+    // This ensures S24+ (8GB/12GB) gets 3D, while A54 (often 6GB) gets Static.
+    const isHighEnd = typeof navigator.hardwareConcurrency === 'number' 
+      && navigator.hardwareConcurrency >= 8 
+      && hasHighMemory;
+
+    // Static mode for:
+    // 1. iPhones (as requested)
+    // 2. Low-end Android phones (Android + Mobile + Not Tablet + Not High End)
+    if (isIPhone || (isAndroid && isMobile && !isTablet && !isHighEnd)) {
+      setShouldUseStaticMode(true);
+    }
+  }, []);
 
   const handleScrollElement = useCallback((element: HTMLDivElement | null) => {
     setScrollElement(element);
@@ -149,7 +180,7 @@ function App() {
     <div className={styles.container}>
       <Navigation scrollToSection={scrollToSection} />
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {isIPhone ? (
+        {shouldUseStaticMode ? (
           <div 
             className={styles.staticBackground}
             style={{
@@ -215,8 +246,8 @@ function App() {
           </Canvas>
         )}
         
-        {/* For iPhone, we need to render the content outside the Canvas ScrollControls */}
-        {isIPhone && !isLoading && (
+        {/* For iPhone/Static, we need to render the content outside the Canvas ScrollControls */}
+        {shouldUseStaticMode && !isLoading && (
            <div className={styles.iphoneScrollContainer} style={{ overflowY: 'auto', height: '100vh', scrollBehavior: 'smooth' }}>
               <main ref={mainRef} className={styles.main}>
                  <div className={styles.iphoneHome}>
@@ -224,7 +255,7 @@ function App() {
                  </div>
                 <div 
                   id="homeToAboutArrow" 
-                  className={isIPhone ? styles.iphoneArrow : undefined}
+                  className={shouldUseStaticMode ? styles.iphoneArrow : undefined}
                   onClick={() => scrollToSection('about')}
                 >
                   <div className="curveWrapper">

@@ -5,8 +5,8 @@ export const cvData = {
     description: "Motivated Computer Science graduate (BSc, HiLCoE) with hands-on expertise in AI/ML, full-stack web development, mobile applications, and real-time graphics. Proficient in building production-ready solutions using Python (PyTorch, scikit-learn), Flutter/Dart, React/TypeScript, ASP.NET, PHP, and OpenGL/Three.js. Complemented by creative design skills in Adobe tools and Figma, I deliver technically robust and visually polished products. Passionate about solving real-world problems through innovative technology, with a track record of developing impactful applications from concept to deployment.",
     stats: [
       { value: "3+", label: "Years Experience" },
-      { value: "50+", label: "Projects" },
-      { value: "20+", label: "Happy Clients" }
+      { value: "30+", label: "Projects" },
+      { value: "100%", label: "Happy Clients" }
     ],
     highlights: [
       "AI/ML & Data Science",

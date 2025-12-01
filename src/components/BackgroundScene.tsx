@@ -14,32 +14,9 @@ import { Theme } from './sections/theme/ThemeContext';
 import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 
-// Adaptive loading logic
-const getTerrainUrl = () => {
-  if (typeof window === 'undefined') return '/models/terrain-1k-opt.glb';
-  
-  // Check network connection
-  if ('connection' in navigator) {
-    const conn = (navigator as any).connection;
-    if (conn.saveData || conn.effectiveType === '2g' || conn.effectiveType === '3g') {
-      return '/models/terrain-mobile.glb';
-    }
-  }
-  
-  // Check device width (mobile usually benefits from smaller assets)
-  if (window.innerWidth < 768) {
-    return '/models/terrain-mobile.glb';
-  }
-  
-  return '/models/terrain-1k-opt.glb';
-};
+const TERRAIN_URL = '/models/terrain-mobile.glb';
 
-const TERRAIN_URL = getTerrainUrl();
-
-// Preload both to be safe, or just the default? 
-// Preloading the specific one might be better but dynamic preloading is tricky.
-// We'll preload the optimized one as fallback/default.
-useGLTF.preload('/models/terrain-1k-opt.glb');
+useGLTF.preload('/models/terrain-mobile.glb');
 
 interface TerrainProps {
   surfaceColor: string;
@@ -128,7 +105,7 @@ function Particles({ color }: ParticlesProps) {
 
 function ResponsiveTV() {
   const { viewport } = useThree();
-  const isMobile = viewport.width < 10; // Adjust threshold as needed
+  const isMobile = viewport.width < 10;
 
   return (
     <TVModel 

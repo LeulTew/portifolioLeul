@@ -13,8 +13,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         return savedTheme as Theme;
       }
       // Default to light mode on iPhone, dark mode otherwise
-      const isIPhone = /iPhone/i.test(navigator.userAgent);
-      return isIPhone ? 'light' : 'dark';
+      // Default to light mode on Mobile, dark mode on Desktop
+      const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      return isMobile ? 'light' : 'dark';
     }
     return 'dark';
   });
