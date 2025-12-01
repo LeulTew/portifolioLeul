@@ -11,7 +11,7 @@ interface MeModelProps {
 
 export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1, 1, 1] }: MeModelProps) {
   // Load the GLB model
-  const { scene } = useGLTF('/models/me-standing-opt.glb');
+  const { scene } = useGLTF('/models/me-opt.glb');
 
   // Configure shadows for the model
   useMemo(() => {
