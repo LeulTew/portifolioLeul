@@ -12,7 +12,7 @@
 #homeToAboutArrow .curveWrapper {
   width: 100px;
   height: 300px;
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to show full curve */
   position: relative;
 }
 
@@ -39,7 +39,8 @@
   will-change: transform;
 }
 
-#homeToAboutArrow .point:before, #homeToAboutArrow .point:after {
+#homeToAboutArrow .point:before,
+#homeToAboutArrow .point:after {
   border: 1px solid #00ffc2;
   height: 25px;
   content: "";
@@ -80,7 +81,8 @@
 #homeToAboutArrow:hover .point:before,
 #homeToAboutArrow:hover .point:after {
   border-color: #ffffff;
-  filter: drop-shadow(0 0 8px #ffffff) brightness(1.5) drop-shadow(0 0 12px #ffffff);
+  filter: drop-shadow(0 0 8px #ffffff) brightness(1.5)
+    drop-shadow(0 0 12px #ffffff);
 }
 
 @media (max-width: 768px) {
@@ -88,4 +90,18 @@
     left: 4rem;
     top: 75vh;
   }
-} 
+}
+
+/* iPhone-specific positioning - does not affect Android or other mobile */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+    #homeToAboutArrow {
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
+      transform: none !important;
+      margin-top: -50rem !important;
+      margin-left: -2rem !important;
+    }
+  }
+}

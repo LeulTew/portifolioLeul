@@ -304,10 +304,10 @@
 .iphoneArrow {
   position: relative !important;
   z-index: 1 !important;
-  margin-top: 0 !important; /* Zero gap from Hero */
-  margin-bottom: -10rem !important; /* Pull About much closer */
+  margin-top: -50rem !important; /* Updated to -50rem as requested */
+  margin-bottom: -10rem !important;
   pointer-events: auto;
-  transform: scale(0.7); /* Smaller on mobile for cleaner look */
+  transform: scale(0.7);
 }
 
 .iphoneHome :global(.home) {

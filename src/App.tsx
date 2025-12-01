@@ -303,22 +303,18 @@ function ErrorFallback({ error }: { error: Error }) {
 
 function DesktopExperiencePopup() {
   const [isVisible, setIsVisible] = useState(false);
-  const isIPhone = typeof navigator !== 'undefined' && /iPhone/i.test(navigator.userAgent);
+  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   useEffect(() => {
-    if (isIPhone) {
-      const hasSeenPopup = localStorage.getItem('hasSeenDesktopPopup');
-      if (!hasSeenPopup) {
-        // Small delay to show after load
-        const timer = setTimeout(() => setIsVisible(true), 1000);
-        return () => clearTimeout(timer);
-      }
+    if (isMobile) {
+      // Show popup on every reload for mobile devices
+      const timer = setTimeout(() => setIsVisible(true), 1000);
+      return () => clearTimeout(timer);
     }
-  }, [isIPhone]);
+  }, [isMobile]);
 
   const handleDismiss = () => {
     setIsVisible(false);
-    localStorage.setItem('hasSeenDesktopPopup', 'true');
   };
 
   if (!isVisible) return null;
