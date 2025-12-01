@@ -51,27 +51,17 @@ function App() {
     const ua = navigator.userAgent;
     const isIPhone = /iPhone/i.test(ua);
     const isAndroid = /Android/i.test(ua);
-    const isMobile = /Mobi|Android/i.test(ua);
-    const isTablet = /Tablet|iPad/i.test(ua) || window.innerWidth > 768;
+    // Standard way to distinguish Android Phone vs Tablet: Phones have "Mobile" in UA
+    const isMobile = /Mobi/i.test(ua);
     
-    // Heuristic for high-end devices:
-    // 1. High core count (usually 8+)
-    // 2. High RAM (8GB+) - This filters out mid-range phones like A-series which often have 4-6GB
-    // Note: deviceMemory is not standard, so we cast navigator to any. 
-    // If undefined, we assume low memory to be safe for Androids.
-    const deviceMemory = (navigator as any).deviceMemory;
-    const hasHighMemory = typeof deviceMemory === 'number' ? deviceMemory >= 8 : false;
-    
-    // For Android, we require BOTH high cores and high memory to be considered "High End"
-    // This ensures S24+ (8GB/12GB) gets 3D, while A54 (often 6GB) gets Static.
-    const isHighEnd = typeof navigator.hardwareConcurrency === 'number' 
-      && navigator.hardwareConcurrency >= 8 
-      && hasHighMemory;
+    // Refined Tablet detection: 
+    // 1. Explicit Tablet/iPad check
+    // 2. Large screen AND NOT "Mobi" (prevents landscape phones from being detected as tablets)
+    const isTablet = /Tablet|iPad/i.test(ua) || (window.innerWidth > 768 && !isMobile);
 
-    // Static mode for:
-    // 1. iPhones (as requested)
-    // 2. Low-end Android phones (Android + Mobile + Not Tablet + Not High End)
-    if (isIPhone || (isAndroid && isMobile && !isTablet && !isHighEnd)) {
+    // Static mode for ALL phones (iPhone or Android Phone)
+    // We restrict 3D mode to Tablets and Desktop only for consistent performance.
+    if (isIPhone || (isAndroid && isMobile && !isTablet)) {
       setShouldUseStaticMode(true);
     }
   }, []);
