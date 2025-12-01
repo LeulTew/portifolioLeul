@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ThemeProvider } from './ThemeProvider';
+import { ThemeProvider, getInitialTheme } from './ThemeProvider';
 import { useTheme } from './useTheme';
+import { vi } from 'vitest';
 
 const TestConsumer = () => {
   const { theme } = useTheme();
@@ -102,5 +103,40 @@ describe('useTheme', () => {
     );
 
     expect(screen.getByTestId('theme')).toBeInTheDocument();
+  });
+});
+
+describe('getInitialTheme', () => {
+  const originalWindow = global.window;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    global.window = originalWindow;
+    localStorage.clear();
+  });
+
+  it('returns "dark" when window is undefined (SSR)', () => {
+    // @ts-ignore
+    delete global.window;
+    expect(getInitialTheme()).toBe('dark');
+  });
+
+  it('returns saved theme from localStorage', () => {
+    localStorage.setItem('theme', 'light');
+    expect(getInitialTheme()).toBe('light');
+  });
+
+  it('returns "light" for mobile devices when no theme is saved', () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
+    );
+    expect(getInitialTheme()).toBe('light');
+  });
+
+  it('returns "dark" for desktop devices when no theme is saved', () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+    );
+    expect(getInitialTheme()).toBe('dark');
   });
 });

@@ -52,7 +52,7 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
       <primitive object={scene} />
       
       {/* Video Screen Plane */}
-      <group position={[0.15, 0.1, 0.13]} rotation={[-0.03, Math.PI / 2, 0]}>
+      <group position={[0.145, 0.11, 0.13]} rotation={[-0.03, Math.PI / 2, 0]}>
         <mesh rotation={[0.08, 0, 0]}>
           <planeGeometry args={[0.55, 0.32]} />
           <meshBasicMaterial map={currentTexture} toneMapped={false} side={THREE.DoubleSide} />
