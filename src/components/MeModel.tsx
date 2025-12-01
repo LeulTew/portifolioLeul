@@ -31,4 +31,4 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
 }
 
 // Preload the model
-useGLTF.preload('/models/me-standing-opt.glb');
+useGLTF.preload('/models/me-opt.glb');
