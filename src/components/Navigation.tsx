@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sun, Moon } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Sun, Moon } from 'lucide-react';
 import styles from './Navigation.module.css';
 import { ThemeContext } from './sections/theme/ThemeContext';
 
@@ -19,7 +19,7 @@ interface NavigationProps {
 export function Navigation({ scrollToSection }: NavigationProps) {
   const [activeSection, setActiveSection] = useState('home');
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const { theme, toggleTheme } = useContext(ThemeContext);
 
   useEffect(() => {
@@ -105,7 +105,6 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   const handleNavClick = (id: string) => {
     scrollToSection(id);
     setActiveSection(id);
-    setIsMobileMenuOpen(false);
   };
 
   return (
@@ -148,46 +147,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
           </button>
         </div>
 
-        {/* Mobile Navigation Controls */}
-        <div className={styles.mobileControls}>
-          <button 
-            className={styles.themeToggle}
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <button 
-            className={styles.menuToggle}
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
 
-        {/* Mobile Menu Overlay */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div 
-              className={styles.mobileMenu}
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  className={`${styles.mobileNavItem} ${activeSection === item.id ? styles.active : ''}`}
-                  onClick={() => handleNavClick(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </nav>
     </header>
   );

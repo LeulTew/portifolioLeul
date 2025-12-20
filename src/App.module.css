@@ -96,20 +96,6 @@
   }
 }
 
-@media (max-width: 768px) {
-  .scroll {
-    display: none;
-  }
-  
-  .footer {
-    justify-content: flex-end; /* Align (c)2025 to right */
-  }
-  
-  .spacer {
-    height: 100vh; /* Decrease spacer height on mobile */
-  }
-}
-
 /* First section styling */
 .firstSection {
   min-height: 100vh;
@@ -170,9 +156,9 @@
   mix-blend-mode: difference;
 }
 
-:global([data-theme='light']) .pageContent h1,
-:global([data-theme='light']) .pageContent h2,
-:global([data-theme='light']) .pageContent p {
+:global([data-theme="light"]) .pageContent h1,
+:global([data-theme="light"]) .pageContent h2,
+:global([data-theme="light"]) .pageContent p {
   mix-blend-mode: normal;
   text-shadow: none;
 }
@@ -279,38 +265,4 @@
   position: relative;
   z-index: 1;
   pointer-events: none;
-}
-
-.iphoneScrollContainer {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  z-index: 2;
-}
-
-.staticBackground {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  transition: background 0.5s ease-in-out;
-}
-
-.iphoneArrow {
-  position: relative !important;
-  z-index: 1 !important;
-  margin-top: -50rem !important; /* Updated to -50rem as requested */
-  margin-bottom: -10rem !important;
-  pointer-events: auto;
-  transform: scale(0.7);
-}
-
-.iphoneHome :global(.home) {
-  margin-bottom: 0 !important; /* Zero gap before arrow */
-  padding-bottom: 0 !important; /* Remove bottom padding */
 }

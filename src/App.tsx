@@ -43,14 +43,13 @@ function App() {
   const mainRef = useRef<HTMLDivElement | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
   
-  const [shouldUseStaticMode, setShouldUseStaticMode] = useState(false);
+
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
 
     const ua = navigator.userAgent;
-    const isIPhone = /iPhone/i.test(ua);
-    const isAndroid = /Android/i.test(ua);
+
     // Standard way to distinguish Android Phone vs Tablet: Phones have "Mobile" in UA
     const isMobile = /Mobi/i.test(ua);
     
@@ -59,11 +58,15 @@ function App() {
     // 2. Large screen AND NOT "Mobi" (prevents landscape phones from being detected as tablets)
     const isTablet = /Tablet|iPad/i.test(ua) || (window.innerWidth > 768 && !isMobile);
 
-    // Static mode for ALL phones (iPhone or Android Phone)
-    // We restrict 3D mode to Tablets and Desktop only for consistent performance.
-    if (isIPhone || (isAndroid && isMobile && !isTablet)) {
-      setShouldUseStaticMode(true);
+    // Redirect mobile phones
+    if (isMobile && !isTablet) {
+      window.location.href = 'https://portifolio-x-leul.vercel.app';
+      return;
     }
+
+    // Static mode for Tablets only if needed, but previously logic targeted phones.
+    // Since phones are redirected, we might not need static mode for them.
+    // Keeping logic simple: If not phone, we render normal content.
   }, []);
 
   const handleScrollElement = useCallback((element: HTMLDivElement | null) => {
@@ -170,23 +173,6 @@ function App() {
     <div className={styles.container}>
       <Navigation scrollToSection={scrollToSection} />
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {shouldUseStaticMode ? (
-          <div 
-            className={styles.staticBackground}
-            style={{
-              background: theme === 'light' 
-                ? 'linear-gradient(to bottom, #f4f7ff 0%, #e9e2d4 100%)' 
-                : 'linear-gradient(to bottom, #001a1a 0%, #004428 100%)',
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              zIndex: -1,
-              transition: 'background 0.5s ease-in-out'
-            }}
-          />
-        ) : (
           <Canvas
             dpr={[1, typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 1.5]}
             camera={{
@@ -234,36 +220,11 @@ function App() {
               <Preload all />
             </ThemeContext.Provider>
           </Canvas>
-        )}
         
         {/* For iPhone/Static, we need to render the content outside the Canvas ScrollControls */}
-        {shouldUseStaticMode && !isLoading && (
-           <div className={styles.iphoneScrollContainer} style={{ overflowY: 'auto', height: '100vh', scrollBehavior: 'smooth' }}>
-              <main ref={mainRef} className={styles.main}>
-                 <div className={styles.iphoneHome}>
-                   <Home onNavigate={scrollToSection} />
-                 </div>
-                <div 
-                  id="homeToAboutArrow" 
-                  className={shouldUseStaticMode ? styles.iphoneArrow : undefined}
-                  onClick={() => scrollToSection('about')}
-                >
-                  <div className="curveWrapper">
-                    <div className="curve"></div>
-                  </div>
-                  <div className="point"></div>
-                </div>
-                <About />
-                <Skills />
-                <Projects theme={theme} />
-                <div className={styles.spacer} />
-                <Contact />
-                
-             </main>
-          </div>
-        )}
+
       </ErrorBoundary>
-      <DesktopExperiencePopup />
+
       {!isLoading && (
         <motion.div 
           className={styles.footer}
@@ -319,87 +280,5 @@ function ErrorFallback({ error }: { error: Error }) {
         {error.message}
       </details>
     </div>
-  );
-}
-
-function DesktopExperiencePopup() {
-  const [isVisible, setIsVisible] = useState(false);
-  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  useEffect(() => {
-    if (isMobile) {
-      // Show popup on every reload for mobile devices
-      const timer = setTimeout(() => setIsVisible(true), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isMobile]);
-
-  const handleDismiss = () => {
-    setIsVisible(false);
-  };
-
-  if (!isVisible) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 50 }}
-      style={{
-        position: 'fixed',
-        bottom: '80px',
-        left: '20px',
-        right: '20px',
-        background: 'rgba(20, 20, 20, 0.95)',
-        backdropFilter: 'blur(10px)',
-        padding: '20px',
-        borderRadius: '16px',
-        zIndex: 10000,
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'start', gap: '15px' }}>
-        <div style={{ 
-          background: 'rgba(255,255,255,0.1)', 
-          padding: '10px', 
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
-        </div>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ margin: '0 0 4px 0', color: 'white', fontSize: '16px', fontWeight: 600 }}>Best on Desktop</h3>
-          <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '14px', lineHeight: '1.4' }}>
-            This portfolio features a rich 3D experience that really shines on a larger screen. You can still browse here, but we recommend visiting on a computer for the full journey.
-          </p>
-        </div>
-      </div>
-      <button 
-        onClick={handleDismiss}
-        style={{
-          background: 'white',
-          color: 'black',
-          border: 'none',
-          padding: '12px',
-          borderRadius: '10px',
-          fontSize: '14px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          marginTop: '4px'
-        }}
-      >
-        Got it, thanks
-      </button>
-    </motion.div>
   );
 }
