@@ -8,12 +8,12 @@ const mockObserve = vi.fn();
 const mockDisconnect = vi.fn();
 
 beforeEach(() => {
-  global.IntersectionObserver = vi.fn(function(this: any, _callback: any) {
+  global.IntersectionObserver = vi.fn(function(this: IntersectionObserver) {
     this.observe = mockObserve;
     this.disconnect = mockDisconnect;
     this.takeRecords = vi.fn();
     this.unobserve = vi.fn();
-  }) as any;
+  }) as unknown as typeof IntersectionObserver;
   
   // Mock getElementById
   vi.spyOn(document, 'getElementById').mockImplementation((id) => {
@@ -109,18 +109,19 @@ describe('Navigation Branch Coverage', () => {
     render(<Navigation scrollToSection={vi.fn()} />);
 
     // Get the observer callback
-    const observerCallback = (global.IntersectionObserver as any).mock.calls[0][0];
+    const observerCallback = (global.IntersectionObserver as unknown as { mock: { calls: Array<[IntersectionObserverCallback]> } }).mock.calls[0][0];
 
     // 1. Test with no intersecting entries
+    const mockObserver = {} as IntersectionObserver;
     act(() => {
-      observerCallback([]);
+      observerCallback([], mockObserver);
     });
 
     // 2. Test with intersecting entry (different ID)
     act(() => {
       observerCallback([
-        { isIntersecting: true, intersectionRatio: 0.8, target: { id: 'about' } }
-      ]);
+        { isIntersecting: true, intersectionRatio: 0.8, target: { id: 'about' } } as IntersectionObserverEntry
+      ], mockObserver);
     });
     // Should update to 'about'
     await waitFor(() => {
@@ -130,8 +131,8 @@ describe('Navigation Branch Coverage', () => {
     // 3. Test with intersecting entry (SAME ID) - covers the 'prev === visibleEntry.target.id' branch
     act(() => {
       observerCallback([
-        { isIntersecting: true, intersectionRatio: 0.8, target: { id: 'about' } }
-      ]);
+        { isIntersecting: true, intersectionRatio: 0.8, target: { id: 'about' } } as IntersectionObserverEntry
+      ], mockObserver);
     });
     // Should still be 'about'
     expect(screen.getByText('About').closest('button')).toHaveClass('active');
@@ -139,9 +140,9 @@ describe('Navigation Branch Coverage', () => {
     // 4. Test with multiple entries, picking the one with highest ratio
     act(() => {
       observerCallback([
-        { isIntersecting: true, intersectionRatio: 0.5, target: { id: 'skills' } },
-        { isIntersecting: true, intersectionRatio: 0.9, target: { id: 'projects' } }
-      ]);
+        { isIntersecting: true, intersectionRatio: 0.5, target: { id: 'skills' } } as IntersectionObserverEntry,
+        { isIntersecting: true, intersectionRatio: 0.9, target: { id: 'projects' } } as IntersectionObserverEntry
+      ], mockObserver);
     });
     // Should update to 'projects'
     expect(screen.getByText('Projects').closest('button')).toHaveClass('active');

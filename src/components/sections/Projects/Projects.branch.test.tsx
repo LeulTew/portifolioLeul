@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Projects } from './Projects';
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it } from 'vitest';
 import React from 'react';
 
 // Mock framer-motion
@@ -11,7 +11,7 @@ vi.mock('framer-motion', async () => {
   return {
     ...actual,
     motion: {
-      div: React.forwardRef(({ children, className, style, onClick, onMouseEnter, onMouseLeave, ...props }: any, ref: any) => (
+      div: React.forwardRef(({ children, className, style, onClick, ...props }: any, ref: any) => (
         <div ref={ref} className={className} style={style} onClick={onClick} {...props}>
           {children}
         </div>

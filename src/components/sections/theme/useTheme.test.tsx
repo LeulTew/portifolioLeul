@@ -8,7 +8,7 @@ vi.mock('react', async () => {
   const actual = await vi.importActual('react');
   return {
     ...actual,
-    useContext: (context: any) => {
+    useContext: () => {
       // If it's our ThemeContext (we can't easily check identity here due to mocks),
       // but we can check if we want to force an error.
       // Actually, for this test file, we ONLY want to test the error case.

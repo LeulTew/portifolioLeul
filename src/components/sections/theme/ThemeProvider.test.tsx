@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ThemeProvider, getInitialTheme } from './ThemeProvider';
+import { ThemeProvider } from './ThemeProvider';
+import { getInitialTheme } from './themeUtils';
 import { useTheme } from './useTheme';
 import { vi } from 'vitest';
 
@@ -116,7 +117,7 @@ describe('getInitialTheme', () => {
   });
 
   it('returns "dark" when window is undefined (SSR)', () => {
-    // @ts-ignore
+    // @ts-expect-error - testing SSR behavior by temporarily removing window
     delete global.window;
     expect(getInitialTheme()).toBe('dark');
   });

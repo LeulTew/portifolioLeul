@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, act } from '@testing-library/react';
 import { Navigation } from './Navigation';
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it } from 'vitest';
 import { ThemeContext } from './sections/theme/ThemeContext';
 
 // Mock IntersectionObserver

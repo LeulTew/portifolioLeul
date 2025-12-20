@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent, act, createEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { Projects } from './Projects';
 import { vi, describe, it, expect } from 'vitest';
 

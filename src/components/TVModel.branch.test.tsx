@@ -2,7 +2,6 @@ import { render } from '@testing-library/react';
 import { TVModel } from './TVModel';
 import { vi, describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import React from 'react';
 
 // Mock three.js
 vi.mock('three', async () => {
@@ -11,7 +10,7 @@ vi.mock('three', async () => {
     ...actual,
     MeshBasicMaterial: vi.fn(),
     Mesh: class Mesh extends actual.Mesh {
-      constructor(geometry?: any, material?: any) {
+      constructor(geometry?: THREE.BufferGeometry, material?: THREE.Material) {
         super(geometry, material);
         this.name = '';
       }
@@ -23,7 +22,7 @@ vi.mock('three', async () => {
 vi.mock('@react-three/drei', () => ({
   useGLTF: () => ({
     scene: {
-      traverse: (callback: (child: any) => void) => {
+      traverse: (callback: (child: THREE.Object3D) => void) => {
         // Mock children with different names
         const screenMesh = new THREE.Mesh();
         screenMesh.name = 'ScreenMesh';

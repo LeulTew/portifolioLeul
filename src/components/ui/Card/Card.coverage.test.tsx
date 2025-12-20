@@ -6,6 +6,7 @@ import { vi, describe, it, expect } from 'vitest';
 // or ensuring cardRef.current is null during render and event handling
 vi.mock('framer-motion', () => ({
   motion: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     div: ({ children, onMouseMove, onMouseLeave, className }: any) => (
       <div 
         className={className}

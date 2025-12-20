@@ -1,7 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ContactForm } from './ContactForm';
 import { vi, describe, it, expect } from 'vitest';
-import React from 'react';
 
 // Mock useContactForm to return specific states
 vi.mock('./useContactForm', () => ({

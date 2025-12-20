@@ -11,7 +11,7 @@ vi.mock('framer-motion', async () => {
   return {
     ...actual,
     motion: {
-      div: React.forwardRef(({ children, className, style, onClick, onMouseEnter, onMouseLeave, ...props }: any, ref: any) => (
+      div: React.forwardRef(({ children, className, style, onClick, onMouseEnter, onMouseLeave, ...props }: any) => (
         <div
           // No ref here to simulate null ref for carousel
           className={className}
