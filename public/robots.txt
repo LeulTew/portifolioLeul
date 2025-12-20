@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://portifolio-leul.vercel.app/sitemap.xml
+
+# Host
+Host: https://portifolio-leul.vercel.app
