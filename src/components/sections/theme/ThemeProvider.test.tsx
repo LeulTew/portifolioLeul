@@ -127,11 +127,11 @@ describe('getInitialTheme', () => {
     expect(getInitialTheme()).toBe('light');
   });
 
-  it('returns "light" for mobile devices when no theme is saved', () => {
+  it('returns "dark" for mobile devices when no theme is saved (since they are redirected)', () => {
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
       'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
     );
-    expect(getInitialTheme()).toBe('light');
+    expect(getInitialTheme()).toBe('dark');
   });
 
   it('returns "dark" for desktop devices when no theme is saved', () => {

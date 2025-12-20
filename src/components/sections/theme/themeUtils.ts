@@ -6,9 +6,8 @@ export function getInitialTheme(): Theme {
     if (savedTheme) {
       return savedTheme as Theme;
     }
-    // Default to light mode on Mobile, dark mode on Desktop
-    const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
-    return isMobile ? 'light' : 'dark';
+    // Default to dark mode for all supported devices (Desktop and Tablet)
+    return 'dark';
   }
   return 'dark';
 }

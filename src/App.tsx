@@ -24,13 +24,7 @@ function App() {
   const [scrollPages, setScrollPages] = useState(() => {
     if (typeof window !== 'undefined') {
       const width = window.innerWidth;
-      if (width <= 380) {
-        console.log('SETTING SCROLL PAGES TO 11 for narrow mobile, width:', width);
-        return 11; // Narrow mobile - needs more scroll
-      } else if (width < 768) {
-        console.log('SETTING SCROLL PAGES TO 8.5 for mobile, width:', width);
-        return 8.5; // Standard Mobile
-      } else if (width >= 768 && width <= 1366) {
+      if (width >= 768 && width <= 1366) {
         console.log('SETTING SCROLL PAGES TO 9.5 for 720p, width:', width);
         return 9.5; // 720p - needs more scroll
       } else if (width > 1366 && width < 2000) {
@@ -85,7 +79,6 @@ function App() {
     if (!mainRef.current) return;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight || 1 : 1;
     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth || 1 : 1;
-    const isMobile = viewportWidth < 768;
     const is720p = viewportWidth >= 768 && viewportWidth <= 1366;
     const is1080p = viewportWidth > 1366 && viewportWidth < 2000;
     
@@ -98,8 +91,7 @@ function App() {
     // Large Screens (>= 2000px): 0
     
     let extraBuffer = 0;
-    if (isMobile) extraBuffer = 5.0; // Increased from 3.2 to fix iPhone scroll truncation
-    else if (is720p) extraBuffer = 16.5; // Increased for 720p
+    if (is720p) extraBuffer = 16.5; // Increased for 720p
     else if (is1080p) extraBuffer = 15.0;
     
     const calculatedPages = Math.max(contentHeight / viewportHeight, 1.2) + extraBuffer;
@@ -112,7 +104,6 @@ function App() {
       viewportWidth,
       viewportHeight,
       contentHeight,
-      isMobile,
       is720p,
       is1080p,
       extraBuffer,
@@ -174,7 +165,7 @@ function App() {
       <Navigation scrollToSection={scrollToSection} />
       <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Canvas
-            dpr={[1, typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 1.5]}
+            dpr={[1, 1.5]}
             camera={{
               position: [0, 0, 10],
               fov: 50,
@@ -221,7 +212,7 @@ function App() {
             </ThemeContext.Provider>
           </Canvas>
         
-        {/* For iPhone/Static, we need to render the content outside the Canvas ScrollControls */}
+
 
       </ErrorBoundary>
 

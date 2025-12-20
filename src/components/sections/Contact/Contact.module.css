@@ -196,7 +196,8 @@
   .grid {
     gap: 1.25rem;
   }
-  .input, .textarea {
+  .input,
+  .textarea {
     padding: 0.65rem;
     font-size: 0.8rem;
   }
@@ -230,89 +231,8 @@
   .grid {
     gap: 2.5rem;
   }
-  .input, .textarea {
+  .input,
+  .textarea {
     font-size: 0.95rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .grid {
-    grid-template-columns: 1fr;
-    gap: 3rem;
-  }
-
-  .inputGroup {
-    grid-template-columns: 1fr;
-  }
-
-  .contact {
-    padding: 0 1rem 4rem;
-    margin-top: -100vh; /* Pull extremely close to Projects */
-    min-height: auto;
-  }
-  
-  .title {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-  }
-  
-  .subtitle {
-    font-size: 0.85rem;
-  }
-  
-  .formContainer {
-    padding: 1.5rem 1rem;
-  }
-  
-  .input, .textarea {
-    font-size: 0.85rem;
-    padding: 0.75rem;
-  }
-  
-  .infoItem {
-    padding: 1rem;
-  }
-  
-  .infoLabel {
-    font-size: 0.7rem;
-  }
-  
-  .infoValue {
-    font-size: 0.85rem;
-  }
-  
-  .submitButton {
-    padding: 0.85rem 1.75rem;
-    font-size: 0.9rem;
-  }
-}
-
-/* Very Small Mobile Devices (e.g. Galaxy S8, iPhone SE) */
-@media (max-width: 380px) {
-  .contact {
-    margin-top: -120vh; /* Pull even closer for small screens */
-    padding-bottom: 6rem;
-  }
-  
-  .title {
-    font-size: 1.75rem;
-    margin-bottom: 0.75rem;
-  }
-  
-  .subtitle {
-    font-size: 0.75rem;
-  }
-  
-  .formContainer {
-    padding: 1rem 0.75rem;
-  }
-  
-  .input, .textarea {
-    font-size: 0.8rem;
-    padding: 0.6rem;
-  }
-  
-  .infoItem {
-    padding: 0.75rem;
   }
 }

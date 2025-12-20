@@ -58,7 +58,7 @@ export function ExpandableTabs({
   theme: propTheme,
 }: ExpandableTabsProps) {
   const [selected, setSelected] = React.useState<number | null>(0);
-  const [isMobile, setIsMobile] = React.useState(false);
+
   const [is720p, setIs720p] = React.useState(false);
   const context = React.useContext(ThemeContext);
   const theme = propTheme || context?.theme || 'dark';
@@ -72,7 +72,7 @@ export function ExpandableTabs({
   React.useEffect(() => {
     const checkResponsive = () => {
       const width = window.innerWidth;
-      setIsMobile(width < 768);
+
       setIs720p(width >= 768 && width <= 1366);
     };
     checkResponsive();
@@ -104,7 +104,7 @@ export function ExpandableTabs({
         }
 
         const Icon = tab.icon;
-        const displayTitle = isMobile && tab.mobileTitle ? tab.mobileTitle : tab.title;
+        const displayTitle = tab.title;
         const isSelected = selected === index;
         
         return (

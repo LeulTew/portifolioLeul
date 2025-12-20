@@ -111,8 +111,8 @@
   will-change: transform;
 }
 
-:global([data-theme='light']) .home,
-:global([data-theme='light']) .home * {
+:global([data-theme="light"]) .home,
+:global([data-theme="light"]) .home * {
   mix-blend-mode: normal;
 }
 
@@ -139,10 +139,6 @@
   mix-blend-mode: normal;
   opacity: 0.9;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.mobileProfileImage {
-  display: none;
 }
 
 /* 720p / Small Laptop Adjustments (Very Small) */
@@ -186,81 +182,6 @@
   }
 }
 
-@media (max-width: 768px) {
-  .content {
-    padding-left: 0;
-  }
-
-  .header {
-    align-items: center;
-    text-align: center;
-  }
-
-  .info {
-    flex-direction: column;
-    gap: 0.5rem;
-    justify-content: center;
-  }
-
-  .divider {
-    display: none;
-  }
-
-  .description {
-    max-width: 100%;
-    font-size: 1rem;
-    text-align: center;
-  }
-
-  .imagePlaceholder {
-    width: 100px;
-    height: 100px;
-    font-size: 2.5rem;
-  }
-
-  .circleText {
-    display: block;
-  }
-
-  .circleImage {
-    display: none;
-  }
-
-  .profileImage {
-    display: none;
-  }
-
-  .mobileProfileImage {
-    display: block;
-    width: 60vw;
-    max-width: 300px;
-    margin: 0 auto 2rem;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  }
-
-  .mobileProfileImage img {
-    width: 100%;
-    height: auto;
-    display: block;
-    filter: contrast(1.1) brightness(1.05);
-  }
-}
-
-/* iPhone-specific overrides - must come after mobile styles */
-@supports (-webkit-touch-callout: none) {
-  /* This targets iOS Safari specifically */
-  @media (max-width: 768px) {
-    .home {
-      padding-top: 8rem !important; /* Reduce top padding */
-      padding-bottom: 0 !important; /* Remove bottom padding */
-      margin-bottom: 0 !important; /* Remove bottom margin */
-      min-height: auto !important; /* Don't force height */
-    }
-  }
-}
-
 @media (max-height: 700px) {
   .description {
     font-size: 0.875rem;
@@ -271,4 +192,4 @@
     height: 90px;
     font-size: 2rem;
   }
-} 
+}

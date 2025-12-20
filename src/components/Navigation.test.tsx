@@ -67,22 +67,7 @@ describe('Navigation', () => {
     expect(mockToggleTheme).toHaveBeenCalled();
   });
 
-  it('opens and closes mobile menu', () => {
-    render(
-      <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
-        <Navigation scrollToSection={mockScrollToSection} />
-      </ThemeContext.Provider>
-    );
-    const menuButton = screen.getByLabelText('Toggle menu');
-    fireEvent.click(menuButton);
-    // Check if mobile menu items are visible (might need to check for class or visibility)
-    // Click a mobile item
-    const mobileHome = screen.getAllByText('Home')[1]; // Assuming second one is in mobile menu
-    if (mobileHome) {
-        fireEvent.click(mobileHome);
-        expect(mockScrollToSection).toHaveBeenCalledWith('home');
-    }
-  });
+
 
   it('handles scroll for active section', () => {
     render(
@@ -126,35 +111,9 @@ describe('Navigation', () => {
     fireEvent(window, new Event('resize'));
   });
 
-  it('handles theme toggle in mobile menu', () => {
-    render(
-      <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
-        <Navigation scrollToSection={mockScrollToSection} />
-      </ThemeContext.Provider>
-    );
-    
-    const menuButton = screen.getByLabelText('Toggle menu');
-    fireEvent.click(menuButton);
-    
-    // Find theme toggle in mobile menu
-    const themeButtons = screen.getAllByLabelText('Toggle theme');
-    if (themeButtons.length > 1) {
-      fireEvent.click(themeButtons[1]); // Mobile theme toggle
-      expect(mockToggleTheme).toHaveBeenCalled();
-    }
-  });
 
-  it('closes mobile menu when clicking outside', () => {
-    render(
-      <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
-        <Navigation scrollToSection={mockScrollToSection} />
-      </ThemeContext.Provider>
-    );
-    
-    const menuButton = screen.getByLabelText('Toggle menu');
-    // Click menu button again to close
-    fireEvent.click(menuButton);
-  });
+
+
 
   it('triggers IntersectionObserver callback when sections are visible', () => {
     // Create mock sections

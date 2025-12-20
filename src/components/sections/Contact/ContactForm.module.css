@@ -84,24 +84,3 @@
 .error {
   color: #ef4444;
 }
-
-@media (max-width: 768px) {
-  .form {
-    gap: 1.5rem;
-  }
-
-  .input,
-  .textarea {
-    padding: 0.875rem;
-    font-size: 0.875rem;
-  }
-
-  .textarea {
-    min-height: 120px;
-  }
-
-  .submitButton {
-    padding: 0.875rem;
-    font-size: 0.9rem;
-  }
-}

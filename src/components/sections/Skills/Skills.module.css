@@ -148,41 +148,6 @@
   }
 }
 
-@media (max-width: 768px) {
-  .skills {
-    margin-top: 20rem;
-    padding-top: 15rem;
-  }
-
-  .content {
-    padding-left: 0;
-  }
-
-  .header {
-    text-align: center;
-  }
-
-  .skillsGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .skillCard {
-    padding: 1.25rem;
-  }
-
-  .categoryTitle {
-    font-size: 1.25rem;
-  }
-
-  .skill {
-    font-size: 0.75rem;
-  }
-
-  .subtitle {
-    font-size: 0.875rem;
-  }
-}
-
 @media (max-height: 700px) {
   .skills {
     margin-top: 0;
