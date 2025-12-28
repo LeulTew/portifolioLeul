@@ -242,5 +242,49 @@ export const projectsData: Project[] = [
     githubUrl: "",
     demoUrl: "https://exitpractice.wasmer.app/",
     categories: ["Web Development"]
+  },
+  {
+    id: 24,
+    title: "AgendaFlow AI",
+    description: "AI-Powered Meeting & Agenda Management",
+    longDescription: "**AgendaFlow AI** is a high-performance meeting management engine that leverages **Google Gemini** to transform raw inputs into structured agendas.\n\n• **Intelligent Scanner**: Camera-based extraction of handwritten or printed agendas with real-time AI processing.\n• **Document Intelligence**: Upload documents or provide descriptions to generate comprehensive meeting structures.\n• **Excel Integration**: Full-featured Excel-like management for topics, stakeholders, and timing.\n• **Multi-Modal AI**: Supports camera uploads, document parsing, and natural language descriptions.\n\nDesigned for maximum productivity with a sleek, glassmorphic technical interface.",
+    tech: "REACT, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI, LUCIDE REACT",
+    image: "/projects/agenda-flow.png",
+    githubUrl: "https://github.com/LeulTew/AgendaFlow-AI",
+    demoUrl: "https://agenda-flow-ai.vercel.app",
+    categories: ["AI/DataScience", "Web Development"]
+  },
+  {
+    id: 25,
+    title: "Kitefew",
+    description: "Camera-Tracked Hand Gesture Game",
+    longDescription: "**Kitefew** is an experimental spatial computing game that brings the 'Fruit Ninja' experience to your browser using **MediaPipe** finger tracking.\n\n• **Computer Vision**: Real-time tracking of the index finger via camera—no touch or mouse required.\n• **Spatial Interaction**: Slicing physics and interaction layers mapped to physical hand movements.\n• **Performance**: Optimized for web execution with low-latency gesture recognition.\n• **Modern Aesthetics**: Neon-accented dark UI with fluid animations and responsive gameplay.\n\nA showcase of interactive computer vision and web-based gaming technology.",
+    tech: "JAVASCRIPT, MEDIAPIPE, VITE, VANILLA CSS",
+    image: "/projects/kitefew.png",
+    githubUrl: "https://github.com/LeulTew/Kitefew",
+    demoUrl: "https://kitefew.vercel.app/",
+    categories: ["Graphics & Algorithms", "Web Development"]
+  },
+  {
+    id: 26,
+    title: "System Design Guide",
+    description: "Comprehensive Architectural Learning Platform",
+    longDescription: "A specialized platform dedicated to mastering **System Design** and high-scale engineering principles.\n\n• **Deep Dives**: Detailed guides on network topolgy, cascading failures, and distributed systems.\n• **Engineering First**: Focuses on professional engineering over simple prototyping ('Engineering is for production').\n• **Interactive content**: Structured learning paths for mastering technical constraints and system reliability.\n• **Dark Mode UI**: Minimalist, technical aesthetic designed for focused technical reading and study.",
+    tech: "NEXT.JS, TYPESCRIPT, TAILWIND CSS, MDX",
+    image: "/projects/system-design.png",
+    githubUrl: "https://github.com/LeulTew/system-design-guide-blog",
+    demoUrl: "https://system-design-guide-blog.vercel.app/",
+    categories: ["Web Development"]
+  },
+  {
+    id: 27,
+    title: "EthioDriveMaster",
+    description: "Next-Gen Driving License Practice Platform",
+    longDescription: "**EthioDriveMaster** is the definitive digital guide for acing the Ethiopian driving license practical exam.\n\n• **Step-by-Step Guides**: Comprehensive practical guides created from real driving experience.\n• **Visual Learning**: Interactive walkthroughs of the Kaliti practical exam tracks and tips.\n• **Bilingual Support**: Targeted at providing local-specific knowledge in a modern web interface.\n• **Premium UI**: Sleek, high-contrast dark theme with smooth navigation and 'Kaliti Approved' resources.",
+    tech: "REACT, TYPESCRIPT, TAILWIND CSS, FRAMER MOTION",
+    image: "/projects/ethiodrive.png",
+    githubUrl: "https://github.com/LeulTew/EthioDriveMaster",
+    demoUrl: "https://ethio-drive-master.vercel.app",
+    categories: ["Web Development"]
   }
 ];
