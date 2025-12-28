@@ -1,6 +1,9 @@
-import { useMemo } from 'react';
-import { useGLTF } from '@react-three/drei';
+import { useMemo, useRef, useEffect } from 'react';
+import { useGLTF, useAnimations } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+
+const MODEL_PATH = '/models/me_animated_opt.glb';
 
 interface MeModelProps {
   position?: [number, number, number];
@@ -10,8 +13,27 @@ interface MeModelProps {
 }
 
 export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1, 1, 1] }: MeModelProps) {
-  // Load the GLB model
-  const { scene } = useGLTF('/models/me-opt.glb');
+  const groupRef = useRef<THREE.Group>(null);
+  
+  // Load the GLB model with animations
+  const { scene, animations } = useGLTF(MODEL_PATH);
+  
+  // Setup animations
+  const { actions, names } = useAnimations(animations, groupRef);
+
+  // Play animations on mount
+  useEffect(() => {
+    console.log('GLB Animation names:', names);
+    if (names.length > 0 && actions) {
+      // Play all animations
+      names.forEach((name) => {
+        const action = actions[name];
+        if (action) {
+          action.reset().fadeIn(0.5).play();
+        }
+      });
+    }
+  }, [actions, names]);
 
   // Configure shadows for the model
   useMemo(() => {
@@ -23,12 +45,20 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
     });
   }, [scene]);
 
+  // Fallback: subtle floating if no animations
+  useFrame((state) => {
+    if (groupRef.current && names.length === 0) {
+      const time = state.clock.getElapsedTime();
+      groupRef.current.position.y = position[1] + Math.sin(time * 0.8) * 0.15;
+    }
+  });
+
   return (
-    <group position={position} rotation={rotation} scale={scale}>
+    <group ref={groupRef} position={position} rotation={rotation} scale={scale}>
       <primitive object={scene} />
     </group>
   );
 }
 
 // Preload the model
-useGLTF.preload('/models/me-opt.glb');
+useGLTF.preload(MODEL_PATH);

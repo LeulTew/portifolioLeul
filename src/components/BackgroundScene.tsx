@@ -269,9 +269,9 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           {/* Placed next to the prism [12, 2, -15] */}
           {/* Adjusted Y to be on ground (-4) */}
           <MeModel 
-            position={[18, 1.8, -15]} 
-            scale={[7, 7, 7]} 
-            rotation={[0, -Math.PI / 2.2, 0]} 
+            position={[22, -2.5, -15]} 
+            scale={[8, 8, 8]} 
+            rotation={[0, 0, 0]} 
           />
           
           {/* TV Model with Video */}
