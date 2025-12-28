@@ -271,7 +271,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           <MeModel 
             position={[22, -2.5, -15]} 
             scale={[8, 8, 8]} 
-            rotation={[0, 0, 0]} 
+            rotation={[0, Math.PI / 0.55, 0]} 
           />
           
           {/* TV Model with Video */}
