@@ -263,7 +263,7 @@ export const projectsData: Project[] = [
     image: "/projects/kitefew.png",
     githubUrl: "https://github.com/LeulTew/Kitefew",
     demoUrl: "https://kitefew.vercel.app/",
-    categories: ["Graphics & Algorithms", "Web Development"]
+    categories: ["AI/DataScience", "Desktop & Games", "Web Development"]
   },
   {
     id: 26,
@@ -274,7 +274,7 @@ export const projectsData: Project[] = [
     image: "/projects/system-design.png",
     githubUrl: "https://github.com/LeulTew/system-design-guide-blog",
     demoUrl: "https://system-design-guide-blog.vercel.app/",
-    categories: ["Web Development"]
+    categories: ["Web Development", "AI/DataScience"]
   },
   {
     id: 27,
@@ -285,6 +285,6 @@ export const projectsData: Project[] = [
     image: "/projects/ethiodrive.png",
     githubUrl: "https://github.com/LeulTew/EthioDriveMaster",
     demoUrl: "https://ethio-drive-master.vercel.app",
-    categories: ["Web Development"]
+    categories: ["Web Development", "Mobile Apps"]
   }
 ];
