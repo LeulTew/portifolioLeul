@@ -68,8 +68,8 @@ describe('Projects', () => {
 
   it('handles project click to expand and collapse', () => {
     render(<Projects />);
-    // Find a project card. We know "Car Rental Platform" is in the data.
-    const projectTitle = screen.getByText('Car Rental Platform');
+    // Find a project card. We know "Ignition" is in the data.
+    const projectTitle = screen.getAllByText('Ignition')[0];
     const projectCard = projectTitle.closest('div'); // Adjust selector as needed
     
     if (projectCard) {
@@ -129,7 +129,7 @@ describe('Projects', () => {
 
   it('handles mouse enter and leave on project cards', () => {
     render(<Projects />);
-    const projectTitle = screen.getByText('Car Rental Platform');
+    const projectTitle = screen.getAllByText('Ignition')[0];
     const projectCard = projectTitle.closest('div');
     
     if (projectCard) {
@@ -142,8 +142,8 @@ describe('Projects', () => {
     render(<Projects />);
     
     // Find multiple projects
-    const project1 = screen.getByText('Car Rental Platform').closest('div');
-    const project2 = screen.getByText('CS Exit Practice').closest('div');
+    const project1 = screen.getAllByText('Ignition')[0].closest('div');
+    const project2 = screen.getAllByText('Kitefew')[0].closest('div');
     
     if (project1 && project2) {
       // Expand first project
@@ -161,7 +161,7 @@ describe('Projects', () => {
     render(<Projects />);
     
     // Expand a project to see links
-    const projectTitle = screen.getByText('Ignition');
+    const projectTitle = screen.getAllByText('Ignition')[0];
     fireEvent.click(projectTitle);
     
     // Find a link (Visit Site or GitHub)
@@ -209,7 +209,7 @@ describe('Projects', () => {
 
   it('prevents click when dragging', () => {
     render(<Projects />);
-    const projectCard = screen.getByText('Car Rental Platform').closest('div');
+    const projectCard = screen.getAllByText('Ignition')[0].closest('div');
     const carousel = screen.getByTestId('carousel');
     
     if (projectCard) {
@@ -278,7 +278,7 @@ describe('Projects', () => {
 
   it('handles project expansion toggle', () => {
     render(<Projects />);
-    const projectCard = screen.getByText('Car Rental Platform').closest('div');
+    const projectCard = screen.getAllByText('Ignition')[0].closest('div');
     
     if (projectCard) {
       // Expand
@@ -330,7 +330,7 @@ describe('Projects', () => {
     render(<Projects />);
 
     // Expand a project to see links
-    const project = screen.getByText('Car Rental Platform');
+    const project = screen.getAllByText('Ignition')[0];
     fireEvent.click(project);
 
     // Find a link

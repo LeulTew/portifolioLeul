@@ -62,6 +62,10 @@ vi.mock('lucide-react', () => ({
   Gamepad2: () => <svg />,
   Shapes: () => <svg />,
   Grid3x3: () => <svg />,
+  ChevronLeft: () => <svg />,
+  ChevronRight: () => <svg />,
+  ArrowUpRight: () => <svg />,
+  Github: () => <svg />,
 }));
 
 describe('Projects Null Ref Coverage', () => {

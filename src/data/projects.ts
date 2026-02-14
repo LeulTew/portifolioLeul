@@ -23,6 +23,17 @@ export const projectsData: Project[] = [
     categories: ["AI/DataScience", "Web Development"]
   },
   {
+    id: 25,
+    title: "Kitefew",
+    description: "Camera-Tracked Hand Gesture Game",
+    longDescription: "**Kitefew** is an experimental spatial computing game that brings the 'Fruit Ninja' experience to your browser using **MediaPipe** finger tracking.\n\n• **Computer Vision**: Real-time tracking of the index finger via camera—no touch or mouse required.\n• **Spatial Interaction**: Slicing physics and interaction layers mapped to physical hand movements.\n• **Performance**: Optimized for web execution with low-latency gesture recognition.\n• **Modern Aesthetics**: Neon-accented dark UI with fluid animations and responsive gameplay.\n\nA showcase of interactive computer vision and web-based gaming technology.",
+    tech: "JAVASCRIPT, MEDIAPIPE, VITE, VANILLA CSS",
+    image: "/projects/kitefew.png",
+    githubUrl: "https://github.com/LeulTew/Kitefew",
+    demoUrl: "https://kitefew.vercel.app/",
+    categories: ["AI/DataScience", "Desktop & Games", "Web Development"]
+  },
+  {
     id: 1,
     title: "Car Rental Platform",
     description: "Full-stack app with 3D vehicle visualization",
@@ -253,17 +264,6 @@ export const projectsData: Project[] = [
     githubUrl: "https://github.com/LeulTew/AgendaFlow-AI",
     demoUrl: "https://agenda-flow-ai.vercel.app",
     categories: ["AI/DataScience", "Web Development"]
-  },
-  {
-    id: 25,
-    title: "Kitefew",
-    description: "Camera-Tracked Hand Gesture Game",
-    longDescription: "**Kitefew** is an experimental spatial computing game that brings the 'Fruit Ninja' experience to your browser using **MediaPipe** finger tracking.\n\n• **Computer Vision**: Real-time tracking of the index finger via camera—no touch or mouse required.\n• **Spatial Interaction**: Slicing physics and interaction layers mapped to physical hand movements.\n• **Performance**: Optimized for web execution with low-latency gesture recognition.\n• **Modern Aesthetics**: Neon-accented dark UI with fluid animations and responsive gameplay.\n\nA showcase of interactive computer vision and web-based gaming technology.",
-    tech: "JAVASCRIPT, MEDIAPIPE, VITE, VANILLA CSS",
-    image: "/projects/kitefew.png",
-    githubUrl: "https://github.com/LeulTew/Kitefew",
-    demoUrl: "https://kitefew.vercel.app/",
-    categories: ["AI/DataScience", "Desktop & Games", "Web Development"]
   },
   {
     id: 26,

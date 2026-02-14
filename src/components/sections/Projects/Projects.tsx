@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
-import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
 import { projectsData } from '../../../data/projects';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
+import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 
 const categories = [
   { title: 'All', icon: Grid3x3 },
@@ -16,18 +17,89 @@ const categories = [
 
 export function Projects({ theme }: { theme?: string }) {
   const containerRef = useRef<HTMLElement>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
-  const dragX = useMotionValue(0);
-  const dragStartX = useRef(0);
-  const projectWidth = useRef(0);
+  const [isContactInView, setIsContactInView] = useState(false);
+
+  // Replicate Nav Bar's section tracking logic to ensure consistent behavior
+  useEffect(() => {
+    const sections = ['projects', 'contact'];
+    
+    const handleScrollCheck = () => {
+      const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
+      if (isAtBottom) {
+        setIsContactInView(true);
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
+        
+        if (isAtBottom) {
+          setIsContactInView(true);
+          return;
+        }
+
+        const visibleEntry = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (visibleEntry?.target?.id === 'contact') {
+          setIsContactInView(true);
+        } else if (visibleEntry?.target?.id === 'projects') {
+          setIsContactInView(false);
+        }
+      },
+      { 
+        threshold: [0.15, 0.35, 0.55],
+        rootMargin: '-35% 0px -35% 0px' 
+      }
+    );
+
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    window.addEventListener('scroll', handleScrollCheck);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', handleScrollCheck);
+    };
+  }, []);
 
   // Filter projects based on active category
   const filteredProjects = activeCategory === 'All' 
     ? projectsData 
     : projectsData.filter(project => project.categories.includes(activeCategory));
+
+  // Map projects to FocusRail items
+  const railItems: FocusRailItem[] = filteredProjects.map((project) => ({
+    id: project.id,
+    title: project.title,
+    description: project.longDescription ? (
+      <div className="flex flex-col gap-3 text-left">
+        {project.longDescription.split('\n').map((line, i) => {
+          if (!line.trim()) return null;
+          return (
+            <p key={i} className="leading-relaxed text-neutral-300">
+              {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
+                part.startsWith('**') && part.endsWith('**') 
+                  ? <strong key={j} className="text-emerald-400 font-bold">{part.slice(2, -2)}</strong> 
+                  : part
+              )}
+            </p>
+          );
+        })}
+      </div>
+    ) : (
+      project.description
+    ),
+    imageSrc: project.image,
+    demoUrl: project.demoUrl,
+    repoUrl: project.githubUrl,
+    meta: project.categories.join(' • '),
+  }));
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -35,92 +107,6 @@ export function Projects({ theme }: { theme?: string }) {
   });
 
   const y = useTransform(scrollYProgress, [0, 1], [100, -100]);
-  const x = useSpring(dragX, { 
-    damping: 30,
-    stiffness: 200,
-    mass: 0.5
-  });
-
-  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!carouselRef.current || e.button !== 0) return;
-    setIsDragging(true);
-    dragStartX.current = e.clientX;
-    projectWidth.current = carouselRef.current.offsetWidth * 0.45;
-    // e.preventDefault(); // Removed to allow clicks
-  };
-
-  const handleDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    const delta = e.clientX - dragStartX.current;
-    const newX = dragX.get() + delta;
-    dragX.set(newX);
-    dragStartX.current = e.clientX;
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
-
-  const handleProjectClick = (id: string) => {
-    if (isDragging) return;
-    
-    // Toggle expansion: if already expanded, collapse it
-    if (expandedId === id) {
-      setExpandedId(null);
-    } else {
-      setExpandedId(id);
-    }
-  };
-
-
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    setIsDragging(true);
-    dragStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-    const delta = e.touches[0].clientX - dragStartX.current;
-    const newX = dragX.get() + delta;
-    dragX.set(newX);
-    dragStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (!carouselRef.current) return;
-      projectWidth.current = carouselRef.current.offsetWidth * 0.45;
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Initial calculation
-
-    const carousel = carouselRef.current;
-    if (carousel) {
-      const onWheel = (e: WheelEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const delta = e.deltaY;
-        const newX = dragX.get() - delta;
-        dragX.set(newX);
-      };
-
-      carousel.addEventListener('wheel', onWheel, { passive: false });
-      
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        carousel.removeEventListener('wheel', onWheel);
-      };
-    }
-
-    return () => window.removeEventListener('resize', handleResize);
-  }, [dragX]);
 
   return (
     <section ref={containerRef} className={styles.projects} id="projects">
@@ -142,146 +128,23 @@ export function Projects({ theme }: { theme?: string }) {
             onChange={(index) => {
               if (index !== null) {
                 setActiveCategory(categories[index].title);
-                setExpandedId(null);
-                dragX.set(0);
               }
             }}
           />
         </div>
 
-        <motion.div 
-          ref={carouselRef}
-          data-testid="carousel"
-          className={styles.carousel}
-          onMouseDown={handleDragStart}
-          onMouseMove={handleDragMove}
-          onMouseUp={handleDragEnd}
-          onMouseLeave={handleDragEnd}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <motion.div 
-            className={`${styles.carouselTrack} ${isDragging ? styles.dragging : ''}`}
-            style={{ x }}
-          >
-            {filteredProjects.map((project, index) => {
-              const uniqueId = `${project.id}-${index}`;
-              const isExpanded = expandedId === uniqueId;
-
-              return (
-                <motion.div 
-                  layout
-                  key={uniqueId}
-                  className={`${styles.project} ${isExpanded ? styles.expanded : ''}`}
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ 
-                    duration: 0.5,
-                    ease: [0.76, 0, 0.24, 1]
-                  }}
-                  onClick={() => handleProjectClick(uniqueId)}
-                >
-                  <div className={styles.projectContent}>
-                    <div className={styles.projectImage}>
-                      <img src={project.image} alt={project.title} onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80';
-                      }}/>
-                    </div>
-                    <div className={styles.projectInfo}>
-                      <h3 className={styles.projectTitle}>{project.title}</h3>
-                      <p className={styles.projectDescription}>{project.description}</p>
-                      <div className={styles.projectTech}>{project.tech}</div>
-                      
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className={styles.expandedDetails}
-                          >
-                            <p className={styles.longDescription}>
-                              {project.longDescription?.split(/(\*\*.*?\*\*)/g).map((part, i) => 
-                                part.startsWith('**') && part.endsWith('**') 
-                                  ? <strong key={i}>{part.slice(2, -2)}</strong> 
-                                  : part
-                              )}
-                            </p>
-                            <div className={styles.linksContainer}>
-                              {project.demoUrl && (
-                                <a 
-                                  href={project.demoUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className={styles.githubLink}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Visit Site →
-                                </a>
-                              )}
-                              {project.githubUrl && (
-                                <a 
-                                  href={project.githubUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className={styles.githubLink}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {project.demoUrl ? 'GitHub' : 'View on GitHub'} →
-                                </a>
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </motion.div>
-
-        <motion.div 
-          className={styles.scrollIndicator}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 1 }}
-        >
-          <span className={styles.scrollText}>
-            SCROLL ON CARD
-          </span>
-          <motion.svg 
-            width="50" 
-            height="10" 
-            viewBox="0 0 50 10" 
-            fill="none" 
-            xmlns="http://www.w3.org/2000/svg"
-            className={styles.scrollArrow}
-            style={{ filter: 'drop-shadow(0 0 2px currentColor)' }}
-          >
-            <motion.path 
-              d="M0 5H48M48 5L44 1M48 5L44 9" 
-              stroke="currentColor" 
-              strokeWidth="1"
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ 
-                pathLength: [0, 1],
-                opacity: [0, 1, 0],
-                x: [0, 3]
-              }}
-              transition={{ 
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
-          </motion.svg>
-        </motion.div>
+        {/* Focus Rail Component */}
+        <div className="w-full mt-8">
+          <FocusRail 
+            items={railItems} 
+            isFocused={!isContactInView}
+            autoPlay={false}
+            loop={true} 
+            className="bg-transparent"
+          />
+        </div>
       </div>
     </section>
   );
-} 
+}
+ 
