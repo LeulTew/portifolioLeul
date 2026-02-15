@@ -28,10 +28,109 @@ export const projectsData: Project[] = [
     description: "Camera-Tracked Hand Gesture Game",
     longDescription: "**Kitefew** is an experimental spatial computing game that brings the 'Fruit Ninja' experience to your browser using **MediaPipe** finger tracking.\n\n• **Computer Vision**: Real-time tracking of the index finger via camera—no touch or mouse required.\n• **Spatial Interaction**: Slicing physics and interaction layers mapped to physical hand movements.\n• **Performance**: Optimized for web execution with low-latency gesture recognition.\n• **Modern Aesthetics**: Neon-accented dark UI with fluid animations and responsive gameplay.\n\nA showcase of interactive computer vision and web-based gaming technology.",
     tech: "JAVASCRIPT, MEDIAPIPE, VITE, VANILLA CSS",
-    image: "/projects/kitefew.png",
+    image: "/projects/kitefew.webp",
     githubUrl: "https://github.com/LeulTew/Kitefew",
     demoUrl: "https://kitefew.vercel.app/",
     categories: ["AI/DataScience", "Desktop & Games", "Web Development"]
+  },
+  {
+    id: 28,
+    title: "Samadhi",
+    description: "Immersive Film Analysis & Philosophy Blog",
+    longDescription: "**Samadhi** is a refined digital publication exploring the intersections of cinema, philosophy, and visual culture.\n\n• **Content Series**: Structured 4-part deep dives (Maya, Mind, Path, Sadhana) into cinematic masterpieces.\n• **Aesthetics**: High-contrast, minimalist dark theme designed for long-form reading.\n• **Interactive Layout**: Tailored grid systems and immersive imagery that mirror the complexity of the subjects.\n• **Performance**: Fast-loading, static-site generated content for a seamless reading experience.",
+    tech: "NEXT.JS, TYPESCRIPT, TAILWIND CSS, MDX",
+    image: "/projects/samadhi.webp",
+    githubUrl: "https://github.com/LeulTew/Samadhi",
+    demoUrl: "https://samadhi-one.vercel.app",
+    categories: ["Web Development"]
+  },
+  {
+    id: 30,
+    title: "Amet AI",
+    description: "AI-Powered Bible Discovery Platform",
+    longDescription: "**Amet AI** (Bible Learn) leverages generative AI to provide interactive, contextual insights into biblical texts.\n\n• **Intelligent Search**: Semantically aware search queries and contextual cross-referencing.\n• **Contextual Analysis**: Real-time generation of summaries and theological context for any verse.\n• **Modern Interface**: Clean, technical aesthetic designed for deep study and accessible learning.\n• **Ethical AI**: Focused on providing reliable, textual-based references and insights.",
+    tech: "REACT, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI",
+    image: "/projects/bible-learn.webp",
+    githubUrl: "https://github.com/LeulTew/bible-learn-webapp",
+    demoUrl: "https://bible-learn-webapp.vercel.app",
+    categories: ["Web Development", "AI/DataScience"]
+  },
+  {
+    id: 31,
+    title: "ProtoChem 3D",
+    description: "Interactive 3D Molecular Visualization",
+    longDescription: "**ProtoChem 3D** (Chem Hands) is a high-fidelity 3D structural viewer for chemistry students and researchers.\n\n• **3D Mechanics**: Real-time rendering of complex molecular structures with interactive manipulation.\n• **Educational Focus**: Hierarchical visualization of atoms, bonds, and molecular geometry.\n• **Gesture Support**: Designed for spatial computing and advanced touch interactions.\n• **Performance**: WebGL-powered engine for low-latency 3D rendering in the browser.",
+    tech: "JAVASCRIPT, THREE.JS, WEBGL, VANILLA CSS",
+    image: "/projects/chem-hands.webp",
+    githubUrl: "https://github.com/LeulTew/chem-hands-3d",
+    demoUrl: "https://chem-hands-3d.vercel.app",
+    categories: ["Web Development", "Graphics & Algorithms"]
+  },
+  {
+    id: 32,
+    title: "Elona Practice",
+    description: "Technical Practice & Analytics Dashboard",
+    longDescription: "A specialized dashboard for tracking technical skills and practice routines.\n\n• **Metrics Tracking**: Real-time visualization of practice hours and milestone completion.\n• **Adaptive Learning**: Content paths that adapt based on user performance and goals.\n• **Modern Hub**: Centralized command center for technical growth and professional development.\n• **Data Driven**: Built-in analytics for identifying strengths and areas for improvement.",
+    tech: "REACT, TYPESCRIPT, TAILWIND CSS, SHADCN UI",
+    image: "/projects/elona-practice.webp",
+    githubUrl: "https://github.com/LeulTew/ElonaPractice",
+    demoUrl: "https://elona-practice.vercel.app",
+    categories: ["Web Development"]
+  },
+  {
+    id: 34,
+    title: "Lalu Graphics",
+    description: "Graphic Design Mastery Handbook",
+    longDescription: "**Lalu Graphics** (Graphic Design Mastery) is the definitive handbook for mastering visual communication in 2026.\n\n• **Modern Workflows**: Covers AI-integrated design processes and Ethiopian cultural context.\n• **Strategic Branding**: Focuses on international branding standards and global career strategy.\n• **Interactive Guides**: Detailed walkthroughs for logo creation, typography, and print design.\n• **Pro Visuals**: High-resolution showcases of design principles and production-ready assets.",
+    tech: "REACT, TYPESCRIPT, TAILWIND CSS, FRAMER MOTION",
+    image: "/projects/graphic-design.webp",
+    githubUrl: "https://github.com/LeulTew/graphic-design-mastery",
+    demoUrl: "https://graphic-design-mastery.vercel.app",
+    categories: ["Web Development", "Graphics & Algorithms"]
+  },
+  {
+    id: 24,
+    title: "AgendaFlow AI",
+    description: "AI-Powered Meeting & Agenda Management",
+    longDescription: "**AgendaFlow AI** is a high-performance meeting management engine that leverages **Google Gemini** to transform raw inputs into structured agendas.\n\n• **Intelligent Scanner**: Camera-based extraction of handwritten or printed agendas with real-time AI processing.\n• **Document Intelligence**: Upload documents or provide descriptions to generate comprehensive meeting structures.\n• **Excel Integration**: Full-featured Excel-like management for topics, stakeholders, and timing.\n• **Multi-Modal AI**: Supports camera uploads, document parsing, and natural language descriptions.\n\nDesigned for maximum productivity with a sleek, glassmorphic technical interface.",
+    tech: "REACT, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI, LUCIDE REACT",
+    image: "/projects/agenda-flow.webp",
+    githubUrl: "https://github.com/LeulTew/AgendaFlow-AI",
+    demoUrl: "https://agenda-flow-ai.vercel.app",
+    categories: ["AI/DataScience", "Web Development"]
+  },
+  {
+    id: 27,
+    title: "EthioDriveMaster",
+    description: "Next-Gen Driving License Practice Platform",
+    longDescription: "**EthioDriveMaster** is the definitive digital guide for acing the Ethiopian driving license practical exam.\n\n• **Step-by-Step Guides**: Comprehensive practical guides created from real driving experience.\n• **Visual Learning**: Interactive walkthroughs of the Kaliti practical exam tracks and tips.\n• **Bilingual Support**: Targeted at providing local-specific knowledge in a modern web interface.\n• **Premium UI**: Sleek, high-contrast dark theme with smooth navigation and 'Kaliti Approved' resources.",
+    tech: "REACT, TYPESCRIPT, TAILWIND CSS, FRAMER MOTION",
+    image: "/projects/ethiodrive.webp",
+    githubUrl: "https://github.com/LeulTew/EthioDriveMaster",
+    demoUrl: "https://ethio-drive-master.vercel.app",
+    categories: ["Web Development", "Mobile Apps"]
+  },
+  {
+    id: 26,
+    title: "System Design Guide",
+    description: "Comprehensive Architectural Learning Platform",
+    longDescription: "A specialized platform dedicated to mastering **System Design** and high-scale engineering principles.\n\n• **Deep Dives**: Detailed guides on network topolgy, cascading failures, and distributed systems.\n• **Engineering First**: Focuses on professional engineering over simple prototyping ('Engineering is for production').\n• **Interactive content**: Structured learning paths for mastering technical constraints and system reliability.\n• **Dark Mode UI**: Minimalist, technical aesthetic designed for focused technical reading and study.",
+    tech: "NEXT.JS, TYPESCRIPT, TAILWIND CSS, MDX",
+    image: "/projects/system-design.webp",
+    githubUrl: "https://github.com/LeulTew/system-design-guide-blog",
+    demoUrl: "https://system-design-guide-blog.vercel.app/",
+    categories: ["Web Development", "AI/DataScience"]
+  },
+  {
+    id: 21,
+    title: "CS Exit Practice",
+    description: "Hyper-Modern Exit Exam Interface",
+    longDescription: "A modern web application providing an interactive interface for practicing Computer Science exit exams, targeted at students preparing for university or professional assessments. Hosted on Wasmer Edge for efficient, serverless deployment.",
+    tech: "WebAssembly",
+    image: "/images/projects/exit.webp",
+    githubUrl: "",
+    demoUrl: "https://exitpractice.wasmer.app/",
+    categories: ["Web Development"]
   },
   {
     id: 1,
@@ -79,7 +178,7 @@ export const projectsData: Project[] = [
     description: "Frontend personal portfolio site",
     longDescription: "Modern personal portfolio featuring immersive **3D elements** and interactive design:\n\n• **Tech Stack**: Built with **React**, **TypeScript**, and **React-Three-Fiber**\n• **Design**: Glassmorphism aesthetics with smooth Framer Motion animations\n• **Performance**: Optimized for all devices with responsive layouts\n\nA showcase of frontend engineering and creative design skills.",
     tech: "React, TypeScript, React-Three-Fiber",
-    image: "/images/projects/portfolio.jpg",
+    image: "/images/projects/portfolio.webp",
     githubUrl: "https://github.com/LeulTew/PortifolioLeul",
     categories: ["Web Development", "Graphics & Algorithms"]
   },
@@ -104,12 +203,34 @@ export const projectsData: Project[] = [
     categories: ["Web Development", "Desktop & Games"]
   },
   {
+    id: 29,
+    title: "Arch Guide",
+    description: "Definitive Arch Linux Installation Guide",
+    longDescription: "A comprehensive, step-by-step guide for mastering **Arch Linux** installation and advanced configuration.\n\n• **Technical Precision**: Covers kernel selection, bootloader setup, and desktop environment customization.\n• **Simplified Workflow**: Optimized command sequences for repeatable, stable system builds.\n• **Engineering Focus**: Emphasizes system reliability and deep-level hardware integration.\n• **Clean UI**: Technical documentation styled for clarity and focus.",
+    tech: "NEXT.JS, TYPESCRIPT, TAILWIND CSS, MDX",
+    image: "/projects/arch-guide.webp",
+    githubUrl: "https://github.com/LeulTew/ArchGuide",
+    demoUrl: "https://arch-guide-one.vercel.app",
+    categories: ["Web Development", "Desktop & Games"]
+  },
+  {
+    id: 33,
+    title: "Lead Blog",
+    description: "High-Imapct Engineering & Leadership Blog",
+    longDescription: "A professional platform focusing on the intersection of **Software Engineering** and **Project Leadership**.\n\n• **Strategic Insights**: Articles on architectural trade-offs, team scaling, and production reliability.\n• **Technical Depth**: Deep dives into backend systems, AI orchestration, and cloud infrastructure.\n• **Minimalist Design**: Typography-first aesthetic for distraction-free technical reading.\n• **Global Reach**: Built for engineers targeting international roles and complex project environments.",
+    tech: "NEXT.JS, TYPESCRIPT, TAILWIND CSS, MDX",
+    image: "/projects/lead-blog.webp",
+    githubUrl: "https://github.com/LeulTew/LeadBlog",
+    demoUrl: "https://lead-blog.vercel.app",
+    categories: ["Web Development"]
+  },
+  {
     id: 7,
     title: "Luna",
     description: "Web movie application",
     longDescription: "Site with backend for trailers, reviews, and responsive design to engage users in movie discovery.",
     tech: "HTML, CSS, JS, PHP",
-    image: "/images/projects/luna.jpg",
+    image: "/images/projects/luna.webp",
     githubUrl: "https://github.com/LeulTew/Luna",
     categories: ["Web Development"]
   },
@@ -234,6 +355,17 @@ export const projectsData: Project[] = [
     categories: ["Graphics & Algorithms", "Desktop & Games"]
   },
   {
+    id: 35,
+    title: "Dream Weaver",
+    description: "AI-Powered Dream Analytics Dashboard",
+    longDescription: "**Dream Weaver** is a sophisticated digital sanctuary for recording and analyzing the subconscious mind using **Google Gemini**.\n\n• **Dream Intelligence**: Automated interpretation and mood tagging using large language models to identify recurring motifs.\n• **Visual Insights**: Data visualization of dream patterns, emotional arcs, and longitudinal shifts in subconscious themes.\n• **Mystical UI**: Immersive, star-field background with a minimalist glassmorphic dashboard for aesthetic focus.\n• **Personalized Sanctuary**: Private, secure entry management designed for long-term psychological tracking.",
+    tech: "NEXT.JS, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI",
+    image: "/projects/dream-journal.webp",
+    githubUrl: "",
+    demoUrl: "https://v0-dream-journal-dashboard.vercel.app",
+    categories: ["Web Development", "AI/DataScience"]
+  },
+  {
     id: 20,
     title: "Celestial Bodies Database",
     description: "Relational database design",
@@ -243,48 +375,4 @@ export const projectsData: Project[] = [
     githubUrl: "https://github.com/LeulTew/Celestial-Bodies-Database",
     categories: ["AI/DataScience"]
   },
-  {
-    id: 21,
-    title: "CS Exit Practice",
-    description: "Hyper-Modern Exit Exam Interface",
-    longDescription: "A modern web application providing an interactive interface for practicing Computer Science exit exams, targeted at students preparing for university or professional assessments. Hosted on Wasmer Edge for efficient, serverless deployment.",
-    tech: "WebAssembly",
-    image: "/images/projects/exit.webp",
-    githubUrl: "",
-    demoUrl: "https://exitpractice.wasmer.app/",
-    categories: ["Web Development"]
-  },
-  {
-    id: 24,
-    title: "AgendaFlow AI",
-    description: "AI-Powered Meeting & Agenda Management",
-    longDescription: "**AgendaFlow AI** is a high-performance meeting management engine that leverages **Google Gemini** to transform raw inputs into structured agendas.\n\n• **Intelligent Scanner**: Camera-based extraction of handwritten or printed agendas with real-time AI processing.\n• **Document Intelligence**: Upload documents or provide descriptions to generate comprehensive meeting structures.\n• **Excel Integration**: Full-featured Excel-like management for topics, stakeholders, and timing.\n• **Multi-Modal AI**: Supports camera uploads, document parsing, and natural language descriptions.\n\nDesigned for maximum productivity with a sleek, glassmorphic technical interface.",
-    tech: "REACT, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI, LUCIDE REACT",
-    image: "/projects/agenda-flow.png",
-    githubUrl: "https://github.com/LeulTew/AgendaFlow-AI",
-    demoUrl: "https://agenda-flow-ai.vercel.app",
-    categories: ["AI/DataScience", "Web Development"]
-  },
-  {
-    id: 26,
-    title: "System Design Guide",
-    description: "Comprehensive Architectural Learning Platform",
-    longDescription: "A specialized platform dedicated to mastering **System Design** and high-scale engineering principles.\n\n• **Deep Dives**: Detailed guides on network topolgy, cascading failures, and distributed systems.\n• **Engineering First**: Focuses on professional engineering over simple prototyping ('Engineering is for production').\n• **Interactive content**: Structured learning paths for mastering technical constraints and system reliability.\n• **Dark Mode UI**: Minimalist, technical aesthetic designed for focused technical reading and study.",
-    tech: "NEXT.JS, TYPESCRIPT, TAILWIND CSS, MDX",
-    image: "/projects/system-design.png",
-    githubUrl: "https://github.com/LeulTew/system-design-guide-blog",
-    demoUrl: "https://system-design-guide-blog.vercel.app/",
-    categories: ["Web Development", "AI/DataScience"]
-  },
-  {
-    id: 27,
-    title: "EthioDriveMaster",
-    description: "Next-Gen Driving License Practice Platform",
-    longDescription: "**EthioDriveMaster** is the definitive digital guide for acing the Ethiopian driving license practical exam.\n\n• **Step-by-Step Guides**: Comprehensive practical guides created from real driving experience.\n• **Visual Learning**: Interactive walkthroughs of the Kaliti practical exam tracks and tips.\n• **Bilingual Support**: Targeted at providing local-specific knowledge in a modern web interface.\n• **Premium UI**: Sleek, high-contrast dark theme with smooth navigation and 'Kaliti Approved' resources.",
-    tech: "REACT, TYPESCRIPT, TAILWIND CSS, FRAMER MOTION",
-    image: "/projects/ethiodrive.png",
-    githubUrl: "https://github.com/LeulTew/EthioDriveMaster",
-    demoUrl: "https://ethio-drive-master.vercel.app",
-    categories: ["Web Development", "Mobile Apps"]
-  }
 ];
