@@ -302,7 +302,7 @@ export function FocusRail({
                         damping: 30,
                         opacity: { duration: 0.2 }
                       }}
-                      className="overflow-hidden space-y-6"
+                      className="overflow-hidden space-y-6 px-6 pb-6 -mx-6 -mb-6"
                     >
                       {activeItem.description && (
                         <div className="text-neutral-300 text-sm md:text-base leading-relaxed max-w-4xl">
