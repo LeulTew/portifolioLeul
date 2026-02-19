@@ -3,7 +3,6 @@ import { useFrame } from '@react-three/fiber';
 import { 
   useScroll, 
   Environment, 
-  MeshReflectorMaterial,
   useGLTF,
   PerspectiveCamera,
   Points,
@@ -13,6 +12,8 @@ import * as THREE from 'three';
 import { Theme } from './sections/theme/ThemeContext';
 import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
+import { Ocean } from './Ocean';
+import { ShorelineBreak } from './ocean/ShorelineBreak';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
 
@@ -192,23 +193,13 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
       <group ref={sceneRef}>
         <Environment preset={palette.environment} />
 
-        {/* Reflective Ground */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -4, 0]} receiveShadow>
-          <planeGeometry args={[500, 500]} />
-          <MeshReflectorMaterial
-            blur={[300, 100]}
-            resolution={1024}
-            mixBlur={0.5}
-            mixStrength={10}
-            roughness={0.6}
-            depthScale={1.2}
-            minDepthThreshold={0.4}
-            maxDepthThreshold={1.4}
-            color={palette.ground}
-            metalness={0.9}
-            mirror={0.75}
-          />
-        </mesh>
+        {/* Realistic Ocean */}
+        <Suspense fallback={null}>
+          <Ocean theme={theme} position={[0, -4, 0]} />
+        </Suspense>
+
+        {/* Shore break crest lines where waves meet the island edge */}
+        <ShorelineBreak theme={theme} position={[0, -3.92, -20]} />
 
         <Suspense fallback={null}>
           <Terrain surfaceColor={palette.terrain} />

@@ -137,6 +137,7 @@ export function Projects({ theme }: { theme?: string }) {
         <div className="w-full mt-8">
           <FocusRail 
             items={railItems} 
+            theme={theme}
             isFocused={!isContactInView}
             autoPlay={false}
             loop={true} 

@@ -22,6 +22,7 @@ interface FocusRailProps {
   interval?: number;
   className?: string;
   isFocused?: boolean;
+  theme?: string;
 }
 
 /**
@@ -62,6 +63,7 @@ export function FocusRail({
   interval = 4000,
   className,
   isFocused = true,
+  theme,
 }: FocusRailProps) {
   const [active, setActive] = React.useState(initialIndex);
   const [isHovering, setIsHovering] = React.useState(false);
@@ -71,6 +73,7 @@ export function FocusRail({
   const count = items.length;
   const activeIndex = wrap(0, count, active);
   const activeItem = items[activeIndex];
+  const isLight = theme === "light";
 
   React.useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -155,7 +158,8 @@ export function FocusRail({
         layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
       }}
       className={cn(
-        "group relative flex h-auto min-h-[500px] w-full flex-col bg-neutral-950 text-white outline-none select-none overflow-hidden",
+        "group relative flex h-auto min-h-[500px] w-full flex-col outline-none select-none overflow-hidden",
+        isLight ? "bg-white/65 text-neutral-900" : "bg-neutral-950 text-white",
         className
       )}
       data-testid="carousel"
@@ -347,7 +351,12 @@ export function FocusRail({
 
           {/* Nav Controls */}
           <div className="flex-shrink-0 flex items-center gap-4 pt-2 self-start sticky top-0">
-            <div className="flex items-center gap-2 rounded-full bg-neutral-950/50 p-2 ring-1 ring-white/10 backdrop-blur-md">
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-full p-2 backdrop-blur-md",
+                isLight ? "bg-white/75 ring-1 ring-black/15" : "bg-neutral-950/50 ring-1 ring-white/10"
+              )}
+            >
               <button
                 onClick={handlePrev}
                 className="rounded-full p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
@@ -358,8 +367,8 @@ export function FocusRail({
                 <span className="text-xl font-bold text-emerald-400 font-mono">
                   {String(activeIndex + 1).padStart(2, '0')}
                 </span>
-                <span className="text-[11px] text-neutral-600 font-medium">
-                  {String(count).padStart(2, '0')}
+                <span className={cn("text-[11px] font-medium", isLight ? "text-neutral-800" : "text-neutral-600")}>
+                  /{String(count).padStart(2, '0')}
                 </span>
               </div>
               <button
