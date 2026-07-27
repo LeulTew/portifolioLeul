@@ -12,14 +12,15 @@ export interface Project {
 
 export const projectsData: Project[] = [
   {
-    id: 25,
-    title: "My Money",
-    description: "Smart personal finance & expense tracking application",
-    longDescription: "Intuitive financial management platform enabling users to take full control of personal finances:\n\n• **Budget & Expense Tracking**: Real-time category tracking, recurring expenses, and budget limits\n• **Analytics & Insights**: Interactive visual dashboards and monthly spending trends\n• **Cloud Sync & Security**: Multi-device synchronization powered by Firebase\n• **Responsive UI/UX**: Clean, accessible mobile-first interface designed in Figma",
-    tech: "Flutter, Dart, Firebase, Responsive UI",
+    id: 36,
+    title: "Mizan",
+    description: "A calm, mobile-first ledger for lending and everyday spending",
+    longDescription: "A private personal-finance PWA designed around quick, low-friction money tracking.\n\n• **Clear money states**: Lending, repayments, expenses, due dates, and opportunity cost are surfaced without dashboard clutter.\n• **Mobile-first interaction**: Thumb-friendly navigation, bottom sheets, safe-area support, and an installable iPhone experience.\n• **Accessible system**: Responsive layouts, WCAG-aware contrast, keyboard focus, and reduced-motion support.\n• **Secure foundation**: Supabase authentication, row-level security, auditable transactions, and authenticated data export.",
+    tech: "Next.js, React, TypeScript, Supabase, Tailwind CSS",
     image: "/images/projects/my-money.webp",
-    githubUrl: "https://github.com/LeulTew/financial_tracker",
-    categories: ["Mobile Apps", "Web Development"]
+    githubUrl: "",
+    demoUrl: "https://my-money-lac.vercel.app",
+    categories: ["Web Development", "Mobile Apps"]
   },
 
   {
