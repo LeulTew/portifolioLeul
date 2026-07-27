@@ -12,6 +12,17 @@ export interface Project {
 
 export const projectsData: Project[] = [
   {
+    id: 25,
+    title: "My Money",
+    description: "Smart personal finance & expense tracking application",
+    longDescription: "Intuitive financial management platform enabling users to take full control of personal finances:\n\n• **Budget & Expense Tracking**: Real-time category tracking, recurring expenses, and budget limits\n• **Analytics & Insights**: Interactive visual dashboards and monthly spending trends\n• **Cloud Sync & Security**: Multi-device synchronization powered by Firebase\n• **Responsive UI/UX**: Clean, accessible mobile-first interface designed in Figma",
+    tech: "Flutter, Dart, Firebase, Responsive UI",
+    image: "/images/projects/my-money.webp",
+    githubUrl: "https://github.com/LeulTew/financial_tracker",
+    categories: ["Mobile Apps", "Web Development"]
+  },
+
+  {
     id: 23,
     title: "Ignition",
     description: "Mission-control platform for tactical goal breakdown",
