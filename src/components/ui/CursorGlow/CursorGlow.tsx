@@ -1,11 +1,15 @@
 import { useEffect, useRef } from 'react';
 import styles from './CursorGlow.module.css';
+import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 export const CursorGlow = () => {
   const glowRef = useRef<HTMLDivElement>(null);
   const rafId = useRef<number>();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
+    if (prefersReducedMotion) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       if (rafId.current) {
         cancelAnimationFrame(rafId.current);
@@ -24,7 +28,9 @@ export const CursorGlow = () => {
         cancelAnimationFrame(rafId.current);
       }
     };
-  }, []);
+  }, [prefersReducedMotion]);
+
+  if (prefersReducedMotion) return null;
 
   return <div ref={glowRef} className={styles.glow} />;
-}; 
+};
