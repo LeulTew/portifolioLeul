@@ -27,6 +27,7 @@ describe('animationGateway', () => {
 
     expect(Easings.easeOutCubic).toBeDefined();
     expect(Easings.easeInOutQuart).toBeDefined();
+    expect(Easings.anticipate).toBeDefined();
   });
 
   it('calculates linear interpolation and clamp accurately', () => {
@@ -53,7 +54,13 @@ describe('animationGateway', () => {
     expect(getPrefersReducedMotion()).toBe(true);
   });
 
-  it('updates state reactively via usePrefersReducedMotion hook', () => {
+  it('safely handles missing matchMedia or SSR in getPrefersReducedMotion', () => {
+    // @ts-expect-error simulating legacy/SSR
+    window.matchMedia = undefined;
+    expect(getPrefersReducedMotion()).toBe(false);
+  });
+
+  it('updates state reactively via usePrefersReducedMotion with addEventListener', () => {
     let listener: ((e: { matches: boolean }) => void) | null = null;
 
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -70,7 +77,6 @@ describe('animationGateway', () => {
     const { result, unmount } = renderHook(() => usePrefersReducedMotion());
     expect(result.current).toBe(false);
 
-    // Simulate OS preference change
     if (listener) {
       act(() => {
         (listener as (e: { matches: boolean }) => void)({ matches: true });
@@ -79,5 +85,36 @@ describe('animationGateway', () => {
     }
 
     unmount();
+  });
+
+  it('falls back to legacy addListener and removeListener when addEventListener is missing', () => {
+    let legacyListener: ((e: { matches: boolean }) => void) | null = null;
+    const removeListenerMock = vi.fn();
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn((callback: (e: { matches: boolean }) => void) => {
+        legacyListener = callback;
+      }),
+      removeListener: removeListenerMock,
+      addEventListener: undefined,
+      removeEventListener: undefined,
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { result, unmount } = renderHook(() => usePrefersReducedMotion());
+    expect(result.current).toBe(false);
+
+    if (legacyListener) {
+      act(() => {
+        (legacyListener as (e: { matches: boolean }) => void)({ matches: true });
+      });
+      expect(result.current).toBe(true);
+    }
+
+    unmount();
+    expect(removeListenerMock).toHaveBeenCalled();
   });
 });

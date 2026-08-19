@@ -1,59 +1,41 @@
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import styles from './Home.module.css';
 
 interface HomeProps {
   onNavigate?: (sectionId: string) => void;
+  theme?: string;
 }
 
 export function Home({ onNavigate }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
-  const aboutRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    aboutRef.current = document.getElementById('about');
-  }, []);
-
-  // Use scroll progress relative to the viewport
   const { scrollY } = useScroll();
 
-  // Transform values for the image
   const imageY = useTransform(scrollY, (value) => {
-    if (typeof window === 'undefined' || !aboutRef.current) return 0;
-    
-    // Get About section position
-    const aboutTop = aboutRef.current.offsetTop;
-    const aboutHeight = aboutRef.current.offsetHeight;
-    
-    // Calculate distances
-    const startMoving = 0; // Start from top of page
-    const stopMoving = aboutTop + (aboutHeight * 0.3); // Stop at 30% into About section
-    
-    // If before start or after end, maintain position
+    if (typeof window === 'undefined') return 0;
+    const aboutEl = document.getElementById('about');
+    if (!aboutEl) return 0;
+    const aboutTop = aboutEl.offsetTop;
+    const aboutHeight = aboutEl.offsetHeight;
+    const startMoving = 0;
+    const stopMoving = aboutTop + (aboutHeight * 0.3);
     if (value < startMoving) return 0;
-    if (value > stopMoving) return aboutTop - window.innerHeight/2;
-    
-    // Calculate progress
+    if (value > stopMoving) return aboutTop - window.innerHeight / 2;
     const progress = (value - startMoving) / (stopMoving - startMoving);
-    return progress * (aboutTop - window.innerHeight/2);
+    return progress * (aboutTop - window.innerHeight / 2);
   });
 
   const imageOpacity = useTransform(scrollY, (value) => {
-    if (typeof window === 'undefined' || !aboutRef.current) return 1;
-    
-    // Get About section position
-    const aboutTop = aboutRef.current.offsetTop;
-    const aboutHeight = aboutRef.current.offsetHeight;
-    
-    // Calculate distances
-    const startMoving = 0; // Start from top of page
-    const stopMoving = aboutTop + (aboutHeight * 0.3); // Stop at 30% into About section
-    
-    // If before start or after end, maintain position
+    if (typeof window === 'undefined') return 1;
+    const aboutEl = document.getElementById('about');
+    if (!aboutEl) return 1;
+    const aboutTop = aboutEl.offsetTop;
+    const aboutHeight = aboutEl.offsetHeight;
+    const startMoving = 0;
+    const stopMoving = aboutTop + (aboutHeight * 0.3);
     if (value < startMoving) return 1;
     if (value > stopMoving) return 0;
-    
-    // Calculate progress
     const progress = (value - startMoving) / (stopMoving - startMoving);
     return 1 - progress;
   });
@@ -63,13 +45,16 @@ export function Home({ onNavigate }: HomeProps) {
       onNavigate('about');
       return;
     }
-
-    aboutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('about')?.scrollIntoView({ 
+      behavior: prefersReduced ? 'auto' : 'smooth', 
+      block: 'start' 
+    });
   };
 
   return (
     <section ref={containerRef} className={styles.home} id="home">
-      <motion.div className={styles.content}>
+      <div className={styles.content}>
         <motion.div 
           className={styles.header}
           initial={{ opacity: 0, y: 20 }}
@@ -130,8 +115,6 @@ export function Home({ onNavigate }: HomeProps) {
           </motion.div>
         </motion.div>
 
-
-
         <motion.p 
           className={styles.description}
           initial={{ opacity: 0, x: -20 }}
@@ -146,7 +129,7 @@ export function Home({ onNavigate }: HomeProps) {
           with hands-on experience in software development and digital design. Eager to contribute 
           to impactful projects while gaining industry experience.
         </motion.p>
-      </motion.div>
+      </div>
 
       <motion.div 
         className={styles.profileImage}
@@ -168,10 +151,13 @@ export function Home({ onNavigate }: HomeProps) {
       <div 
         className={styles.scrollArrow}
         onClick={scrollToAbout}
+        role="button"
+        tabIndex={0}
+        aria-label="Scroll to about section"
       >
-        <div className={styles.curve}></div>
-        <div className={styles.point}></div>
+        <div className={styles.curve} />
+        <div className={styles.point} />
       </div>
     </section>
   );
-} 
+}
