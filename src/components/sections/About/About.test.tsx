@@ -22,20 +22,20 @@ describe('About Section', () => {
 
   it('renders about me header, bio content and tags', () => {
     render(<About />);
-    expect(screen.getByText('About Me')).toBeDefined();
-    expect(screen.getByText(/Software Engineer & Creative Developer/i)).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: /About Me/i })).toBeInTheDocument();
+    expect(screen.getByText(/Software Engineer & Creative Developer/i)).toBeInTheDocument();
   });
 
   it('renders education cards in the right-aligned layout', () => {
     render(<About />);
-    expect(screen.getByText('Education')).toBeDefined();
-    expect(screen.getByText(/HiLCoE School of Computer Science/i)).toBeDefined();
-    expect(screen.getByText(/Saint Joseph School/i)).toBeDefined();
+    expect(screen.getByLabelText('Education')).toBeInTheDocument();
+    expect(screen.getByText(/HiLCoE School of Computer Science/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saint Joseph School/i)).toBeInTheDocument();
   });
 
   it('renders certifications cards cleanly', () => {
     render(<About />);
-    expect(screen.getByText('Certifications')).toBeDefined();
-    expect(screen.getByText(/Bootdev/i)).toBeDefined();
+    expect(screen.getByLabelText('Certifications')).toBeInTheDocument();
+    expect(screen.getByText(/Bootdev/i)).toBeInTheDocument();
   });
 });

@@ -21,9 +21,11 @@ describe('Home Section', () => {
 
   it('renders name, titles, and bio text', () => {
     render(<Home />);
-    expect(screen.getByText('Leul')).toBeDefined();
-    expect(screen.getByText('Tewodros')).toBeDefined();
-    expect(screen.getByText(/Creative Problem Solver/i)).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('SYSTEM')).toBeInTheDocument();
+    expect(screen.getByText('ONLINE')).toBeInTheDocument();
+    expect(screen.getByText('ARCHITECTING')).toBeInTheDocument();
+    expect(screen.getByText(/Full-Stack Developer/i)).toBeInTheDocument();
   });
 
   it('renders magnetic CTA buttons and handles navigation callbacks', () => {
@@ -33,8 +35,8 @@ describe('Home Section', () => {
     const exploreBtn = screen.getByRole('button', { name: /explore my work/i });
     const contactBtn = screen.getByRole('button', { name: /get in touch/i });
 
-    expect(exploreBtn).toBeDefined();
-    expect(contactBtn).toBeDefined();
+    expect(exploreBtn).toBeInTheDocument();
+    expect(contactBtn).toBeInTheDocument();
 
     fireEvent.click(exploreBtn);
     expect(onNavigate).toHaveBeenCalledWith('about');

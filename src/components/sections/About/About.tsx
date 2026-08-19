@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Card } from '../../ui/Card';
 import { CardTitle, CardText, StatsGrid, StatItem, TagsGrid, Tag } from '../../ui/Card';
 import { CursorGlow } from '../../ui/CursorGlow/CursorGlow';
+import { KineticHeading, DancingCharText, TelemetryBadge } from '../../ui/KineticText';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
@@ -42,7 +43,10 @@ export function About() {
             opacity: headerOpacity
           }}
         >
-          <h2 className={styles.title}>About Me</h2>
+          <div className="flex items-center justify-end gap-2 mb-2">
+            <TelemetryBadge label="PROFILE" value="CORE MATRIX" />
+          </div>
+          <KineticHeading text="About Me" as="h2" className={styles.title} highlightWords={["Me"]} />
           <p className={styles.subtitle}>
             {cvData.about.subtitle}
           </p>
@@ -78,7 +82,7 @@ export function About() {
         <div className={styles.rightAlignedSection}>
           <div className={styles.rightAlignedInner}>
             <div>
-              <div className={styles.sectionTitle}>Education</div>
+              <DancingCharText text="Education" className={styles.sectionTitle} />
               <div className={styles.educationGrid}>
                 {cvData.education.map((edu, index) => (
                   <motion.div
@@ -113,7 +117,7 @@ export function About() {
             </div>
 
             <div style={{ marginTop: '2rem' }}>
-              <div className={styles.sectionTitle}>Certifications</div>
+              <DancingCharText text="Certifications" className={styles.sectionTitle} />
               <div className={styles.educationGrid}>
                 {cvData.certifications.map((cert, index) => (
                   <motion.div

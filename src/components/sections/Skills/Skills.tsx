@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { KineticHeading, DancingCharText, TelemetryBadge } from '../../ui/KineticText';
 import styles from './Skills.module.css';
 
 import { cvData } from '../../../data/cv';
@@ -28,8 +29,11 @@ export function Skills() {
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
         >
-          <h2 className={styles.title}>Skills</h2>
-          <p className={styles.subtitle}>Technical capabilities and creative expertise</p>
+          <div className="flex items-center justify-end gap-2 mb-2">
+            <TelemetryBadge label="ARSENAL" value="LANGUAGES & 3D" />
+          </div>
+          <KineticHeading text="Skills & Expertise" as="h2" className={styles.title} highlightWords={["Expertise"]} />
+          <p className={styles.subtitle}>Technical capabilities, distributed systems, and creative 3D toolsets</p>
         </motion.div>
 
         <motion.div 
@@ -53,23 +57,22 @@ export function Skills() {
               }}
               whileHover={{ scale: 0.98 }}
             >
-              <h3 className={styles.categoryTitle}>{category.title}</h3>
+              <DancingCharText text={category.title} as="h3" className={styles.categoryTitle} />
               <div className={styles.skillList}>
                 {category.items.map((skill, skillIndex) => (
                   <motion.span
                     key={skill}
-                    className={styles.skill}
+                    className={styles.skillItem}
                     initial={{ opacity: 0, scale: 0.8 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{
-                      duration: 0.5,
-                      ease: [0.76, 0, 0.24, 1],
-                      delay: 0.4 + (categoryIndex * 0.1) + (skillIndex * 0.05)
+                    transition={{ 
+                      duration: 0.4, 
+                      delay: 0.4 + (categoryIndex * 0.1) + (skillIndex * 0.05) 
                     }}
-                    whileHover={{
-                      scale: 1.05,
-                      y: -4
+                    whileHover={{ 
+                      scale: 1.08,
+                      transition: { duration: 0.2 }
                     }}
                   >
                     {skill}
@@ -82,4 +85,4 @@ export function Skills() {
       </motion.div>
     </section>
   );
-} 
+}
