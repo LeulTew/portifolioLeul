@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { MagneticButton } from '../../ui/MagneticButton';
 import styles from './ContactForm.module.css';
 import { useContactForm } from './useContactForm';
 
@@ -51,15 +52,17 @@ export function ContactForm() {
         />
       </div>
 
-      <motion.button
-        type="submit"
-        className={styles.submitButton}
-        disabled={isSubmitting}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        {isSubmitting ? 'Sending...' : 'Send Message'}
-      </motion.button>
+      <div className="w-full">
+        <MagneticButton
+          type="submit"
+          disabled={isSubmitting}
+          variant="primary"
+          icon={false}
+          className="w-full"
+        >
+          {isSubmitting ? 'Sending...' : 'Send Message'}
+        </MagneticButton>
+      </div>
 
       {submitStatus === 'success' && (
         <motion.p
