@@ -14,6 +14,7 @@ import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
+import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
 
@@ -134,24 +135,31 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
   const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
+
+  const isLight = theme === 'light';
+
   const palette = useMemo(() => {
-    const isLight = theme === 'light';
     return {
-      background: isLight ? '#f4f7ff' : '#001a1a',
-      fog: isLight ? '#f6f8ff' : '#001a1a',
-      terrain: isLight ? '#e9e2d4' : '#0a1a1a',
-      ground: isLight ? '#3a5f5f' : '#001a1a',
+      background: isLight ? '#f4f7ff' : '#001414',
+      fog: isLight ? '#f6f8ff' : '#001414',
+      terrain: isLight ? '#e9e2d4' : '#0e2424',
+      ground: isLight ? '#3a5f5f' : '#001414',
       highlight: '#00ff9d',
+      rimLight: '#00ff9d',
       environment: (isLight ? 'city' : 'night') as 'city' | 'night',
-      ambient: isLight ? 0.6 : 0.2,
-      directional: isLight ? 1.1 : 0.5,
-      spotIntensity: isLight ? 0.8 : 1,
+      ambient: isLight ? 0.65 : 0.45,
+      directional: isLight ? 1.15 : 0.95,
+      directionalColor: isLight ? '#ffffff' : '#e6fff5',
+      spotIntensity: isLight ? 0.8 : 1.35,
       spotColor: '#00ff9d',
-      pointIntensity: isLight ? 4 : 5,
+      pointIntensity: isLight ? 4 : 5.8,
+      islandFillLight: isLight ? 0.3 : 0.6,
+      characterLight: isLight ? 2.5 : 4.5,
     };
-  }, [theme]);
+  }, [isLight]);
+
   const prismAppearance = useMemo(() => {
-    return theme === 'light'
+    return isLight
       ? {
           solid: '#0a6b4a',
           glow: '#11b978',
@@ -166,29 +174,30 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           emissive: '#004428',
           opacity: 0.9,
         };
-  }, [theme]);
+  }, [isLight]);
 
   useFrame((state) => {
     if (!sceneRef.current || !prismRef.current) return;
 
     const time = state.clock.getElapsedTime();
-    const scrollProgress = scroll.offset;
+    const scrollProgress = scroll?.offset ?? 0;
+    const reducedMotion = getPrefersReducedMotion();
 
-    // Scene parallax based on mouse
-    const mouseX = state.mouse.x * 0.3;
-    const mouseY = state.mouse.y * 0.2;
-    sceneRef.current.rotation.y = mouseX * 0.2 + scrollProgress * Math.PI;
-    sceneRef.current.rotation.x = mouseY * 0.1;
+    // Scene parallax based on mouse (dampened if reduced motion)
+    const mouseX = reducedMotion ? 0 : state.mouse.x * 0.25;
+    const mouseY = reducedMotion ? 0 : state.mouse.y * 0.15;
+    sceneRef.current.rotation.y = mouseX * 0.15 + scrollProgress * Math.PI;
+    sceneRef.current.rotation.x = mouseY * 0.08;
 
-    // Prism animation
-    prismRef.current.position.y = Math.sin(time * 0.5) * 0.2 + 2;
+    // Prism animation (steady if reduced motion)
+    prismRef.current.position.y = reducedMotion ? 2 : Math.sin(time * 0.5) * 0.2 + 2;
   });
 
   return (
     <>
       <ResponsiveCamera />
       <color attach="background" args={[palette.background]} />
-      <fog attach="fog" args={[palette.fog, 30, 70]} />
+      <fog attach="fog" args={[palette.fog, 35, 75]} />
 
       <group ref={sceneRef}>
         <Environment preset={palette.environment} />
@@ -214,7 +223,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           {/* Main prism body */}
           <mesh scale={[0.3, 12, 0.3]} castShadow>
             <boxGeometry />
-            {theme === 'light' ? (
+            {isLight ? (
               <meshStandardMaterial
                 color={prismAppearance.solid}
                 metalness={0.15}
@@ -240,7 +249,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
               color={prismAppearance.glow}
               wireframe={true}
               transparent
-              opacity={theme === 'light' ? 0.25 : 0.4}
+              opacity={isLight ? 0.25 : 0.4}
               blending={THREE.AdditiveBlending}
             />
           </mesh>
@@ -257,8 +266,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
         <Particles color={palette.highlight} />
 
         <Suspense fallback={null}>
-          {/* Placed next to the prism [12, 2, -15] */}
-          {/* Adjusted Y to be on ground (-4) */}
+          {/* Character Model */}
           <MeModel 
             position={[22, -2.5, -15]} 
             scale={[8, 8, 8]} 
@@ -269,12 +277,12 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           <ResponsiveTV />
         </Suspense>
 
-        {/* Enhanced Lighting */}
+        {/* Enhanced Cinematic Lighting */}
         <ambientLight intensity={palette.ambient} />
         <directionalLight 
           position={[10, 20, 10]} 
           intensity={palette.directional} 
-          color="#ffffff" 
+          color={palette.directionalColor} 
           castShadow
         />
         <spotLight
@@ -285,7 +293,25 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           color={palette.spotColor}
           castShadow
         />
+        
+        {/* Island & CRT TV Fill Light */}
+        <pointLight
+          position={[-4, 4, -10]}
+          intensity={palette.islandFillLight}
+          color={palette.highlight}
+          distance={30}
+          decay={2}
+        />
+
+        {/* Dedicated Character Key/Rim Light for crisp silhouette and body details */}
+        <pointLight
+          position={[20, 1, -11]}
+          intensity={palette.characterLight}
+          color={isLight ? '#ffffff' : '#e0fff4'}
+          distance={22}
+          decay={1.8}
+        />
       </group>
     </>
   );
-} 
+}

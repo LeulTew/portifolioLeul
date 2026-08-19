@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -23,9 +23,7 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
 
   // Play animations on mount
   useEffect(() => {
-    console.log('GLB Animation names:', names);
     if (names.length > 0 && actions) {
-      // Play all animations
       names.forEach((name) => {
         const action = actions[name];
         if (action) {
@@ -35,12 +33,20 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
     }
   }, [actions, names]);
 
-  // Configure shadows for the model
-  useMemo(() => {
+  // Configure shadows & material highlights for high visual clarity
+  useEffect(() => {
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+        if (child.material) {
+          if ('roughness' in child.material && typeof child.material.roughness === 'number') {
+            child.material.roughness = 0.55;
+          }
+          if ('envMapIntensity' in child.material && typeof child.material.envMapIntensity === 'number') {
+            child.material.envMapIntensity = 1.6;
+          }
+        }
       }
     });
   }, [scene]);
