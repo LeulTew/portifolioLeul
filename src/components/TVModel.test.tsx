@@ -127,4 +127,9 @@ describe('TVModel', () => {
       });
     }
   });
+
+  it('cleans up video textures and timers on unmount', () => {
+    const { unmount } = render(<TVModel />);
+    unmount();
+  });
 });

@@ -1,5 +1,5 @@
 import { useGLTF, useVideoTexture } from '@react-three/drei';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 
 export function TVModel(props: JSX.IntrinsicElements['group']) {
@@ -11,25 +11,49 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
     muted: true,
     loop: true
   });
-  
-  const video = document.createElement('video');
-  video.src = '/videos/Significant-opt.mp4';
-  video.crossOrigin = 'Anonymous';
-  video.loop = true;
-  video.muted = true;
-  video.play();
-  const texture2 = new THREE.VideoTexture(video);
 
-  const textures = [texture1, texture2];
-  const currentTexture = textures[videoIndex];
+  const texture2 = useMemo(() => {
+    if (typeof document === 'undefined') return texture1;
+    const video = document.createElement('video');
+    video.src = '/videos/Significant-opt.mp4';
+    video.crossOrigin = 'Anonymous';
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {});
+    }
+    const tex = new THREE.VideoTexture(video);
+    return tex;
+  }, [texture1]);
+
+  const textures = useMemo(() => [texture1, texture2], [texture1, texture2]);
+  const currentTexture = textures[videoIndex] || texture1;
 
   useEffect(() => {
     const interval = setInterval(() => {
       setVideoIndex((prev: number) => (prev + 1) % textures.length);
-    }, 8000); // Switch every 8 seconds
+    }, 8000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [textures.length]);
+
+  useEffect(() => {
+    return () => {
+      if (texture2 && texture2 !== texture1) {
+        if (typeof texture2.dispose === 'function') {
+          texture2.dispose();
+        }
+        if (texture2.image && typeof texture2.image.pause === 'function') {
+          texture2.image.pause();
+          texture2.image.src = '';
+        }
+      }
+    };
+  }, [texture2, texture1]);
 
   useEffect(() => {
     scene.traverse((child) => {
