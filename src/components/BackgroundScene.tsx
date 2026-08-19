@@ -14,6 +14,7 @@ import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
+import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
 
@@ -134,22 +135,27 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
   const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
+
   const palette = useMemo(() => {
     const isLight = theme === 'light';
     return {
-      background: isLight ? '#f4f7ff' : '#001a1a',
-      fog: isLight ? '#f6f8ff' : '#001a1a',
-      terrain: isLight ? '#e9e2d4' : '#0a1a1a',
-      ground: isLight ? '#3a5f5f' : '#001a1a',
+      background: isLight ? '#f4f7ff' : '#001414',
+      fog: isLight ? '#f6f8ff' : '#001414',
+      terrain: isLight ? '#e9e2d4' : '#0e2424',
+      ground: isLight ? '#3a5f5f' : '#001414',
       highlight: '#00ff9d',
+      rimLight: '#00ff9d',
       environment: (isLight ? 'city' : 'night') as 'city' | 'night',
-      ambient: isLight ? 0.6 : 0.2,
-      directional: isLight ? 1.1 : 0.5,
-      spotIntensity: isLight ? 0.8 : 1,
+      ambient: isLight ? 0.65 : 0.42,
+      directional: isLight ? 1.15 : 0.95,
+      directionalColor: isLight ? '#ffffff' : '#e6fff5',
+      spotIntensity: isLight ? 0.8 : 1.35,
       spotColor: '#00ff9d',
-      pointIntensity: isLight ? 4 : 5,
+      pointIntensity: isLight ? 4 : 5.8,
+      islandFillLight: isLight ? 0.3 : 0.55,
     };
   }, [theme]);
+
   const prismAppearance = useMemo(() => {
     return theme === 'light'
       ? {
@@ -172,23 +178,24 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
     if (!sceneRef.current || !prismRef.current) return;
 
     const time = state.clock.getElapsedTime();
-    const scrollProgress = scroll.offset;
+    const scrollProgress = scroll?.offset ?? 0;
+    const reducedMotion = getPrefersReducedMotion();
 
-    // Scene parallax based on mouse
-    const mouseX = state.mouse.x * 0.3;
-    const mouseY = state.mouse.y * 0.2;
-    sceneRef.current.rotation.y = mouseX * 0.2 + scrollProgress * Math.PI;
-    sceneRef.current.rotation.x = mouseY * 0.1;
+    // Scene parallax based on mouse (dampened if reduced motion)
+    const mouseX = reducedMotion ? 0 : state.mouse.x * 0.25;
+    const mouseY = reducedMotion ? 0 : state.mouse.y * 0.15;
+    sceneRef.current.rotation.y = mouseX * 0.15 + scrollProgress * Math.PI;
+    sceneRef.current.rotation.x = mouseY * 0.08;
 
-    // Prism animation
-    prismRef.current.position.y = Math.sin(time * 0.5) * 0.2 + 2;
+    // Prism animation (steady if reduced motion)
+    prismRef.current.position.y = reducedMotion ? 2 : Math.sin(time * 0.5) * 0.2 + 2;
   });
 
   return (
     <>
       <ResponsiveCamera />
       <color attach="background" args={[palette.background]} />
-      <fog attach="fog" args={[palette.fog, 30, 70]} />
+      <fog attach="fog" args={[palette.fog, 35, 75]} />
 
       <group ref={sceneRef}>
         <Environment preset={palette.environment} />
@@ -269,12 +276,12 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           <ResponsiveTV />
         </Suspense>
 
-        {/* Enhanced Lighting */}
+        {/* Enhanced Cinematic Lighting */}
         <ambientLight intensity={palette.ambient} />
         <directionalLight 
           position={[10, 20, 10]} 
           intensity={palette.directional} 
-          color="#ffffff" 
+          color={palette.directionalColor} 
           castShadow
         />
         <spotLight
@@ -285,7 +292,14 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           color={palette.spotColor}
           castShadow
         />
+        <pointLight
+          position={[-4, 4, -10]}
+          intensity={palette.islandFillLight}
+          color={palette.highlight}
+          distance={30}
+          decay={2}
+        />
       </group>
     </>
   );
-} 
+}
