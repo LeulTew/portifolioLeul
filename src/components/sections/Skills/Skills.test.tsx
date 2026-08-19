@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { Skills } from './Skills';
 import { cvData } from '../../../data/cv';
 
@@ -8,15 +9,16 @@ describe('Skills', () => {
   it('renders the skills section', () => {
     render(<Skills />);
 
-    expect(screen.getByText('Skills')).toBeInTheDocument();
-    expect(screen.getByText('Technical capabilities and creative expertise')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
+    expect(screen.getByText('ARSENAL')).toBeInTheDocument();
+    expect(screen.getByText(/Technical capabilities/i)).toBeInTheDocument();
   });
 
   it('renders all skill categories', () => {
     render(<Skills />);
 
     skillCategories.forEach(category => {
-      expect(screen.getByText(category.title)).toBeInTheDocument();
+      expect(screen.getByLabelText(category.title)).toBeInTheDocument();
     });
   });
 

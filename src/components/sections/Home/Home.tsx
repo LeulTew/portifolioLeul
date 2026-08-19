@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
+import { DancingCharText, KineticRotator, TelemetryBadge } from '../../ui/KineticText';
 import styles from './Home.module.css';
 
 interface HomeProps {
@@ -97,6 +98,12 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
               />
             </div>
           </motion.div>
+          {/* Telemetry Badge Header */}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <TelemetryBadge label="SYSTEM" value="ONLINE" theme={theme} />
+            <TelemetryBadge label="FOCUS" value="FULL-STACK & 3D WEB" theme={theme} />
+          </div>
+
           <motion.h1 
             className={styles.title}
             initial={{ opacity: 0, x: -20 }}
@@ -107,9 +114,10 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
               delay: 0.3
             }}
           >
-            <span>Leul</span>
-            <span className={styles.lastname}>Tewodros</span>
+            <DancingCharText text="Leul" className="mr-3" />
+            <DancingCharText text="Tewodros" className={styles.lastname} />
           </motion.h1>
+
           <motion.div 
             className={styles.info}
             initial={{ opacity: 0, x: -20 }}
@@ -120,11 +128,8 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
               delay: 0.4
             }}
           >
-            <span>Motivated Computer Science Student</span>
-            <span className={styles.divider}>/</span>
-            <span>Aspiring Software Developer</span>
-            <span className={styles.divider}>/</span>
-            <span>Creative Problem Solver</span>
+            <span className="opacity-80">ARCHITECTING</span>
+            <KineticRotator words={['FULL-STACK APPS', 'THREE.JS 3D EXPERIENCES', 'INTELLIGENT SYSTEMS', 'HIGH-PERFORMANCE UI']} />
           </motion.div>
         </motion.div>
 
@@ -138,9 +143,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
             delay: 0.5
           }}
         >
-          Computer Science graduate from HiLCoE School of Computer Science & Technology, 
-          with hands-on experience in software development and digital design. Eager to contribute 
-          to impactful projects while gaining industry experience.
+          Full-Stack Developer & 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
         </motion.p>
 
         {/* Magnetic CTA Buttons */}
