@@ -17,12 +17,22 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    chunkSizeWarningLimit: 1600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
-          'animation-vendor': ['framer-motion', 'gsap'],
+        manualChunks(id: string) {
+          if (id.includes('node_modules/three/')) {
+            return 'three-core';
+          }
+          if (id.includes('node_modules/@react-three/fiber/') || id.includes('node_modules/@react-three/drei/')) {
+            return 'r3f-vendor';
+          }
+          if (id.includes('node_modules/framer-motion/') || id.includes('node_modules/gsap/') || id.includes('node_modules/animejs/')) {
+            return 'animation-vendor';
+          }
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/scheduler/')) {
+            return 'react-vendor';
+          }
         },
       },
     },
@@ -35,8 +45,7 @@ export default defineConfig({
       '@react-three/fiber',
       '@react-three/drei',
       'framer-motion',
-      'gsap',
-      '@studio-freight/react-lenis'
+      'gsap'
     ],
     esbuildOptions: {
       target: 'esnext',
