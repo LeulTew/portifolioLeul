@@ -106,11 +106,19 @@ export function Projects({ theme }: { theme?: string }) {
     offset: ["start end", "end start"]
   });
 
-  const y = useTransform(scrollYProgress, [0, 1], [100, -100]);
+  const y = useTransform(scrollYProgress, [0, 1], [80, -80]);
+  const sectionOpacity = useTransform(scrollYProgress, [0, 0.12, 0.88, 1], [0.3, 1, 1, 0.2]);
+  const sectionScale = useTransform(scrollYProgress, [0, 0.15, 0.85, 1], [0.97, 1, 1, 0.97]);
 
   return (
     <section ref={containerRef} className={styles.projects} id="projects">
-      <div className={styles.content}>
+      <motion.div
+        className={styles.content}
+        style={{
+          opacity: sectionOpacity,
+          scale: sectionScale,
+        }}
+      >
         <header className={styles.header}>
           <motion.h2 
             className={styles.title}
@@ -144,7 +152,7 @@ export function Projects({ theme }: { theme?: string }) {
             className="bg-transparent"
           />
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

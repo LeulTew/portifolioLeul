@@ -1,7 +1,7 @@
 import { Theme } from './ThemeContext';
 
 export function getInitialTheme(): Theme {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage) {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       return savedTheme as Theme;

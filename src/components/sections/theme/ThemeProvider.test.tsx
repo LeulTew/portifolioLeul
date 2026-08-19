@@ -3,7 +3,28 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from './ThemeProvider';
 import { getInitialTheme } from './themeUtils';
 import { useTheme } from './useTheme';
-import { vi } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value.toString();
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    }),
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+});
 
 const TestConsumer = () => {
   const { theme } = useTheme();
@@ -22,7 +43,7 @@ const TestToggleComponent = () => {
 
 describe('ThemeProvider', () => {
   beforeEach(() => {
-    localStorage.clear();
+    localStorageMock.clear();
     document.documentElement.removeAttribute('data-theme');
   });
 
@@ -48,12 +69,13 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('theme')).toHaveTextContent('dark');
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
 
-    await user.click(screen.getByRole('button', { name: /toggle theme/i }));
+    const button = screen.getByRole('button', { name: 'Toggle Theme' });
+    await user.click(button);
 
     expect(screen.getByTestId('theme')).toHaveTextContent('light');
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
 
-    await user.click(screen.getByRole('button', { name: /toggle theme/i }));
+    await user.click(button);
 
     expect(screen.getByTestId('theme')).toHaveTextContent('dark');
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
@@ -62,27 +84,20 @@ describe('ThemeProvider', () => {
   it('persists theme in localStorage', async () => {
     const user = userEvent.setup();
 
-    const { rerender } = render(
+    render(
       <ThemeProvider>
         <TestToggleComponent />
       </ThemeProvider>
     );
 
-    await user.click(screen.getByRole('button', { name: /toggle theme/i }));
-    expect(localStorage.getItem('theme')).toBe('light');
+    const button = screen.getByRole('button', { name: 'Toggle Theme' });
+    await user.click(button);
 
-    // Simulate page reload by re-rendering
-    rerender(
-      <ThemeProvider>
-        <TestToggleComponent />
-      </ThemeProvider>
-    );
-
-    expect(screen.getByTestId('theme')).toHaveTextContent('light');
+    expect(localStorageMock.getItem('theme')).toBe('light');
   });
 
   it('loads saved theme from localStorage', () => {
-    localStorage.setItem('theme', 'light');
+    localStorageMock.setItem('theme', 'light');
 
     render(
       <ThemeProvider>
@@ -96,6 +111,16 @@ describe('ThemeProvider', () => {
 });
 
 describe('useTheme', () => {
+  it('throws error when used outside ThemeProvider', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => {
+      render(<TestConsumer />);
+    }).toThrow('useTheme must be used within a ThemeProvider');
+
+    consoleError.mockRestore();
+  });
+
   it('can be used within ThemeProvider', () => {
     render(
       <ThemeProvider>
@@ -108,22 +133,19 @@ describe('useTheme', () => {
 });
 
 describe('getInitialTheme', () => {
-  const originalWindow = global.window;
-
   afterEach(() => {
     vi.restoreAllMocks();
-    global.window = originalWindow;
-    localStorage.clear();
+    vi.unstubAllGlobals();
+    localStorageMock.clear();
   });
 
   it('returns "dark" when window is undefined (SSR)', () => {
-    // @ts-expect-error - testing SSR behavior by temporarily removing window
-    delete global.window;
+    vi.stubGlobal('window', undefined);
     expect(getInitialTheme()).toBe('dark');
   });
 
   it('returns saved theme from localStorage', () => {
-    localStorage.setItem('theme', 'light');
+    localStorageMock.setItem('theme', 'light');
     expect(getInitialTheme()).toBe('light');
   });
 

@@ -20,7 +20,9 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   const [activeSection, setActiveSection] = useState('home');
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const { theme, toggleTheme } = useContext(ThemeContext);
+  const themeContext = useContext(ThemeContext);
+  const theme = themeContext?.theme || 'dark';
+  const toggleTheme = themeContext?.toggleTheme || (() => {});
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);

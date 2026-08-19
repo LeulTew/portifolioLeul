@@ -1,4 +1,10 @@
 import { useState, useEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 /**
  * Animation Gateway & Motion Coordinator
@@ -100,4 +106,42 @@ export function lerp(start: number, end: number, factor: number): number {
  */
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Creates a GSAP ScrollTrigger horizontal rail that scrubs indices on vertical scroll
+ */
+export function createHorizontalRailScrollTrigger(
+  triggerElement: HTMLElement,
+  totalItems: number,
+  onProgress: (progress: number, activeIndex: number) => void
+): ScrollTrigger | null {
+  if (
+    !triggerElement ||
+    !triggerElement.parentNode ||
+    typeof window === 'undefined' ||
+    getPrefersReducedMotion() ||
+    totalItems <= 1
+  ) {
+    return null;
+  }
+
+  const trigger = ScrollTrigger.create({
+    trigger: triggerElement,
+    start: 'top top',
+    end: () => `+=${window.innerHeight * Math.min(totalItems * 0.5, 3)}`,
+    pin: true,
+    scrub: 1,
+    anticipatePin: 1,
+    onUpdate: (self) => {
+      const progress = self.progress;
+      const calculatedIndex = Math.min(
+        Math.floor(progress * totalItems),
+        totalItems - 1
+      );
+      onProgress(progress, calculatedIndex);
+    },
+  });
+
+  return trigger;
 }

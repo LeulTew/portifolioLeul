@@ -31,6 +31,7 @@ vi.mock('framer-motion', async () => {
       img: ({ src, alt, className, onError }: any) => <img src={src} alt={alt} className={className} onError={onError} />,
       button: ({ children, className, onClick, ...props }: any) => <button className={className} onClick={onClick} {...props}>{children}</button>,
       a: ({ children, className, href, ...props }: any) => <a className={className} href={href} {...props}>{children}</a>,
+      span: ({ children, className, ...props }: any) => <span className={className} {...props}>{children}</span>,
       svg: ({ children, className, ...props }: any) => <svg className={className} {...props}>{children}</svg>,
       path: ({ ...props }: any) => <path {...props} />,
     },
