@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { MagneticButton } from '../../ui/MagneticButton';
 import styles from './Home.module.css';
 
 interface HomeProps {
@@ -7,7 +8,7 @@ interface HomeProps {
   theme?: string;
 }
 
-export function Home({ onNavigate }: HomeProps) {
+export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
 
   const { scrollY } = useScroll();
@@ -47,6 +48,18 @@ export function Home({ onNavigate }: HomeProps) {
     }
     const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     document.getElementById('about')?.scrollIntoView({ 
+      behavior: prefersReduced ? 'auto' : 'smooth', 
+      block: 'start' 
+    });
+  };
+
+  const scrollToContact = () => {
+    if (onNavigate) {
+      onNavigate('contact');
+      return;
+    }
+    const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('contact')?.scrollIntoView({ 
       behavior: prefersReduced ? 'auto' : 'smooth', 
       block: 'start' 
     });
@@ -129,6 +142,21 @@ export function Home({ onNavigate }: HomeProps) {
           with hands-on experience in software development and digital design. Eager to contribute 
           to impactful projects while gaining industry experience.
         </motion.p>
+
+        {/* Magnetic CTA Buttons */}
+        <motion.div
+          className="flex flex-wrap items-center gap-4 mt-6 pointer-events-auto"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+        >
+          <MagneticButton onClick={scrollToAbout} variant="primary" theme={theme}>
+            Explore My Work
+          </MagneticButton>
+          <MagneticButton onClick={scrollToContact} variant="secondary" icon={false} theme={theme}>
+            Get In Touch
+          </MagneticButton>
+        </motion.div>
       </div>
 
       <motion.div 
