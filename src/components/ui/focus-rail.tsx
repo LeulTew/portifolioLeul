@@ -226,8 +226,8 @@ export function FocusRail({
               <motion.div
                 key={absIndex}
                 className={cn(
-                  "absolute aspect-video w-[300px] md:w-[580px] rounded-2xl border-t border-white/20 bg-neutral-900 shadow-2xl transition-shadow duration-300",
-                  isCenter ? "z-20 shadow-white/10" : "z-10"
+                  "absolute aspect-video w-[300px] md:w-[580px] border border-white/20 bg-neutral-900 shadow-2xl transition-shadow duration-300 overflow-hidden",
+                  isCenter ? "z-20 border-emerald-400/50 shadow-[0_0_35px_rgba(0,255,157,0.25)]" : "z-10"
                 )}
                 initial={false}
                 animate={{
@@ -239,10 +239,13 @@ export function FocusRail({
                   filter: `blur(${blur}px) brightness(${brightness})`,
                 }}
                 transition={(val: string) => {
-                    if (val === "scale") return TAP_SPRING;
-                    return BASE_SPRING;
+                  if (val === "scale") return TAP_SPRING;
+                  return BASE_SPRING;
                 }}
-                style={{ transformStyle: "preserve-3d" }}
+                style={{
+                  transformStyle: "preserve-3d",
+                  clipPath: "polygon(16px 0%, 100% 0%, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0% 100%, 0% 16px)",
+                }}
                 onClick={() => { if (offset !== 0) setActive((p) => p + offset); }}
               >
                 <img
@@ -251,11 +254,19 @@ export function FocusRail({
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80';
                   }}
-                  className="h-full w-full rounded-2xl object-cover pointer-events-none"
+                  className="h-full w-full object-cover pointer-events-none"
                 />
                 <span className="sr-only">{item.title}</span>
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-                <div className="absolute inset-0 rounded-2xl bg-black/10 pointer-events-none mix-blend-multiply" />
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-black/20 pointer-events-none mix-blend-multiply" />
+
+                {/* Laser Corner Accents */}
+                {isCenter && (
+                  <>
+                    <span className="absolute top-2 left-2 w-2.5 h-2.5 border-t-2 border-l-2 border-emerald-400 pointer-events-none" />
+                    <span className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b-2 border-r-2 border-emerald-400 pointer-events-none" />
+                  </>
+                )}
               </motion.div>
             );
           })}
