@@ -10,7 +10,7 @@
 
 .header.scrolled {
   background: rgba(var(--bg-color), 0.8);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(var(--text-color), 0.1);
 }
 
@@ -42,7 +42,14 @@
 .logoImage {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  clip-path: polygon(
+    8px 0%, 
+    100% 0%, 
+    100% calc(100% - 8px), 
+    calc(100% - 8px) 100%, 
+    0% 100%, 
+    0% 8px
+  );
   object-fit: cover;
   border: 2px solid rgba(var(--text-color), 0.2);
   transition: transform 0.3s ease, border-color 0.3s ease;
@@ -56,18 +63,26 @@
 .desktopNav {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
   margin-left: auto;
 }
 
 .navItems {
   display: flex;
-  gap: 2rem;
+  gap: 1.5rem;
   background: rgba(var(--text-color), 0.05);
   padding: 0.5rem 1.5rem;
-  border-radius: 2rem;
-  border: 1px solid rgba(var(--text-color), 0.1);
-  backdrop-filter: blur(5px);
+  border: 1px solid rgba(var(--text-color), 0.12);
+  backdrop-filter: blur(12px);
+  clip-path: polygon(
+    10px 0%, 
+    100% 0%, 
+    100% calc(100% - 10px), 
+    calc(100% - 10px) 100%, 
+    0% 100%, 
+    0% 10px
+  );
+  position: relative;
 }
 
 .navItem {
@@ -94,27 +109,37 @@
   right: 0;
   height: 2px;
   background: var(--primary-color);
-  border-radius: 2px;
+  box-shadow: 0 0 8px var(--primary-color);
 }
 
 .themeToggle {
-  background: none;
-  border: none;
+  background: rgba(var(--text-color), 0.05);
+  border: 1px solid rgba(var(--text-color), 0.12);
   color: rgb(var(--text-color));
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: background 0.3s ease;
+  padding: 0.6rem;
+  clip-path: polygon(
+    6px 0%, 
+    100% 0%, 
+    100% calc(100% - 6px), 
+    calc(100% - 6px) 100%, 
+    0% 100%, 
+    0% 6px
+  );
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .themeToggle:hover {
-  background: rgba(var(--text-color), 0.1);
+  background: rgba(0, 255, 157, 0.15);
+  border-color: rgba(0, 255, 157, 0.5);
+  color: #00ff9d;
+  transform: scale(1.05);
 }
 
-/* 720p / Small Laptop Adjustments (Very Small) */
+/* 720p / Small Laptop Adjustments */
 @media (min-width: 769px) and (max-width: 1366px) {
   .nav {
     padding: 0.5rem 1.5rem;
@@ -132,7 +157,7 @@
   }
 }
 
-/* 1080p / Standard Desktop Adjustments (Small) */
+/* 1080p / Standard Desktop Adjustments */
 @media (min-width: 1367px) and (max-width: 1920px) {
   .nav {
     padding: 0.75rem 2rem;

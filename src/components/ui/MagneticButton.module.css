@@ -1,0 +1,211 @@
+.magneticWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  text-decoration: none;
+  font-family: inherit;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cutoutFrame {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.85rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  overflow: hidden;
+  clip-path: polygon(
+    14px 0%, 
+    100% 0%, 
+    100% calc(100% - 14px), 
+    calc(100% - 14px) 100%, 
+    0% 100%, 
+    0% 14px
+  );
+  transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1), 
+              color 0.3s cubic-bezier(0.22, 1, 0.36, 1), 
+              box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Primary Variant */
+.primary {
+  background: linear-gradient(135deg, #00ff9d 0%, #00d17a 100%);
+  color: #001a14;
+  box-shadow: 0 0 25px rgba(0, 255, 157, 0.35), inset 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+.primary:hover {
+  background: linear-gradient(135deg, #26ffaa 0%, #00ff9d 100%);
+  box-shadow: 0 0 35px rgba(0, 255, 157, 0.6), inset 0 0 18px rgba(255, 255, 255, 0.5);
+}
+
+/* Secondary Variant */
+.secondaryDark {
+  background: rgba(0, 30, 25, 0.65);
+  color: #f0fff8;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.15);
+}
+
+.secondaryDark:hover {
+  background: rgba(0, 45, 38, 0.85);
+  box-shadow: 0 0 25px rgba(0, 255, 157, 0.35);
+  color: #00ff9d;
+}
+
+.secondaryLight {
+  background: rgba(255, 255, 255, 0.85);
+  color: #0a251e;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.secondaryLight:hover {
+  background: rgba(240, 255, 250, 0.95);
+  box-shadow: 0 4px 20px rgba(0, 209, 122, 0.25);
+  color: #0a6b4a;
+}
+
+/* Glass Variant */
+.glassDark {
+  background: rgba(10, 20, 20, 0.7);
+  color: #e2f5ee;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.glassDark:hover {
+  background: rgba(15, 30, 30, 0.9);
+  color: #00ff9d;
+}
+
+.glassLight {
+  background: rgba(255, 255, 255, 0.9);
+  color: #111827;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.glassLight:hover {
+  background: #ffffff;
+  color: #00874e;
+}
+
+/* SVG Neon Cutout Border Layer */
+.borderSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.borderPath {
+  fill: none;
+  stroke: rgba(0, 255, 157, 0.4);
+  stroke-width: 1.5;
+  transition: stroke 0.3s ease;
+}
+
+.magneticWrapper:hover .borderPath {
+  stroke: rgba(0, 255, 157, 0.9);
+  filter: drop-shadow(0 0 6px rgba(0, 255, 157, 0.8));
+}
+
+/* Animated Neon Tracer Beam */
+.tracerBeam {
+  fill: none;
+  stroke: #00ff9d;
+  stroke-width: 2.5;
+  stroke-dasharray: 45 180;
+  stroke-dashoffset: 0;
+  animation: traceBorder 3s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.magneticWrapper:hover .tracerBeam {
+  opacity: 1;
+}
+
+@keyframes traceBorder {
+  to {
+    stroke-dashoffset: -225;
+  }
+}
+
+/* Corner Technical Accents */
+.cornerAccentTL {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-top: 2px solid #00ff9d;
+  border-left: 2px solid #00ff9d;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.cornerAccentBR {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  border-bottom: 2px solid #00ff9d;
+  border-right: 2px solid #00ff9d;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.magneticWrapper:hover .cornerAccentTL {
+  opacity: 1;
+  transform: translate(-1px, -1px);
+}
+
+.magneticWrapper:hover .cornerAccentBR {
+  opacity: 1;
+  transform: translate(1px, 1px);
+}
+
+/* Localized Radial Cursor Glow inside Button */
+.cursorGlowSpot {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(0, 255, 157, 0.35) 0%, rgba(0, 255, 157, 0) 70%);
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
+}
+
+/* Content Container */
+.labelContent {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
