@@ -136,8 +136,9 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
 
+  const isLight = theme === 'light';
+
   const palette = useMemo(() => {
-    const isLight = theme === 'light';
     return {
       background: isLight ? '#f4f7ff' : '#001414',
       fog: isLight ? '#f6f8ff' : '#001414',
@@ -146,18 +147,19 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
       highlight: '#00ff9d',
       rimLight: '#00ff9d',
       environment: (isLight ? 'city' : 'night') as 'city' | 'night',
-      ambient: isLight ? 0.65 : 0.42,
+      ambient: isLight ? 0.65 : 0.45,
       directional: isLight ? 1.15 : 0.95,
       directionalColor: isLight ? '#ffffff' : '#e6fff5',
       spotIntensity: isLight ? 0.8 : 1.35,
       spotColor: '#00ff9d',
       pointIntensity: isLight ? 4 : 5.8,
-      islandFillLight: isLight ? 0.3 : 0.55,
+      islandFillLight: isLight ? 0.3 : 0.6,
+      characterLight: isLight ? 2.5 : 4.5,
     };
-  }, [theme]);
+  }, [isLight]);
 
   const prismAppearance = useMemo(() => {
-    return theme === 'light'
+    return isLight
       ? {
           solid: '#0a6b4a',
           glow: '#11b978',
@@ -172,7 +174,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           emissive: '#004428',
           opacity: 0.9,
         };
-  }, [theme]);
+  }, [isLight]);
 
   useFrame((state) => {
     if (!sceneRef.current || !prismRef.current) return;
@@ -221,7 +223,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           {/* Main prism body */}
           <mesh scale={[0.3, 12, 0.3]} castShadow>
             <boxGeometry />
-            {theme === 'light' ? (
+            {isLight ? (
               <meshStandardMaterial
                 color={prismAppearance.solid}
                 metalness={0.15}
@@ -247,7 +249,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
               color={prismAppearance.glow}
               wireframe={true}
               transparent
-              opacity={theme === 'light' ? 0.25 : 0.4}
+              opacity={isLight ? 0.25 : 0.4}
               blending={THREE.AdditiveBlending}
             />
           </mesh>
@@ -264,8 +266,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
         <Particles color={palette.highlight} />
 
         <Suspense fallback={null}>
-          {/* Placed next to the prism [12, 2, -15] */}
-          {/* Adjusted Y to be on ground (-4) */}
+          {/* Character Model */}
           <MeModel 
             position={[22, -2.5, -15]} 
             scale={[8, 8, 8]} 
@@ -292,12 +293,23 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           color={palette.spotColor}
           castShadow
         />
+        
+        {/* Island & CRT TV Fill Light */}
         <pointLight
           position={[-4, 4, -10]}
           intensity={palette.islandFillLight}
           color={palette.highlight}
           distance={30}
           decay={2}
+        />
+
+        {/* Dedicated Character Key/Rim Light for crisp silhouette and body details */}
+        <pointLight
+          position={[20, 1, -11]}
+          intensity={palette.characterLight}
+          color={isLight ? '#ffffff' : '#e0fff4'}
+          distance={22}
+          decay={1.8}
         />
       </group>
     </>
