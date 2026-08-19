@@ -12,7 +12,6 @@ describe('MagneticButton', () => {
     render(<MagneticButton>Click Me</MagneticButton>);
     const btn = screen.getByRole('button', { name: /click me/i });
     expect(btn).toBeDefined();
-    expect(btn.className).toContain('bg-emerald-500');
   });
 
   it('renders anchor link when href is provided', () => {
@@ -57,7 +56,6 @@ describe('MagneticButton', () => {
 
     const getBoundingSpy = vi.spyOn(btn, 'getBoundingClientRect');
     fireEvent.mouseMove(btn, { clientX: 250, clientY: 150 });
-    // When reduced motion is on, getBoundingClientRect shouldn't even be called
     expect(getBoundingSpy).not.toHaveBeenCalled();
   });
 

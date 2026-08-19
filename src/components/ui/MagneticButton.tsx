@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Springs, getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ArrowUpRight } from 'lucide-react';
+import styles from './MagneticButton.module.css';
 
 interface MagneticButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
@@ -27,6 +28,11 @@ export function MagneticButton({
 }: MagneticButtonProps) {
   const buttonRef = useRef<HTMLButtonElement | HTMLAnchorElement | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    visible: false,
+  });
 
   const isLight = theme === 'light';
 
@@ -39,21 +45,22 @@ export function MagneticButton({
     const distanceX = (e.clientX - centerX) * 0.35;
     const distanceY = (e.clientY - centerY) * 0.35;
     setPosition({ x: distanceX, y: distanceY });
+    setCursorPos({
+      x: e.clientX - left,
+      y: e.clientY - top,
+      visible: true,
+    });
   };
 
   const handleMouseLeave = () => {
     setPosition({ x: 0, y: 0 });
+    setCursorPos((prev) => ({ ...prev, visible: false }));
   };
 
-  const variantStyles = {
-    primary:
-      'bg-emerald-500 hover:bg-emerald-400 text-black font-bold shadow-[0_0_25px_rgba(16,185,129,0.35)] hover:shadow-[0_0_35px_rgba(16,185,129,0.55)] border border-emerald-400/50',
-    secondary: isLight
-      ? 'bg-black/5 hover:bg-black/10 text-black border border-black/15'
-      : 'bg-white/10 hover:bg-white/15 text-white border border-white/20 backdrop-blur-md',
-    glass: isLight
-      ? 'bg-white/70 hover:bg-white/90 text-neutral-900 border border-black/10 shadow-sm backdrop-blur-lg'
-      : 'bg-neutral-900/80 hover:bg-neutral-800 text-neutral-100 border border-white/10 backdrop-blur-lg shadow-xl',
+  const getVariantClass = () => {
+    if (variant === 'primary') return styles.primary;
+    if (variant === 'secondary') return isLight ? styles.secondaryLight : styles.secondaryDark;
+    return isLight ? styles.glassLight : styles.glassDark;
   };
 
   const Component = href ? motion.a : motion.button;
@@ -68,22 +75,60 @@ export function MagneticButton({
       onMouseLeave={handleMouseLeave}
       animate={{ x: position.x, y: position.y }}
       transition={Springs.snappy}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={cn(
-        'group relative inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-full text-sm font-semibold tracking-wide transition-colors select-none outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 cursor-pointer',
-        variantStyles[variant],
-        className
-      )}
+      className={cn(styles.magneticWrapper, className)}
       {...(props as never)}
     >
-      <span className="relative z-10 flex items-center gap-2">
-        {children}
-        {icon && (
-          <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      <div className={cn(styles.cutoutFrame, getVariantClass())}>
+        {/* Dynamic SVG Cyber Cutout Border */}
+        <svg className={styles.borderSvg} preserveAspectRatio="none">
+          <rect
+            x="1"
+            y="1"
+            width="calc(100% - 2px)"
+            height="calc(100% - 2px)"
+            className={styles.borderPath}
+          />
+          <rect
+            x="1"
+            y="1"
+            width="calc(100% - 2px)"
+            height="calc(100% - 2px)"
+            className={styles.tracerBeam}
+          />
+        </svg>
+
+        {/* Localized Cursor Glow Spotlight */}
+        {cursorPos.visible && (
+          <div
+            className={styles.cursorGlowSpot}
+            style={{
+              left: `${cursorPos.x}px`,
+              top: `${cursorPos.y}px`,
+            }}
+          />
         )}
-      </span>
+
+        {/* Technical Corner Brackets */}
+        <span className={styles.cornerAccentTL} />
+        <span className={styles.cornerAccentBR} />
+
+        {/* Label & Kinetic Icon */}
+        <span className={styles.labelContent}>
+          {children}
+          {icon && (
+            <motion.span
+              className="inline-flex"
+              whileHover={{ rotate: 45, x: 2, y: -2 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </motion.span>
+          )}
+        </span>
+      </div>
     </Component>
   );
 }
