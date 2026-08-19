@@ -1,8 +1,9 @@
 
 import * as React from "react";
 import { motion, AnimatePresence, PanInfo, LayoutGroup } from "framer-motion";
-import { ChevronLeft, ChevronRight, ArrowUpRight, Github, Globe } from "lucide-react";
+import { ChevronLeft, ChevronRight, Github, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MagneticButton } from "./MagneticButton";
 
 export type FocusRailItem = {
   id: string | number;
@@ -317,29 +318,29 @@ export function FocusRail({
                       {/* Buttons */}
                       <div className="flex flex-wrap items-center gap-4 pt-2">
                         {activeItem.demoUrl && (
-                          <a
+                          <MagneticButton
                             href={activeItem.demoUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            variant="primary"
+                            theme={theme}
                             onClick={(e) => e.stopPropagation()}
-                            className="group flex items-center gap-2 rounded-full bg-emerald-500 hover:bg-emerald-400 px-6 py-3 text-sm font-bold text-black transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]"
                           >
                             <Globe className="h-4 w-4" />
                             Visit Site
-                            <ArrowUpRight className="h-4 w-4" />
-                          </a>
+                          </MagneticButton>
                         )}
                         {activeItem.repoUrl && (
-                          <a
+                          <MagneticButton
                             href={activeItem.repoUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            variant="secondary"
+                            icon={false}
+                            theme={theme}
                             onClick={(e) => e.stopPropagation()}
-                            className="group flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-6 py-3 text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 ring-1 ring-white/20 backdrop-blur-sm"
                           >
                             <Github className="h-4 w-4" />
                             GitHub
-                          </a>
+                          </MagneticButton>
                         )}
                       </div>
                     </motion.div>
