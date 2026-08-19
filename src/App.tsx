@@ -13,6 +13,7 @@ import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
+import { useGpuTier } from './lib/gateways/gpuTier';
 
 import './index.css';
 import styles from './App.module.css';
@@ -36,7 +37,7 @@ function App() {
   });
   const mainRef = useRef<HTMLDivElement | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
-  
+  const gpuConfig = useGpuTier();
 
 
   useEffect(() => {
@@ -165,7 +166,7 @@ function App() {
       <Navigation scrollToSection={scrollToSection} />
       <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Canvas
-            dpr={[1, 1.5]}
+            dpr={gpuConfig.dpr}
             camera={{
               position: [0, 0, 10],
               fov: 50,
@@ -173,7 +174,7 @@ function App() {
               far: 100
             }}
             gl={{
-              antialias: true,
+              antialias: gpuConfig.tier !== 'low',
               alpha: true,
               powerPreference: 'high-performance',
               stencil: false,
@@ -183,7 +184,7 @@ function App() {
             <ThemeContext.Provider value={{ theme, toggleTheme }}>
               <ScrollControls pages={scrollPages} damping={0.3}>
                 <ScrollManager onReady={handleScrollElement} />
-                <BackgroundScene theme={theme} />
+                <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
                 <ParticleBackground theme={theme} />
                 <Scroll html style={{ width: '100%' }}>
                   <AnimatePresence mode="wait">

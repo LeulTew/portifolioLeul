@@ -68,10 +68,10 @@ function Terrain({ surfaceColor }: TerrainProps) {
 
 interface ParticlesProps {
   color: string;
+  count?: number;
 }
 
-function Particles({ color }: ParticlesProps) {
-  const count = 1000;
+function Particles({ color, count = 1000 }: ParticlesProps) {
   const positions = useMemo(() => {
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -80,7 +80,7 @@ function Particles({ color }: ParticlesProps) {
       positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
     }
     return positions;
-  }, []);
+  }, [count]);
 
   return (
     <Points>
@@ -108,9 +108,9 @@ function Particles({ color }: ParticlesProps) {
 function ResponsiveTV() {
   return (
     <TVModel 
-      position={[-10, 0.5, -14]} 
-      rotation={[0.1, Math.PI * 0.2, 0.1]} 
+      position={[-22, 1, -15]} 
       scale={[8, 8, 8]} 
+      rotation={[0, Math.PI / 1.5, 0]} 
     />
   );
 }
@@ -129,9 +129,10 @@ function ResponsiveCamera() {
 
 interface BackgroundSceneProps {
   theme: Theme;
+  particleCount?: number;
 }
 
-export function BackgroundScene({ theme }: BackgroundSceneProps) {
+export function BackgroundScene({ theme, particleCount = 1000 }: BackgroundSceneProps) {
   const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
@@ -263,7 +264,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
         </group>
 
         {/* Ambient Particles */}
-        <Particles color={palette.highlight} />
+        <Particles color={palette.highlight} count={particleCount} />
 
         <Suspense fallback={null}>
           {/* Character Model */}
