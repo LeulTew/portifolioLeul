@@ -1,15 +1,13 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Github, Linkedin, Send } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 import { TelegramIcon } from '../../ui/TelegramIcon';
 import styles from './Contact.module.css';
 import { cvData } from '../../../data/cv';
 
 export function Contact() {
   const containerRef = useRef<HTMLElement>(null);
-  
-
-
   const [formState, setFormState] = useState({
     name: '',
     email: '',
@@ -21,15 +19,36 @@ export function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setSubmitStatus('success');
-    setIsSubmitting(false);
-    setFormState({ name: '', email: '', message: '' });
-    
-    setTimeout(() => setSubmitStatus('idle'), 3000);
+    setSubmitStatus('idle');
+
+    try {
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_default';
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_default';
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'public_key_default';
+
+      if (serviceId !== 'service_default' && publicKey !== 'public_key_default') {
+        await emailjs.send(
+          serviceId,
+          templateId,
+          {
+            from_name: formState.name,
+            from_email: formState.email,
+            message: formState.message,
+          },
+          publicKey
+        );
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+      }
+
+      setSubmitStatus('success');
+      setFormState({ name: '', email: '', message: '' });
+    } catch {
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setSubmitStatus('idle'), 5000);
+    }
   };
 
   return (
@@ -102,6 +121,9 @@ export function Contact() {
               {submitStatus === 'success' && (
                 <p className={styles.successMessage}>Message sent successfully!</p>
               )}
+              {submitStatus === 'error' && (
+                <p className={styles.errorMessage}>Failed to send message. Please try again.</p>
+              )}
             </form>
           </motion.div>
 
@@ -134,13 +156,13 @@ export function Contact() {
             </div>
 
             <div className={styles.socialLinks}>
-              <a href={cvData.contact.social.github} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+              <a href={cvData.contact.social.github} target="_blank" rel="noopener noreferrer" className={styles.socialLink} aria-label="GitHub">
                 <Github size={24} />
               </a>
-              <a href={cvData.contact.social.linkedin} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+              <a href={cvData.contact.social.linkedin} target="_blank" rel="noopener noreferrer" className={styles.socialLink} aria-label="LinkedIn">
                 <Linkedin size={24} />
               </a>
-              <a href={cvData.contact.social.telegram} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+              <a href={cvData.contact.social.telegram} target="_blank" rel="noopener noreferrer" className={styles.socialLink} aria-label="Telegram">
                 <TelegramIcon />
               </a>
             </div>
