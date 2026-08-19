@@ -45,10 +45,23 @@
 
 .formContainer {
   background: rgba(var(--text-color), 0.03);
-  border: 1px solid rgba(var(--text-color), 0.1);
-  border-radius: 1.5rem;
+  border: 1px solid rgba(var(--text-color), 0.12);
   padding: 2.5rem;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  clip-path: polygon(
+    18px 0%, 
+    100% 0%, 
+    100% calc(100% - 18px), 
+    calc(100% - 18px) 100%, 
+    0% 100%, 
+    0% 18px
+  );
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.formContainer:hover {
+  border-color: rgba(0, 255, 157, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 255, 157, 0.06);
 }
 
 .form {
@@ -69,7 +82,14 @@
   padding: 1rem;
   background: rgba(var(--text-color), 0.03);
   border: 1px solid rgba(var(--text-color), 0.1);
-  border-radius: 0.75rem;
+  clip-path: polygon(
+    8px 0%, 
+    100% 0%, 
+    100% calc(100% - 8px), 
+    calc(100% - 8px) 100%, 
+    0% 100%, 
+    0% 8px
+  );
   color: rgb(var(--text-color));
   font-size: 1rem;
   transition: all 0.3s ease;
@@ -92,27 +112,6 @@
   resize: vertical;
 }
 
-.submitButton {
-  padding: 1rem 2rem;
-  background: var(--primary-color);
-  color: rgb(var(--bg-color));
-  border: none;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.submitButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(var(--primary-color), 0.2);
-}
-
 .contactInfo {
   display: flex;
   flex-direction: column;
@@ -125,14 +124,22 @@
   gap: 1.5rem;
   padding: 1.5rem;
   background: rgba(var(--text-color), 0.03);
-  border: 1px solid rgba(var(--text-color), 0.1);
-  border-radius: 1rem;
-  transition: all 0.3s ease;
+  border: 1px solid rgba(var(--text-color), 0.12);
+  clip-path: polygon(
+    12px 0%, 
+    100% 0%, 
+    100% calc(100% - 12px), 
+    calc(100% - 12px) 100%, 
+    0% 100%, 
+    0% 12px
+  );
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .infoItem:hover {
-  transform: translateX(10px);
-  border-color: var(--primary-color);
+  transform: translateX(8px);
+  border-color: rgba(0, 255, 157, 0.5);
+  background: rgba(0, 255, 157, 0.05);
 }
 
 .icon {
@@ -168,17 +175,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(var(--text-color), 0.03);
-  border: 1px solid rgba(var(--text-color), 0.1);
-  border-radius: 50%;
+  background: rgba(var(--text-color), 0.04);
+  border: 1px solid rgba(var(--text-color), 0.12);
+  clip-path: polygon(
+    8px 0%, 
+    100% 0%, 
+    100% calc(100% - 8px), 
+    calc(100% - 8px) 100%, 
+    0% 100%, 
+    0% 8px
+  );
   color: rgb(var(--text-color));
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .socialLink:hover {
-  background: var(--primary-color);
-  color: rgb(var(--bg-color));
-  transform: translateY(-5px);
+  background: rgba(0, 255, 157, 0.2);
+  border-color: rgba(0, 255, 157, 0.6);
+  color: #00ff9d;
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.3);
 }
 
 /* 720p / Small Laptop Adjustments (Very Small) */
