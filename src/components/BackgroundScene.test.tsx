@@ -33,6 +33,7 @@ vi.mock('@react-three/drei', () => ({
   useScroll: vi.fn(() => ({ offset: 0.5 })),
   Environment: () => null,
   PerspectiveCamera: () => null,
+  MeshReflectorMaterial: () => null,
   Points: ({ children }: any) => <>{children}</>,
   PointMaterial: () => null,
 }));
@@ -56,7 +57,6 @@ vi.mock('@react-three/fiber', () => ({
   },
 }));
 
-vi.mock('./Ocean', () => ({ Ocean: () => null }));
 vi.mock('./TVModel', () => ({ TVModel: () => null }));
 vi.mock('./MeModel', () => ({ MeModel: () => null }));
 
