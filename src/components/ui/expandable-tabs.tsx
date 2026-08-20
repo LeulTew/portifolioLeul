@@ -93,6 +93,7 @@ export function ExpandableTabs({
 
   return (
     <div
+      role="tablist"
       className={cn(
         "flex flex-wrap items-center gap-2 rounded-full border border-white/15 bg-white/8 p-2 shadow-lg backdrop-blur-[30px]",
         className
@@ -110,6 +111,9 @@ export function ExpandableTabs({
         return (
           <motion.button
             key={tab.title}
+            role="tab"
+            aria-selected={isSelected}
+            aria-label={displayTitle}
             variants={buttonVariants}
             initial={false}
             animate="animate"

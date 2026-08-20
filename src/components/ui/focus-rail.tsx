@@ -371,6 +371,7 @@ export function FocusRail({
             >
               <button
                 onClick={handlePrev}
+                aria-label="Previous project"
                 className="rounded-full p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -385,6 +386,7 @@ export function FocusRail({
               </div>
               <button
                 onClick={handleNext}
+                aria-label="Next project"
                 className="rounded-full p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
               >
                 <ChevronRight className="h-5 w-5" />
