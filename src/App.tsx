@@ -10,6 +10,7 @@ import { Projects } from './components/sections/Projects/Projects';
 import { Skills } from './components/sections/Skills/Skills';
 import { BackgroundScene } from './components/BackgroundScene';
 import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
+import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
@@ -184,6 +185,7 @@ function App() {
               <ScrollControls pages={scrollPages} damping={0.3}>
                 <ScrollManager onReady={handleScrollElement} />
                 <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
+                <ParticleBackground theme={theme} />
                 <Scroll html style={{ width: '100%' }}>
                   <AnimatePresence mode="wait">
                     {isLoading ? (

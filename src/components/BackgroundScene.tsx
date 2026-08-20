@@ -3,14 +3,16 @@ import { useFrame } from '@react-three/fiber';
 import { 
   useScroll, 
   Environment, 
+  MeshReflectorMaterial,
   useGLTF,
-  PerspectiveCamera
+  PerspectiveCamera,
+  Points,
+  PointMaterial
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { Theme } from './sections/theme/ThemeContext';
 import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
-import { Ocean } from './Ocean';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
@@ -80,6 +82,44 @@ function Terrain({ surfaceColor }: TerrainProps) {
   );
 }
 
+interface ParticlesProps {
+  color: string;
+  count?: number;
+}
+
+function Particles({ color, count = 1000 }: ParticlesProps) {
+  const positions = useMemo(() => {
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 50;
+      positions[i * 3 + 1] = Math.random() * 30;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+    }
+    return positions;
+  }, [count]);
+
+  return (
+    <Points>
+      <PointMaterial
+        transparent
+        vertexColors
+        size={0.15}
+        sizeAttenuation={true}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        color={color}
+      />
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={count}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+    </Points>
+  );
+}
 
 function ResponsiveTV() {
   return (
@@ -108,7 +148,7 @@ interface BackgroundSceneProps {
   particleCount?: number;
 }
 
-export function BackgroundScene({ theme }: BackgroundSceneProps) {
+export function BackgroundScene({ theme, particleCount = 1000 }: BackgroundSceneProps) {
   const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
@@ -193,10 +233,23 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
       <group ref={sceneRef}>
         <Environment preset={palette.environment} />
 
-        {/* Realistic Ocean */}
-        <Suspense fallback={null}>
-          <Ocean theme={theme} position={[0, -4, 0]} />
-        </Suspense>
+        {/* Reflective Ground */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -4, 0]} receiveShadow>
+          <planeGeometry args={[500, 500]} />
+          <MeshReflectorMaterial
+            blur={[300, 100]}
+            resolution={1024}
+            mixBlur={0.5}
+            mixStrength={10}
+            roughness={0.6}
+            depthScale={1.2}
+            minDepthThreshold={0.4}
+            maxDepthThreshold={1.4}
+            color={palette.ground}
+            metalness={0.9}
+            mirror={0.75}
+          />
+        </mesh>
 
         <Suspense fallback={null}>
           <Terrain surfaceColor={palette.terrain} />
@@ -250,7 +303,8 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
           />
         </group>
 
-
+        {/* Ambient Particles */}
+        <Particles color={palette.highlight} count={particleCount} />
 
         <Suspense fallback={null}>
           {/* Character Model */}
