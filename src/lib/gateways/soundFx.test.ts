@@ -56,6 +56,50 @@ describe('SoundFx Gateway', () => {
     }).not.toThrow();
   });
 
+  it("properly connects AudioContext oscillator and gain nodes when audio context is active", () => {
+    const mockOsc = {
+      type: "sine",
+      frequency: {
+        setValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    const mockGain = {
+      gain: {
+        setValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+    };
+    const mockResume = vi.fn().mockResolvedValue(undefined);
+
+    class MockAudioContext {
+      currentTime = 0;
+      state = "suspended";
+      destination = {};
+      resume = mockResume;
+      createOscillator = vi.fn(() => mockOsc);
+      createGain = vi.fn(() => mockGain);
+    }
+
+    Object.defineProperty(window, "AudioContext", {
+      value: MockAudioContext,
+      configurable: true,
+      writable: true,
+    });
+
+    soundFx.setSoundEnabled(true);
+    soundFx.playLaserClick(880);
+    soundFx.playMagneticSnap();
+    soundFx.playTabHum(1);
+
+    expect(mockResume).toHaveBeenCalled();
+  });
+
   it('safely executes audio synthesis when unmuted', () => {
     soundFx.setSoundEnabled(true);
     expect(() => {
