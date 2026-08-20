@@ -182,10 +182,26 @@
 .tag {
   padding: 0.35rem 0.75rem;
   background: rgba(var(--text-color), 0.05);
-  border: 1px solid rgba(var(--text-color), 0.1);
-  border-radius: 9999px;
-  font-size: 0.875rem;
+  border: 1px solid rgba(var(--text-color), 0.12);
+  clip-path: polygon(
+    5px 0%, 
+    100% 0%, 
+    100% calc(100% - 5px), 
+    calc(100% - 5px) 100%, 
+    0% 100%, 
+    0% 5px
+  );
+  font-size: 0.85rem;
   color: rgb(var(--text-color));
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tag:hover {
+  background: rgba(0, 255, 157, 0.12);
+  border-color: rgba(0, 255, 157, 0.5);
+  color: #00ff9d;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.2);
 }
 
 :global([data-theme="light"]) .card {
