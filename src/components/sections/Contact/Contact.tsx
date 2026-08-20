@@ -1,137 +1,55 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Github, Linkedin, Send } from 'lucide-react';
-import emailjs from '@emailjs/browser';
+import { Mail, Phone, MapPin, Github, Linkedin } from 'lucide-react';
 import { TelegramIcon } from '../../ui/TelegramIcon';
+import { KineticHeading, TelemetryBadge, DancingCharText } from '../../ui/KineticText';
+import { ContactForm } from './ContactForm';
+import { soundFx } from '@/lib/gateways/soundFx';
 import styles from './Contact.module.css';
 import { cvData } from '../../../data/cv';
 
 export function Contact() {
   const containerRef = useRef<HTMLElement>(null);
-  const [formState, setFormState] = useState({
-    name: '',
-    email: '',
-    message: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitStatus('idle');
-
-    try {
-      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_default';
-      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_default';
-      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'public_key_default';
-
-      if (serviceId !== 'service_default' && publicKey !== 'public_key_default') {
-        await emailjs.send(
-          serviceId,
-          templateId,
-          {
-            from_name: formState.name,
-            from_email: formState.email,
-            message: formState.message,
-          },
-          publicKey
-        );
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-      }
-
-      setSubmitStatus('success');
-      setFormState({ name: '', email: '', message: '' });
-    } catch {
-      setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
-      setTimeout(() => setSubmitStatus('idle'), 5000);
-    }
+  const handleSocialHover = () => {
+    soundFx.playMagneticSnap();
   };
 
   return (
     <section ref={containerRef} className={styles.contact} id="contact">
       <div className={styles.content}>
         <div className={styles.header}>
-          <motion.h2 
-            className={styles.title}
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            Let's Connect
-          </motion.h2>
-          <motion.p 
-            className={styles.subtitle}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-          >
-            Get in touch for opportunities or just to say hi
-          </motion.p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <TelemetryBadge label="TRANSMIT" value="UPLINK ACTIVE" />
+          </div>
+          <KineticHeading 
+            text="Let's Connect" 
+            as="h2" 
+            className={styles.title} 
+            highlightWords={["Connect"]} 
+          />
+          <p className={styles.subtitle}>
+            Get in touch for engineering opportunities, collaborative 3D builds, or just to say hi
+          </p>
         </div>
 
         <div className={styles.grid}>
           <motion.div 
             className={styles.formContainer}
-            initial={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
           >
-            <form onSubmit={handleSubmit} className={styles.form}>
-              <div className={styles.inputGroup}>
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={formState.name}
-                  onChange={e => setFormState({...formState, name: e.target.value})}
-                  className={styles.input}
-                  required
-                />
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={formState.email}
-                  onChange={e => setFormState({...formState, email: e.target.value})}
-                  className={styles.input}
-                  required
-                />
-              </div>
-              <textarea
-                placeholder="Message"
-                value={formState.message}
-                onChange={e => setFormState({...formState, message: e.target.value})}
-                className={styles.textarea}
-                required
-              />
-              <button 
-                type="submit" 
-                className={styles.submitButton}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Sending...' : (
-                  <>
-                    Send Message <Send size={18} />
-                  </>
-                )}
-              </button>
-              {submitStatus === 'success' && (
-                <p className={styles.successMessage}>Message sent successfully!</p>
-              )}
-              {submitStatus === 'error' && (
-                <p className={styles.errorMessage}>Failed to send message. Please try again.</p>
-              )}
-            </form>
+            <ContactForm />
           </motion.div>
 
           <motion.div 
             className={styles.contactInfo}
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 40 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.15 }}
           >
             <div className={styles.infoItem}>
               <Phone className={styles.icon} />
@@ -140,6 +58,7 @@ export function Contact() {
                 <p className={styles.infoValue}>{cvData.contact.phone}</p>
               </div>
             </div>
+
             <div className={styles.infoItem}>
               <Mail className={styles.icon} />
               <div>
@@ -147,6 +66,7 @@ export function Contact() {
                 <p className={styles.infoValue}>{cvData.contact.email}</p>
               </div>
             </div>
+
             <div className={styles.infoItem}>
               <MapPin className={styles.icon} />
               <div>
@@ -155,16 +75,40 @@ export function Contact() {
               </div>
             </div>
 
-            <div className={styles.socialLinks}>
-              <a href={cvData.contact.social.github} target="_blank" rel="noopener noreferrer" className={styles.socialLink} aria-label="GitHub">
-                <Github size={24} />
-              </a>
-              <a href={cvData.contact.social.linkedin} target="_blank" rel="noopener noreferrer" className={styles.socialLink} aria-label="LinkedIn">
-                <Linkedin size={24} />
-              </a>
-              <a href={cvData.contact.social.telegram} target="_blank" rel="noopener noreferrer" className={styles.socialLink} aria-label="Telegram">
-                <TelegramIcon />
-              </a>
+            <div>
+              <DancingCharText text="Direct Transmission Channels" className="text-xs uppercase tracking-widest text-[var(--muted-text)] mb-3 block" />
+              <div className={styles.socialLinks}>
+                <a 
+                  href={cvData.contact.social.github} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className={styles.socialLink} 
+                  aria-label="GitHub"
+                  onMouseEnter={handleSocialHover}
+                >
+                  <Github size={22} />
+                </a>
+                <a 
+                  href={cvData.contact.social.linkedin} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className={styles.socialLink} 
+                  aria-label="LinkedIn"
+                  onMouseEnter={handleSocialHover}
+                >
+                  <Linkedin size={22} />
+                </a>
+                <a 
+                  href={cvData.contact.social.telegram} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className={styles.socialLink} 
+                  aria-label="Telegram"
+                  onMouseEnter={handleSocialHover}
+                >
+                  <TelegramIcon />
+                </a>
+              </div>
             </div>
           </motion.div>
         </div>
