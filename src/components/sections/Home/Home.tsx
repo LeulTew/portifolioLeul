@@ -186,6 +186,12 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       <div 
         className={styles.scrollArrow}
         onClick={scrollToAbout}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            scrollToAbout();
+          }
+        }}
         role="button"
         tabIndex={0}
         aria-label="Scroll to about section"
