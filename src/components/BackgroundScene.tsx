@@ -11,7 +11,6 @@ import { Theme } from './sections/theme/ThemeContext';
 import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
-import { ShorelineBreak } from './ocean/ShorelineBreak';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
@@ -198,9 +197,6 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
         <Suspense fallback={null}>
           <Ocean theme={theme} position={[0, -4, 0]} />
         </Suspense>
-
-        {/* Shore break crest lines where waves meet the island edge */}
-        <ShorelineBreak theme={theme} position={[0, -3.92, -20]} />
 
         <Suspense fallback={null}>
           <Terrain surfaceColor={palette.terrain} />
