@@ -47,11 +47,12 @@ vi.mock('@react-three/fiber', () => ({
     },
     size: { width: 1920, height: 1080 },
   }),
-  useFrame: (callback: (state: any) => void) => {
+  useFrame: (callback: (state: any, delta?: number) => void) => {
     callback({
       clock: { getElapsedTime: () => 1.5 },
       mouse: { x: 0.5, y: -0.2 },
-    });
+      camera: { position: { x: 0, y: 5, z: 30 } },
+    }, 0.016);
   },
 }));
 

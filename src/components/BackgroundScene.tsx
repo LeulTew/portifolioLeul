@@ -177,20 +177,34 @@ export function BackgroundScene({ theme, particleCount = 1000 }: BackgroundScene
         };
   }, [isLight]);
 
-  useFrame((state) => {
+  const smoothedMouse = useRef({ x: 0, y: 0 });
+
+  useFrame((state, delta) => {
     if (!sceneRef.current || !prismRef.current) return;
 
     const time = state.clock.getElapsedTime();
     const scrollProgress = scroll?.offset ?? 0;
     const reducedMotion = getPrefersReducedMotion();
 
-    // Scene parallax based on mouse (dampened if reduced motion)
-    const mouseX = reducedMotion ? 0 : state.mouse.x * 0.25;
-    const mouseY = reducedMotion ? 0 : state.mouse.y * 0.15;
-    sceneRef.current.rotation.y = mouseX * 0.15 + scrollProgress * Math.PI;
-    sceneRef.current.rotation.x = mouseY * 0.08;
+    // Inertial damping lerp on normalized cursor coordinates
+    const targetX = reducedMotion ? 0 : state.mouse.x;
+    const targetY = reducedMotion ? 0 : state.mouse.y;
+    const lerpFactor = Math.min(1, delta * 4);
 
-    // Prism animation (steady if reduced motion)
+    smoothedMouse.current.x = THREE.MathUtils.lerp(smoothedMouse.current.x, targetX, lerpFactor);
+    smoothedMouse.current.y = THREE.MathUtils.lerp(smoothedMouse.current.y, targetY, lerpFactor);
+
+    // Scene rotation parallax
+    sceneRef.current.rotation.y = smoothedMouse.current.x * 0.12 + scrollProgress * Math.PI;
+    sceneRef.current.rotation.x = smoothedMouse.current.y * 0.06;
+
+    // Subtle 3D camera spatial parallax offset
+    if (!reducedMotion && state.camera) {
+      state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, smoothedMouse.current.x * 1.8, Math.min(1, delta * 2.5));
+      state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 5 + smoothedMouse.current.y * 1.2, Math.min(1, delta * 2.5));
+    }
+
+    // Neon prism floating animation
     prismRef.current.position.y = reducedMotion ? 2 : Math.sin(time * 0.5) * 0.2 + 2;
   });
 
