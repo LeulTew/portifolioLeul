@@ -7,7 +7,7 @@ import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { ArchitecturalGrid } from '../../ui/ArchitecturalGrid';
 import { RotatingGear } from '../../ui/RotatingGear';
-import { TelemetryBadge } from '../../ui/KineticText';
+import { KineticHeading, TelemetryBadge } from '../../ui/KineticText';
 
 const categories = [
   { title: 'All', icon: Grid3x3 },
@@ -109,7 +109,6 @@ export function Projects({ theme }: { theme?: string }) {
     offset: ["start end", "end start"]
   });
 
-  const y = useTransform(scrollYProgress, [0, 1], [80, -80]);
   const sectionOpacity = useTransform(scrollYProgress, [0, 0.12, 0.88, 1], [0.3, 1, 1, 0.2]);
   const sectionScale = useTransform(scrollYProgress, [0, 0.15, 0.85, 1], [0.97, 1, 1, 0.97]);
 
@@ -128,12 +127,12 @@ export function Projects({ theme }: { theme?: string }) {
           <div className="flex items-center gap-2 mb-2">
             <TelemetryBadge label="MODULE" value="SELECTED WORK" theme={theme} />
           </div>
-          <motion.h2 
-            className={styles.title}
-            style={{ y }}
-          >
-            Projects
-          </motion.h2>
+          <KineticHeading 
+            text="Featured Projects" 
+            as="h2" 
+            className={styles.title} 
+            highlightWords={["Projects"]} 
+          />
         </header>
         
         {/* Category Filter Tabs */}

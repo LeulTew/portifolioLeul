@@ -127,7 +127,16 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       <nav className={styles.nav}>
         <div 
           className={styles.logo}
+          role="button"
+          tabIndex={0}
+          aria-label="Home logo link"
           onClick={() => handleNavClick('home', 0)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleNavClick('home', 0);
+            }
+          }}
         >
           LT
         </div>
@@ -140,6 +149,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
                 key={item.id}
                 className={`${styles.navItem} ${activeSection === item.id ? styles.active : ''}`}
                 onClick={() => handleNavClick(item.id, index)}
+                aria-current={activeSection === item.id ? 'page' : undefined}
               >
                 {item.label}
                 {activeSection === item.id && (
