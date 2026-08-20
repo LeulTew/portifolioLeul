@@ -62,7 +62,7 @@ export function Skills() {
                 {category.items.map((skill, skillIndex) => (
                   <motion.span
                     key={skill}
-                    className={styles.skillItem}
+                    className={styles.skill}
                     initial={{ opacity: 0, scale: 0.8 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
