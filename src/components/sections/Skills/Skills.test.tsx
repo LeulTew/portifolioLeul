@@ -48,6 +48,7 @@ describe('Skills', () => {
 
     const section = document.querySelector('section');
     expect(section).toBeInTheDocument();
+    expect(section).toHaveAttribute('id', 'skills');
 
     // Check that each category renders a heading
     const categoryHeadings = screen.getAllByRole('heading', { level: 3 });
