@@ -53,6 +53,14 @@ vi.mock('@react-three/fiber', () => ({
 }));
 
 describe('TVModel Branch Coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  it("cleans up video textures on unmount", () => {
+    const { unmount } = render(<TVModel />);
+    expect(() => unmount()).not.toThrow();
+  });
+
   it('applies material only to screen and glass meshes', () => {
     render(<TVModel />);
     
