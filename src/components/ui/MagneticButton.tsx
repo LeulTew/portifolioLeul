@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Springs, getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { soundFx } from '@/lib/gateways/soundFx';
 import { ArrowUpRight } from 'lucide-react';
 import styles from './MagneticButton.module.css';
 
@@ -36,6 +37,10 @@ export function MagneticButton({
 
   const isLight = theme === 'light';
 
+  const handleMouseEnter = () => {
+    soundFx.playMagneticSnap();
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (getPrefersReducedMotion()) return;
     if (!buttonRef.current) return;
@@ -57,6 +62,11 @@ export function MagneticButton({
     setCursorPos((prev) => ({ ...prev, visible: false }));
   };
 
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    soundFx.playLaserClick();
+    onClick?.(e);
+  };
+
   const getVariantClass = () => {
     if (variant === 'primary') return styles.primary;
     if (variant === 'secondary') return isLight ? styles.secondaryLight : styles.secondaryDark;
@@ -71,13 +81,14 @@ export function MagneticButton({
       href={href}
       target={target}
       rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       animate={{ x: position.x, y: position.y }}
       transition={Springs.snappy}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      onClick={onClick}
+      onClick={handleClick as never}
       className={cn(styles.magneticWrapper, className)}
       {...(props as never)}
     >
