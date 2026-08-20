@@ -1,4 +1,4 @@
-import { useRef, useMemo, Suspense } from 'react';
+import { useRef, useMemo, useEffect, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { 
   useScroll, 
@@ -54,6 +54,23 @@ function Terrain({ surfaceColor }: TerrainProps) {
     });
     return clone;
   }, [scene, surfaceColor]);
+
+  // Clean up cloned terrain mesh, material, and textures on unmount
+  useEffect(() => {
+    return () => {
+      terrain.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry?.dispose();
+          if (child.material) {
+            if (child.material.map) {
+              child.material.map.dispose();
+            }
+            child.material.dispose();
+          }
+        }
+      });
+    };
+  }, [terrain]);
 
   return (
     <primitive 

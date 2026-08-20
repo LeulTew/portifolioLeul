@@ -59,7 +59,7 @@ vi.mock('../../ui/expandable-tabs', () => ({
 describe('Projects', () => {
   it('renders projects and filters by category', () => {
     render(<Projects />);
-    expect(screen.getByText('Projects')).toBeTruthy();
+    expect(screen.getByLabelText('Featured Projects')).toBeTruthy();
     
     // Test filtering
     const webTab = screen.getByText('Web Development');
