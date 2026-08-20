@@ -57,6 +57,11 @@ vi.mock('../../ui/expandable-tabs', () => ({
 }));
 
 describe('Projects', () => {
+  it("renders section with id projects for navigation anchor target", () => {
+    const { container } = render(<Projects />);
+    expect(container.querySelector("section#projects")).toBeInTheDocument();
+  });
+
   it('renders projects and filters by category', () => {
     render(<Projects />);
     expect(screen.getByLabelText('Featured Projects')).toBeTruthy();
