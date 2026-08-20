@@ -4,9 +4,7 @@ import {
   useScroll, 
   Environment, 
   useGLTF,
-  PerspectiveCamera,
-  Points,
-  PointMaterial
+  PerspectiveCamera
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { Theme } from './sections/theme/ThemeContext';
@@ -83,44 +81,6 @@ function Terrain({ surfaceColor }: TerrainProps) {
   );
 }
 
-interface ParticlesProps {
-  color: string;
-  count?: number;
-}
-
-function Particles({ color, count = 1000 }: ParticlesProps) {
-  const positions = useMemo(() => {
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 50;
-      positions[i * 3 + 1] = Math.random() * 30;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
-    }
-    return positions;
-  }, [count]);
-
-  return (
-    <Points>
-      <PointMaterial
-        transparent
-        vertexColors
-        size={0.15}
-        sizeAttenuation={true}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        color={color}
-      />
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
-    </Points>
-  );
-}
 
 function ResponsiveTV() {
   return (
@@ -149,7 +109,7 @@ interface BackgroundSceneProps {
   particleCount?: number;
 }
 
-export function BackgroundScene({ theme, particleCount = 1000 }: BackgroundSceneProps) {
+export function BackgroundScene({ theme }: BackgroundSceneProps) {
   const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
@@ -294,8 +254,7 @@ export function BackgroundScene({ theme, particleCount = 1000 }: BackgroundScene
           />
         </group>
 
-        {/* Ambient Particles */}
-        <Particles color={palette.highlight} count={particleCount} />
+
 
         <Suspense fallback={null}>
           {/* Character Model */}
