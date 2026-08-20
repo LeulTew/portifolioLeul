@@ -24,14 +24,20 @@ export default defineConfig({
           if (id.includes('node_modules/three/')) {
             return 'three-core';
           }
-          if (id.includes('node_modules/@react-three/fiber/') || id.includes('node_modules/@react-three/drei/')) {
+          // React must be co-located with R3F — R3F calls useLayoutEffect
+          // at module init time, so React must be in the same chunk to
+          // guarantee it is available before R3F executes.
+          if (
+            id.includes('node_modules/@react-three/fiber/') ||
+            id.includes('node_modules/@react-three/drei/') ||
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
             return 'r3f-vendor';
           }
           if (id.includes('node_modules/framer-motion/') || id.includes('node_modules/gsap/') || id.includes('node_modules/animejs/')) {
             return 'animation-vendor';
-          }
-          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/scheduler/')) {
-            return 'react-vendor';
           }
         },
       },
