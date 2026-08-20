@@ -44,4 +44,37 @@ describe('Home Section', () => {
     fireEvent.click(contactBtn);
     expect(onNavigate).toHaveBeenCalledWith('contact');
   });
+
+  it('handles scroll arrow click and keyboard activation', () => {
+    const onNavigate = vi.fn();
+    render(<Home onNavigate={onNavigate} />);
+
+    const scrollArrow = screen.getByRole('button', { name: /scroll to about section/i });
+    expect(scrollArrow).toBeInTheDocument();
+
+    fireEvent.click(scrollArrow);
+    expect(onNavigate).toHaveBeenCalledWith('about');
+
+    fireEvent.keyDown(scrollArrow, { key: 'Enter' });
+    expect(onNavigate).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(scrollArrow, { key: ' ' });
+    expect(onNavigate).toHaveBeenCalledTimes(3);
+  });
+
+  it('falls back to scrollIntoView when onNavigate is not provided', () => {
+    const scrollIntoViewMock = vi.fn();
+    const mockEl = document.createElement('div');
+    mockEl.id = 'about';
+    mockEl.scrollIntoView = scrollIntoViewMock;
+    document.body.appendChild(mockEl);
+
+    render(<Home />);
+
+    const scrollArrow = screen.getByRole('button', { name: /scroll to about section/i });
+    fireEvent.click(scrollArrow);
+    expect(scrollIntoViewMock).toHaveBeenCalled();
+
+    document.body.removeChild(mockEl);
+  });
 });
