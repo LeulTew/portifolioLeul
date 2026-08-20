@@ -1,8 +1,9 @@
 import { useState, useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Volume2, VolumeX } from 'lucide-react';
 import styles from './Navigation.module.css';
 import { ThemeContext } from './sections/theme/ThemeContext';
+import { soundFx } from '@/lib/gateways/soundFx';
 
 const menuItems = [
   { id: 'home', label: 'Home' },
@@ -19,10 +20,16 @@ interface NavigationProps {
 export function Navigation({ scrollToSection }: NavigationProps) {
   const [activeSection, setActiveSection] = useState('home');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(() => soundFx.getSoundEnabled());
 
   const themeContext = useContext(ThemeContext);
   const theme = themeContext?.theme || 'dark';
   const toggleTheme = themeContext?.toggleTheme || (() => {});
+
+  const handleToggleSound = () => {
+    const next = soundFx.toggleMute();
+    setIsSoundEnabled(next);
+  };
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -104,9 +111,15 @@ export function Navigation({ scrollToSection }: NavigationProps) {
     };
   }, []);
 
-  const handleNavClick = (id: string) => {
+  const handleNavClick = (id: string, index: number = 0) => {
+    soundFx.playTabHum(index);
     scrollToSection(id);
     setActiveSection(id);
+  };
+
+  const handleThemeToggle = () => {
+    soundFx.playLaserClick(700);
+    toggleTheme();
   };
 
   return (
@@ -114,7 +127,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       <nav className={styles.nav}>
         <div 
           className={styles.logo}
-          onClick={() => handleNavClick('home')}
+          onClick={() => handleNavClick('home', 0)}
         >
           LT
         </div>
@@ -122,11 +135,11 @@ export function Navigation({ scrollToSection }: NavigationProps) {
         {/* Desktop Navigation */}
         <div className={styles.desktopNav}>
           <div className={styles.navItems}>
-            {menuItems.map((item) => (
+            {menuItems.map((item, index) => (
               <button
                 key={item.id}
                 className={`${styles.navItem} ${activeSection === item.id ? styles.active : ''}`}
-                onClick={() => handleNavClick(item.id)}
+                onClick={() => handleNavClick(item.id, index)}
               >
                 {item.label}
                 {activeSection === item.id && (
@@ -142,14 +155,21 @@ export function Navigation({ scrollToSection }: NavigationProps) {
           
           <button 
             className={styles.themeToggle}
-            onClick={toggleTheme}
+            onClick={handleToggleSound}
+            aria-label={isSoundEnabled ? "Mute audio FX" : "Enable audio FX"}
+            title={isSoundEnabled ? "Audio FX: Enabled (Click to mute)" : "Audio FX: Muted (Click to enable)"}
+          >
+            {isSoundEnabled ? <Volume2 size={19} className="text-emerald-400" /> : <VolumeX size={19} className="opacity-40" />}
+          </button>
+
+          <button 
+            className={styles.themeToggle}
+            onClick={handleThemeToggle}
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
-
-
       </nav>
     </header>
   );
