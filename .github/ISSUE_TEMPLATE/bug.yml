@@ -1,0 +1,29 @@
+name: Bug Report
+description: Report a bug or regression
+title: "fix(<scope>): <description>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "## Bug Report"
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is broken?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How to reproduce the bug
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen instead?
+    validations:
+      required: false

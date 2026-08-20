@@ -1,0 +1,36 @@
+name: Feature Request
+description: Propose a new feature or enhancement
+title: "feat(<scope>): <description>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "## Feature Request"
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What does this feature do?
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks
+      description: Implementation checklist
+      value: |
+        - [ ] Task 1
+        - [ ] Task 2
+    validations:
+      required: false
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: How will this be verified?
+      value: |
+        - [ ] `bun x vitest run`
+        - [ ] `bun run build`
+        - [ ] `bun run lint`
+    validations:
+      required: false
