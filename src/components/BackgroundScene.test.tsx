@@ -56,9 +56,7 @@ vi.mock('@react-three/fiber', () => ({
   },
 }));
 
-// Mock child sub-scenes
 vi.mock('./Ocean', () => ({ Ocean: () => null }));
-vi.mock('./ocean/ShorelineBreak', () => ({ ShorelineBreak: () => null }));
 vi.mock('./TVModel', () => ({ TVModel: () => null }));
 vi.mock('./MeModel', () => ({ MeModel: () => null }));
 
