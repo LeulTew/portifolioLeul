@@ -46,13 +46,16 @@ export function Ocean({ theme, position = [0, -4, 0] }: OceanProps) {
 
     return () => {
       waterRef.current = null;
-      water.material.dispose();
+      if (water.material) {
+        water.material.dispose();
+      }
+      geometry.dispose();
     };
-  }, [water]);
+  }, [water, geometry]);
 
   useEffect(() => {
     const current = waterRef.current;
-    if (current) {
+    if (current && current.material && current.material.uniforms) {
       const isLight = theme === 'light';
       current.material.uniforms.sunColor.value.setHex(isLight ? 0xffffff : 0x8fffe2);
       current.material.uniforms.waterColor.value.setHex(isLight ? 0x2f8db8 : 0x04303a);
@@ -65,7 +68,7 @@ export function Ocean({ theme, position = [0, -4, 0] }: OceanProps) {
 
   useFrame((_, delta) => {
     const current = waterRef.current;
-    if (current) {
+    if (current && current.material && current.material.uniforms && current.material.uniforms.time) {
       current.material.uniforms.time.value += delta * OCEAN_TIME_SPEED;
     }
   });

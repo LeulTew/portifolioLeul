@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OceanTheme } from './oceanConfig';
@@ -22,6 +22,22 @@ export function ShorelineBreak({ theme, position = [0, -3.92, -20] }: ShorelineB
   );
 
   const crestColor = theme === 'light' ? '#f3fcff' : '#e7fbff';
+
+  useEffect(() => {
+    return () => {
+      ringRefs.current.forEach((ring) => {
+        if (ring) {
+          ring.geometry?.dispose();
+          if (Array.isArray(ring.material)) {
+            ring.material.forEach((m) => m.dispose());
+          } else if (ring.material) {
+            ring.material.dispose();
+          }
+        }
+      });
+      ringRefs.current = [];
+    };
+  }, []);
 
   useFrame((state) => {
     const time = state.clock.getElapsedTime();

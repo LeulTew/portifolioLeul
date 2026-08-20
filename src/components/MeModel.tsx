@@ -33,7 +33,7 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
     }
   }, [actions, names]);
 
-  // Configure shadows & material highlights for high visual clarity
+  // Configure shadows & material highlights for high visual clarity, with disposal on unmount
   useEffect(() => {
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -49,6 +49,19 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
         }
       }
     });
+
+    return () => {
+      scene.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry?.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else if (child.material) {
+            child.material.dispose();
+          }
+        }
+      });
+    };
   }, [scene]);
 
   // Fallback: subtle floating if no animations
