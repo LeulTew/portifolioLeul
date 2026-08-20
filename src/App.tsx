@@ -247,7 +247,7 @@ function ScrollManager({ onReady }: { onReady: (el: HTMLDivElement | null) => vo
   useEffect(() => {
     onReady(scroll?.el ?? null);
     return () => onReady(null);
-  }, [scroll, onReady]);
+  }, [scroll?.el, onReady]);
 
   return null;
 }
