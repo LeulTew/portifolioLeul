@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Card } from '../../ui/Card';
-import { CardTitle, CardText, StatsGrid, StatItem, TagsGrid, Tag } from '../../ui/Card';
+import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
@@ -20,9 +20,9 @@ export function About() {
     stiffness: 55
   });
 
-  const containerY = useTransform(smoothProgress, [0, 1], ["10%", "-10%"]);
-  const headerX = useTransform(smoothProgress, [0, 0.5], ["0%", "10%"]);
-  const headerOpacity = useTransform(smoothProgress, [0, 0.5], [0.7, 0]);
+  const containerY = useTransform(smoothProgress, [0, 1], ["5%", "-5%"]);
+  const headerX = useTransform(smoothProgress, [0, 0.5], ["0%", "8%"]);
+  const headerOpacity = useTransform(smoothProgress, [0, 0.5], [0.8, 0]);
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
@@ -46,32 +46,66 @@ export function About() {
           </p>
         </motion.div>
 
-        <div className={styles.aboutGrid}>
+        {/* Spatial Editorial Layout Framing the 3D Canvas */}
+        <div className={styles.heroSpatialLayout}>
+          {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            className={styles.leftColumn}
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
           >
-            <Card>
-              <div className={styles.cardContent}>
-                <CardTitle>{cvData.about.title}</CardTitle>
-                <CardText className={styles.description}>{cvData.about.description}</CardText>
-                <StatsGrid>
-                  {cvData.about.stats.map((stat, i) => (
-                    <StatItem key={i} value={stat.value} label={stat.label} />
-                  ))}
-                </StatsGrid>
-                <TagsGrid className={styles.highlights}>
-                  {cvData.about.highlights.map((highlight, i) => (
-                    <Tag key={i}>{highlight}</Tag>
-                  ))}
-                </TagsGrid>
+            <h3 className={styles.statementText}>
+              <span>INTELLIGENT LOGIC</span>
+              <span className={styles.statementHighlight}>SHAPED WITH PURPOSE</span>
+            </h3>
+            <div className={styles.subStatement}>
+              <span className={styles.statementDot} />
+              <span className={styles.subStatementText}>CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS</span>
+            </div>
+          </motion.div>
+
+          {/* Center Column: Open breathing space for 3D TV & Terrain */}
+          <div className={styles.centerSpace} aria-hidden="true" />
+
+          {/* Right Column: Bold Architecture / Impact Metrics */}
+          <motion.div
+            className={styles.rightColumn}
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.15 }}
+          >
+            <h3 className={styles.statementText}>
+              <span>SCALABLE SYSTEMS</span>
+              <span className={styles.statementHighlight}>CRAFTED TO EMPOWER</span>
+            </h3>
+            
+            <div className={styles.metricsList}>
+              <div className={styles.metricItem}>
+                <span className={styles.metricValue}>3+</span>
+                <span className={styles.metricLabel}>Years Engineering Production Web &amp; Mobile Systems</span>
               </div>
-            </Card>
+              <div className={styles.metricItem}>
+                <span className={styles.metricValue}>30+</span>
+                <span className={styles.metricLabel}>Applications Delivered Across AI/ML, 3D &amp; Cloud</span>
+              </div>
+              <div className={styles.metricItem}>
+                <span className={styles.metricValue}>BSc</span>
+                <span className={styles.metricLabel}>Computer Science Graduate (HiLCoE)</span>
+              </div>
+            </div>
+
+            <div className={styles.pillContainer}>
+              {cvData.about.highlights.map((highlight, i) => (
+                <span key={i} className={styles.editorialPill}>{highlight}</span>
+              ))}
+            </div>
           </motion.div>
         </div>
 
+        {/* Education Section */}
         <div className={styles.sectionTitle}>Education</div>
         <div className={styles.educationGrid}>
           {cvData.education.map((edu, index) => (
@@ -105,7 +139,8 @@ export function About() {
           ))}
         </div>
 
-        <div className={styles.sectionTitle} style={{ marginTop: '3rem' }}>Certifications</div>
+        {/* Certifications Section */}
+        <div className={styles.sectionTitle} style={{ marginTop: '4rem' }}>Certifications</div>
         <div className={styles.educationGrid}>
           {cvData.certifications.map((cert, index) => (
             <motion.div
