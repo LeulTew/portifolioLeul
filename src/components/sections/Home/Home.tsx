@@ -1,7 +1,8 @@
 import { useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { DancingCharText, KineticRotator } from '../../ui/KineticText';
+import { usePortfolioScroll } from '../scroll/ScrollContext';
 import styles from './Home.module.css';
 
 interface HomeProps {
@@ -11,23 +12,17 @@ interface HomeProps {
 
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
+  const { progress } = usePortfolioScroll();
 
-  const { scrollY, scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"]
-  });
+  const { scrollY } = useScroll();
 
-  const smoothProgress = useSpring(scrollYProgress, {
-    damping: 18,
-    mass: 0.25,
-    stiffness: 60
-  });
-
-  // 3D Perspective Hero Exit Parallax
-  const heroScale = useTransform(smoothProgress, [0, 0.75], [1, 0.9]);
-  const heroOpacity = useTransform(smoothProgress, [0, 0.4, 0.75], [1, 0.7, 0]);
-  const heroY = useTransform(smoothProgress, [0, 0.75], ["0%", "-14%"]);
-  const heroFilter = useTransform(smoothProgress, [0, 0.3, 0.75], ["blur(0px)", "blur(0px)", "blur(8px)"]);
+  // Scroll exit: Home dissolves completely as you scroll into About
+  const exitProgress = Math.min(1, Math.max(0, progress / 0.07));
+  const heroOpacity = Math.max(0, 1 - exitProgress);
+  const heroScale = 1 - exitProgress * 0.08;
+  const heroY = -exitProgress * 100;
+  const heroBlur = `blur(${exitProgress * 6}px)`;
+  const isVisible = heroOpacity > 0.005;
 
   const imageY = useTransform(scrollY, (value) => {
     if (typeof window === 'undefined') return 0;
@@ -39,8 +34,8 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
     const stopMoving = aboutTop + (aboutHeight * 0.3);
     if (value < startMoving) return 0;
     if (value > stopMoving) return aboutTop - window.innerHeight / 2;
-    const progress = (value - startMoving) / (stopMoving - startMoving);
-    return progress * (aboutTop - window.innerHeight / 2);
+    const p = (value - startMoving) / (stopMoving - startMoving);
+    return p * (aboutTop - window.innerHeight / 2);
   });
 
   const imageOpacity = useTransform(scrollY, (value) => {
@@ -53,8 +48,8 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
     const stopMoving = aboutTop + (aboutHeight * 0.3);
     if (value < startMoving) return 1;
     if (value > stopMoving) return 0;
-    const progress = (value - startMoving) / (stopMoving - startMoving);
-    return 1 - progress;
+    const p = (value - startMoving) / (stopMoving - startMoving);
+    return 1 - p;
   });
 
   const scrollToAbout = () => {
@@ -82,16 +77,20 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   };
 
   return (
-    <section ref={containerRef} className={styles.home} id="home">
-      <motion.div 
-        className={styles.content}
-        style={{
-          scale: heroScale,
-          opacity: heroOpacity,
-          y: heroY,
-          filter: heroFilter,
-        }}
-      >
+    <section 
+      ref={containerRef} 
+      className={styles.home} 
+      id="home"
+      style={{
+        opacity: heroOpacity,
+        transform: `translate3d(0, ${heroY}px, 0) scale(${heroScale})`,
+        filter: heroBlur,
+        pointerEvents: isVisible ? 'auto' : 'none',
+        visibility: isVisible ? 'visible' : 'hidden',
+        transition: 'opacity 0.1s ease-out, transform 0.1s ease-out',
+      }}
+    >
+      <div className={styles.content}>
         <motion.div 
           className={styles.header}
           initial={{ opacity: 0, y: 20 }}
@@ -178,7 +177,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
             Get In Touch
           </MagneticButton>
         </motion.div>
-      </motion.div>
+      </div>
 
       <motion.div 
         className={styles.profileImage}

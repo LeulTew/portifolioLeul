@@ -1,7 +1,9 @@
-import { useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
+import { useRef, useContext } from 'react';
+import { motion } from 'framer-motion';
 import { Card } from '../../ui/Card';
 import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
+import { ThemeContext } from '../theme/ThemeContext';
+import { usePortfolioScroll } from '../scroll/ScrollContext';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
@@ -50,70 +52,56 @@ const subItemVariants = {
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
+  const themeContext = useContext(ThemeContext);
+  const isLight = themeContext?.theme === 'light';
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { progress } = usePortfolioScroll();
 
-  const smoothProgress = useSpring(scrollYProgress, {
-    damping: 18,
-    mass: 0.25,
-    stiffness: 60
-  });
+  // Scroll entrance & focus fill progress inside About section:
+  // Starts filling at progress = 0.03, fully saturated solid white at progress >= 0.10
+  const enterProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.08));
+  const fillAlpha = 0.35 + enterProgress * 0.65;
+  const titleColor = isLight 
+    ? `rgba(17, 24, 39, ${fillAlpha})` 
+    : `rgba(255, 255, 255, ${fillAlpha})`;
 
-  // Multi-plane kinetic parallax
-  const leftParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["18%", "0%", "-14%"]);
-  const rightParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["28%", "0%", "-22%"]);
-  
-  // Header animation: lifts in, gradually fills with 100% luminous color as you enter the section
-  const headerOpacity = useTransform(smoothProgress, [0.02, 0.22, 0.75, 0.95], [0.3, 1, 1, 0.2]);
-  const headerY = useTransform(smoothProgress, [0.02, 0.25], ["30px", "0px"]);
+  const titleGlow = isLight 
+    ? 'none' 
+    : `0 0 ${enterProgress * 35}px rgba(255, 255, 255, ${enterProgress * 0.45})`;
 
-  // Scroll-linked color fill: starts light / semi-transparent, becomes solid white with luminous bloom
-  const titleFillOpacity = useTransform(smoothProgress, [0.08, 0.28], [0.45, 1]);
-  const titleGlow = useTransform(smoothProgress, [0.12, 0.3], [
-    "0 0 0px rgba(255, 255, 255, 0)",
-    "0 0 35px rgba(255, 255, 255, 0.35)"
-  ]);
+  const titleScale = 0.96 + enterProgress * 0.04;
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
       <div className={styles.content}>
         {/* Section Header: Left-Aligned Directly Below the Indicator Arrow with Scroll Fill */}
-        <motion.div 
-          ref={headerRef}
-          className={styles.header}
-          style={{
-            y: headerY,
-            opacity: headerOpacity
-          }}
-        >
-          <motion.h2 
+        <div className={styles.header}>
+          <h2 
             className={styles.title}
             style={{
-              opacity: titleFillOpacity,
-              textShadow: titleGlow
+              color: titleColor,
+              textShadow: titleGlow,
+              transform: `scale(${titleScale})`,
+              transformOrigin: 'left center',
+              transition: 'color 0.1s ease-out, text-shadow 0.15s ease-out, transform 0.15s ease-out',
             }}
           >
             About Me
-          </motion.h2>
+          </h2>
           <p className={styles.subtitle}>
             {cvData.about.subtitle}
           </p>
-        </motion.div>
+        </div>
 
         {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
         <div className={styles.heroSpatialLayout}>
           {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
             className={styles.leftColumn}
-            style={{ y: leftParallaxY }}
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true, margin: "-60px" }}
           >
             <h3 className={styles.statementText}>
               <span className={styles.lineOverflowWrapper}>
@@ -140,11 +128,10 @@ export function About() {
           {/* Right Column: Anchored on the Far Right Edge of the Screen */}
           <motion.div
             className={styles.rightColumn}
-            style={{ y: rightParallaxY }}
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true, margin: "-60px" }}
           >
             <h3 className={styles.statementText}>
               <span className={styles.lineOverflowWrapper}>

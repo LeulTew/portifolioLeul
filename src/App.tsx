@@ -13,6 +13,7 @@ import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
+import { ScrollStateContext, type ScrollState } from './components/sections/scroll/ScrollContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
 
 import './index.css';
@@ -193,22 +194,24 @@ function App() {
           >
             <ThemeContext.Provider value={{ theme, toggleTheme }}>
               <ScrollControls pages={scrollPages} damping={0.3}>
-                <ScrollManager onReady={handleScrollElement} />
-                <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
-                <ParticleBackground theme={theme} />
-                <Scroll html style={{ width: '100%' }}>
-                  {!isLoading && (
-                    <main ref={mainRef} className={styles.main}>
-                      <Home onNavigate={scrollToSection} />
-                      <ScrollAwareArrow onClick={() => scrollToSection('about')} />
-                      <About />
-                      <Skills />
-                      <Projects theme={theme} />
-                      <div className={styles.spacer} />
-                      <Contact />
-                    </main>
-                  )}
-                </Scroll>
+                <ScrollWatcher>
+                  <ScrollManager onReady={handleScrollElement} />
+                  <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
+                  <ParticleBackground theme={theme} />
+                  <Scroll html style={{ width: '100%' }}>
+                    {!isLoading && (
+                      <main ref={mainRef} className={styles.main}>
+                        <Home onNavigate={scrollToSection} />
+                        <ScrollAwareArrow onClick={() => scrollToSection('about')} />
+                        <About />
+                        <Skills />
+                        <Projects theme={theme} />
+                        <div className={styles.spacer} />
+                        <Contact />
+                      </main>
+                    )}
+                  </Scroll>
+                </ScrollWatcher>
               </ScrollControls>
               <Preload all />
             </ThemeContext.Provider>
@@ -241,6 +244,26 @@ function App() {
 }
 
 export default App;
+
+function ScrollWatcher({ children }: { children: React.ReactNode }) {
+  const scroll = useScroll();
+  const [state, setState] = useState<ScrollState>({ progress: 0, scrollY: 0 });
+
+  useFrame(() => {
+    if (!scroll) return;
+    const progress = scroll.offset || 0;
+    const scrollY = scroll.el ? scroll.el.scrollTop : 0;
+    if (Math.abs(state.progress - progress) > 0.0005 || Math.abs(state.scrollY - scrollY) > 1) {
+      setState({ progress, scrollY });
+    }
+  });
+
+  return (
+    <ScrollStateContext.Provider value={state}>
+      {children}
+    </ScrollStateContext.Provider>
+  );
+}
 
 function ScrollAwareArrow({ onClick }: { onClick: () => void }) {
   const scroll = useScroll();
