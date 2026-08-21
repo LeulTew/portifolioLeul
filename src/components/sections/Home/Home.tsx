@@ -2,8 +2,6 @@ import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { DancingCharText, KineticRotator, TelemetryBadge } from '../../ui/KineticText';
-import { ArchitecturalGrid } from '../../ui/ArchitecturalGrid';
-import { WireframeSphere } from '../../ui/WireframeSphere';
 import styles from './Home.module.css';
 
 interface HomeProps {
@@ -70,8 +68,6 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
 
   return (
     <section ref={containerRef} className={styles.home} id="home">
-      <ArchitecturalGrid theme={theme} className="opacity-15" />
-      <WireframeSphere theme={theme} className="absolute left-6 bottom-16 opacity-30 hidden xl:flex pointer-events-none" size={170} />
       <div className={styles.content}>
         <motion.div 
           className={styles.header}

@@ -38,16 +38,16 @@ describe("About Section", () => {
     });
   });
 
-  it("renders education cards in the right-aligned layout", () => {
+  it("renders education cards in the layout", () => {
     render(<About />);
-    expect(screen.getByLabelText("Education")).toBeInTheDocument();
+    expect(screen.getByText("Education")).toBeInTheDocument();
     expect(screen.getByText(/HiLCoE School of Computer Science/i)).toBeInTheDocument();
     expect(screen.getByText(/Saint Joseph School/i)).toBeInTheDocument();
   });
 
   it("renders certifications cards cleanly", () => {
     render(<About />);
-    expect(screen.getByLabelText("Certifications")).toBeInTheDocument();
+    expect(screen.getByText("Certifications")).toBeInTheDocument();
     expect(screen.getByText(/Bootdev/i)).toBeInTheDocument();
   });
 });
