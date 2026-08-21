@@ -202,7 +202,12 @@ function App() {
                     {!isLoading && (
                       <main ref={mainRef} className={styles.main}>
                         <Home onNavigate={scrollToSection} />
-                        <ScrollAwareArrow onClick={() => scrollToSection('about')} />
+                        <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
+                          <div className="curveWrapper">
+                            <div className="curve"></div>
+                          </div>
+                          <div className="point"></div>
+                        </div>
                         <About />
                         <Skills />
                         <Projects theme={theme} />
@@ -262,36 +267,6 @@ function ScrollWatcher({ children }: { children: React.ReactNode }) {
     <ScrollStateContext.Provider value={state}>
       {children}
     </ScrollStateContext.Provider>
-  );
-}
-
-function ScrollAwareArrow({ onClick }: { onClick: () => void }) {
-  const scroll = useScroll();
-  const [opacity, setOpacity] = useState(1);
-
-  useFrame(() => {
-    if (!scroll) return;
-    const currentOpacity = Math.max(0, 1 - scroll.offset * 20);
-    setOpacity(currentOpacity);
-  });
-
-  if (opacity <= 0.01) return null;
-
-  return (
-    <div 
-      id="homeToAboutArrow" 
-      onClick={onClick}
-      style={{ 
-        opacity, 
-        pointerEvents: opacity < 0.2 ? 'none' : 'auto', 
-        transition: 'opacity 0.2s ease' 
-      }}
-    >
-      <div className="curveWrapper">
-        <div className="curve"></div>
-      </div>
-      <div className="point"></div>
-    </div>
   );
 }
 

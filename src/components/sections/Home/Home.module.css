@@ -1,14 +1,13 @@
 .home {
   position: relative;
-  min-height: 55vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 12rem max(2rem, 5vw) 2rem;
-  overflow: hidden;
-  mix-blend-mode: difference;
+  padding: 10rem max(2rem, 5vw) 4rem;
+  overflow: visible;
   pointer-events: none;
-  margin-bottom: -8rem;
+  margin-bottom: 0;
 }
 
 .content {

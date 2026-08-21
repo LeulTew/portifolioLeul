@@ -43,10 +43,9 @@
   font-weight: 800;
   line-height: 0.92;
   letter-spacing: -0.04em;
-  color: var(--strong-text);
+  color: #ffffff;
   margin: 0;
-  mix-blend-mode: difference;
-  transition: text-shadow 0.3s ease;
+  transition: opacity 0.15s ease-out, text-shadow 0.2s ease-out, transform 0.15s ease-out;
 }
 
 .subtitle {
@@ -346,10 +345,13 @@
   mix-blend-mode: normal;
 }
 
-:global([data-theme="light"]) .about .title,
+:global([data-theme="light"]) .about .title {
+  color: #111827;
+  text-shadow: none;
+}
+
 :global([data-theme="light"]) .about .subtitle,
 :global([data-theme="light"]) .about .sectionTitle {
-  color: #111827 !important;
-  font-weight: 600;
+  color: #111827;
   text-shadow: none;
 }
