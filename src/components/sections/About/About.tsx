@@ -1,9 +1,7 @@
-import { useRef, useContext } from 'react';
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '../../ui/Card';
 import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
-import { ThemeContext } from '../theme/ThemeContext';
-import { usePortfolioScroll } from '../scroll/ScrollContext';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
@@ -52,46 +50,25 @@ const subItemVariants = {
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
-  const themeContext = useContext(ThemeContext);
-  const isLight = themeContext?.theme === 'light';
-
-  const { progress } = usePortfolioScroll();
-
-  // Scroll entrance & focus fill progress inside About section:
-  // Starts filling at progress = 0.03, fully saturated solid white at progress >= 0.10
-  const enterProgress = Math.min(1, Math.max(0, (progress - 0.02) / 0.08));
-  const fillAlpha = 0.35 + enterProgress * 0.65;
-  const titleColor = isLight 
-    ? `rgba(17, 24, 39, ${fillAlpha})` 
-    : `rgba(255, 255, 255, ${fillAlpha})`;
-
-  const titleGlow = isLight 
-    ? 'none' 
-    : `0 0 ${enterProgress * 35}px rgba(255, 255, 255, ${enterProgress * 0.45})`;
-
-  const titleScale = 0.96 + enterProgress * 0.04;
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
       <div className={styles.content}>
-        {/* Section Header: Left-Aligned Directly Below the Indicator Arrow with Scroll Fill */}
-        <div className={styles.header}>
-          <h2 
-            className={styles.title}
-            style={{
-              color: titleColor,
-              textShadow: titleGlow,
-              transform: `scale(${titleScale})`,
-              transformOrigin: 'left center',
-              transition: 'color 0.1s ease-out, text-shadow 0.15s ease-out, transform 0.15s ease-out',
-            }}
-          >
+        {/* Section Header: Left-Aligned Directly Below the Indicator Arrow */}
+        <motion.div 
+          className={styles.header}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <h2 className={styles.title}>
             About Me
           </h2>
           <p className={styles.subtitle}>
             {cvData.about.subtitle}
           </p>
-        </div>
+        </motion.div>
 
         {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
         <div className={styles.heroSpatialLayout}>

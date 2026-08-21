@@ -2,7 +2,6 @@ import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { DancingCharText, KineticRotator } from '../../ui/KineticText';
-import { usePortfolioScroll } from '../scroll/ScrollContext';
 import styles from './Home.module.css';
 
 interface HomeProps {
@@ -12,17 +11,7 @@ interface HomeProps {
 
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
-  const { progress } = usePortfolioScroll();
-
   const { scrollY } = useScroll();
-
-  // Scroll exit: Home dissolves completely as you scroll into About
-  const exitProgress = Math.min(1, Math.max(0, progress / 0.07));
-  const heroOpacity = Math.max(0, 1 - exitProgress);
-  const heroScale = 1 - exitProgress * 0.08;
-  const heroY = -exitProgress * 100;
-  const heroBlur = `blur(${exitProgress * 6}px)`;
-  const isVisible = heroOpacity > 0.005;
 
   const imageY = useTransform(scrollY, (value) => {
     if (typeof window === 'undefined') return 0;
@@ -77,19 +66,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   };
 
   return (
-    <section 
-      ref={containerRef} 
-      className={styles.home} 
-      id="home"
-      style={{
-        opacity: heroOpacity,
-        transform: `translate3d(0, ${heroY}px, 0) scale(${heroScale})`,
-        filter: heroBlur,
-        pointerEvents: isVisible ? 'auto' : 'none',
-        visibility: isVisible ? 'visible' : 'hidden',
-        transition: 'opacity 0.1s ease-out, transform 0.1s ease-out',
-      }}
-    >
+    <section ref={containerRef} className={styles.home} id="home">
       <div className={styles.content}>
         <motion.div 
           className={styles.header}
@@ -160,7 +137,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
             delay: 0.5
           }}
         >
-          Full-Stack Developer & 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
+          Full-Stack Developer &amp; 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
         </motion.p>
 
         {/* Magnetic CTA Buttons */}

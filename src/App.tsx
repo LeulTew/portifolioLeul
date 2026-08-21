@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useContext } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Loader } from './components/Loader';
 import { Navigation } from './components/Navigation';
@@ -13,7 +13,6 @@ import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
-import { ScrollStateContext, type ScrollState } from './components/sections/scroll/ScrollContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
 
 import './index.css';
@@ -194,29 +193,27 @@ function App() {
           >
             <ThemeContext.Provider value={{ theme, toggleTheme }}>
               <ScrollControls pages={scrollPages} damping={0.3}>
-                <ScrollWatcher>
-                  <ScrollManager onReady={handleScrollElement} />
-                  <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
-                  <ParticleBackground theme={theme} />
-                  <Scroll html style={{ width: '100%' }}>
-                    {!isLoading && (
-                      <main ref={mainRef} className={styles.main}>
-                        <Home onNavigate={scrollToSection} />
-                        <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
-                          <div className="curveWrapper">
-                            <div className="curve"></div>
-                          </div>
-                          <div className="point"></div>
+                <ScrollManager onReady={handleScrollElement} />
+                <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
+                <ParticleBackground theme={theme} />
+                <Scroll html style={{ width: '100%' }}>
+                  {!isLoading && (
+                    <main ref={mainRef} className={styles.main}>
+                      <Home onNavigate={scrollToSection} />
+                      <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
+                        <div className="curveWrapper">
+                          <div className="curve"></div>
                         </div>
-                        <About />
-                        <Skills />
-                        <Projects theme={theme} />
-                        <div className={styles.spacer} />
-                        <Contact />
-                      </main>
-                    )}
-                  </Scroll>
-                </ScrollWatcher>
+                        <div className="point"></div>
+                      </div>
+                      <About />
+                      <Skills />
+                      <Projects theme={theme} />
+                      <div className={styles.spacer} />
+                      <Contact />
+                    </main>
+                  )}
+                </Scroll>
               </ScrollControls>
               <Preload all />
             </ThemeContext.Provider>
@@ -249,26 +246,6 @@ function App() {
 }
 
 export default App;
-
-function ScrollWatcher({ children }: { children: React.ReactNode }) {
-  const scroll = useScroll();
-  const [state, setState] = useState<ScrollState>({ progress: 0, scrollY: 0 });
-
-  useFrame(() => {
-    if (!scroll) return;
-    const progress = scroll.offset || 0;
-    const scrollY = scroll.el ? scroll.el.scrollTop : 0;
-    if (Math.abs(state.progress - progress) > 0.0005 || Math.abs(state.scrollY - scrollY) > 1) {
-      setState({ progress, scrollY });
-    }
-  });
-
-  return (
-    <ScrollStateContext.Provider value={state}>
-      {children}
-    </ScrollStateContext.Provider>
-  );
-}
 
 function ScrollManager({ onReady }: { onReady: (el: HTMLDivElement | null) => void }) {
   const scroll = useScroll();
