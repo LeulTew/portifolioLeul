@@ -1,13 +1,14 @@
 .home {
   position: relative;
-  min-height: 100vh;
+  min-height: 55vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 10rem max(2rem, 5vw) 4rem;
-  overflow: visible;
+  padding: 12rem max(2rem, 5vw) 2rem;
+  overflow: hidden;
+  mix-blend-mode: difference;
   pointer-events: none;
-  margin-bottom: 0;
+  margin-bottom: -8rem;
 }
 
 .content {
@@ -140,15 +141,15 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
-/* 720p / Small Laptop Adjustments */
+/* 720p / Small Laptop Adjustments (Very Small) */
 @media (min-width: 769px) and (max-width: 1366px) {
   .title {
     font-size: 2.5rem;
   }
   .home {
-    padding-top: 6rem;
-    padding-bottom: 2rem;
-    min-height: 100vh;
+    padding-top: 4rem;
+    padding-bottom: 1rem;
+    min-height: 40vh;
   }
   .header {
     margin-bottom: 0.5rem;
@@ -167,14 +168,14 @@
   }
 }
 
-/* 1080p / Standard Desktop Adjustments */
+/* 1080p / Standard Desktop Adjustments (Small) */
 @media (min-width: 1367px) and (max-width: 1920px) {
   .title {
     font-size: 4.5rem;
   }
   .home {
     padding-top: 8rem;
-    min-height: 100vh;
+    min-height: 50vh;
   }
   .description {
     font-size: 1rem;

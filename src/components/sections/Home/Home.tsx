@@ -11,6 +11,7 @@ interface HomeProps {
 
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
+
   const { scrollY } = useScroll();
 
   const imageY = useTransform(scrollY, (value) => {
@@ -23,8 +24,8 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
     const stopMoving = aboutTop + (aboutHeight * 0.3);
     if (value < startMoving) return 0;
     if (value > stopMoving) return aboutTop - window.innerHeight / 2;
-    const p = (value - startMoving) / (stopMoving - startMoving);
-    return p * (aboutTop - window.innerHeight / 2);
+    const progress = (value - startMoving) / (stopMoving - startMoving);
+    return progress * (aboutTop - window.innerHeight / 2);
   });
 
   const imageOpacity = useTransform(scrollY, (value) => {
@@ -37,8 +38,8 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
     const stopMoving = aboutTop + (aboutHeight * 0.3);
     if (value < startMoving) return 1;
     if (value > stopMoving) return 0;
-    const p = (value - startMoving) / (stopMoving - startMoving);
-    return 1 - p;
+    const progress = (value - startMoving) / (stopMoving - startMoving);
+    return 1 - progress;
   });
 
   const scrollToAbout = () => {
@@ -137,7 +138,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
             delay: 0.5
           }}
         >
-          Full-Stack Developer &amp; 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
+          Full-Stack Developer & 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
         </motion.p>
 
         {/* Magnetic CTA Buttons */}
