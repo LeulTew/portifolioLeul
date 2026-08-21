@@ -1,6 +1,6 @@
 .about {
   position: relative;
-  min-height: 100vh;
+  min-height: 120vh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -31,46 +31,47 @@
 
 .header {
   text-align: left;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   width: 100%;
-  max-width: 800px;
-  padding-left: clamp(2rem, 10vw, 18rem);
+  padding-left: clamp(2rem, 9vw, 16rem);
+  padding-right: clamp(2rem, 9vw, 16rem);
   box-sizing: border-box;
 }
 
 .title {
-  font-size: clamp(2.5rem, 5.5vw, 5.5rem);
-  font-weight: 700;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
+  font-size: clamp(3.5rem, 7.5vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
   color: var(--strong-text);
   margin: 0;
   mix-blend-mode: difference;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  transition: text-shadow 0.3s ease;
 }
 
 .subtitle {
-  font-size: clamp(0.95rem, 1.2vw, 1.2rem);
+  font-size: clamp(1.05rem, 1.3vw, 1.35rem);
   line-height: 1.45;
   color: rgb(var(--text-color));
   opacity: 0.85;
-  margin: 1rem 0 0;
-  max-width: 620px;
+  margin: 1.25rem 0 0;
+  max-width: 720px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
 /* ==========================================================================
-   Full-Width Spatial Editorial Layout
+   Full-Width Spatial Editorial Stage (Dedicated Cinematic Viewport)
    ========================================================================== */
 
 .heroSpatialLayout {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
-  min-height: 55vh;
-  margin: 1rem 0 6rem;
+  min-height: 70vh;
+  padding: 0 clamp(2rem, 9vw, 16rem);
+  margin: 2rem 0 16vh;
   pointer-events: auto;
   position: relative;
   box-sizing: border-box;
@@ -79,9 +80,10 @@
 .leftColumn {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  padding-left: clamp(2rem, 10vw, 18rem);
-  width: clamp(300px, 32vw, 520px);
+  gap: 2rem;
+  padding-left: 0;
+  width: auto;
+  max-width: clamp(380px, 42vw, 750px);
   flex-shrink: 0;
   z-index: 10;
   box-sizing: border-box;
@@ -89,16 +91,17 @@
 
 .centerSpace {
   flex: 1;
-  min-width: clamp(100px, 16vw, 480px);
+  min-width: clamp(60px, 12vw, 360px);
   pointer-events: none;
 }
 
 .rightColumn {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  padding-right: clamp(2rem, 8vw, 14rem);
-  width: clamp(300px, 34vw, 540px);
+  gap: 2rem;
+  padding-right: 0;
+  width: auto;
+  max-width: clamp(380px, 42vw, 750px);
   flex-shrink: 0;
   margin-left: auto;
   z-index: 10;
@@ -106,27 +109,32 @@
 }
 
 .statementText {
-  font-size: clamp(1.85rem, 3.8vw, 3.75rem);
+  font-size: clamp(2rem, 3.6vw, 3.85rem);
   font-weight: 900;
-  line-height: 1.05;
+  line-height: 1.06;
   letter-spacing: -0.03em;
   text-transform: uppercase;
   color: var(--strong-text);
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.25rem;
   margin: 0;
+  width: 100%;
 }
 
 .lineOverflowWrapper {
   display: block;
   overflow: hidden;
   perspective: 800px;
+  width: 100%;
+  padding-right: 0.75rem;
+  box-sizing: border-box;
 }
 
 .statementLine {
   display: inline-block;
   transform-origin: 50% 100%;
+  white-space: nowrap;
 }
 
 .statementHighlight {
@@ -146,7 +154,7 @@
 }
 
 .subStatementBar {
-  width: 24px;
+  width: 28px;
   height: 2px;
   background-color: #00ff9d;
   flex-shrink: 0;
@@ -159,7 +167,7 @@
 .metricsList {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.15rem;
 }
 
 .metricItem {
@@ -176,10 +184,10 @@
 
 .metricValue {
   font-family: monospace;
-  font-size: clamp(1.1rem, 1.4vw, 1.35rem);
+  font-size: clamp(1.15rem, 1.4vw, 1.4rem);
   font-weight: 800;
   color: #00ff9d;
-  min-width: 40px;
+  min-width: 42px;
 }
 
 :global([data-theme="light"]) .metricValue {
@@ -187,7 +195,7 @@
 }
 
 .metricLabel {
-  font-size: clamp(0.825rem, 0.95vw, 0.925rem);
+  font-size: clamp(0.85rem, 0.95vw, 0.95rem);
   color: var(--muted-text);
   font-weight: 500;
   line-height: 1.35;
@@ -196,15 +204,15 @@
 .pillContainer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
 }
 
 .editorialPill {
-  font-size: clamp(0.7rem, 0.8vw, 0.78rem);
+  font-size: clamp(0.72rem, 0.8vw, 0.8rem);
   font-weight: 600;
   letter-spacing: 0.03em;
-  padding: 0.35rem 0.85rem;
+  padding: 0.4rem 0.95rem;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -226,21 +234,29 @@
 @media (max-width: 1024px) {
   .header {
     padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 
   .heroSpatialLayout {
     flex-direction: column;
     align-items: stretch;
     gap: 3.5rem;
+    min-height: auto;
+    padding: 0 1.5rem;
+    margin: 2rem 0 6rem;
   }
 
   .leftColumn,
   .rightColumn {
     width: 100%;
-    max-width: 560px;
+    max-width: 100%;
     margin: 0 auto;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .statementLine {
+    white-space: normal;
   }
 
   .centerSpace {
@@ -249,6 +265,7 @@
 
   .educationWrapper {
     padding: 0 1.5rem;
+    margin-top: 4rem;
   }
 }
 
@@ -258,7 +275,9 @@
 
 .educationWrapper {
   width: 100%;
-  padding: 0 clamp(2rem, 10vw, 18rem);
+  padding: 0 clamp(2rem, 9vw, 16rem);
+  margin-top: 10vh;
+  margin-bottom: 8vh;
   box-sizing: border-box;
 }
 

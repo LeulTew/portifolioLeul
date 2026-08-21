@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useContext } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Loader } from './components/Loader';
 import { Navigation } from './components/Navigation';
@@ -200,12 +200,7 @@ function App() {
                   {!isLoading && (
                     <main ref={mainRef} className={styles.main}>
                       <Home onNavigate={scrollToSection} />
-                      <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
-                        <div className="curveWrapper">
-                          <div className="curve"></div>
-                        </div>
-                        <div className="point"></div>
-                      </div>
+                      <ScrollAwareArrow onClick={() => scrollToSection('about')} />
                       <About />
                       <Skills />
                       <Projects theme={theme} />
@@ -246,6 +241,36 @@ function App() {
 }
 
 export default App;
+
+function ScrollAwareArrow({ onClick }: { onClick: () => void }) {
+  const scroll = useScroll();
+  const [opacity, setOpacity] = useState(1);
+
+  useFrame(() => {
+    if (!scroll) return;
+    const currentOpacity = Math.max(0, 1 - scroll.offset * 20);
+    setOpacity(currentOpacity);
+  });
+
+  if (opacity <= 0.01) return null;
+
+  return (
+    <div 
+      id="homeToAboutArrow" 
+      onClick={onClick}
+      style={{ 
+        opacity, 
+        pointerEvents: opacity < 0.2 ? 'none' : 'auto', 
+        transition: 'opacity 0.2s ease' 
+      }}
+    >
+      <div className="curveWrapper">
+        <div className="curve"></div>
+      </div>
+      <div className="point"></div>
+    </div>
+  );
+}
 
 function ScrollManager({ onReady }: { onReady: (el: HTMLDivElement | null) => void }) {
   const scroll = useScroll();

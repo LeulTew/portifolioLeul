@@ -64,15 +64,24 @@ export function About() {
   });
 
   // Multi-plane kinetic parallax
-  const leftParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["15%", "0%", "-12%"]);
-  const rightParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["25%", "0%", "-20%"]);
+  const leftParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["18%", "0%", "-14%"]);
+  const rightParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["28%", "0%", "-22%"]);
+  
+  // Header animation: lifts in, gradually fills with 100% luminous color as you enter the section
   const headerOpacity = useTransform(smoothProgress, [0.02, 0.22, 0.75, 0.95], [0.3, 1, 1, 0.2]);
   const headerY = useTransform(smoothProgress, [0.02, 0.25], ["30px", "0px"]);
+
+  // Scroll-linked color fill: starts light / semi-transparent, becomes solid white with luminous bloom
+  const titleFillOpacity = useTransform(smoothProgress, [0.08, 0.28], [0.45, 1]);
+  const titleGlow = useTransform(smoothProgress, [0.12, 0.3], [
+    "0 0 0px rgba(255, 255, 255, 0)",
+    "0 0 35px rgba(255, 255, 255, 0.35)"
+  ]);
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
       <div className={styles.content}>
-        {/* Section Header: Left-Aligned Directly Below the Indicator Arrow */}
+        {/* Section Header: Left-Aligned Directly Below the Indicator Arrow with Scroll Fill */}
         <motion.div 
           ref={headerRef}
           className={styles.header}
@@ -81,7 +90,15 @@ export function About() {
             opacity: headerOpacity
           }}
         >
-          <h2 className={styles.title}>About Me</h2>
+          <motion.h2 
+            className={styles.title}
+            style={{
+              opacity: titleFillOpacity,
+              textShadow: titleGlow
+            }}
+          >
+            About Me
+          </motion.h2>
           <p className={styles.subtitle}>
             {cvData.about.subtitle}
           </p>
@@ -201,7 +218,7 @@ export function About() {
           </div>
 
           {/* Certifications Section */}
-          <div className={styles.sectionTitle} style={{ marginTop: '4rem' }}>Certifications</div>
+          <div className={styles.sectionTitle} style={{ marginTop: '5rem' }}>Certifications</div>
           <div className={styles.educationGrid}>
             {cvData.certifications.map((cert, index) => (
               <motion.div
