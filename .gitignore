@@ -39,3 +39,9 @@ coverage/
 
 # Vercel
 .vercel/
+
+# Local worktrees & scratch
+portifolioXLeul/
+.agent/
+scripts/
+
