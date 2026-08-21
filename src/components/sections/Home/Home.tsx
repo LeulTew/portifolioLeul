@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { DancingCharText, KineticRotator } from '../../ui/KineticText';
 import styles from './Home.module.css';
@@ -12,7 +12,22 @@ interface HomeProps {
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
 
-  const { scrollY } = useScroll();
+  const { scrollY, scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+
+  const smoothProgress = useSpring(scrollYProgress, {
+    damping: 18,
+    mass: 0.25,
+    stiffness: 60
+  });
+
+  // 3D Perspective Hero Exit Parallax
+  const heroScale = useTransform(smoothProgress, [0, 0.75], [1, 0.9]);
+  const heroOpacity = useTransform(smoothProgress, [0, 0.4, 0.75], [1, 0.7, 0]);
+  const heroY = useTransform(smoothProgress, [0, 0.75], ["0%", "-14%"]);
+  const heroFilter = useTransform(smoothProgress, [0, 0.3, 0.75], ["blur(0px)", "blur(0px)", "blur(8px)"]);
 
   const imageY = useTransform(scrollY, (value) => {
     if (typeof window === 'undefined') return 0;
@@ -68,7 +83,15 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
 
   return (
     <section ref={containerRef} className={styles.home} id="home">
-      <div className={styles.content}>
+      <motion.div 
+        className={styles.content}
+        style={{
+          scale: heroScale,
+          opacity: heroOpacity,
+          y: heroY,
+          filter: heroFilter,
+        }}
+      >
         <motion.div 
           className={styles.header}
           initial={{ opacity: 0, y: 20 }}
@@ -155,7 +178,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
             Get In Touch
           </MagneticButton>
         </motion.div>
-      </div>
+      </motion.div>
 
       <motion.div 
         className={styles.profileImage}

@@ -5,23 +5,23 @@ import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
-const containerReveal = {
+const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.12,
-      delayChildren: 0.05,
+      staggerChildren: 0.14,
+      delayChildren: 0.08,
     }
   }
 };
 
-const lineReveal = {
+const lineVariants = {
   hidden: { 
     opacity: 0, 
-    y: "110%", 
-    rotateX: -18,
-    filter: "blur(6px)" 
+    y: "120%", 
+    rotateX: -25,
+    filter: "blur(10px)" 
   },
   visible: {
     opacity: 1,
@@ -29,20 +29,20 @@ const lineReveal = {
     rotateX: 0,
     filter: "blur(0px)",
     transition: {
-      duration: 0.85,
+      duration: 0.9,
       ease: [0.16, 1, 0.3, 1]
     }
   }
 };
 
-const fadeUpVariant = {
-  hidden: { opacity: 0, y: 20, filter: "blur(4px)" },
+const subItemVariants = {
+  hidden: { opacity: 0, y: 24, filter: "blur(6px)" },
   visible: {
     opacity: 1,
     y: 0,
     filter: "blur(0px)",
     transition: {
-      duration: 0.7,
+      duration: 0.8,
       ease: [0.16, 1, 0.3, 1]
     }
   }
@@ -58,29 +58,26 @@ export function About() {
   });
 
   const smoothProgress = useSpring(scrollYProgress, {
-    damping: 15,
-    mass: 0.27,
-    stiffness: 55
+    damping: 18,
+    mass: 0.25,
+    stiffness: 60
   });
 
-  const containerY = useTransform(smoothProgress, [0, 1], ["4%", "-4%"]);
-  const headerX = useTransform(smoothProgress, [0, 0.5], ["0%", "6%"]);
-  const headerOpacity = useTransform(smoothProgress, [0, 0.5], [1, 0.2]);
+  // Multi-plane kinetic parallax
+  const leftParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["15%", "0%", "-12%"]);
+  const rightParallaxY = useTransform(smoothProgress, [0, 0.45, 1], ["25%", "0%", "-20%"]);
+  const headerOpacity = useTransform(smoothProgress, [0.02, 0.22, 0.75, 0.95], [0.3, 1, 1, 0.2]);
+  const headerY = useTransform(smoothProgress, [0.02, 0.25], ["30px", "0px"]);
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
-      <motion.div 
-        className={styles.content}
-        style={{ 
-          y: containerY
-        }}
-      >
-        {/* Left-Aligned Section Header Below the Indicator Arrow */}
+      <div className={styles.content}>
+        {/* Section Header: Left-Aligned Directly Below the Indicator Arrow */}
         <motion.div 
           ref={headerRef}
           className={styles.header}
           style={{
-            x: headerX,
+            y: headerY,
             opacity: headerOpacity
           }}
         >
@@ -95,25 +92,26 @@ export function About() {
           {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
             className={styles.leftColumn}
-            variants={containerReveal}
+            style={{ y: leftParallaxY }}
+            variants={containerVariants}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, margin: "-80px" }}
           >
             <h3 className={styles.statementText}>
               <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineReveal} className={styles.statementLine}>
+                <motion.span variants={lineVariants} className={styles.statementLine}>
                   INTELLIGENT LOGIC
                 </motion.span>
               </span>
               <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineReveal} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+                <motion.span variants={lineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
                   SHAPED WITH PURPOSE
                 </motion.span>
               </span>
             </h3>
             
-            <motion.div variants={fadeUpVariant} className={styles.subStatement}>
+            <motion.div variants={subItemVariants} className={styles.subStatement}>
               <span className={styles.subStatementBar} />
               <span className={styles.subStatementText}>CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS</span>
             </motion.div>
@@ -125,25 +123,26 @@ export function About() {
           {/* Right Column: Anchored on the Far Right Edge of the Screen */}
           <motion.div
             className={styles.rightColumn}
-            variants={containerReveal}
+            style={{ y: rightParallaxY }}
+            variants={containerVariants}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, margin: "-80px" }}
           >
             <h3 className={styles.statementText}>
               <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineReveal} className={styles.statementLine}>
+                <motion.span variants={lineVariants} className={styles.statementLine}>
                   SCALABLE SYSTEMS
                 </motion.span>
               </span>
               <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineReveal} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+                <motion.span variants={lineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
                   CRAFTED TO EMPOWER
                 </motion.span>
               </span>
             </h3>
             
-            <motion.div variants={fadeUpVariant} className={styles.metricsList}>
+            <motion.div variants={subItemVariants} className={styles.metricsList}>
               <div className={styles.metricItem}>
                 <span className={styles.metricValue}>3+</span>
                 <span className={styles.metricLabel}>Years Engineering Production Web &amp; Mobile Systems</span>
@@ -158,7 +157,7 @@ export function About() {
               </div>
             </motion.div>
 
-            <motion.div variants={fadeUpVariant} className={styles.pillContainer}>
+            <motion.div variants={subItemVariants} className={styles.pillContainer}>
               {cvData.about.highlights.map((highlight, i) => (
                 <span key={i} className={styles.editorialPill}>{highlight}</span>
               ))}
@@ -167,73 +166,75 @@ export function About() {
         </div>
 
         {/* Education Section */}
-        <div className={styles.sectionTitle}>Education</div>
-        <div className={styles.educationGrid}>
-          {cvData.education.map((edu, index) => (
-            <motion.div
-              key={edu.school}
-              className={edu.school.includes('HiLCoE') ? styles.wide : ''}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ 
-                duration: 0.8, 
-                ease: [0.76, 0, 0.24, 1],
-                delay: index * 0.1
-              }}
-            >
-              <Card>
-                <div className={styles.cardContent}>
-                  <CardTitle>{edu.school}</CardTitle>
-                  <div className={styles.educationMeta}>
-                    <CardText>{edu.degree}</CardText>
-                    <CardText>{edu.period}</CardText>
+        <div className={styles.educationWrapper}>
+          <div className={styles.sectionTitle}>Education</div>
+          <div className={styles.educationGrid}>
+            {cvData.education.map((edu, index) => (
+              <motion.div
+                key={edu.school}
+                className={edu.school.includes('HiLCoE') ? styles.wide : ''}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ 
+                  duration: 0.8, 
+                  ease: [0.76, 0, 0.24, 1],
+                  delay: index * 0.1
+                }}
+              >
+                <Card>
+                  <div className={styles.cardContent}>
+                    <CardTitle>{edu.school}</CardTitle>
+                    <div className={styles.educationMeta}>
+                      <CardText>{edu.degree}</CardText>
+                      <CardText>{edu.period}</CardText>
+                    </div>
+                    <TagsGrid>
+                      {edu.details.map((detail, i) => (
+                        <Tag key={i}>{detail}</Tag>
+                      ))}
+                    </TagsGrid>
                   </div>
-                  <TagsGrid>
-                    {edu.details.map((detail, i) => (
-                      <Tag key={i}>{detail}</Tag>
-                    ))}
-                  </TagsGrid>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
 
-        {/* Certifications Section */}
-        <div className={styles.sectionTitle} style={{ marginTop: '4rem' }}>Certifications</div>
-        <div className={styles.educationGrid}>
-          {cvData.certifications.map((cert, index) => (
-            <motion.div
-              key={cert.issuer}
-              className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ 
-                duration: 0.8, 
-                ease: [0.76, 0, 0.24, 1],
-                delay: index * 0.1
-              }}
-            >
-              <Card>
-                <div className={styles.cardContent}>
-                  <CardTitle>{cert.issuer}</CardTitle>
-                  <div className={styles.educationMeta}>
-                    <CardText>{cert.year}</CardText>
+          {/* Certifications Section */}
+          <div className={styles.sectionTitle} style={{ marginTop: '4rem' }}>Certifications</div>
+          <div className={styles.educationGrid}>
+            {cvData.certifications.map((cert, index) => (
+              <motion.div
+                key={cert.issuer}
+                className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ 
+                  duration: 0.8, 
+                  ease: [0.76, 0, 0.24, 1],
+                  delay: index * 0.1
+                }}
+              >
+                <Card>
+                  <div className={styles.cardContent}>
+                    <CardTitle>{cert.issuer}</CardTitle>
+                    <div className={styles.educationMeta}>
+                      <CardText>{cert.year}</CardText>
+                    </div>
+                    <CardText>{cert.description}</CardText>
+                    <TagsGrid>
+                      {cert.items.map((item, i) => (
+                        <Tag key={i}>{item}</Tag>
+                      ))}
+                    </TagsGrid>
                   </div>
-                  <CardText>{cert.description}</CardText>
-                  <TagsGrid>
-                    {cert.items.map((item, i) => (
-                      <Tag key={i}>{item}</Tag>
-                    ))}
-                  </TagsGrid>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }
