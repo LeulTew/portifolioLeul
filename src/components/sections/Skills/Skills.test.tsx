@@ -10,7 +10,6 @@ describe('Skills', () => {
     render(<Skills />);
 
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
-    expect(screen.getByText('ARSENAL')).toBeInTheDocument();
     expect(screen.getByText(/Technical capabilities/i)).toBeInTheDocument();
   });
 

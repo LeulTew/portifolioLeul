@@ -49,27 +49,28 @@ vi.mock("./lib/gateways/gpuTier", () => ({
 
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
-  motion: {
-    div: ({ children, className, ...props }: any) => {
-      const rest = { ...props };
-      delete rest.layoutId;
-      return (
-      <div className={className} {...rest}>
-        {children}
-      </div>
-    );
+  motion: new Proxy({}, {
+    get: (_target, prop: string) => {
+      return ({ children, className, ...props }: any) => {
+        const Tag = prop as any;
+        const rest = { ...props };
+        delete rest.layoutId;
+        delete rest.initial;
+        delete rest.animate;
+        delete rest.exit;
+        delete rest.transition;
+        delete rest.whileHover;
+        delete rest.whileTap;
+        delete rest.whileInView;
+        delete rest.viewport;
+        return (
+          <Tag className={className} {...rest}>
+            {children}
+          </Tag>
+        );
+      };
     },
-    h2: ({ children, className, ...props }: any) => (
-      <h2 className={className} {...props}>
-        {children}
-      </h2>
-    ),
-    span: ({ children, className, ...props }: any) => (
-      <span className={className} {...props}>
-        {children}
-      </span>
-    ),
-  },
+  }),
 }));
 
 vi.mock("@react-three/fiber", () => ({
@@ -88,12 +89,20 @@ vi.mock("@react-three/drei", () => ({
   Scroll: ({ children }: any) => <div>{children}</div>,
   useScroll: () => mockScroll,
   Preload: () => null,
+  useProgress: () => ({ active: false, progress: 100, loaded: 4, total: 4, errors: [] }),
   useGLTF: Object.assign(vi.fn(() => ({ scene: { clone: () => ({ traverse: vi.fn() }) } })), { preload: vi.fn() }),
   useVideoTexture: vi.fn(() => ({ flipY: false })),
   Environment: () => null,
   PerspectiveCamera: () => null,
   Points: ({ children }: any) => <>{children}</>,
   PointMaterial: () => null,
+}));
+
+vi.mock("./components/Loader", () => ({
+  Loader: ({ onLoaded }: any) => {
+    onLoaded?.();
+    return <div data-testid="loader" role="progressbar" />;
+  },
 }));
 
 vi.mock("./components/BackgroundScene", () => ({

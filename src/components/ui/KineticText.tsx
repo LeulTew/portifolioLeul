@@ -34,9 +34,9 @@ export function KineticHeading({
   const wordVariants = {
     hidden: {
       opacity: 0,
-      y: 35,
-      rotateX: -45,
-      filter: 'blur(8px)',
+      y: 25,
+      rotateX: -30,
+      filter: 'blur(6px)',
     },
     visible: {
       opacity: 1,
@@ -44,7 +44,7 @@ export function KineticHeading({
       rotateX: 0,
       filter: 'blur(0px)',
       transition: {
-        duration: 0.8,
+        duration: 0.7,
         ease: Easings.easeOutCubic,
       },
     },
@@ -59,7 +59,7 @@ export function KineticHeading({
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: '-50px' }}
+        viewport={{ once: true, margin: '-20px' }}
         className="flex flex-wrap items-baseline gap-x-2"
       >
         {words.map((word, idx) => {
@@ -124,15 +124,13 @@ export function DancingCharText({
         return (
           <motion.span
             key={index}
-            className="inline-block cursor-default select-none will-change-transform"
-            initial={{ opacity: 0, y: 20, rotate: -10 }}
-            whileInView={{ opacity: 1, y: 0, rotate: 0 }}
-            viewport={{ once: true }}
+            className="inline-block cursor-default select-none will-change-transform hover:text-[#00ff9d] transition-colors duration-200"
+            initial={{ opacity: 0, y: 18, rotate: -8 }}
+            animate={{ opacity: 1, y: 0, rotate: 0 }}
             whileHover={{
               y: -8,
               rotate: (index % 2 === 0 ? 12 : -12),
               scale: 1.15,
-              color: '#00ff9d',
               transition: Springs.snappy,
             }}
             transition={{
@@ -183,38 +181,6 @@ export function KineticRotator({
           {words[index]}
         </motion.span>
       </AnimatePresence>
-    </div>
-  );
-}
-
-interface TelemetryBadgeProps {
-  label: string;
-  value?: string;
-  className?: string;
-  theme?: string;
-}
-
-export function TelemetryBadge({
-  label,
-  value,
-  className,
-  theme = 'dark',
-}: TelemetryBadgeProps) {
-  const isLight = theme === 'light';
-
-  return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-2 px-2.5 py-1 rounded border font-mono text-[11px] uppercase tracking-wider backdrop-blur-md select-none',
-        isLight
-          ? 'bg-black/5 border-black/15 text-neutral-800'
-          : 'bg-white/5 border-white/10 text-neutral-300',
-        className
-      )}
-    >
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-      <span className="opacity-70">{label}</span>
-      {value && <strong className="text-emerald-400 font-semibold">{value}</strong>}
     </div>
   );
 }

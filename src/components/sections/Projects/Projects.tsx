@@ -5,7 +5,7 @@ import styles from './Projects.module.css';
 import { projectsData } from '../../../data/projects';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
-import { KineticHeading, TelemetryBadge } from '../../ui/KineticText';
+import { KineticHeading } from '../../ui/KineticText';
 
 const categories = [
   { title: 'All', icon: Grid3x3 },
@@ -120,9 +120,6 @@ export function Projects({ theme }: { theme?: string }) {
         }}
       >
         <header className={styles.header}>
-          <div className="flex items-center gap-2 mb-2">
-            <TelemetryBadge label="MODULE" value="SELECTED WORK" theme={theme} />
-          </div>
           <KineticHeading 
             text="Featured Projects" 
             as="h2" 

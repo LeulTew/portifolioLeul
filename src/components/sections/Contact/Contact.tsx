@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Github, Linkedin } from 'lucide-react';
 import { TelegramIcon } from '../../ui/TelegramIcon';
-import { KineticHeading, TelemetryBadge, DancingCharText } from '../../ui/KineticText';
+import { KineticHeading } from '../../ui/KineticText';
 import { ContactForm } from './ContactForm';
 import { soundFx } from '@/lib/gateways/soundFx';
 import styles from './Contact.module.css';
@@ -19,9 +19,6 @@ export function Contact() {
     <section ref={containerRef} className={styles.contact} id="contact">
       <div className={styles.content}>
         <div className={styles.header}>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <TelemetryBadge label="TRANSMIT" value="UPLINK ACTIVE" />
-          </div>
           <KineticHeading 
             text="Let's Connect" 
             as="h2" 
@@ -76,7 +73,6 @@ export function Contact() {
             </div>
 
             <div>
-              <DancingCharText text="Direct Transmission Channels" className="text-xs uppercase tracking-widest text-[var(--muted-text)] mb-3 block" />
               <div className={styles.socialLinks}>
                 <a 
                   href={cvData.contact.social.github} 

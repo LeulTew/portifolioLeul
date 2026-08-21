@@ -4,7 +4,6 @@ import {
   KineticHeading,
   DancingCharText,
   KineticRotator,
-  TelemetryBadge,
 } from "./KineticText";
 import * as animationGateway from "@/lib/gateways/animationGateway";
 
@@ -56,24 +55,6 @@ describe("KineticText Components", () => {
       const words = ["REACT", "THREE.JS", "TYPESCRIPT"];
       render(<KineticRotator words={words} interval={2000} />);
       expect(screen.getByText("REACT")).toBeInTheDocument();
-    });
-  });
-
-  describe("TelemetryBadge", () => {
-    it("renders technical coordinate telemetry with label and value", () => {
-      render(<TelemetryBadge label="STATUS" value="ONLINE" />);
-      expect(screen.getByText("STATUS")).toBeInTheDocument();
-      expect(screen.getByText("ONLINE")).toBeInTheDocument();
-    });
-
-    it("renders with only label when value is omitted", () => {
-      render(<TelemetryBadge label="ACTIVE" />);
-      expect(screen.getByText("ACTIVE")).toBeInTheDocument();
-    });
-
-    it("adapts styles for light theme", () => {
-      const { container } = render(<TelemetryBadge label="LOC" value="38.74, 9.01" theme="light" />);
-      expect(container.firstChild).toHaveClass("bg-black/5");
     });
   });
 });
