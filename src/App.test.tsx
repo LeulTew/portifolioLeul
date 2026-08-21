@@ -100,6 +100,10 @@ vi.mock("./components/BackgroundScene", () => ({
   BackgroundScene: () => <div data-testid="background-scene" />,
 }));
 
+vi.mock("./components/ParticleBackground", () => ({
+  default: () => <div data-testid="particle-background" />,
+}));
+
 vi.mock("./components/sections/Home/Home", () => ({
   Home: () => <div data-testid="home-section">Home Section</div>,
 }));

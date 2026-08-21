@@ -2,8 +2,6 @@ import { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Card } from '../../ui/Card';
 import { CardTitle, CardText, StatsGrid, StatItem, TagsGrid, Tag } from '../../ui/Card';
-import { CursorGlow } from '../../ui/CursorGlow/CursorGlow';
-import { KineticHeading, DancingCharText, TelemetryBadge } from '../../ui/KineticText';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
@@ -28,7 +26,6 @@ export function About() {
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
-      <CursorGlow />
       <motion.div 
         className={styles.content}
         style={{ 
@@ -43,10 +40,7 @@ export function About() {
             opacity: headerOpacity
           }}
         >
-          <div className="flex items-center justify-end gap-2 mb-2">
-            <TelemetryBadge label="PROFILE" value="CORE MATRIX" />
-          </div>
-          <KineticHeading text="About Me" as="h2" className={styles.title} highlightWords={["Me"]} />
+          <h2 className={styles.title}>About Me</h2>
           <p className={styles.subtitle}>
             {cvData.about.subtitle}
           </p>
@@ -78,79 +72,70 @@ export function About() {
           </motion.div>
         </div>
 
-        {/* Education & Certifications: Right-Aligned Section (Clear 3D view on Left) */}
-        <div className={styles.rightAlignedSection}>
-          <div className={styles.rightAlignedInner}>
-            <div>
-              <DancingCharText text="Education" className={styles.sectionTitle} />
-              <div className={styles.educationGrid}>
-                {cvData.education.map((edu, index) => (
-                  <motion.div
-                    key={edu.school}
-                    className={edu.school.includes('HiLCoE') ? styles.wide : ''}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ 
-                      duration: 0.8, 
-                      ease: [0.76, 0, 0.24, 1],
-                      delay: index * 0.1
-                    }}
-                  >
-                    <Card>
-                      <div className={styles.cardContent}>
-                        <CardTitle>{edu.school}</CardTitle>
-                        <div className={styles.educationMeta}>
-                          <CardText>{edu.degree}</CardText>
-                          <CardText>{edu.period}</CardText>
-                        </div>
-                        <TagsGrid>
-                          {edu.details.map((detail, i) => (
-                            <Tag key={i}>{detail}</Tag>
-                          ))}
-                        </TagsGrid>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+        <div className={styles.sectionTitle}>Education</div>
+        <div className={styles.educationGrid}>
+          {cvData.education.map((edu, index) => (
+            <motion.div
+              key={edu.school}
+              className={edu.school.includes('HiLCoE') ? styles.wide : ''}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ 
+                duration: 0.8, 
+                ease: [0.76, 0, 0.24, 1],
+                delay: index * 0.1
+              }}
+            >
+              <Card>
+                <div className={styles.cardContent}>
+                  <CardTitle>{edu.school}</CardTitle>
+                  <div className={styles.educationMeta}>
+                    <CardText>{edu.degree}</CardText>
+                    <CardText>{edu.period}</CardText>
+                  </div>
+                  <TagsGrid>
+                    {edu.details.map((detail, i) => (
+                      <Tag key={i}>{detail}</Tag>
+                    ))}
+                  </TagsGrid>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
 
-            <div style={{ marginTop: '2rem' }}>
-              <DancingCharText text="Certifications" className={styles.sectionTitle} />
-              <div className={styles.educationGrid}>
-                {cvData.certifications.map((cert, index) => (
-                  <motion.div
-                    key={cert.issuer}
-                    className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ 
-                      duration: 0.8, 
-                      ease: [0.76, 0, 0.24, 1],
-                      delay: index * 0.1
-                    }}
-                  >
-                    <Card>
-                      <div className={styles.cardContent}>
-                        <CardTitle>{cert.issuer}</CardTitle>
-                        <div className={styles.educationMeta}>
-                          <CardText>{cert.year}</CardText>
-                        </div>
-                        <CardText>{cert.description}</CardText>
-                        <TagsGrid>
-                          {cert.items.map((item, i) => (
-                            <Tag key={i}>{item}</Tag>
-                          ))}
-                        </TagsGrid>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className={styles.sectionTitle} style={{ marginTop: '3rem' }}>Certifications</div>
+        <div className={styles.educationGrid}>
+          {cvData.certifications.map((cert, index) => (
+            <motion.div
+              key={cert.issuer}
+              className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ 
+                duration: 0.8, 
+                ease: [0.76, 0, 0.24, 1],
+                delay: index * 0.1
+              }}
+            >
+              <Card>
+                <div className={styles.cardContent}>
+                  <CardTitle>{cert.issuer}</CardTitle>
+                  <div className={styles.educationMeta}>
+                    <CardText>{cert.year}</CardText>
+                  </div>
+                  <CardText>{cert.description}</CardText>
+                  <TagsGrid>
+                    {cert.items.map((item, i) => (
+                      <Tag key={i}>{item}</Tag>
+                    ))}
+                  </TagsGrid>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
         </div>
       </motion.div>
     </section>
