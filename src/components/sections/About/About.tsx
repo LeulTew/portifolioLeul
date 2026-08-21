@@ -83,12 +83,12 @@ export function About() {
             <h3 className={styles.statementText}>
               <span className={styles.lineOverflowWrapper}>
                 <motion.span variants={lineVariants} className={styles.statementLine}>
-                  INTELLIGENT LOGIC
+                  KEEP IT SIMPLE
                 </motion.span>
               </span>
               <span className={styles.lineOverflowWrapper}>
                 <motion.span variants={lineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
-                  SHAPED WITH PURPOSE
+                  BUT SIGNIFICANT
                 </motion.span>
               </span>
             </h3>
