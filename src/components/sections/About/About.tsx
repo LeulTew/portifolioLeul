@@ -5,6 +5,30 @@ import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
+const textStaggerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.05,
+    }
+  }
+};
+
+const textLineVariants = {
+  hidden: { opacity: 0, y: 28, filter: 'blur(6px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.75,
+      ease: [0.16, 1, 0.3, 1]
+    }
+  }
+};
+
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -20,9 +44,8 @@ export function About() {
     stiffness: 55
   });
 
-  const containerY = useTransform(smoothProgress, [0, 1], ["5%", "-5%"]);
-  const headerX = useTransform(smoothProgress, [0, 0.5], ["0%", "8%"]);
-  const headerOpacity = useTransform(smoothProgress, [0, 0.5], [0.8, 0]);
+  const containerY = useTransform(smoothProgress, [0, 1], ["4%", "-4%"]);
+  const headerOpacity = useTransform(smoothProgress, [0, 0.45], [1, 0.2]);
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
@@ -32,11 +55,11 @@ export function About() {
           y: containerY
         }}
       >
+        {/* Centered Section Header */}
         <motion.div 
           ref={headerRef}
           className={styles.header}
           style={{
-            x: headerX,
             opacity: headerOpacity
           }}
         >
@@ -46,43 +69,52 @@ export function About() {
           </p>
         </motion.div>
 
-        {/* Spatial Editorial Layout Framing the 3D Canvas */}
+        {/* Spatial Editorial Layout Framing the 3D Canvas across the full viewport */}
         <div className={styles.heroSpatialLayout}>
           {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
             className={styles.leftColumn}
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            variants={textStaggerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
           >
             <h3 className={styles.statementText}>
-              <span>INTELLIGENT LOGIC</span>
-              <span className={styles.statementHighlight}>SHAPED WITH PURPOSE</span>
-            </h3>
-            <div className={styles.subStatement}>
-              <span className={styles.statementDot} />
-              <span className={styles.subStatementText}>CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS</span>
-            </div>
-          </motion.div>
-
-          {/* Center Column: Open breathing space for 3D TV & Terrain */}
-          <div className={styles.centerSpace} aria-hidden="true" />
-
-          {/* Right Column: Bold Architecture / Impact Metrics */}
-          <motion.div
-            className={styles.rightColumn}
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.15 }}
-          >
-            <h3 className={styles.statementText}>
-              <span>SCALABLE SYSTEMS</span>
-              <span className={styles.statementHighlight}>CRAFTED TO EMPOWER</span>
+              <motion.span variants={textLineVariants} className={styles.statementLine}>
+                INTELLIGENT LOGIC
+              </motion.span>
+              <motion.span variants={textLineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+                SHAPED WITH PURPOSE
+              </motion.span>
             </h3>
             
-            <div className={styles.metricsList}>
+            <motion.div variants={textLineVariants} className={styles.subStatement}>
+              <span className={styles.subStatementBar} />
+              <span className={styles.subStatementText}>CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS</span>
+            </motion.div>
+          </motion.div>
+
+          {/* Center Column: Expansive breathing space for 3D TV & Terrain */}
+          <div className={styles.centerSpace} aria-hidden="true" />
+
+          {/* Right Column: Positioned on the right side of the screen */}
+          <motion.div
+            className={styles.rightColumn}
+            variants={textStaggerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+          >
+            <h3 className={styles.statementText}>
+              <motion.span variants={textLineVariants} className={styles.statementLine}>
+                SCALABLE SYSTEMS
+              </motion.span>
+              <motion.span variants={textLineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+                CRAFTED TO EMPOWER
+              </motion.span>
+            </h3>
+            
+            <motion.div variants={textLineVariants} className={styles.metricsList}>
               <div className={styles.metricItem}>
                 <span className={styles.metricValue}>3+</span>
                 <span className={styles.metricLabel}>Years Engineering Production Web &amp; Mobile Systems</span>
@@ -95,13 +127,13 @@ export function About() {
                 <span className={styles.metricValue}>BSc</span>
                 <span className={styles.metricLabel}>Computer Science Graduate (HiLCoE)</span>
               </div>
-            </div>
+            </motion.div>
 
-            <div className={styles.pillContainer}>
+            <motion.div variants={textLineVariants} className={styles.pillContainer}>
               {cvData.about.highlights.map((highlight, i) => (
                 <span key={i} className={styles.editorialPill}>{highlight}</span>
               ))}
-            </div>
+            </motion.div>
           </motion.div>
         </div>
 
