@@ -7,10 +7,10 @@ describe('Contact Section Component', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders kinetic heading and telemetry badge', () => {
+  it('renders heading and title', () => {
     render(<Contact />);
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
     expect(screen.getByLabelText("Let's Connect")).toBeInTheDocument();
-    expect(screen.getByText('TRANSMIT')).toBeInTheDocument();
   });
 
   it('renders contact information items and social channel links', () => {

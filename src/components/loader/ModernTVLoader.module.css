@@ -1,0 +1,92 @@
+/* ==========================================================================
+   NeoLeaf-Inspired Cinematic Preloader for "LEUL"
+   Pure Text Liquid Wave Simulation & Camera Zoom Exit (Zero Slop, Zero Counter)
+   ========================================================================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  display: flex;
+  user-select: none;
+  -webkit-user-select: none;
+  align-items: center;
+  justify-content: center;
+  background-color: #000000;
+  text-align: center;
+  overflow: hidden;
+}
+
+:global([data-theme="light"]) .overlay,
+.overlayLight {
+  background-color: #ffffff;
+}
+
+.centerWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 85%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .centerWrapper {
+    max-width: 75%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .centerWrapper {
+    max-width: 760px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .centerWrapper {
+    max-width: 940px;
+  }
+}
+
+/* The masked text container with unfilled semi-transparent backdrop */
+.logoMask {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 960 / 240;
+  background-color: #aaaaaa;
+  background-color: rgba(170, 170, 170, 0.3);
+  transform-origin: center center;
+  will-change: transform, opacity;
+
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 240'%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' dominant-baseline='middle' font-family='system-ui, -apple-system, BlinkMacSystemFont, %22Segoe UI%22, Roboto, sans-serif' font-weight='900' font-size='192' letter-spacing='0.08em' fill='black'%3ELEUL%3C/text%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 240'%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' dominant-baseline='middle' font-family='system-ui, -apple-system, BlinkMacSystemFont, %22Segoe UI%22, Roboto, sans-serif' font-weight='900' font-size='192' letter-spacing='0.08em' fill='black'%3ELEUL%3C/text%3E%3C/svg%3E");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+:global([data-theme="light"]) .logoMask,
+.logoMaskLight {
+  background-color: rgba(15, 23, 42, 0.18);
+}
+
+.canvasWrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

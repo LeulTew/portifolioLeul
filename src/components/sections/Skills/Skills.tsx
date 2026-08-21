@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { KineticHeading, DancingCharText, TelemetryBadge } from '../../ui/KineticText';
+import { KineticHeading, DancingCharText } from '../../ui/KineticText';
 import styles from './Skills.module.css';
 
 import { cvData } from '../../../data/cv';
@@ -29,9 +29,6 @@ export function Skills() {
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
         >
-          <div className="flex items-center justify-end gap-2 mb-2">
-            <TelemetryBadge label="ARSENAL" value="LANGUAGES & 3D" />
-          </div>
           <KineticHeading text="Skills & Expertise" as="h2" className={styles.title} highlightWords={["Expertise"]} />
           <p className={styles.subtitle}>Technical capabilities, distributed systems, and creative 3D toolsets</p>
         </motion.div>

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
-import { DancingCharText, KineticRotator, TelemetryBadge } from '../../ui/KineticText';
+import { DancingCharText, KineticRotator } from '../../ui/KineticText';
 import styles from './Home.module.css';
 
 interface HomeProps {
@@ -98,11 +98,6 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
               />
             </div>
           </motion.div>
-          {/* Telemetry Badge Header */}
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <TelemetryBadge label="SYSTEM" value="ONLINE" theme={theme} />
-            <TelemetryBadge label="FOCUS" value="FULL-STACK & 3D WEB" theme={theme} />
-          </div>
 
           <motion.h1 
             className={styles.title}

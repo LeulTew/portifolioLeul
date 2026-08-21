@@ -1,21 +1,48 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Loader } from './Loader';
 
-describe('Loader', () => {
-  it('renders loader with text', () => {
-    render(<Loader />);
+// Mock Drei useProgress
+vi.mock('@react-three/drei', () => ({
+  useProgress: vi.fn(() => ({
+    active: false,
+    progress: 100,
+    errors: [],
+    item: '',
+    loaded: 4,
+    total: 4,
+  })),
+}));
 
+describe('Loader', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('renders loader with liquid LEUL text and progressbar role', () => {
+    render(<Loader minDurationMs={1000} />);
+
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
     expect(screen.getByText('Leul')).toBeInTheDocument();
   });
 
-  it('has correct structure', () => {
-    render(<Loader />);
+  it('triggers onLoaded callback when completed', () => {
+    const onLoaded = vi.fn();
+    render(<Loader minDurationMs={400} onLoaded={onLoaded} />);
 
-    const loader = screen.getByText('Leul').parentElement;
-    expect(loader).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
 
-    // Check for progress bar element
-    const progressBar = loader?.querySelector('[class*="progress"]');
-    expect(progressBar).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1200);
+    });
+
+    expect(onLoaded).toHaveBeenCalledTimes(1);
   });
 });

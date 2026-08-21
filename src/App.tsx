@@ -69,11 +69,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    // Safety fallback timeout to prevent infinite loading on network stall
+    const fallbackTimer = setTimeout(() => {
       setIsLoading(false);
-    }, 2000);
+    }, 8000);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(fallbackTimer);
   }, []);
 
   const updateScrollPages = useCallback(() => {
@@ -163,7 +164,16 @@ function App() {
 
   return (
     <div className={styles.container}>
-      <Navigation scrollToSection={scrollToSection} />
+      <AnimatePresence>
+        {isLoading && (
+          <Loader key="loader" theme={theme} onLoaded={() => setIsLoading(false)} />
+        )}
+      </AnimatePresence>
+
+      {!isLoading && (
+        <Navigation scrollToSection={scrollToSection} />
+      )}
+
       <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Canvas
             dpr={gpuConfig.dpr}
@@ -187,26 +197,22 @@ function App() {
                 <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
                 <ParticleBackground theme={theme} />
                 <Scroll html style={{ width: '100%' }}>
-                  <AnimatePresence mode="wait">
-                    {isLoading ? (
-                      <Loader key="loader" />
-                    ) : (
-                      <main ref={mainRef} className={styles.main}>
-                        <Home onNavigate={scrollToSection} />
-                        <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
-                          <div className="curveWrapper">
-                            <div className="curve"></div>
-                          </div>
-                          <div className="point"></div>
+                  {!isLoading && (
+                    <main ref={mainRef} className={styles.main}>
+                      <Home onNavigate={scrollToSection} />
+                      <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
+                        <div className="curveWrapper">
+                          <div className="curve"></div>
                         </div>
-                        <About />
-                        <Skills />
-                        <Projects theme={theme} />
-                        <div className={styles.spacer} />
-                        <Contact />
-                      </main>
-                    )}
-                  </AnimatePresence>
+                        <div className="point"></div>
+                      </div>
+                      <About />
+                      <Skills />
+                      <Projects theme={theme} />
+                      <div className={styles.spacer} />
+                      <Contact />
+                    </main>
+                  )}
                 </Scroll>
               </ScrollControls>
               <Preload all />

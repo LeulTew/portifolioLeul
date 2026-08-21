@@ -22,8 +22,6 @@ describe('Home Section', () => {
   it('renders name, titles, and bio text', () => {
     render(<Home />);
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('SYSTEM')).toBeInTheDocument();
-    expect(screen.getByText('ONLINE')).toBeInTheDocument();
     expect(screen.getByText('ARCHITECTING')).toBeInTheDocument();
     expect(screen.getByText(/Full-Stack Developer/i)).toBeInTheDocument();
   });
