@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  align-items: center;
+  align-items: flex-start;
   padding: 0;
   margin-top: 0;
   overflow: visible;
@@ -16,10 +16,9 @@
 .content {
   position: relative;
   z-index: 2;
-  max-width: 1760px;
-  margin: 0 auto;
+  max-width: 100%;
   width: 100%;
-  padding: 0 max(1.5rem, 4vw);
+  padding: 0 clamp(1.5rem, 5vw, 6rem);
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -27,44 +26,39 @@
 }
 
 /* ==========================================================================
-   Centered Section Header
+   Left-Aligned Section Header (Positioned right below the indicator arrow)
    ========================================================================== */
 
 .header {
-  text-align: center;
-  margin: 0 auto 2.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  text-align: left;
+  margin-bottom: 1.5rem;
   width: 100%;
+  max-width: 720px;
 }
 
 .title {
   font-size: clamp(2.5rem, 5.5vw, 5.5rem);
   font-weight: 700;
-  line-height: 1;
+  line-height: 0.95;
   letter-spacing: -0.03em;
   color: var(--strong-text);
   margin: 0;
-  text-align: center;
   mix-blend-mode: difference;
-  text-shadow: 0 0 24px rgba(255, 255, 255, 0.2);
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
 }
 
 .subtitle {
-  font-size: clamp(0.95rem, 1.2vw, 1.25rem);
-  line-height: 1.5;
+  font-size: clamp(0.95rem, 1.2vw, 1.2rem);
+  line-height: 1.45;
   color: rgb(var(--text-color));
   opacity: 0.85;
-  margin: 1.25rem auto 0;
-  max-width: 640px;
-  text-align: center;
+  margin: 1rem 0 0;
+  max-width: 620px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
 /* ==========================================================================
-   Spatial Editorial Layout (Left / Open Center / Right)
+   Full-Width Spatial Editorial Layout (Left / Vast Center 3D Space / Far Right)
    ========================================================================== */
 
 .heroSpatialLayout {
@@ -73,25 +67,25 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  min-height: 52vh;
+  min-height: 54vh;
   margin: 1rem 0 6rem;
   pointer-events: auto;
   position: relative;
-  gap: clamp(2rem, 5vw, 6rem);
+  gap: clamp(2rem, 5vw, 7rem);
 }
 
 .leftColumn {
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
-  width: clamp(280px, 32vw, 480px);
+  width: clamp(280px, 28vw, 460px);
   flex-shrink: 0;
   z-index: 10;
 }
 
 .centerSpace {
   flex: 1;
-  min-width: clamp(100px, 15vw, 320px);
+  min-width: clamp(100px, 15vw, 400px);
   pointer-events: none;
 }
 
@@ -99,7 +93,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
-  width: clamp(280px, 34vw, 500px);
+  width: clamp(280px, 30vw, 480px);
   flex-shrink: 0;
   margin-left: auto;
   z-index: 10;
@@ -114,11 +108,19 @@
   color: var(--strong-text);
   display: flex;
   flex-direction: column;
+  gap: 0.15rem;
   margin: 0;
 }
 
-.statementLine {
+.lineOverflowWrapper {
   display: block;
+  overflow: hidden;
+  perspective: 600px;
+}
+
+.statementLine {
+  display: inline-block;
+  transform-origin: 50% 100%;
 }
 
 .statementHighlight {

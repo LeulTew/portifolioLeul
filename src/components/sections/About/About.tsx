@@ -5,7 +5,7 @@ import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 
-const textStaggerVariants = {
+const containerReveal = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -16,14 +16,33 @@ const textStaggerVariants = {
   }
 };
 
-const textLineVariants = {
-  hidden: { opacity: 0, y: 28, filter: 'blur(6px)' },
+const lineReveal = {
+  hidden: { 
+    opacity: 0, 
+    y: "110%", 
+    rotateX: -18,
+    filter: "blur(6px)" 
+  },
+  visible: {
+    opacity: 1,
+    y: "0%",
+    rotateX: 0,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.85,
+      ease: [0.16, 1, 0.3, 1]
+    }
+  }
+};
+
+const fadeUpVariant = {
+  hidden: { opacity: 0, y: 20, filter: "blur(4px)" },
   visible: {
     opacity: 1,
     y: 0,
-    filter: 'blur(0px)',
+    filter: "blur(0px)",
     transition: {
-      duration: 0.75,
+      duration: 0.7,
       ease: [0.16, 1, 0.3, 1]
     }
   }
@@ -45,7 +64,8 @@ export function About() {
   });
 
   const containerY = useTransform(smoothProgress, [0, 1], ["4%", "-4%"]);
-  const headerOpacity = useTransform(smoothProgress, [0, 0.45], [1, 0.2]);
+  const headerX = useTransform(smoothProgress, [0, 0.5], ["0%", "6%"]);
+  const headerOpacity = useTransform(smoothProgress, [0, 0.5], [1, 0.2]);
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
@@ -55,11 +75,12 @@ export function About() {
           y: containerY
         }}
       >
-        {/* Centered Section Header */}
+        {/* Left-Aligned Section Header Below the Indicator Arrow */}
         <motion.div 
           ref={headerRef}
           className={styles.header}
           style={{
+            x: headerX,
             opacity: headerOpacity
           }}
         >
@@ -69,52 +90,60 @@ export function About() {
           </p>
         </motion.div>
 
-        {/* Spatial Editorial Layout Framing the 3D Canvas across the full viewport */}
+        {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
         <div className={styles.heroSpatialLayout}>
           {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
             className={styles.leftColumn}
-            variants={textStaggerVariants}
+            variants={containerReveal}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true, margin: "-60px" }}
           >
             <h3 className={styles.statementText}>
-              <motion.span variants={textLineVariants} className={styles.statementLine}>
-                INTELLIGENT LOGIC
-              </motion.span>
-              <motion.span variants={textLineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
-                SHAPED WITH PURPOSE
-              </motion.span>
+              <span className={styles.lineOverflowWrapper}>
+                <motion.span variants={lineReveal} className={styles.statementLine}>
+                  INTELLIGENT LOGIC
+                </motion.span>
+              </span>
+              <span className={styles.lineOverflowWrapper}>
+                <motion.span variants={lineReveal} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+                  SHAPED WITH PURPOSE
+                </motion.span>
+              </span>
             </h3>
             
-            <motion.div variants={textLineVariants} className={styles.subStatement}>
+            <motion.div variants={fadeUpVariant} className={styles.subStatement}>
               <span className={styles.subStatementBar} />
               <span className={styles.subStatementText}>CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS</span>
             </motion.div>
           </motion.div>
 
-          {/* Center Column: Expansive breathing space for 3D TV & Terrain */}
+          {/* Center Column: Expansive Breathing Space for 3D TV & Terrain */}
           <div className={styles.centerSpace} aria-hidden="true" />
 
-          {/* Right Column: Positioned on the right side of the screen */}
+          {/* Right Column: Anchored on the Far Right Edge of the Screen */}
           <motion.div
             className={styles.rightColumn}
-            variants={textStaggerVariants}
+            variants={containerReveal}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true, margin: "-60px" }}
           >
             <h3 className={styles.statementText}>
-              <motion.span variants={textLineVariants} className={styles.statementLine}>
-                SCALABLE SYSTEMS
-              </motion.span>
-              <motion.span variants={textLineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
-                CRAFTED TO EMPOWER
-              </motion.span>
+              <span className={styles.lineOverflowWrapper}>
+                <motion.span variants={lineReveal} className={styles.statementLine}>
+                  SCALABLE SYSTEMS
+                </motion.span>
+              </span>
+              <span className={styles.lineOverflowWrapper}>
+                <motion.span variants={lineReveal} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+                  CRAFTED TO EMPOWER
+                </motion.span>
+              </span>
             </h3>
             
-            <motion.div variants={textLineVariants} className={styles.metricsList}>
+            <motion.div variants={fadeUpVariant} className={styles.metricsList}>
               <div className={styles.metricItem}>
                 <span className={styles.metricValue}>3+</span>
                 <span className={styles.metricLabel}>Years Engineering Production Web &amp; Mobile Systems</span>
@@ -129,7 +158,7 @@ export function About() {
               </div>
             </motion.div>
 
-            <motion.div variants={textLineVariants} className={styles.pillContainer}>
+            <motion.div variants={fadeUpVariant} className={styles.pillContainer}>
               {cvData.about.highlights.map((highlight, i) => (
                 <span key={i} className={styles.editorialPill}>{highlight}</span>
               ))}
