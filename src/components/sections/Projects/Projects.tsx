@@ -21,28 +21,20 @@ export function Projects({ theme }: { theme?: string }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [isContactInView, setIsContactInView] = useState(false);
 
-  // Replicate Nav Bar's section tracking logic to ensure consistent behavior
+  // The page scrolls inside the ScrollControls element, so window.scrollY is
+  // always 0 here; section visibility has to come from IntersectionObserver,
+  // which does account for the container's transform.
   useEffect(() => {
-    const sections = ['projects', 'contact'];
-    
-    const handleScrollCheck = () => {
-      const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
-      if (isAtBottom) {
-        setIsContactInView(true);
-      }
-    };
+    const observed = ['projects', 'contact']
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+
+    if (observed.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
-        
-        if (isAtBottom) {
-          setIsContactInView(true);
-          return;
-        }
-
         const visibleEntry = entries
-          .filter(entry => entry.isIntersecting)
+          .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
 
         if (visibleEntry?.target?.id === 'contact') {
@@ -51,22 +43,14 @@ export function Projects({ theme }: { theme?: string }) {
           setIsContactInView(false);
         }
       },
-      { 
+      {
         threshold: [0.15, 0.35, 0.55],
-        rootMargin: '-35% 0px -35% 0px' 
+        rootMargin: '-35% 0px -35% 0px'
       }
     );
 
-    sections.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    window.addEventListener('scroll', handleScrollCheck);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', handleScrollCheck);
-    };
+    observed.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
   }, []);
 
   // Filter projects based on active category

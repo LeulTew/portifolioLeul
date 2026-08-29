@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
 
@@ -85,7 +85,9 @@ vi.mock("@react-three/fiber", () => ({
 const mockScroll = { el: document.createElement("div"), offset: 0 };
 
 vi.mock("@react-three/drei", () => ({
-  ScrollControls: ({ children }: any) => <div>{children}</div>,
+  ScrollControls: ({ children, pages }: any) => (
+    <div data-testid="scroll-controls" data-pages={pages}>{children}</div>
+  ),
   Scroll: ({ children }: any) => <div>{children}</div>,
   useScroll: () => mockScroll,
   Preload: () => null,
@@ -144,5 +146,85 @@ describe("App Component", () => {
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.getByTestId("r3f-canvas")).toBeInTheDocument();
     expect(screen.getByTestId("background-scene")).toBeInTheDocument();
+  });
+});
+
+describe("App scroll track sizing", () => {
+  const originalInnerHeight = window.innerHeight;
+  let scrollHeightSpy: ReturnType<typeof vi.spyOn> | null = null;
+
+  const setViewportHeight = (height: number) => {
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      writable: true,
+      value: height,
+    });
+  };
+
+  const stubContentHeight = (height: number) => {
+    scrollHeightSpy = vi
+      .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(height);
+  };
+
+  afterEach(() => {
+    scrollHeightSpy?.mockRestore();
+    scrollHeightSpy = null;
+    setViewportHeight(originalInnerHeight);
+  });
+
+  const renderApp = () =>
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+
+  const pagesOf = () =>
+    Number(screen.getByTestId("scroll-controls").getAttribute("data-pages"));
+
+  it("maps content height onto the scroll track one-to-one", () => {
+    setViewportHeight(1000);
+    stubContentHeight(4200);
+
+    renderApp();
+
+    // pages === contentHeight / viewportHeight is exactly the ratio drei needs
+    // to translate the html layer across its full height and stop there.
+    expect(pagesOf()).toBeCloseTo(4.2, 5);
+  });
+
+  it("adds no dead scroll beyond the end of the content", () => {
+    setViewportHeight(720);
+    stubContentHeight(720 * 6);
+
+    renderApp();
+
+    expect(pagesOf()).toBeCloseTo(6, 5);
+  });
+
+  it("does not shrink the track below a single viewport", () => {
+    setViewportHeight(1000);
+    stubContentHeight(200);
+
+    renderApp();
+
+    expect(pagesOf()).toBe(1);
+  });
+
+  it("sizes the track from content height, not from viewport width", () => {
+    // The previous implementation bolted on 16.5 extra pages at <=1366px wide,
+    // which stranded the user in empty scroll after the last section.
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+    setViewportHeight(1000);
+    stubContentHeight(3000);
+
+    renderApp();
+
+    expect(pagesOf()).toBeCloseTo(3, 5);
   });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useContext } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Loader } from './components/Loader';
 import { Navigation } from './components/Navigation';
@@ -14,27 +14,19 @@ import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
+import { setScrollProgress } from './lib/scroll/scrollProgress';
 
 import './index.css';
 import styles from './App.module.css';
 import './components/Arrow.css';
 
+/** Page-count churn below this is ignored, so card expansions don't retrigger layout. */
+const SCROLL_PAGE_EPSILON = 0.05;
+
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
-  const [scrollPages, setScrollPages] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const width = window.innerWidth;
-      if (width >= 768 && width <= 1366) {
-        console.log('SETTING SCROLL PAGES TO 9.5 for 720p, width:', width);
-        return 9.5; // 720p - needs more scroll
-      } else if (width > 1366 && width < 2000) {
-        console.log('SETTING SCROLL PAGES TO 6.5 for 1080p, width:', width);
-        return 6.5; // 1080p
-      }
-    }
-    return 5.2; // 1440p+
-  });
+  const [scrollPages, setScrollPages] = useState(1);
   const mainRef = useRef<HTMLDivElement | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
   const gpuConfig = useGpuTier();
@@ -80,44 +72,18 @@ function App() {
   const updateScrollPages = useCallback(() => {
     if (!mainRef.current) return;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight || 1 : 1;
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth || 1 : 1;
-    const is720p = viewportWidth >= 768 && viewportWidth <= 1366;
-    const is1080p = viewportWidth > 1366 && viewportWidth < 2000;
-    
     const contentHeight = mainRef.current.scrollHeight || viewportHeight;
-    // Add extra buffer for mobile and standard desktop to ensure we reach the end
-    // CHANGE THESE VALUES TO ADJUST SCROLL LENGTH:
-    // Mobile (< 768px): 3.2
-    // 720p (768px - 1366px): Increased to 16.5 to accommodate larger spacing
-    // 1080p (1367px - 2000px): 15.0
-    // Large Screens (>= 2000px): 0
-    
-    let extraBuffer = 0;
-    if (is720p) extraBuffer = 16.5; // Increased for 720p
-    else if (is1080p) extraBuffer = 15.0;
-    
-    const calculatedPages = Math.max(contentHeight / viewportHeight, 1.2) + extraBuffer;
 
-    // Increased threshold to 0.5 to prevent re-renders on small content changes (like card expansion)
-    const shouldUpdate = Math.abs(scrollPages - calculatedPages) > 0.5;
-    
-    // DEBUG: Log scroll calculation
-    console.log('=== SCROLL DEBUG ===', {
-      viewportWidth,
-      viewportHeight,
-      contentHeight,
-      is720p,
-      is1080p,
-      extraBuffer,
-      calculatedPages,
-      currentScrollPages: scrollPages,
-      shouldUpdate
-    });
+    // ScrollControls translates the html layer by -(pages - 1) * viewportHeight
+    // across the full scroll, so pages === contentHeight / viewportHeight maps
+    // the content 1:1 onto the scroll track. Every section stays reachable and
+    // the track ends exactly where the content does, with no dead scroll.
+    const calculatedPages = Math.max(contentHeight / viewportHeight, 1);
 
-    if (shouldUpdate) {
-      setScrollPages(calculatedPages);
-    }
-  }, [scrollPages]);
+    setScrollPages((previous) =>
+      Math.abs(previous - calculatedPages) > SCROLL_PAGE_EPSILON ? calculatedPages : previous
+    );
+  }, []);
 
   useLayoutEffect(() => {
     if (isLoading) return;
@@ -254,6 +220,12 @@ function ScrollManager({ onReady }: { onReady: (el: HTMLDivElement | null) => vo
     onReady(scroll?.el ?? null);
     return () => onReady(null);
   }, [scroll?.el, onReady]);
+
+  // The page scrolls inside the ScrollControls element, so this is the only
+  // place that knows the real progress. Publish it for the DOM layer.
+  useFrame(() => {
+    setScrollProgress(scroll?.offset ?? 0);
+  });
 
   return null;
 }
