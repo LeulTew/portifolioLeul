@@ -1,6 +1,6 @@
 .about {
   position: relative;
-  min-height: 100vh;
+  min-height: 120vh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -16,47 +16,268 @@
 .content {
   position: relative;
   z-index: 2;
-  max-width: 1400px;
-  margin: 0;
   width: 100%;
-  padding: 0 max(2rem, 5vw);
+  max-width: 100%;
+  padding: 0;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 2.5rem;
 }
+
+/* ==========================================================================
+   Left-Aligned Section Header (Positioned directly underneath the indicator arrow)
+   ========================================================================== */
 
 .header {
   text-align: left;
   margin-bottom: 2rem;
+  width: 100%;
+  padding-left: clamp(2rem, 9vw, 16rem);
+  padding-right: clamp(2rem, 9vw, 16rem);
+  box-sizing: border-box;
 }
 
 .title {
-  font-size: clamp(2.5rem, 6vw, 6rem);
-  font-weight: 600;
-  line-height: 0.9;
-  letter-spacing: -0.03em;
-  color: var(--strong-text);
+  font-size: clamp(3.5rem, 7.5vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: #ffffff;
   margin: 0;
-  mix-blend-mode: difference;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  transition: opacity 0.15s ease-out, text-shadow 0.2s ease-out, transform 0.15s ease-out;
 }
 
 .subtitle {
-  font-size: clamp(1rem, 1.2vw, 1.2rem);
-  line-height: 1.4;
+  font-size: clamp(1.05rem, 1.3vw, 1.35rem);
+  line-height: 1.45;
   color: rgb(var(--text-color));
-  opacity: 0.9;
-  margin: 1rem 0 0;
-  max-width: 600px;
+  opacity: 0.85;
+  margin: 1.25rem 0 0;
+  max-width: 720px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
-.aboutGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
+/* ==========================================================================
+   Full-Width Spatial Editorial Stage (Dedicated Cinematic Viewport)
+   ========================================================================== */
+
+.heroSpatialLayout {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 70vh;
+  padding: 0 clamp(2rem, 9vw, 16rem);
+  margin: 2rem 0 16vh;
+  pointer-events: auto;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.leftColumn {
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
-  margin-bottom: 0;
+  padding-left: 0;
+  width: auto;
+  max-width: clamp(380px, 42vw, 750px);
+  flex-shrink: 0;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.centerSpace {
+  flex: 1;
+  min-width: clamp(60px, 12vw, 360px);
+  pointer-events: none;
+}
+
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-right: 0;
+  width: auto;
+  max-width: clamp(380px, 42vw, 750px);
+  flex-shrink: 0;
+  margin-left: auto;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.statementText {
+  font-size: clamp(2rem, 3.6vw, 3.85rem);
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--strong-text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  width: 100%;
+}
+
+.lineOverflowWrapper {
+  display: block;
+  overflow: hidden;
+  perspective: 800px;
+  width: 100%;
+  padding-right: 0.75rem;
+  box-sizing: border-box;
+}
+
+.statementLine {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  white-space: nowrap;
+}
+
+.statementHighlight {
+  color: var(--strong-text);
+  opacity: 0.85;
+}
+
+.subStatement {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  font-size: clamp(0.75rem, 0.9vw, 0.85rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+}
+
+.subStatementBar {
+  width: 28px;
+  height: 2px;
+  background-color: #00ff9d;
+  flex-shrink: 0;
+}
+
+:global([data-theme="light"]) .subStatementBar {
+  background-color: #059669;
+}
+
+.metricsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.metricItem {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
+  padding-left: 1rem;
+}
+
+:global([data-theme="light"]) .metricItem {
+  border-left-color: rgba(17, 24, 39, 0.15);
+}
+
+.metricValue {
+  font-family: monospace;
+  font-size: clamp(1.15rem, 1.4vw, 1.4rem);
+  font-weight: 800;
+  color: #00ff9d;
+  min-width: 42px;
+}
+
+:global([data-theme="light"]) .metricValue {
+  color: #059669;
+}
+
+.metricLabel {
+  font-size: clamp(0.85rem, 0.95vw, 0.95rem);
+  color: var(--muted-text);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.pillContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+}
+
+.editorialPill {
+  font-size: clamp(0.72rem, 0.8vw, 0.8rem);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.95rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted-text);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+:global([data-theme="light"]) .editorialPill {
+  background: rgba(17, 24, 39, 0.04);
+  border-color: rgba(17, 24, 39, 0.12);
+  color: var(--strong-text);
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .header {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .heroSpatialLayout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3.5rem;
+    min-height: auto;
+    padding: 0 1.5rem;
+    margin: 2rem 0 6rem;
+  }
+
+  .leftColumn,
+  .rightColumn {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .statementLine {
+    white-space: normal;
+  }
+
+  .centerSpace {
+    display: none;
+  }
+
+  .educationWrapper {
+    padding: 0 1.5rem;
+    margin-top: 4rem;
+  }
+}
+
+/* ==========================================================================
+   Education & Certifications Grids
+   ========================================================================== */
+
+.educationWrapper {
+  width: 100%;
+  padding: 0 clamp(2rem, 9vw, 16rem);
+  margin-top: 10vh;
+  margin-bottom: 8vh;
+  box-sizing: border-box;
 }
 
 .educationSection {
@@ -98,11 +319,6 @@
 }
 
 @media (min-width: 1367px) {
-  .content {
-    margin-top: -18vh;
-    padding-left: 10vw;
-  }
-
   .educationGrid {
     grid-template-columns: repeat(5, 1fr);
   }
@@ -125,119 +341,17 @@
   }
 }
 
-/* Fix for 1080p screens where overlap occurs */
-@media (min-width: 1024px) and (max-width: 1920px) {
-  .content {
-    margin-top: -12vh;
-  }
-}
-
 :global([data-theme="light"]) .about {
   mix-blend-mode: normal;
 }
 
-:global([data-theme="light"]) .about .title,
+:global([data-theme="light"]) .about .title {
+  color: #111827;
+  text-shadow: none;
+}
+
 :global([data-theme="light"]) .about .subtitle,
-:global([data-theme="light"]) .about .sectionTitle,
-:global([data-theme="light"]) .about .tag {
-  color: #000000 !important;
-  font-weight: 600;
+:global([data-theme="light"]) .about .sectionTitle {
+  color: #111827;
   text-shadow: none;
-}
-
-:global([data-theme="light"]) .about .cardContent,
-:global([data-theme="light"]) .about .educationMeta,
-:global([data-theme="light"]) .about .text,
-:global([data-theme="light"]) .about .statValue,
-:global([data-theme="light"]) .about .statLabel,
-:global([data-theme="light"]) .subtitle {
-  font-size: 1rem;
-  color: rgba(var(--text-color), 0.7);
-  font-weight: 400;
-  text-shadow: none;
-}
-
-/* 720p / Small Laptop Adjustments */
-@media (min-width: 769px) and (max-width: 1366px) {
-  .about {
-    padding-top: 32vh !important;
-  }
-
-  .title {
-    font-size: 2.5rem;
-  }
-
-  .sectionTitle,
-  .educationTitle {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .content {
-    gap: 0.6rem;
-    margin-top: 0 !important;
-    padding: 0 15vw;
-  }
-
-  .cardContent {
-    gap: 0.5rem;
-    font-size: 0.75rem !important;
-    line-height: 1.4;
-  }
-
-  .cardContent p,
-  .description {
-    font-size: 0.85rem !important;
-    line-height: 1.5;
-  }
-
-  .subtitle {
-    font-size: 0.9rem !important;
-    margin-top: 0.5rem;
-    font-weight: 500;
-  }
-
-  .educationMeta {
-    font-size: 0.7rem !important;
-    gap: 0.2rem;
-  }
-
-  .header {
-    margin-bottom: 1rem;
-  }
-
-  .statValue {
-    font-size: 1.5rem;
-  }
-
-  .statLabel {
-    font-size: 0.7rem !important;
-  }
-
-  .tag {
-    font-size: 0.7rem !important;
-    padding: 0.25rem 0.5rem;
-  }
-}
-
-/* 1080p / Standard Desktop Adjustments */
-@media (min-width: 1367px) and (max-width: 1920px) {
-  .title {
-    font-size: 3.5rem;
-  }
-  .sectionTitle,
-  .educationTitle {
-    font-size: 2rem;
-  }
-  .content {
-    margin-top: -12vh;
-  }
-}
-
-.highlights {
-  justify-content: center;
-}
-
-:global([data-theme="light"]) .about .description {
-  font-weight: 400 !important;
 }

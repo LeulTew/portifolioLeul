@@ -21,17 +21,15 @@ describe("About Section", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders about me header, bio content, stats and tags", () => {
+  it("renders about me header, spatial editorial typography, stats and tags", () => {
     render(<About />);
     const section = document.getElementById("about");
     expect(section).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /About Me/i })).toBeInTheDocument();
-    expect(screen.getByText(cvData.about.title)).toBeInTheDocument();
-
-    cvData.about.stats.forEach((stat) => {
-      expect(screen.getByText(stat.value)).toBeInTheDocument();
-      expect(screen.getByText(stat.label)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/KEEP IT SIMPLE/i)).toBeInTheDocument();
+    expect(screen.getByText(/SCALABLE SYSTEMS/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\+/i)).toBeInTheDocument();
+    expect(screen.getByText(/30\+/i)).toBeInTheDocument();
 
     cvData.about.highlights.forEach((highlight) => {
       expect(screen.getByText(highlight)).toBeInTheDocument();

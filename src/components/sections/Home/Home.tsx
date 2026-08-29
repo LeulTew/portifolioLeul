@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { DancingCharText, KineticRotator } from '../../ui/KineticText';
@@ -11,8 +11,33 @@ interface HomeProps {
 
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
+  const [inViewRatio, setInViewRatio] = useState(1);
 
   const { scrollY } = useScroll();
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInViewRatio(entry.intersectionRatio);
+      },
+      {
+        threshold: Array.from({ length: 21 }, (_, i) => i / 20),
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Exit animation properties driven by scroll position
+  const heroOpacity = inViewRatio < 0.05 ? 0 : inViewRatio;
+  const heroScale = 0.92 + inViewRatio * 0.08;
+  const heroY = (1 - inViewRatio) * -70;
+  const heroBlur = (1 - inViewRatio) * 6;
+  const isVisible = inViewRatio > 0.02;
 
   const imageY = useTransform(scrollY, (value) => {
     if (typeof window === 'undefined') return 0;
@@ -68,7 +93,17 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
 
   return (
     <section ref={containerRef} className={styles.home} id="home">
-      <div className={styles.content}>
+      <div 
+        className={styles.content}
+        style={{
+          opacity: heroOpacity,
+          transform: `translate3d(0, ${heroY}px, 0) scale(${heroScale})`,
+          filter: heroBlur > 0.1 ? `blur(${heroBlur}px)` : 'none',
+          pointerEvents: isVisible ? 'auto' : 'none',
+          visibility: isVisible ? 'visible' : 'hidden',
+          transition: 'opacity 0.15s ease-out, transform 0.15s ease-out, filter 0.15s ease-out',
+        }}
+      >
         <motion.div 
           className={styles.header}
           initial={{ opacity: 0, y: 20 }}
@@ -138,7 +173,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
             delay: 0.5
           }}
         >
-          Full-Stack Developer & 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
+          Full-Stack Developer &amp; 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
         </motion.p>
 
         {/* Magnetic CTA Buttons */}
