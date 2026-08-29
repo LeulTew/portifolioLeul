@@ -7,6 +7,7 @@ import { ContactForm } from './ContactForm';
 import { soundFx } from '@/lib/gateways/soundFx';
 import styles from './Contact.module.css';
 import { cvData } from '../../../data/cv';
+import { FocusScrim } from '../../ui/FocusScrim';
 
 export function Contact() {
   const containerRef = useRef<HTMLElement>(null);
@@ -17,6 +18,7 @@ export function Contact() {
 
   return (
     <section ref={containerRef} className={styles.contact} id="contact">
+      <FocusScrim />
       <div className={styles.content}>
         <div className={styles.header}>
           <KineticHeading 

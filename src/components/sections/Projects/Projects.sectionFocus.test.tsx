@@ -23,6 +23,11 @@ vi.mock('../../ui/expandable-tabs', () => ({
   ExpandableTabs: () => <div />,
 }));
 
+// Isolated so the only observer under test is the section-tracking one.
+vi.mock('../../ui/FocusScrim', () => ({
+  FocusScrim: () => <div data-testid="focus-scrim" />,
+}));
+
 vi.mock('../../ui/KineticText', () => ({
   KineticHeading: ({ text }: { text: string }) => <h2>{text}</h2>,
 }));

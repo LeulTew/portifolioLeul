@@ -6,6 +6,7 @@ import { projectsData } from '../../../data/projects';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { KineticHeading } from '../../ui/KineticText';
+import { FocusScrim } from '../../ui/FocusScrim';
 
 const categories = [
   { title: 'All', icon: Grid3x3 },
@@ -96,6 +97,7 @@ export function Projects({ theme }: { theme?: string }) {
 
   return (
     <section ref={containerRef} className={styles.projects} id="projects">
+      <FocusScrim />
       <motion.div
         className={styles.content}
         style={{
