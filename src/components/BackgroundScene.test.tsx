@@ -39,20 +39,25 @@ vi.mock('@react-three/drei', () => ({
 }));
 
 // Mock Fiber
+// A real camera, so components that drive position/lookAt are exercised for
+// real rather than against a stub that silently accepts anything.
+const testCamera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
+
 vi.mock('@react-three/fiber', () => ({
-  useThree: () => ({
-    camera: {
-      fov: 50,
-      position: { set: vi.fn() },
-      updateProjectionMatrix: vi.fn(),
-    },
-    size: { width: 1920, height: 1080 },
-  }),
+  // The real useThree applies a selector; the stub used to ignore it and hand
+  // back the whole state object.
+  useThree: (selector?: (state: any) => unknown) => {
+    const state = {
+      camera: testCamera,
+      size: { width: 1920, height: 1080 },
+    };
+    return selector ? selector(state) : state;
+  },
   useFrame: (callback: (state: any, delta?: number) => void) => {
     callback({
       clock: { getElapsedTime: () => 1.5 },
       mouse: { x: 0.5, y: -0.2 },
-      camera: { position: { x: 0, y: 5, z: 30 } },
+      camera: testCamera,
     }, 0.016);
   },
 }));

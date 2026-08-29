@@ -1,7 +1,6 @@
 import { useRef, useMemo, useEffect, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { 
-  useScroll, 
   Environment, 
   useGLTF,
   PerspectiveCamera,
@@ -14,6 +13,7 @@ import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
+import { CinematicCameraController } from './3d/CinematicCameraController';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
@@ -152,9 +152,7 @@ interface BackgroundSceneProps {
 }
 
 export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT }: BackgroundSceneProps) {
-  const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
-  const scroll = useScroll();
 
   const isLight = theme === 'light';
 
@@ -193,29 +191,24 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
   }, [isLight]);
 
   useFrame((state) => {
-    if (!sceneRef.current || !prismRef.current) return;
+    if (!prismRef.current) return;
 
     const time = state.clock.getElapsedTime();
-    const scrollProgress = scroll?.offset ?? 0;
     const reducedMotion = getPrefersReducedMotion();
 
-    // Scene parallax based on mouse
-    const mouseX = reducedMotion ? 0 : state.mouse.x * 0.3;
-    const mouseY = reducedMotion ? 0 : state.mouse.y * 0.2;
-    sceneRef.current.rotation.y = mouseX * 0.2 + scrollProgress * Math.PI;
-    sceneRef.current.rotation.x = mouseY * 0.1;
-
-    // Prism animation
+    // Parallax now lives on the camera, not on this group: rotating the world
+    // to fake it displaced every authored object placement along with it.
     prismRef.current.position.y = reducedMotion ? 2 : Math.sin(time * 0.5) * 0.2 + 2;
   });
 
   return (
     <>
       <ResponsiveCamera />
+      <CinematicCameraController />
       <color attach="background" args={[palette.background]} />
       <fog attach="fog" args={[palette.fog, 30, 70]} />
 
-      <group ref={sceneRef}>
+      <group>
         <Environment preset={palette.environment} />
 
         {/* Realistic Ocean */}
