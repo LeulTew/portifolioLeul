@@ -2,6 +2,20 @@ export const cvData = {
   about: {
     title: "Software Engineer & Creative Developer",
     subtitle: "Bridging the gap between complex algorithms and engaging user experiences",
+    /*
+     * The opening line of About, and deliberately short.
+     *
+     * Everything measurable is already said further down the section: the
+     * years, the project count and the degree are in the metrics, the stack is
+     * in the pills, and the two statements carry the approach. Repeating any
+     * of it here would make the first thing the reader meets the least
+     * informative thing in the section.
+     *
+     * So this says the one thing none of them do -- what the work actually is
+     * and how it tends to go.
+     */
+    intro:
+      "I build the parts people touch, and the systems that hold them up. Most of it starts as a hard problem and ends as something that feels obvious.",
     description: "Motivated Computer Science graduate (BSc, HiLCoE) with hands-on expertise in AI/ML, full-stack web development, mobile applications, and real-time graphics. Proficient in building production-ready solutions using Python (PyTorch, scikit-learn), Flutter/Dart, React/TypeScript, ASP.NET, PHP, and OpenGL/Three.js. Complemented by creative design skills in Adobe tools and Figma, I deliver technically robust and visually polished products. Passionate about solving real-world problems through innovative technology, with a track record of developing impactful applications from concept to deployment.",
     stats: [
       { value: "3+", label: "Years Experience" },

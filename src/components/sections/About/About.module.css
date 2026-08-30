@@ -595,3 +595,129 @@
   color: #111827;
   text-shadow: none;
 }
+
+/* ==========================================================================
+   The opening beat: the window, and the line typed beside it
+   ========================================================================== */
+
+.introBeat {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 5.5rem);
+  width: 100%;
+  max-width: 1100px;
+  /*
+   * Driven by the cubed value, so the beat is at nothing until it is most of
+   * the way in and does not sit as a ghost through its own approach.
+   */
+  opacity: var(--intro-on, 0);
+}
+
+/*
+ * The window opens by being uncovered, not by being stretched.
+ *
+ * Scaling the frame means the picture inside is scaled with it, so it has to
+ * be counter-scaled to keep its proportions -- and at the start of the open
+ * that counter-scale is fiftyfold, which asks the browser to rasterise the
+ * portrait at forty-five thousand pixels tall behind a two-percent-tall
+ * window. Correct arithmetic, ruinous to draw.
+ *
+ * Clipping distorts nothing, so nothing has to be undone. Three nested
+ * elements, each clipping its own subtree: the mask opens, the frame carries
+ * the page's chamfer, and the inner carries it again a pixel smaller so the
+ * gradient between them reads as a border. A clipped box cannot have one --
+ * the border follows the box, and the clip removes the corners it was drawn
+ * on.
+ */
+.windowMask {
+  clip-path: inset(
+    calc((1 - var(--intro-in, 0)) * 50%) 0
+      calc((1 - var(--intro-in, 0)) * 50%) 0
+  );
+  will-change: clip-path;
+}
+
+/*
+ * The page's own chamfer: cards are cut 18px at the top-left and bottom-right,
+ * so a portrait framed any other way reads as imported from somewhere else.
+ */
+.window {
+  position: relative;
+  margin: 0;
+  padding: 1px;
+  background: linear-gradient(
+    150deg,
+    rgba(0, 255, 194, 0.55),
+    rgba(0, 255, 194, 0.08) 45%,
+    rgba(120, 190, 210, 0.28)
+  );
+  clip-path: polygon(
+    18px 0%,
+    100% 0%,
+    100% calc(100% - 18px),
+    calc(100% - 18px) 100%,
+    0% 100%,
+    0% 18px
+  );
+}
+
+.windowInner {
+  position: relative;
+  overflow: hidden;
+  background: #01161c;
+  aspect-ratio: 4 / 5;
+  clip-path: polygon(
+    17px 0%,
+    100% 0%,
+    100% calc(100% - 17px),
+    calc(100% - 17px) 100%,
+    0% 100%,
+    0% 17px
+  );
+}
+
+:global([data-theme='light']) .windowInner {
+  background: #dde8ec;
+}
+
+/*
+ * Settles as the window opens. Bounded, unlike a counter-scale: it is a sixth
+ * of a percent of extra size, not a multiple of the whole picture.
+ */
+.portrait {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  transform: scale(calc(1.06 - var(--intro-in, 0) * 0.06));
+  will-change: transform;
+}
+
+.introCopy {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .introBeat {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    max-width: 34rem;
+  }
+
+  .window {
+    max-width: 18rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The window is simply open. */
+  .windowMask {
+    clip-path: none;
+  }
+
+  .portrait {
+    transform: none;
+  }
+}

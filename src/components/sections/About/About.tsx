@@ -1,6 +1,7 @@
 import { useContext, useRef } from 'react';
 import { PinnedSequence } from '../../ui/PinnedSequence';
 import { GroundWash } from '../../ui/GroundWash';
+import { TypedText } from '../../ui/TypedText';
 import { ThemeContext } from '../theme/ThemeContext';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
@@ -72,6 +73,34 @@ export function About() {
           </div>
 
           <div className={styles.statements}>
+            {/*
+              The opening beat: the person, then what they have to say. The
+              window opens from its middle and the line types itself out
+              beside it, so the two halves arrive as one move rather than a
+              picture and a paragraph that happen to share a screen.
+            */}
+            <div className={styles.introBeat} data-testid="about-intro">
+              <div className={styles.windowMask} data-testid="about-window">
+                <figure className={styles.window}>
+                  <div className={styles.windowInner}>
+                    <img
+                      className={styles.portrait}
+                      src="/images/leul-about.webp"
+                      alt="Leul Tewodros Agonafer"
+                      width={900}
+                      height={1125}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                </figure>
+              </div>
+
+              <div className={styles.introCopy}>
+                <TypedText text={cvData.about.intro} typedVar="--intro-in" />
+              </div>
+            </div>
+
             <div
               className={`${styles.leftColumn} ${styles.layerOne}`}
               data-testid="about-left-column"

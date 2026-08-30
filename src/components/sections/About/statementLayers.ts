@@ -29,16 +29,21 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * names the section, so it has to be there for as long as the section is.
    */
   { name: 'head', start: 0, end: 1, feather: 0.04 },
-  { name: 'one', start: 0.03, end: 0.47 },
-  { name: 'two', start: 0.53, end: 0.97 },
+  /*
+   * The opening beat: who is speaking, before what they have to say. It takes
+   * the first third and hands over cleanly, like the two after it.
+   */
+  { name: 'intro', start: 0.02, end: 0.35 },
+  { name: 'one', start: 0.38, end: 0.66 },
+  { name: 'two', start: 0.69, end: 0.97 },
 ] as const;
 
 /**
  * Screens of scroll the held stretch spends.
  *
- * Three, not four. Every screen here is scroll the reader spends without
- * arriving anywhere new, so the stretch has to be long enough for two
- * statements to take their turn and no longer: past that it stops reading as
- * being held and starts reading as being stuck.
+ * One per beat plus one, so adding a beat lengthens the stretch instead of
+ * squeezing the others. Every screen here is scroll spent without arriving
+ * anywhere new: enough for each beat to take its turn and no more, or it stops
+ * reading as being held and starts reading as being stuck.
  */
-export const ABOUT_SCREENS = 3;
+export const ABOUT_SCREENS = 4;

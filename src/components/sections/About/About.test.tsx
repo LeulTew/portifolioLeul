@@ -4,6 +4,8 @@ import { About } from "./About";
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from "./statementLayers";
 import { windowPresence, layerOpacity } from "@/lib/motion/sequenceWindow";
 import { cvData } from "../../../data/cv";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // Mock framer-motion useScroll & useSpring
 vi.mock("framer-motion", async (importOriginal) => {
@@ -40,6 +42,11 @@ describe("About Section", () => {
 
 });
 
+/** The beats that take the stage in turn, as opposed to what carries them. */
+const BEATS = STATEMENT_LAYERS.filter(
+  (l) => !['ground', 'head', 'field'].includes(l.name)
+);
+
 describe('About held sequence', () => {
   it('spends real scroll being held, rather than passing by', () => {
     render(<About />);
@@ -67,12 +74,17 @@ describe('About held sequence', () => {
     }
   });
 
-  it('hands over rather than crossfading: neither is on at the changeover', () => {
-    // The statements only. The ground and the field are meant to be on here:
-    // they are what stays continuous across the handover.
-    for (const name of ['one', 'two']) {
-      const layer = STATEMENT_LAYERS.find((l) => l.name === name)!;
-      expect(windowPresence(0.5, layer.start, layer.end, 0.09)).toBe(0);
+  it('hands over rather than crossfading: nothing is on between beats', () => {
+    // The beats only. The ground and the field are meant to be on: they are
+    // what stays continuous across a handover.
+    for (let i = 0; i < BEATS.length - 1; i++) {
+      const gap = (BEATS[i].end + BEATS[i + 1].start) / 2;
+      for (const beat of BEATS) {
+        expect(
+          windowPresence(gap, beat.start, beat.end, beat.feather ?? 0.09),
+          `${beat.name} still on at ${gap.toFixed(3)}`
+        ).toBe(0);
+      }
     }
   });
 
@@ -144,22 +156,103 @@ describe('About held heading', () => {
 });
 
 describe('About sequence pacing', () => {
-  const layer = (name: string) =>
-    STATEMENT_LAYERS.find((l) => l.name === name)!;
 
-  it('starts the first statement almost as soon as the reader is held', () => {
+  it('starts the first beat almost as soon as the reader is held', () => {
     // Scroll spent on an empty held screen reads as the section failing to
     // begin.
-    expect(layer('one').start).toBeLessThan(0.06);
+    expect(BEATS[0].start).toBeLessThan(0.06);
   });
 
   it('leaves no dead scroll at the end', () => {
     // Nothing to look at while still being held is the same fault at the
     // other end.
-    expect(layer('two').end).toBeGreaterThan(0.95);
+    expect(BEATS[BEATS.length - 1].end).toBeGreaterThan(0.95);
   });
 
-  it('spends no more scroll than the two statements need', () => {
-    expect(ABOUT_SCREENS).toBeLessThanOrEqual(3);
+  it('spends one screen per beat, and no more', () => {
+    // A fixed stretch means adding a beat silently shortens every other one.
+    expect(ABOUT_SCREENS).toBe(BEATS.length + 1);
+  });
+
+  it('runs the beats in the order they are read', () => {
+    for (let i = 1; i < BEATS.length; i++) {
+      expect(BEATS[i].start).toBeGreaterThan(BEATS[i - 1].start);
+    }
+  });
+});
+
+describe('About opening beat', () => {
+  it('opens with a portrait and a line, before the statements', () => {
+    render(<About />);
+    const intro = screen.getByTestId('about-intro');
+    expect(intro).toBeInTheDocument();
+    expect(intro).toContainElement(screen.getByTestId('typed-text'));
+    expect(intro.querySelector('img')).toBeTruthy();
+  });
+
+  it('runs before both statements', () => {
+    const intro = STATEMENT_LAYERS.find((l) => l.name === 'intro')!;
+    for (const name of ['one', 'two']) {
+      expect(intro.start).toBeLessThan(
+        STATEMENT_LAYERS.find((l) => l.name === name)!.start
+      );
+    }
+  });
+
+  it('names the portrait for anyone who cannot see it', () => {
+    render(<About />);
+    const portrait = screen.getByTestId('about-intro').querySelector('img')!;
+    expect(portrait.getAttribute('alt')).toBeTruthy();
+    // Sized, so the window does not collapse and jump while it loads.
+    expect(portrait.getAttribute('width')).toBeTruthy();
+    expect(portrait.getAttribute('height')).toBeTruthy();
+  });
+
+  it('says something the rest of the section does not', () => {
+    // The metrics carry the years, the count and the degree; the pills carry
+    // the stack; the statements carry the approach. Repeating any of it here
+    // would make the first thing read the least informative thing in it.
+    const intro = cvData.about.intro.toLowerCase();
+    for (const repeated of ['3+', '30+', 'bsc', 'hilcoe', 'scalable', 'simple']) {
+      expect(intro).not.toContain(repeated);
+    }
+    for (const pill of cvData.about.highlights) {
+      expect(intro).not.toContain(pill.toLowerCase());
+    }
+  });
+
+  it('stays short: it is an opening line, not a biography', () => {
+    expect(cvData.about.intro.length).toBeLessThan(180);
+  });
+});
+
+describe('About window', () => {
+  it('opens by clipping, never by scaling the frame', () => {
+    // Scaling the frame scales the picture with it, so the picture has to be
+    // counter-scaled -- and at the start of the open that factor is fifty,
+    // which asks the browser to rasterise the portrait at forty-five thousand
+    // pixels tall behind a two-percent-tall window.
+    const css = readFileSync(
+      join(__dirname, 'About.module.css'),
+      'utf-8'
+    );
+    const mask = css.slice(css.indexOf('.windowMask {'));
+    const body = mask.slice(0, mask.indexOf('\n}'));
+
+    expect(body).toContain('clip-path');
+    expect(body).not.toContain('scaleY');
+  });
+
+  it('never counter-scales the portrait', () => {
+    const css = readFileSync(join(__dirname, 'About.module.css'), 'utf-8');
+    const portrait = css.slice(css.indexOf('.portrait {'));
+    expect(portrait.slice(0, portrait.indexOf('\n}'))).not.toContain('1 /');
+  });
+
+  it('wraps the portrait so each element clips its own subtree', () => {
+    render(<About />);
+    const mask = screen.getByTestId('about-window');
+    expect(mask.querySelector('figure')).toBeTruthy();
+    expect(mask.querySelector('figure > div > img')).toBeTruthy();
   });
 });
