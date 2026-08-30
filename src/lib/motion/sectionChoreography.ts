@@ -97,8 +97,16 @@ export interface ExitStyle {
   filter: string;
 }
 
-/** Never a hard zero: vanishing early reads as a bug rather than a transition. */
-const MIN_EXIT_OPACITY = 0.15;
+/**
+ * A section that is gone is gone.
+ *
+ * This held at 0.15 so nothing would vanish abruptly, but the exit runs on
+ * coverage: it only reaches full once the section is entirely off screen, so
+ * there was never an early vanish to protect against -- only a hero that
+ * stayed faintly printed over everything after it forever. The curve below
+ * does the work of not vanishing early; the floor only stopped it finishing.
+ */
+const MIN_EXIT_OPACITY = 0;
 const MAX_EXIT_RISE = 64;
 const MIN_EXIT_SCALE = 0.965;
 const MAX_EXIT_BLUR = 5;

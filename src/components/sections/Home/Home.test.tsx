@@ -229,7 +229,9 @@ describe('Home choreography', () => {
     expect(content.style.transform).toContain('translate3d');
   });
 
-  it('never fades the hero to nothing', () => {
+  it('fades the hero to nothing once it is entirely gone', () => {
+    // It used to hold at 0.15, which left it faintly printed over every
+    // section after it for the rest of the page.
     const { container } = render(<Home />);
     enterHero();
 
@@ -238,7 +240,22 @@ describe('Home choreography', () => {
     });
 
     const content = container.querySelector('section > div') as HTMLElement;
-    expect(Number(content.style.opacity)).toBeGreaterThan(0.1);
+    expect(Number(content.style.opacity)).toBe(0);
+  });
+
+  it('still holds the hero up while it is only part way out', () => {
+    // What the floor was for: the fade must be gradual, which is the curve's
+    // job rather than a clamp at the end of it.
+    const { container } = render(<Home />);
+    enterHero();
+
+    act(() => {
+      notify?.([{ isIntersecting: true, intersectionRect: { height: 700 }, rootBounds: { height: 1000 } }]);
+    });
+
+    const content = container.querySelector('section > div') as HTMLElement;
+    expect(Number(content.style.opacity)).toBeGreaterThan(0.5);
+    expect(Number(content.style.opacity)).toBeLessThan(1);
   });
 
   it('settles the hero visible even if it never enters', () => {

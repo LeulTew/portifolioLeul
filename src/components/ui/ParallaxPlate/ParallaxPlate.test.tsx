@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { ParallaxPlate } from './ParallaxPlate';
-import { layerShift, DEPTHS } from './depth';
+import { layerShift, layerTurn, DEPTHS } from './depth';
 
 const shiftOf = (el: HTMLElement) =>
   Number(/translate3d\(0(?:px)?, (-?[\d.]+)px/.exec(el.style.transform)?.[1]);
@@ -68,5 +68,30 @@ describe('ParallaxPlate', () => {
       'aria-hidden',
       'true'
     );
+  });
+});
+
+describe('layerTurn', () => {
+  it('holds square at the middle of the stage', () => {
+    expect(layerTurn(0.5, 1, 0, 14)).toBe(0);
+  });
+
+  it('counter-rotates neighbours, so the gaps open and close', () => {
+    // Turning the whole stack together is just a rotating picture.
+    expect(Math.sign(layerTurn(1, 1, 0, 14))).toBe(
+      -Math.sign(layerTurn(1, 1, 1, 14))
+    );
+  });
+
+  it('turns a near plane further than a far one', () => {
+    expect(Math.abs(layerTurn(1, 1, 0, 14))).toBeGreaterThan(
+      Math.abs(layerTurn(1, 0.18, 0, 14))
+    );
+  });
+
+  it('yields no rotation rather than NaN on a bad measurement', () => {
+    expect(layerTurn(Number.NaN, 1, 0, 14)).toBe(0);
+    expect(layerTurn(0.5, Number.NaN, 0, 14)).toBe(0);
+    expect(layerTurn(0.5, 1, 0, Number.NaN)).toBe(0);
   });
 });

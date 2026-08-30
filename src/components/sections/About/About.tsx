@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useBandPresence } from '@/lib/scroll/bandPresence';
-import { useBandProgress } from '@/lib/scroll/bandProgress';
+import { useBandProgress, centreFocus } from '@/lib/scroll/bandProgress';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { Card } from '../../ui/Card';
@@ -53,13 +52,8 @@ const subItemVariants = {
   }
 };
 
-/**
- * How far each column starts out from its resting place, in rem.
- *
- * The columns already sit either side of the 3D, so they converge from the
- * edges they belong to rather than arriving from nowhere.
- */
-const COLUMN_TRAVEL_REM = 7;
+/** How far out of focus a statement is at the edges of its stage, in px. */
+const MAX_STATEMENT_BLUR = 14;
 
 /**
  * One statement per screen, each vertically centred in its own stage.
@@ -72,10 +66,19 @@ const COLUMN_TRAVEL_REM = 7;
  */
 function useStage() {
   const [element, setElement] = useState<HTMLElement | null>(null);
+  const progress = useBandProgress(element);
+
   return {
     ref: setElement,
-    presence: useBandPresence(element),
-    progress: useBandProgress(element),
+    progress,
+    /*
+     * Peak, not plateau. Presence holds at full for as long as the stage is on
+     * screen, so a statement driven by it would be sharp from the moment it
+     * appeared until the moment it began to leave -- resolving only where it
+     * is actually being looked at needs a value that is only full in one
+     * place.
+     */
+    focus: centreFocus(progress),
   };
 }
 
@@ -93,14 +96,14 @@ export function About() {
    * them the reader had scrolled. Reading presence per frame makes the exit
    * the entrance in reverse, for free.
    */
-  const column = (direction: -1 | 1, presence: number) => ({
-    opacity: presence,
-    transform: reducedMotion
+  /** The first statement resolves by arriving; the second by sharpening. */
+  const fadesIn = (focus: number) => ({ opacity: focus });
+
+  const blursIn = (focus: number) => ({
+    opacity: focus,
+    filter: reducedMotion
       ? undefined
-      : `translate3d(${(direction * (1 - presence) * COLUMN_TRAVEL_REM).toFixed(
-          3
-        )}rem, 0, 0)`,
-    filter: reducedMotion ? undefined : `blur(${((1 - presence) * 5).toFixed(2)}px)`,
+      : `blur(${((1 - focus) * MAX_STATEMENT_BLUR).toFixed(2)}px)`,
   });
 
   return (
@@ -126,6 +129,16 @@ export function About() {
 
         {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
         <div className={styles.stage} ref={first.ref} data-testid="about-stage-one">
+          {/* Behind the statement rather than beside it: the writing is the
+              subject, and the geometry moves around it. */}
+          <div className={styles.stageBackdrop} aria-hidden="true">
+            <ParallaxPlate
+              progress={first.progress}
+              presence={first.focus * 0.55 + 0.45}
+              reducedMotion={reducedMotion}
+            />
+          </div>
+
           {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
             className={styles.leftColumn}
@@ -133,7 +146,7 @@ export function About() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
-            style={column(-1, first.presence)}
+            style={fadesIn(first.focus)}
             data-testid="about-left-column"
           >
             <h3 className={styles.statementText}>
@@ -155,21 +168,14 @@ export function About() {
             </motion.div>
           </motion.div>
 
-          <div className={styles.centerSpace}>
-            <ParallaxPlate
-              progress={first.progress}
-              presence={first.presence}
-              reducedMotion={reducedMotion}
-            />
-          </div>
         </div>
 
         {/* The second statement takes the screen once the first has left it. */}
         <div className={styles.stage} ref={second.ref} data-testid="about-stage-two">
-          <div className={styles.centerSpace}>
+          <div className={styles.stageBackdrop} aria-hidden="true">
             <ParallaxPlate
               progress={second.progress}
-              presence={second.presence}
+              presence={second.focus * 0.55 + 0.45}
               flipped
               reducedMotion={reducedMotion}
             />
@@ -181,7 +187,7 @@ export function About() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
-            style={column(1, second.presence)}
+            style={blursIn(second.focus)}
             data-testid="about-right-column"
           >
             <h3 className={styles.statementText}>

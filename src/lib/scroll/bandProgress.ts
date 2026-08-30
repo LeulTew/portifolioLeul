@@ -55,3 +55,29 @@ export function useBandProgress(element: HTMLElement | null): number {
 
   return progress;
 }
+
+/**
+ * How close a band is to the middle of the screen: 1 when its centre is on the
+ * viewport's centre, falling to 0 either side.
+ *
+ * A peak, not a plateau, and that distinction is the point. Presence holds at
+ * full for as long as the band is on screen, so content driven by it is sharp
+ * from the moment it arrives until the moment it starts to leave. Content that
+ * should only resolve where it is being looked at needs a value that is only
+ * full at one place.
+ *
+ * `window` is the share of the transit either side of centre over which it
+ * falls away, so a smaller window means a sharper focus.
+ */
+export function centreFocus(progress: number, window = 0.3): number {
+  if (!Number.isFinite(progress)) return 0;
+  if (!Number.isFinite(window) || window <= 0) return 0;
+
+  const distance = Math.abs(progress - 0.5) / window;
+  if (distance >= 1) return 0;
+
+  // Smoothstep, so it settles into focus and out of it rather than arriving
+  // and leaving at a constant rate, which reads as a linear wipe.
+  const nearness = 1 - distance;
+  return nearness * nearness * (3 - 2 * nearness);
+}

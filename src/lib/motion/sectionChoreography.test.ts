@@ -161,9 +161,18 @@ describe('exitStyle', () => {
     expect(style.transform).toContain('0.00px');
   });
 
-  it('never fades to a hard zero', () => {
-    // Vanishing outright reads as a bug rather than a transition.
-    expect(exitStyle(1).opacity).toBeGreaterThan(0.1);
+  it('goes completely, once it is completely gone', () => {
+    // The exit runs on coverage and only reaches full when the section is off
+    // screen entirely, so there is no early vanish to guard against. A floor
+    // here left the hero faintly printed over every section after it.
+    expect(exitStyle(1).opacity).toBe(0);
+  });
+
+  it('does not vanish early on its way out', () => {
+    // What the floor was protecting: the fade has to be gradual, which is the
+    // curve's job, not a clamp at the end of it.
+    expect(exitStyle(0.25).opacity).toBeGreaterThan(0.6);
+    expect(exitStyle(0.5).opacity).toBeGreaterThan(0.4);
   });
 
   it('drifts up and pulls back, never forward', () => {
@@ -189,8 +198,7 @@ describe('exitStyle', () => {
 
   it('keeps only the fade under reduced motion', () => {
     const style = exitStyle(1, true);
-    expect(style.opacity).toBeGreaterThan(0.1);
-    expect(style.opacity).toBeLessThan(1);
+    expect(style.opacity).toBe(0);
     expect(style.transform).toBe('none');
     expect(style.filter).toBe('none');
   });

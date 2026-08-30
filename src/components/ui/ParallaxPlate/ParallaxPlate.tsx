@@ -1,5 +1,5 @@
 import styles from './ParallaxPlate.module.css';
-import { layerShift, DEPTHS } from './depth';
+import { layerShift, layerTurn, DEPTHS } from './depth';
 
 /**
  * The visual that occupies the space beside a statement.
@@ -23,6 +23,9 @@ export interface ParallaxPlateProps {
 
 /** How far the nearest plane travels across a stage, in px. */
 const TRAVEL_PX = 64;
+
+/** How far the nearest plane turns across a stage, in degrees. */
+const SWEEP_DEG = 14;
 
 export function ParallaxPlate({
   progress = 0.5,
@@ -51,7 +54,12 @@ export function ParallaxPlate({
               ? undefined
               : `translate3d(0, ${layerShift(progress, depth, TRAVEL_PX).toFixed(
                   2
-                )}px, 0)`,
+                )}px, 0) rotate(${layerTurn(
+                  progress,
+                  depth,
+                  index,
+                  SWEEP_DEG
+                ).toFixed(2)}deg)`,
             // Nearer planes are drawn tighter and brighter.
             inset: `${index * 9}%`,
             opacity: 0.22 + depth * 0.5,

@@ -71,18 +71,36 @@
  * leaving together, so neither was ever the subject.
  */
 .stage {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
+  display: grid;
+  place-items: center;
   width: 100%;
   min-height: 100vh;
   padding: 0 clamp(2rem, 9vw, 16rem);
-  margin: 0 0 4vh;
+  margin: 0;
   pointer-events: auto;
   position: relative;
   box-sizing: border-box;
-  gap: clamp(2rem, 6vw, 8rem);
+}
+
+/*
+ * The geometry the statement stands in.
+ *
+ * Behind rather than beside: one statement per screen means the screen is the
+ * statement's, and a second thing holding its own column turns the stage back
+ * into the two-up row this replaced.
+ */
+.stageBackdrop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 0;
+  color: rgba(210, 236, 255, 0.34);
+}
+
+.stageBackdrop > * {
+  width: min(78vmin, 900px);
 }
 
 /*
@@ -92,43 +110,29 @@
 @media (max-width: 900px) {
   .stage {
     min-height: auto;
-    margin-bottom: 12vh;
+    padding-top: 6vh;
+    padding-bottom: 6vh;
   }
 }
 
-.leftColumn {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  padding-left: 0;
-  width: auto;
-  max-width: clamp(380px, 42vw, 750px);
-  flex-shrink: 0;
-  z-index: 10;
-  box-sizing: border-box;
-}
-
-.centerSpace {
-  flex: 1;
-  min-width: clamp(60px, 12vw, 360px);
-  max-width: clamp(280px, 34vw, 520px);
-  pointer-events: none;
-  /* Inherited by the plate's borders and horizon. */
-  color: rgba(210, 236, 255, 0.42);
-}
-
+.leftColumn,
 .rightColumn {
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  padding-right: 0;
-  width: auto;
-  max-width: clamp(380px, 42vw, 750px);
-  flex-shrink: 0;
-  margin-left: auto;
+  width: 100%;
+  max-width: clamp(380px, 52vw, 860px);
+  /* Centred in the window: the statement is what the screen is for. */
+  margin: 0 auto;
   z-index: 10;
+  position: relative;
   box-sizing: border-box;
+  will-change: opacity, filter;
 }
+
+
+
+
 
 .statementText {
   font-size: clamp(2rem, 3.6vw, 3.85rem);
@@ -260,12 +264,9 @@
   }
 
   .stage {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 3.5rem;
-    min-height: auto;
-    padding: 0 1.5rem;
-    margin: 2rem 0 6rem;
+    /* Still a screen each, but without the wide gutters to spend it on. */
+    padding: 4rem 1.5rem;
+    min-height: 82vh;
   }
 
   .leftColumn,
@@ -281,9 +282,7 @@
     white-space: normal;
   }
 
-  .centerSpace {
-    display: none;
-  }
+
 
   .educationWrapper {
     padding: 0 1.5rem;

@@ -50,28 +50,31 @@ describe("About Section", () => {
   });
 });
 
-describe('About column convergence', () => {
-  it('draws the two columns in from opposite edges', () => {
+describe('About statement focus', () => {
+  it('resolves the first statement by arriving and the second by sharpening', () => {
     render(<About />);
     const left = screen.getByTestId('about-left-column');
     const right = screen.getByTestId('about-right-column');
 
-    // jsdom reports no intersection, so both sit at their far offset. The
-    // point under test is the symmetry: one comes from each side.
-    const offset = (el: HTMLElement) =>
-      /translate3d\((-?[\d.]+)rem/.exec(el.style.transform)?.[1];
-
-    expect(Number(offset(left))).toBeLessThan(0);
-    expect(Number(offset(right))).toBeGreaterThan(0);
-    expect(Number(offset(left))).toBe(-Number(offset(right)));
+    // Two different treatments, so the second reads as a new beat rather than
+    // a repeat of the first.
+    expect(left.style.filter).toBe('');
+    expect(right.style.filter).toContain('blur(');
   });
 
-  it('holds them out of focus until they are on screen', () => {
+  it('holds both out of focus until they reach the middle of the screen', () => {
+    render(<About />);
+    // jsdom reports no intersection, which is the away-from-centre case.
+    for (const id of ['about-left-column', 'about-right-column']) {
+      expect(screen.getByTestId(id).style.opacity).toBe('0');
+    }
+  });
+
+  it('centres both statements rather than pinning them to a side', () => {
     render(<About />);
     for (const id of ['about-left-column', 'about-right-column']) {
-      const column = screen.getByTestId(id);
-      expect(column.style.opacity).toBe('0');
-      expect(column.style.filter).toContain('blur(');
+      // Nothing offsets them horizontally any more: the screen is the stage.
+      expect(screen.getByTestId(id).style.transform).toBe('');
     }
   });
 });

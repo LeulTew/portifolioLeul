@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { transitProgress } from './bandProgress';
+import { transitProgress, centreFocus } from './bandProgress';
 
 const ROOT = 800;
 const BAND = 800;
@@ -36,5 +36,42 @@ describe('transitProgress', () => {
     ] as const) {
       expect(transitProgress(...args)).toBe(0);
     }
+  });
+});
+
+describe('centreFocus', () => {
+  it('is full only at the middle of the screen', () => {
+    expect(centreFocus(0.5)).toBe(1);
+  });
+
+  it('falls away either side, symmetrically', () => {
+    expect(centreFocus(0.4)).toBeCloseTo(centreFocus(0.6), 10);
+    expect(centreFocus(0.4)).toBeLessThan(1);
+    expect(centreFocus(0.4)).toBeGreaterThan(0);
+  });
+
+  it('is nothing outside its window', () => {
+    // The whole reason it is not presence: presence would still be full here.
+    expect(centreFocus(0.5 - 0.3)).toBe(0);
+    expect(centreFocus(0.5 + 0.3)).toBe(0);
+    expect(centreFocus(0)).toBe(0);
+    expect(centreFocus(1)).toBe(0);
+  });
+
+  it('peaks rather than plateaus', () => {
+    const samples = [0.42, 0.46, 0.5, 0.54, 0.58].map((p) => centreFocus(p));
+    expect(samples[2]).toBeGreaterThan(samples[1]);
+    expect(samples[2]).toBeGreaterThan(samples[3]);
+    expect(samples[1]).toBeGreaterThan(samples[0]);
+  });
+
+  it('sharpens as the window narrows', () => {
+    expect(centreFocus(0.42, 0.12)).toBeLessThan(centreFocus(0.42, 0.4));
+  });
+
+  it('yields nothing rather than NaN on a bad measurement', () => {
+    expect(centreFocus(Number.NaN)).toBe(0);
+    expect(centreFocus(0.5, 0)).toBe(0);
+    expect(centreFocus(0.5, Number.NaN)).toBe(0);
   });
 });
