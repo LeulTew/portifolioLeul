@@ -130,19 +130,6 @@
 }
 
 /*
- * The ground the stretch stands on.
- *
- * Opaque, and ramped at both ends by its own layer rather than switched: the
- * world is shut out for exactly as long as the reader is held, and is handed
- * back as they leave instead of reappearing.
- */
-.heldGround {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-/*
  * The one thing that does not come and go. It carries the whole stretch, so it
  * moves continuously with `--seq` rather than appearing and disappearing with
  * the statements standing on it.

@@ -1,0 +1,59 @@
+/*
+ * One ground for the whole run, fixed to the screen.
+ *
+ * Behind the held content and in front of the world: the sections put their
+ * copy on it, and none of them owns it.
+ */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+/*
+ * Hidden outright off the run. A fixed layer covers every section on the page,
+ * so one left merely transparent still swallows what is behind it.
+ */
+.backdrop[data-active='false'] {
+  visibility: hidden;
+}
+
+/*
+ * The half that draws back off the world.
+ *
+ * It slides rather than fades: a fade reveals the world through a haze across
+ * the whole width at once, which reads as the background turning on, while a
+ * hard edge travelling across leaves a moment where you can see exactly how
+ * much has been let in.
+ */
+.aperture {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 60%;
+  right: 0;
+  overflow: hidden;
+  transform: translate3d(calc(var(--aperture-in, 0) * 100%), 0, 0);
+  will-change: transform;
+}
+
+/* The edge that does the uncovering, so the cut reads as a cut. */
+.aperture::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: #00ffc2;
+  opacity: calc(var(--aperture-in, 0) * (1 - var(--aperture-in, 0)) * 3.2);
+  box-shadow: 0 0 22px -2px #00ffc2;
+}
+
+@media (max-width: 900px) {
+  /* No room for a view beside a portal; the ground keeps the whole width. */
+  .aperture {
+    display: none;
+  }
+}

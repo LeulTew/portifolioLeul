@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { CinematicCameraController } from './CinematicCameraController';
 import { CAMERA_CHAPTERS, CAMERA_ARC_END } from '@/lib/camera/cinematicSpline';
+import { setCameraHold } from '@/lib/camera/cameraHold';
+import { NO_HOLD } from '@/lib/camera/holdRange';
 
 const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
 
@@ -178,5 +180,61 @@ describe('CinematicCameraController', () => {
 
       expect(camera.position.distanceTo(chapterVec(0))).toBeCloseTo(0, 5);
     });
+  });
+});
+
+describe('CinematicCameraController while held', () => {
+  beforeEach(() => {
+    scrollState.offset = 0;
+    pointer = { x: 0, y: 0 };
+    frameCallback = null;
+    reducedMotion.mockReturnValue(false);
+    camera.position.set(0, 0, 0);
+    setCameraHold({ start: 0.2, end: 0.8 });
+  });
+
+  afterEach(() => setCameraHold(NO_HOLD));
+
+  it('does not sway with the pointer while the world is held', () => {
+    // The hold freezes what the scroll asks for, but the pointer was still
+    // added on top of it -- so a section meant to be completely still drifted
+    // with the mouse the whole time it was up.
+    scrollState.offset = 0.5;
+    mount({ mouseSway: 4 });
+
+    pointer = { x: 0, y: 0 };
+    advance(140);
+    const still = camera.position.clone();
+
+    pointer = { x: 1, y: 1 };
+    advance(140);
+
+    expect(camera.position.distanceTo(still)).toBeLessThan(0.001);
+  });
+
+  it('still sways once the hold is over', () => {
+    scrollState.offset = 0.9;
+    mount({ mouseSway: 4 });
+
+    pointer = { x: 0, y: 0 };
+    advance(140);
+    const still = camera.position.clone();
+
+    pointer = { x: 1, y: 1 };
+    advance(140);
+
+    expect(camera.position.distanceTo(still)).toBeGreaterThan(0.1);
+  });
+
+  it('holds the same pose across the whole held range', () => {
+    scrollState.offset = 0.25;
+    mount({ mouseSway: 0 });
+    advance(200);
+    const early = camera.position.clone();
+
+    scrollState.offset = 0.75;
+    advance(200);
+
+    expect(camera.position.distanceTo(early)).toBeLessThan(0.001);
   });
 });

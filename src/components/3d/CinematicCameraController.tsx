@@ -11,6 +11,7 @@ import {
   sampleChapterPose,
 } from '@/lib/camera/cinematicSpline';
 import { getCameraHold } from '@/lib/camera/cameraHold';
+import { isWithinHold } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 /**
@@ -54,7 +55,10 @@ export function CinematicCameraController({
     if (!camera) return;
 
     const reducedMotion = getPrefersReducedMotion();
-    const arc = mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold());
+    const hold = getCameraHold();
+    const offset = scroll?.offset ?? 0;
+    const held = isWithinHold(offset, hold);
+    const arc = mapScrollToArc(offset, arcEnd, hold);
 
     if (reducedMotion) {
       // Discrete cuts between authored shots: no scrubbing, no pointer drift.
@@ -68,10 +72,21 @@ export function CinematicCameraController({
 
     sampleCameraPose(spline, arc, desiredPosition, desiredTarget);
 
-    const pointerX = state.mouse?.x ?? 0;
-    const pointerY = state.mouse?.y ?? 0;
-    desiredPosition.x += pointerX * mouseSway;
-    desiredPosition.y += pointerY * mouseSway * 0.5;
+    /*
+     * No sway while the world is held.
+     *
+     * The hold freezes what the scroll asks for, but the pointer was still
+     * being added on top of it -- so a section meant to be completely still
+     * drifted with the mouse the whole time it was up. Held means held: the
+     * only thing that should be able to move the camera is the scroll, and
+     * during a hold the scroll is not asking it to.
+     */
+    if (!held) {
+      const pointerX = state.mouse?.x ?? 0;
+      const pointerY = state.mouse?.y ?? 0;
+      desiredPosition.x += pointerX * mouseSway;
+      desiredPosition.y += pointerY * mouseSway * 0.5;
+    }
 
     if (!hasSettled.current) {
       // First frame: take the shot as authored rather than easing in from the

@@ -1,8 +1,6 @@
-import { useContext, useRef } from 'react';
+import { useRef } from 'react';
 import { PinnedSequence } from '../../ui/PinnedSequence';
-import { GroundWash } from '../../ui/GroundWash';
 import { TypedText } from '../../ui/TypedText';
-import { ThemeContext } from '../theme/ThemeContext';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
@@ -21,7 +19,6 @@ import { FocusScrim } from '../../ui/FocusScrim';
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
   const reducedMotion = getPrefersReducedMotion();
-  const theme = useContext(ThemeContext)?.theme ?? 'dark';
 
   /**
    * Symmetric, and driven by the scroll rather than played once on arrival.
@@ -42,16 +39,6 @@ export function About() {
           className={styles.aboutSequence}
           testId="about-sequence"
         >
-          {/* Shuts the world out for exactly as long as the reader is held,
-              and gives it back on the way out -- as water rising over it,
-              rather than as a panel dimming up. */}
-          <GroundWash
-            section="about"
-            theme={theme}
-            rise="--ground-in"
-            className={styles.heldGround}
-          />
-
           {/*
             Held with everything else rather than left in the flow. A heading
             above the pin travels with the page, so it climbs away while the

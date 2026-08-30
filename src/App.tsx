@@ -13,6 +13,7 @@ import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
 import { Education } from './components/sections/Education/Education';
+import { HeldBackdrop } from './components/ui/HeldBackdrop';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
 import { setScrollProgress } from './lib/scroll/scrollProgress';
@@ -34,13 +35,14 @@ const SCROLL_PAGE_EPSILON = 0.15;
 /**
  * The run of sections during which the world holds still, first to last.
  *
- * Two of them now, and they hold for different reasons. About covers the world
- * outright, so there is nothing behind it to see. Education uncovers it
- * deliberately, on one side, and the whole point of that reveal is that the
- * scene arrives without moving: a camera still travelling as the panel draws
- * back would turn the uncovering into a move.
+ * They hold for different reasons. About covers the world outright, so there
+ * is nothing behind it to see. Education uncovers it deliberately, on one
+ * side, and the whole point of that reveal is that the scene arrives without
+ * moving -- a camera still travelling as the panel draws back would turn the
+ * uncovering into a move. Skills is read against the same view, and a world
+ * that started moving again underneath it would undo both.
  */
-const HELD_SECTION_IDS = ['about', 'education'] as const;
+const HELD_SECTION_IDS = ['about', 'education', 'skills'] as const;
 
 /**
  * Content settles in bursts as images and fonts land. Collapsing a burst into
@@ -265,6 +267,22 @@ function App() {
 
       {!isLoading && (
         <Navigation scrollToSection={scrollToSection} />
+      )}
+
+      {/*
+        One ground for the whole held run, rather than one per section.
+        A ground each means it goes out at the end of one and comes back at
+        the start of the next, with the world flashing through the gap in
+        between -- two backgrounds with a hole in them, not one background
+        being scrolled along.
+      */}
+      {!isLoading && (
+        <HeldBackdrop
+          from="about"
+          to="education"
+          apertureId="education"
+          theme={theme}
+        />
       )}
 
       <ErrorBoundary FallbackComponent={ErrorFallback}>

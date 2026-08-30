@@ -85,17 +85,12 @@ describe('Education portal', () => {
 });
 
 describe('Education ground', () => {
-  it('paints both halves of the panel the same colour', () => {
-    // The wash declares its colours on its own element, so a sibling asking to
-    // inherit them gets the fallback -- and the panel is two colours until the
-    // aperture opens.
+  it('does not carry a ground of its own', () => {
+    // One ground spans the whole held run. A ground per section goes out at
+    // the end of one and comes back at the start of the next, with the world
+    // flashing through the gap between them.
     render(<Education />);
-    const wash = screen.getByTestId('ground-wash');
-    const right = screen.getByTestId('education-aperture');
-
-    expect(right.style.getPropertyValue('--ground-base')).toBe(
-      wash.style.getPropertyValue('--ground-base')
-    );
+    expect(screen.queryByTestId('ground-wash')).toBeNull();
   });
 
   it('stands on a different depth from About, so the crossing shows', () => {

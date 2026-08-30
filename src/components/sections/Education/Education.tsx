@@ -1,7 +1,4 @@
-import { useContext } from 'react';
 import { PinnedSequence } from '../../ui/PinnedSequence';
-import { GroundWash, groundFor } from '../../ui/GroundWash';
-import { ThemeContext } from '../theme/ThemeContext';
 import { Card, CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import { cvData } from '../../../data/cv';
 import { EDUCATION_LAYERS, EDUCATION_SCREENS } from './educationLayers';
@@ -22,15 +19,6 @@ import styles from './Education.module.css';
  * view, not a move.
  */
 export function Education() {
-  const theme = useContext(ThemeContext)?.theme ?? 'dark';
-  /*
-   * The same ground as the left panel. It is set here rather than inherited:
-   * the wash declares its colours on its own element, so a sibling asking for
-   * them would get the fallback and the two halves of the panel would be
-   * different colours until the aperture opened.
-   */
-  const ground = groundFor('education', theme);
-
   return (
     <section className={styles.education} id="education">
       <PinnedSequence
@@ -39,25 +27,6 @@ export function Education() {
         className={styles.sequence}
         testId="education-sequence"
       >
-        {/*
-          Left: stays, and arrives as its own water rising -- a shade shallower
-          than About's, so crossing between the two sections is a change of
-          depth rather than a change of page.
-          Right: draws back to uncover the world.
-        */}
-        <GroundWash
-          section="education"
-          theme={theme}
-          rise="--panel-in"
-          className={styles.panelLeft}
-        />
-        <div
-          className={styles.panelRight}
-          aria-hidden="true"
-          data-testid="education-aperture"
-          style={{ ['--ground-base' as string]: ground.base }}
-        />
-
         <div className={styles.portal} data-testid="education-portal">
           <div className={styles.frame} aria-hidden="true" />
 

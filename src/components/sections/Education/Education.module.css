@@ -25,61 +25,6 @@
 }
 
 /* ==========================================================================
-   The two panels
-   ========================================================================== */
-
-.panelLeft,
-.panelRight {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-/*
- * The left panel's colour comes from the shared ground palette, so the two
- * held sections are the same water at different depths. The right one only has
- * to match it while it is still covering the world.
- */
-.panelRight {
-  background: var(--ground-base, #04161a);
-  opacity: var(--panel-in, 0);
-}
-
-.panelLeft {
-  left: 0;
-  width: 60%;
-}
-
-/*
- * Draws back rather than fading.
- *
- * A panel that fades reveals the world through a haze across its whole width
- * at once, which reads as the background turning on. Sliding it keeps a hard
- * edge travelling across the screen, so the world is uncovered -- there is a
- * moment where you can see exactly how much has been let in.
- */
-.panelRight {
-  left: 60%;
-  right: 0;
-  transform: translate3d(calc(var(--aperture-in, 0) * 100%), 0, 0);
-  will-change: transform;
-}
-
-/* The edge that does the uncovering, so the cut is legible as a cut. */
-.panelRight::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 1px;
-  background: #00ffc2;
-  opacity: calc(var(--aperture-in, 0) * (1 - var(--aperture-in, 0)) * 3);
-  box-shadow: 0 0 22px -2px #00ffc2;
-}
-
-/* ==========================================================================
    The portal
    ========================================================================== */
 
@@ -275,14 +220,6 @@
    * and the portal takes it, so the section is read rather than looked
    * through.
    */
-  .panelLeft {
-    width: 100%;
-  }
-
-  .panelRight {
-    display: none;
-  }
-
   .portal {
     width: 100%;
     padding-left: 1.5rem;
