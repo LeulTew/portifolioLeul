@@ -49,6 +49,23 @@ export interface PinnedSequenceProps {
 
 const DEFAULT_FEATHER = 0.09;
 
+/**
+ * Decimal places published for each value.
+ *
+ * Three is finer than anything downstream can show -- a thousandth of an
+ * opacity, or a hundredth of a pixel of blur -- and it means a slow scroll
+ * produces the same string on consecutive frames, which is what makes the
+ * skip below worth having.
+ */
+const PRECISION = 3;
+
+/** Sets a property only if it differs, and reports whether it did. */
+function write(element: HTMLElement, property: string, value: string): boolean {
+  if (element.style.getPropertyValue(property) === value) return false;
+  element.style.setProperty(property, value);
+  return true;
+}
+
 export function PinnedSequence({
   screens = 3,
   layers,
@@ -91,7 +108,17 @@ export function PinnedSequence({
       overlay.dataset.active = String(pinned);
       if (!pinned) return;
 
-      overlay.style.setProperty('--seq', progress.toFixed(4));
+      /*
+       * Written only when the value actually changes.
+       *
+       * Every setProperty invalidates style for the subtree whether or not the
+       * value differs, and this runs on every frame for the length of the
+       * stretch. During a slow scroll most frames round to what was already
+       * there, so most of that work is for nothing -- and a blur re-rasterises
+       * on any change at all.
+       */
+      write(overlay, '--seq', progress.toFixed(PRECISION));
+
       for (const layer of layers) {
         const presence = windowPresence(
           progress,
@@ -99,10 +126,11 @@ export function PinnedSequence({
           layer.end,
           layer.feather ?? DEFAULT_FEATHER
         );
-        overlay.style.setProperty(`--${layer.name}-in`, presence.toFixed(4));
-        overlay.style.setProperty(
+        write(overlay, `--${layer.name}-in`, presence.toFixed(PRECISION));
+        write(
+          overlay,
           `--${layer.name}-on`,
-          layerOpacity(presence).toFixed(4)
+          layerOpacity(presence).toFixed(PRECISION)
         );
       }
     };

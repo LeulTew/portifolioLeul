@@ -171,3 +171,61 @@ describe('PinnedSequence activation', () => {
     );
   });
 });
+
+describe('PinnedSequence cost', () => {
+  beforeEach(() => resetScrollProgress());
+
+  it('does not rewrite a property whose value has not changed', () => {
+    // setProperty invalidates style whether or not the value differs, and this
+    // runs every frame for the length of the stretch. A blur re-rasterises on
+    // any change at all.
+    render(
+      <PinnedSequence layers={LAYERS}>
+        <p>held</p>
+      </PinnedSequence>
+    );
+
+    const spacer = screen.getByTestId('pinned-sequence');
+    spacer.getBoundingClientRect = () =>
+      ({ top: -800, bottom: 1600, height: 2400 }) as DOMRect;
+
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    act(() => setScrollProgress(0.5));
+
+    let writes = 0;
+    const original = overlay.style.setProperty.bind(overlay.style);
+    overlay.style.setProperty = (...args: Parameters<typeof original>) => {
+      writes += 1;
+      return original(...args);
+    };
+
+    // Same geometry, so every value rounds to what is already there.
+    act(() => setScrollProgress(0.5001));
+    expect(writes).toBe(0);
+  });
+
+  it('still writes when the value does move', () => {
+    render(
+      <PinnedSequence layers={LAYERS}>
+        <p>held</p>
+      </PinnedSequence>
+    );
+
+    const spacer = screen.getByTestId('pinned-sequence');
+    spacer.getBoundingClientRect = () =>
+      ({ top: -400, bottom: 2000, height: 2400 }) as DOMRect;
+    act(() => setScrollProgress(0.3));
+    const first = screen
+      .getByTestId('pinned-sequence-overlay')
+      .style.getPropertyValue('--seq');
+
+    spacer.getBoundingClientRect = () =>
+      ({ top: -1200, bottom: 1200, height: 2400 }) as DOMRect;
+    act(() => setScrollProgress(0.7));
+    const second = screen
+      .getByTestId('pinned-sequence-overlay')
+      .style.getPropertyValue('--seq');
+
+    expect(second).not.toBe(first);
+  });
+});

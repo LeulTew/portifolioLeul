@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { About } from "./About";
-import { STATEMENT_LAYERS } from "./statementLayers";
+import { STATEMENT_LAYERS, ABOUT_SCREENS } from "./statementLayers";
 import { windowPresence, layerOpacity } from "@/lib/motion/sequenceWindow";
 import { cvData } from "../../../data/cv";
 
@@ -152,5 +152,26 @@ describe('About held heading', () => {
   it('still names the section exactly once', () => {
     render(<About />);
     expect(screen.getAllByText('About Me')).toHaveLength(1);
+  });
+});
+
+describe('About sequence pacing', () => {
+  const layer = (name: string) =>
+    STATEMENT_LAYERS.find((l) => l.name === name)!;
+
+  it('starts the first statement almost as soon as the reader is held', () => {
+    // Scroll spent on an empty held screen reads as the section failing to
+    // begin.
+    expect(layer('one').start).toBeLessThan(0.06);
+  });
+
+  it('leaves no dead scroll at the end', () => {
+    // Nothing to look at while still being held is the same fault at the
+    // other end.
+    expect(layer('two').end).toBeGreaterThan(0.95);
+  });
+
+  it('spends no more scroll than the two statements need', () => {
+    expect(ABOUT_SCREENS).toBeLessThanOrEqual(3);
   });
 });

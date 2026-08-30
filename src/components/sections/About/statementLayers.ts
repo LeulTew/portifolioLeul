@@ -17,21 +17,28 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * is shut out for exactly as long as the reader is held and is given back on
    * the way out instead of being switched off.
    */
-  { name: 'ground', start: 0, end: 1, feather: 0.14 },
+  { name: 'ground', start: 0, end: 1, feather: 0.09 },
   /*
    * The geometry leaves before the stretch does. Something still drifting as
    * the section hands over reads as scenery that was forgotten rather than
    * cleared.
    */
-  { name: 'field', start: 0.02, end: 0.88, feather: 0.16 },
+  { name: 'field', start: 0.01, end: 0.9, feather: 0.13 },
   /*
    * The heading. Up almost immediately and held for the whole stretch: it
    * names the section, so it has to be there for as long as the section is.
    */
-  { name: 'head', start: 0, end: 1, feather: 0.06 },
-  { name: 'one', start: 0.08, end: 0.46 },
-  { name: 'two', start: 0.54, end: 0.92 },
+  { name: 'head', start: 0, end: 1, feather: 0.04 },
+  { name: 'one', start: 0.03, end: 0.47 },
+  { name: 'two', start: 0.53, end: 0.97 },
 ] as const;
 
-/** Screens of scroll the held stretch spends. */
-export const ABOUT_SCREENS = 4;
+/**
+ * Screens of scroll the held stretch spends.
+ *
+ * Three, not four. Every screen here is scroll the reader spends without
+ * arriving anywhere new, so the stretch has to be long enough for two
+ * statements to take their turn and no longer: past that it stops reading as
+ * being held and starts reading as being stuck.
+ */
+export const ABOUT_SCREENS = 3;

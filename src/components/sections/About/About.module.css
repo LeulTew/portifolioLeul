@@ -1,3 +1,16 @@
+/*
+ * Doubled to outrank `.main > *`, which puts 100px of padding above every
+ * section to clear the navigation.
+ *
+ * This section clears it a different way: its heading lives in the held
+ * overlay and is positioned against the screen, so the flow padding buys
+ * nothing here and costs a hundred pixels of empty scroll before the pin can
+ * engage -- which is felt as the section being slow to start.
+ */
+.about.about {
+  padding-top: 0;
+}
+
 .about {
   position: relative;
   min-height: 120vh;
@@ -237,24 +250,36 @@
 .lineFirst,
 .lineSecond {
   display: block;
-  filter: blur(calc((1 - var(--line, 0)) * 20px));
   /*
-   * Emerges through a rising edge rather than sliding in from one. The band is
-   * soft, so the line surfaces out of the ground instead of being uncovered by
-   * something with an edge of its own.
+   * Ten, not twenty. A blur is re-rasterised at every distinct radius, and the
+   * cost climbs with the radius over the area of a headline -- most of the
+   * effect is in the first few pixels anyway.
+   */
+  filter: blur(calc((1 - var(--line, 0)) * 10px));
+
+  /*
+   * Emerges through a rising edge rather than sliding in from one, and the
+   * edge MOVES rather than being redrawn.
+   *
+   * Putting the variable in the gradient's colour stops, which is what this
+   * did first, means the mask is a different image on every frame: it has to
+   * be regenerated and re-uploaded sixty times a second, for the whole area of
+   * a headline. The image is fixed now at twice the box height, half of it
+   * clear and half of it solid with a soft join, and only its position moves --
+   * which the compositor can do without touching the image at all.
    */
   -webkit-mask-image: linear-gradient(
     to bottom,
-    #000 0%,
-    #000 calc(var(--line, 0) * 100%),
-    transparent calc(var(--line, 0) * 100% + 34%)
+    transparent 0 34%,
+    #000 62% 100%
   );
-  mask-image: linear-gradient(
-    to bottom,
-    #000 0%,
-    #000 calc(var(--line, 0) * 100%),
-    transparent calc(var(--line, 0) * 100% + 34%)
-  );
+  mask-image: linear-gradient(to bottom, transparent 0 34%, #000 62% 100%);
+  -webkit-mask-size: 100% 200%;
+  mask-size: 100% 200%;
+  -webkit-mask-position: 0 calc(var(--line, 0) * 100%);
+  mask-position: 0 calc(var(--line, 0) * 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -269,6 +294,10 @@
     filter: none;
     -webkit-mask-image: none;
     mask-image: none;
+  }
+
+  .heldField {
+    transform: none;
   }
 
   .heldField {
