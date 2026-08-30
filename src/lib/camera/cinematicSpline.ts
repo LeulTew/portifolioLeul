@@ -24,17 +24,42 @@ export interface CameraChapter {
  */
 export const CAMERA_ARC_END = 0.62;
 
+/**
+ * The closing shot, reproduced from the composition this scene had before the
+ * camera was put on a spline.
+ *
+ * Back then the camera sat at [0, 5, 30] looking at the origin while the whole
+ * scene rotated by `scrollProgress * PI`, so the arc ended with the world spun
+ * a half turn. A world rotated 180 degrees about Y under a fixed camera is the
+ * same view as a fixed world with the camera at R(-180) * [0, 5, 30], still
+ * looking at the origin -- which is [0, 5, -30], the shot that brings the
+ * television around to face the viewer.
+ */
+export const CLOSING_SHOT: CameraChapter = {
+  id: 'contact',
+  position: [0, 5, -30],
+  target: [0, 0, 0],
+};
+
+/**
+ * One shot per scrolled section.
+ *
+ * The path is the same half-turn orbit the scene always had -- radius ~30
+ * around the island, swinging out to the left -- rather than an arbitrary set
+ * of viewpoints, so the travel reads as one continuous move and never cuts
+ * through the terrain.
+ */
 export const CAMERA_CHAPTERS: readonly CameraChapter[] = [
-  // Hero: high isometric establishing shot over the whole island.
+  // Hero: high establishing shot over the whole island.
   { id: 'home', position: [0, 12, 34], target: [0, 0, -14] },
-  // About: swing left and drop to eye level, framing the CRT.
-  { id: 'about', position: [-15, 4.5, 8], target: [-10, 0.5, -14] },
-  // Skills: diagonal pull-back across the terrain ridge.
-  { id: 'skills', position: [5, 9, 18], target: [0, -1, -18] },
-  // Projects: low three-quarter on the prism and avatar side.
-  { id: 'projects', position: [21, 2.5, 9], target: [15, 0, -15] },
-  // Contact: settle onto the horizon and hand off to the DOM.
-  { id: 'contact', position: [0, 6.5, 26], target: [0, 2, -30] },
+  // About: swinging out to the left, framing the CRT.
+  { id: 'about', position: [-24, 8, 22], target: [-10, 0.5, -14] },
+  // Skills: side-on at the midpoint of the orbit.
+  { id: 'skills', position: [-32, 7, 2], target: [0, -1, -16] },
+  // Projects: round the back, looking across at the prism and the avatar.
+  { id: 'projects', position: [-23, 6, -22], target: [6, 0, -16] },
+  // Contact: the original closing composition.
+  CLOSING_SHOT,
 ] as const;
 
 export interface CameraSpline {

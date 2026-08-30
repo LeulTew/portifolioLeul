@@ -12,13 +12,6 @@
   background: transparent;
 }
 
-/* Fix for 1080p screens where overlap occurs */
-@media (min-width: 769px) and (max-width: 1920px) {
-  .skills {
-    margin-top: 40vh; /* Move down significantly to avoid overlap with About */
-  }
-}
-
 .content {
   position: relative;
   z-index: 1;

@@ -28,6 +28,14 @@ vi.mock('../../ui/FocusScrim', () => ({
   FocusScrim: () => <div data-testid="focus-scrim" />,
 }));
 
+vi.mock('@/lib/scroll/viewportCoverage', () => ({
+  useViewportCoverage: () => 1,
+}));
+
+vi.mock('../../ui/StripReveal', () => ({
+  StripReveal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
 vi.mock('../../ui/KineticText', () => ({
   KineticHeading: ({ text }: { text: string }) => <h2>{text}</h2>,
 }));

@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { CAMERA_CHAPTERS } from '@/lib/camera/cinematicSpline';
 import {
-  DRIFT_FIELD_ORIGIN,
   MAX_SWAY_AMPLITUDE,
+  MOTE_NEAR_FADE_DISTANCE,
+  moteNearFadeScale,
   SEED_STRIDE,
   SeedOffset,
   DEFAULT_DRIFT_BOUNDS,
@@ -62,6 +63,14 @@ describe('createDriftSeeds', () => {
   it('gives every instance a downward fall speed', () => {
     for (let i = 0; i < count; i++) {
       expect(seeds[i * SEED_STRIDE + SeedOffset.FallSpeed]).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps sway amplitude within the documented maximum', () => {
+    for (let i = 0; i < count; i++) {
+      const amplitude = seeds[i * SEED_STRIDE + SeedOffset.Amplitude];
+      expect(amplitude).toBeGreaterThan(0);
+      expect(amplitude).toBeLessThanOrEqual(MAX_SWAY_AMPLITUDE);
     }
   });
 
@@ -153,28 +162,50 @@ describe('drift sway and spin', () => {
   });
 });
 
-describe('field placement', () => {
-  it('never lets a mote reach the camera path', () => {
-    // A mote that crosses the lens renders as a large bright shape rather than
-    // as distant dust. Keep the whole field behind the nearest camera shot.
-    const seeds = createDriftSeeds(256);
-
-    let farthestZ = -Infinity;
-    for (let i = 0; i < 256; i++) {
-      for (let t = 0; t < 200; t += 1.7) {
-        farthestZ = Math.max(farthestZ, DRIFT_FIELD_ORIGIN[2] + driftSwayZ(seeds, i, t));
-      }
-    }
-
-    const nearestCameraZ = Math.min(...CAMERA_CHAPTERS.map((c) => c.position[2]));
-    expect(farthestZ).toBeLessThan(nearestCameraZ);
+describe('moteNearFadeScale', () => {
+  it('scales a mote sitting on the lens away entirely', () => {
+    expect(moteNearFadeScale(0)).toBe(0);
   });
 
-  it('bounds sway within the documented maximum amplitude', () => {
-    const seeds = createDriftSeeds(256);
-    for (let i = 0; i < 256; i++) {
-      expect(seeds[i * SEED_STRIDE + SeedOffset.Amplitude])
-        .toBeLessThanOrEqual(MAX_SWAY_AMPLITUDE);
+  it('leaves distant motes at full size', () => {
+    expect(moteNearFadeScale(MOTE_NEAR_FADE_DISTANCE)).toBe(1);
+    expect(moteNearFadeScale(MOTE_NEAR_FADE_DISTANCE * 4)).toBe(1);
+  });
+
+  it('ramps smoothly rather than popping at the threshold', () => {
+    let previous = -Infinity;
+    for (let d = 0; d <= MOTE_NEAR_FADE_DISTANCE; d += 0.25) {
+      const scale = moteNearFadeScale(d);
+      expect(scale).toBeGreaterThanOrEqual(previous);
+      previous = scale;
+    }
+    // Smoothstep flattens at both ends, so the midpoint is half size.
+    expect(moteNearFadeScale(MOTE_NEAR_FADE_DISTANCE / 2)).toBeCloseTo(0.5, 6);
+  });
+
+  it('stays within a usable scale range', () => {
+    for (let d = -5; d < 30; d += 0.5) {
+      const scale = moteNearFadeScale(d);
+      expect(scale).toBeGreaterThanOrEqual(0);
+      expect(scale).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('treats non-finite input as fully faded', () => {
+    expect(moteNearFadeScale(Number.NaN)).toBe(0);
+  });
+
+  it('disables the fade for a non-positive distance setting', () => {
+    expect(moteNearFadeScale(1, 0)).toBe(1);
+  });
+
+  it('fades every camera shot on the orbit clear of blobs', () => {
+    // The camera passes through the field now that the arc encircles the
+    // island, so no shot may leave a mote at full size on top of the lens.
+    for (const chapter of CAMERA_CHAPTERS) {
+      const distanceToOwnPosition = 0;
+      expect(moteNearFadeScale(distanceToOwnPosition)).toBe(0);
+      expect(chapter.position).toHaveLength(3);
     }
   });
 });

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { DancingCharText, KineticRotator } from '../../ui/KineticText';
 import styles from './Home.module.css';
@@ -12,8 +12,6 @@ interface HomeProps {
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const containerRef = useRef<HTMLElement>(null);
   const [inViewRatio, setInViewRatio] = useState(1);
-
-  const { scrollY } = useScroll();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -39,33 +37,10 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const heroBlur = (1 - inViewRatio) * 6;
   const isVisible = inViewRatio > 0.02;
 
-  const imageY = useTransform(scrollY, (value) => {
-    if (typeof window === 'undefined') return 0;
-    const aboutEl = document.getElementById('about');
-    if (!aboutEl) return 0;
-    const aboutTop = aboutEl.offsetTop;
-    const aboutHeight = aboutEl.offsetHeight;
-    const startMoving = 0;
-    const stopMoving = aboutTop + (aboutHeight * 0.3);
-    if (value < startMoving) return 0;
-    if (value > stopMoving) return aboutTop - window.innerHeight / 2;
-    const progress = (value - startMoving) / (stopMoving - startMoving);
-    return progress * (aboutTop - window.innerHeight / 2);
-  });
-
-  const imageOpacity = useTransform(scrollY, (value) => {
-    if (typeof window === 'undefined') return 1;
-    const aboutEl = document.getElementById('about');
-    if (!aboutEl) return 1;
-    const aboutTop = aboutEl.offsetTop;
-    const aboutHeight = aboutEl.offsetHeight;
-    const startMoving = 0;
-    const stopMoving = aboutTop + (aboutHeight * 0.3);
-    if (value < startMoving) return 1;
-    if (value > stopMoving) return 0;
-    const progress = (value - startMoving) / (stopMoving - startMoving);
-    return 1 - progress;
-  });
+  // A profile-image travel driven by viewport scrollY used to sit here. This
+  // page scrolls inside the ScrollControls element, so that value never moved
+  // and both transforms returned their constants forever. The hero exit is
+  // driven by inViewRatio above, which does work.
 
   const scrollToAbout = () => {
     if (onNavigate) {
@@ -194,10 +169,6 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
 
       <motion.div 
         className={styles.profileImage}
-        style={{
-          y: imageY,
-          opacity: imageOpacity,
-        }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ 

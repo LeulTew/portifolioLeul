@@ -209,63 +209,11 @@
   transform: rotate(12deg);
 }
 
-/* Arrow between Home and About */
-.homeToAboutArrow {
-  position: relative;
-  margin: 0 auto;
-  width: 100px;
-  margin-top: -100px;
-  margin-bottom: -260px;
-  z-index: 100;
-}
-
-.homeToAboutArrow .curve {
-  border: 2px solid rgb(0, 255, 157);
-  border-color: transparent transparent transparent rgb(0, 255, 157);
-  height: 360px;
-  width: 1200px;
-  border-radius: 230px 0 0 150px;
-}
-
-.homeToAboutArrow .point {
-  position: absolute;
-  left: 40px;
-  top: 315px;
-}
-
-.homeToAboutArrow .point:before,
-.homeToAboutArrow .point:after {
-  border: 1px solid rgb(0, 255, 157);
-  height: 25px;
-  content: "";
-  position: absolute;
-}
-
-.homeToAboutArrow .point:before {
-  top: -11px;
-  left: -11px;
-  -webkit-transform: rotate(-74deg);
-  -moz-transform: rotate(-74deg);
-  -ms-transform: rotate(-74deg);
-  transform: rotate(-74deg);
-}
-
-.homeToAboutArrow .point:after {
-  top: -20px;
-  left: 5px;
-  -webkit-transform: rotate(12deg);
-  -moz-transform: rotate(12deg);
-  -ms-transform: rotate(12deg);
-  transform: rotate(12deg);
-}
-
-/*
- * A breath between the project rail and the contact form, where both focus
- * scrims sit at zero and the 3D world is fully revealed. One screen was two
- * screens of nothing; just over half gives the beat without the void.
- */
 .spacer {
   height: 60vh;
+  /* `.main > *` sets min-height: 100vh on every child, which outranks a
+     smaller height. Without this the spacer stays a full screen tall. */
+  min-height: 60vh;
   width: 100%;
   position: relative;
   z-index: 1;
