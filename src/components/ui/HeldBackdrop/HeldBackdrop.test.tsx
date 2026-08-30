@@ -70,11 +70,54 @@ describe('HeldBackdrop', () => {
     expect(screen.getByTestId('held-backdrop').dataset.active).toBe('false');
   });
 
-  it('carries one ground for the run, plus the half that draws back', () => {
+  it('carries one ground for the run, with the next depth over it', () => {
     mount();
+    const ground = screen.getByTestId('held-ground');
+    expect(ground.querySelectorAll('[data-testid="ground-wash"]')).toHaveLength(2);
+  });
+
+  it('cuts the ground back rather than sliding a panel over it', () => {
+    // A panel sliding off the right of a ground that still spans the screen
+    // uncovers more ground, which is no reveal at all.
+    mount();
+    const edge = screen.getByTestId('held-aperture');
+    expect(screen.getByTestId('held-ground').contains(edge)).toBe(false);
+  });
+
+  it('opens the aperture only once the reader is into the section', () => {
+    mount();
+    const about = document.getElementById('about')!;
+    const education = document.getElementById('education')!;
+    about.getBoundingClientRect = () =>
+      ({ top: -400, bottom: 1200, height: 1600 }) as DOMRect;
+    // Education has only just reached the top of the screen.
+    education.getBoundingClientRect = () =>
+      ({ top: -20, bottom: 1580, height: 1600 }) as DOMRect;
+
+    act(() => setScrollProgress(0.4));
     const backdrop = screen.getByTestId('held-backdrop');
-    expect(backdrop.querySelectorAll('[data-testid="ground-wash"]')).toHaveLength(2);
-    expect(screen.getByTestId('held-aperture')).toBeInTheDocument();
+    expect(Number(backdrop.style.getPropertyValue('--aperture-in'))).toBe(0);
+    // The depth, though, belongs to the section and changes with it.
+    expect(
+      Number(backdrop.style.getPropertyValue('--depth-in'))
+    ).toBeGreaterThan(0);
+  });
+
+  it('has the aperture fully open by the middle of the section', () => {
+    mount();
+    const about = document.getElementById('about')!;
+    const education = document.getElementById('education')!;
+    about.getBoundingClientRect = () =>
+      ({ top: -1400, bottom: 200, height: 1600 }) as DOMRect;
+    education.getBoundingClientRect = () =>
+      ({ top: -(1600 - 800) * 0.6, bottom: 500, height: 1600 }) as DOMRect;
+
+    act(() => setScrollProgress(0.7));
+    expect(
+      Number(
+        screen.getByTestId('held-backdrop').style.getPropertyValue('--aperture-in')
+      )
+    ).toBe(1);
   });
 
   it('publishes the run without re-rendering to do it', () => {

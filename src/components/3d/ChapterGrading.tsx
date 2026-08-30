@@ -2,7 +2,7 @@ import { useMemo, type RefObject } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
-import { CAMERA_ARC_END, mapScrollToArc } from '@/lib/camera/cinematicSpline';
+import { CAMERA_ARC_SETTLE, mapScrollToArc } from '@/lib/camera/cinematicSpline';
 import {
   DARK_GRADES,
   LIGHT_GRADES,
@@ -32,21 +32,21 @@ export interface ChapterGradingProps {
   isLight: boolean;
   ambientRef: RefObject<THREE.AmbientLight>;
   keyLightRef: RefObject<THREE.DirectionalLight>;
-  arcEnd?: number;
+  settle?: number;
 }
 
 export function ChapterGrading({
   isLight,
   ambientRef,
   keyLightRef,
-  arcEnd = CAMERA_ARC_END,
+  settle = CAMERA_ARC_SETTLE,
 }: ChapterGradingProps) {
   const scene = useThree((state) => state.scene);
   const scroll = useScroll();
   const grades = useMemo(() => (isLight ? LIGHT_GRADES : DARK_GRADES), [isLight]);
 
   useFrame((_state, delta) => {
-    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold()), target);
+    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, settle, getCameraHold()), target);
 
     // Reduced motion still gets the grade, just without the easing: the point
     // is the depth and colour of the shot, not the transition.

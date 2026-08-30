@@ -39,10 +39,13 @@ const SCROLL_PAGE_EPSILON = 0.15;
  * is nothing behind it to see. Education uncovers it deliberately, on one
  * side, and the whole point of that reveal is that the scene arrives without
  * moving -- a camera still travelling as the panel draws back would turn the
- * uncovering into a move. Skills is read against the same view, and a world
- * that started moving again underneath it would undo both.
+ * uncovering into a move.
+ *
+ * It ends there. Skills picks the journey back up where the hero left it and
+ * carries it to the closing shot, so the hold is a pause in the middle of one
+ * arc rather than a wall across it.
  */
-const HELD_SECTION_IDS = ['about', 'education', 'skills'] as const;
+const HELD_SECTION_IDS = ['about', 'education'] as const;
 
 /**
  * Content settles in bursts as images and fonts land. Collapsing a burst into

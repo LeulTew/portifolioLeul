@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createRef } from 'react';
 import * as THREE from 'three';
 import { ChapterGrading } from './ChapterGrading';
-import { CAMERA_ARC_END } from '@/lib/camera/cinematicSpline';
+import { CAMERA_ARC_SETTLE } from '@/lib/camera/cinematicSpline';
 import { DARK_GRADES, LIGHT_GRADES } from '@/lib/atmosphere/chapterGrade';
 
 const scene = new THREE.Scene();
@@ -74,7 +74,7 @@ describe('ChapterGrading', () => {
 
   it('converges the lights onto the closing grade at the end of the arc', () => {
     const { ambientRef } = setup();
-    scrollState.offset = CAMERA_ARC_END;
+    scrollState.offset = CAMERA_ARC_SETTLE;
     advance(400);
 
     const last = DARK_GRADES[DARK_GRADES.length - 1];
@@ -83,7 +83,7 @@ describe('ChapterGrading', () => {
 
   it('opens the fog out toward the horizon on the closing chapter', () => {
     setup();
-    scrollState.offset = CAMERA_ARC_END;
+    scrollState.offset = CAMERA_ARC_SETTLE;
     advance(400);
 
     const fog = scene.fog as THREE.Fog;
@@ -97,7 +97,7 @@ describe('ChapterGrading', () => {
     advance(400);
     const settled = ambientRef.current!.intensity;
 
-    scrollState.offset = CAMERA_ARC_END;
+    scrollState.offset = CAMERA_ARC_SETTLE;
     advance(1);
 
     const moved = Math.abs(ambientRef.current!.intensity - settled);

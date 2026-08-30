@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import {
-  CAMERA_ARC_END,
+  CAMERA_ARC_SETTLE,
+  CAMERA_ARC_SETTLE,
   CAMERA_CHAPTERS,
   CLOSING_SHOT,
   createCameraSpline,
@@ -80,8 +81,8 @@ describe('CAMERA_CHAPTERS', () => {
   });
 
   it('completes the arc before the page runs out of scroll', () => {
-    expect(CAMERA_ARC_END).toBeGreaterThan(0);
-    expect(CAMERA_ARC_END).toBeLessThan(1);
+    expect(CAMERA_ARC_SETTLE).toBeGreaterThan(0);
+    expect(CAMERA_ARC_SETTLE).toBeLessThan(1);
   });
 });
 
@@ -94,11 +95,11 @@ describe('mapScrollToArc', () => {
     expect(mapScrollToArc(0.25, 0.5)).toBe(0.5);
   });
 
-  it('completes the arc exactly at arcEnd', () => {
+  it('completes the arc exactly at the settle point', () => {
     expect(mapScrollToArc(0.5, 0.5)).toBe(1);
   });
 
-  it('holds the final shot for all scroll past arcEnd', () => {
+  it('holds the final shot for all scroll past it', () => {
     // This is what lets the DOM keep scrolling after the 3D travel finishes.
     expect(mapScrollToArc(0.75, 0.5)).toBe(1);
     expect(mapScrollToArc(1, 0.5)).toBe(1);
@@ -130,12 +131,44 @@ describe('mapScrollToArc with a hold', () => {
     expect(justAfter).toBeGreaterThanOrEqual(atEnd);
   });
 
-  it('still completes the arc by the time the arc ends', () => {
-    expect(mapScrollToArc(0.8, 0.8, hold)).toBe(1);
+  it('still completes the arc before the page runs out', () => {
+    expect(mapScrollToArc(1, 0.8, hold)).toBe(1);
+    expect(mapScrollToArc(0.95, 0.8, hold)).toBe(1);
   });
 
-  it('is unchanged before the hold begins', () => {
-    expect(mapScrollToArc(0.1, 0.8, hold)).toBeCloseTo(mapScrollToArc(0.1, 0.6), 6);
+  it('moves at the same rate before the hold as after it', () => {
+    // The hold pauses the camera; it must not change its speed.
+    const before = mapScrollToArc(0.1, 0.8, hold) - mapScrollToArc(0.05, 0.8, hold);
+    const after = mapScrollToArc(0.6, 0.8, hold) - mapScrollToArc(0.55, 0.8, hold);
+    expect(after).toBeCloseTo(before, 6);
+  });
+
+  it('leaves the camera near the start of its arc for a long hold', () => {
+    // The failure this replaces: with the settle read as an absolute page
+    // fraction, a hold covering 45% of the page left only 17% of scroll for
+    // the whole arc, so the camera finished its entire journey inside the
+    // hero and every section after the hold showed the closing shot.
+    const long = { start: 0.08, end: 0.53 };
+    expect(mapScrollToArc(0.3, CAMERA_ARC_SETTLE, long)).toBeLessThan(0.25);
+  });
+
+  it('never finishes the arc before the hold has even started', () => {
+    for (const frozen of [0.15, 0.3, 0.45, 0.6, 0.75]) {
+      const long = { start: 0.08, end: 0.08 + frozen };
+      expect(
+        mapScrollToArc(long.start, CAMERA_ARC_SETTLE, long),
+        `arc already over at a hold of ${frozen}`
+      ).toBeLessThan(0.5);
+    }
+  });
+
+  it('keeps the arc usable however much of the page is frozen', () => {
+    // The old formula went negative past 0.62 of held scroll and collapsed.
+    const nearlyAll = { start: 0.02, end: 0.92 };
+    const arc = mapScrollToArc(0.96, CAMERA_ARC_SETTLE, nearlyAll);
+    expect(Number.isFinite(arc)).toBe(true);
+    expect(arc).toBeGreaterThan(0);
+    expect(arc).toBeLessThanOrEqual(1);
   });
 
   it('advances monotonically across the whole range', () => {
@@ -153,10 +186,20 @@ describe('mapScrollToArc with a hold', () => {
     }
   });
 
-  it('degenerates safely when the hold swallows the entire arc', () => {
+  it('keeps moving smoothly even when the hold takes most of the page', () => {
+    // It used to collapse to a hard step here, because the arc's length was
+    // measured against the page rather than against the scroll left over.
     const whole = { start: 0, end: 0.9 };
     expect(mapScrollToArc(0.5, 0.8, whole)).toBe(0);
-    expect(mapScrollToArc(0.95, 0.8, whole)).toBe(1);
+
+    const partWay = mapScrollToArc(0.95, 0.8, whole);
+    expect(partWay).toBeGreaterThan(0);
+    expect(partWay).toBeLessThan(1);
+    expect(mapScrollToArc(1, 0.8, whole)).toBe(1);
+  });
+
+  it('gives up rather than dividing by nothing when the whole page is held', () => {
+    expect(mapScrollToArc(0.5, 0.8, { start: 0, end: 1 })).toBe(0);
   });
 });
 

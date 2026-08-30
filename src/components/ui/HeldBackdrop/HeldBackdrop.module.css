@@ -20,31 +20,37 @@
 }
 
 /*
- * The half that draws back off the world.
+ * The ground is CUT BACK to uncover the world, rather than covered by a panel
+ * that then slides away.
  *
- * It slides rather than fades: a fade reveals the world through a haze across
- * the whole width at once, which reads as the background turning on, while a
- * hard edge travelling across leaves a moment where you can see exactly how
- * much has been let in.
+ * Sliding a panel off the right leaves the ground it was sitting on still
+ * spanning the whole screen, so what is uncovered is more ground -- no reveal
+ * at all. Clipping the ground itself is the only version where something is
+ * actually taken away.
+ *
+ * The edge travels, so there is a moment where you can see exactly how much
+ * has been let in; a fade would show the world through a haze across the whole
+ * width at once, which reads as the background turning on.
  */
-.aperture {
+.ground {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 60%;
-  right: 0;
-  overflow: hidden;
-  transform: translate3d(calc(var(--aperture-in, 0) * 100%), 0, 0);
-  will-change: transform;
+  inset: 0;
+  clip-path: inset(0 calc(var(--aperture-in, 0) * 40%) 0 0);
+  will-change: clip-path;
 }
 
-/* The edge that does the uncovering, so the cut reads as a cut. */
-.aperture::after {
-  content: '';
+/* The next section's depth, over the run's own ground rather than beside it. */
+.depth {
+  position: absolute;
+  inset: 0;
+}
+
+/* The cut, so it reads as a cut rather than as an edge of the layout. */
+.edge {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
+  right: calc(var(--aperture-in, 0) * 40%);
   width: 1px;
   background: #00ffc2;
   opacity: calc(var(--aperture-in, 0) * (1 - var(--aperture-in, 0)) * 3.2);
@@ -53,7 +59,11 @@
 
 @media (max-width: 900px) {
   /* No room for a view beside a portal; the ground keeps the whole width. */
-  .aperture {
+  .ground {
+    clip-path: none;
+  }
+
+  .edge {
     display: none;
   }
 }

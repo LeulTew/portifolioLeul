@@ -3,9 +3,10 @@ import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { CinematicCameraController } from './CinematicCameraController';
-import { CAMERA_CHAPTERS, CAMERA_ARC_END } from '@/lib/camera/cinematicSpline';
+import { CAMERA_CHAPTERS, CAMERA_ARC_SETTLE } from '@/lib/camera/cinematicSpline';
 import { setCameraHold } from '@/lib/camera/cameraHold';
 import { NO_HOLD } from '@/lib/camera/holdRange';
+import { setFocusPull, resetFocusPull } from '@/lib/camera/focusPull';
 
 const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
 
@@ -77,7 +78,7 @@ describe('CinematicCameraController', () => {
     mount({ mouseSway: 0 });
     advance(1);
 
-    scrollState.offset = CAMERA_ARC_END;
+    scrollState.offset = CAMERA_ARC_SETTLE;
     advance(400);
 
     const last = chapterVec(CAMERA_CHAPTERS.length - 1);
@@ -88,7 +89,7 @@ describe('CinematicCameraController', () => {
     mount({ mouseSway: 0 });
     advance(1);
 
-    scrollState.offset = CAMERA_ARC_END;
+    scrollState.offset = CAMERA_ARC_SETTLE;
     advance(400);
     const atArcEnd = camera.position.clone();
 
@@ -105,7 +106,7 @@ describe('CinematicCameraController', () => {
     advance(1);
     const opening = camera.position.clone();
 
-    scrollState.offset = CAMERA_ARC_END;
+    scrollState.offset = CAMERA_ARC_SETTLE;
     advance(1);
 
     const moved = opening.distanceTo(camera.position);
@@ -140,7 +141,7 @@ describe('CinematicCameraController', () => {
     advance(1);
     const opening = camera.position.clone();
 
-    scrollState.offset = CAMERA_ARC_END;
+    scrollState.offset = CAMERA_ARC_SETTLE;
     // One frame with a 30s delta, as a restored tab reports.
     frameCallback?.({ mouse: pointer, clock: { getElapsedTime: () => 30 } }, 30);
     const jumped = opening.distanceTo(camera.position);
@@ -157,7 +158,7 @@ describe('CinematicCameraController', () => {
 
     it('cuts straight to the nearest authored shot with no easing', () => {
       mount();
-      scrollState.offset = CAMERA_ARC_END;
+      scrollState.offset = CAMERA_ARC_SETTLE;
       advance(1);
 
       const last = chapterVec(CAMERA_CHAPTERS.length - 1);
@@ -166,7 +167,7 @@ describe('CinematicCameraController', () => {
 
     it('snaps between discrete chapters rather than scrubbing continuously', () => {
       mount();
-      scrollState.offset = CAMERA_ARC_END * 0.5;
+      scrollState.offset = CAMERA_ARC_SETTLE * 0.5;
       advance(1);
 
       // Midway through the arc lands exactly on chapter 2, not between shots.
@@ -236,5 +237,63 @@ describe('CinematicCameraController while held', () => {
     advance(200);
 
     expect(camera.position.distanceTo(early)).toBeLessThan(0.001);
+  });
+});
+
+describe('CinematicCameraController focus lean', () => {
+  beforeEach(() => {
+    scrollState.offset = 0.5;
+    pointer = { x: 0, y: 0 };
+    frameCallback = null;
+    reducedMotion.mockReturnValue(false);
+    camera.position.set(0, 0, 0);
+    setCameraHold({ start: 0.2, end: 0.8 });
+    resetFocusPull();
+  });
+
+  afterEach(() => {
+    setCameraHold(NO_HOLD);
+    resetFocusPull();
+  });
+
+  it('leans toward the figure while the world is held', () => {
+    mount({ mouseSway: 0 });
+    advance(200);
+    const still = camera.position.clone();
+
+    setFocusPull(1);
+    advance(200);
+
+    expect(camera.position.distanceTo(still)).toBeGreaterThan(1);
+  });
+
+  it('comes back to exactly the shot it paused on', () => {
+    // A lean that does not return leaves the camera somewhere the arc never
+    // put it, so the world appears to have moved during the stretch it was
+    // supposed to be still for.
+    mount({ mouseSway: 0 });
+    advance(200);
+    const paused = camera.position.clone();
+
+    setFocusPull(1);
+    advance(200);
+    setFocusPull(0);
+    advance(300);
+
+    expect(camera.position.distanceTo(paused)).toBeLessThan(0.001);
+  });
+
+  it('ignores the lean once the hold is over', () => {
+    // Out on the open arc the camera has its own business, and a second thing
+    // tugging at it would fight the authored shots.
+    scrollState.offset = 0.9;
+    mount({ mouseSway: 0 });
+    advance(200);
+    const onArc = camera.position.clone();
+
+    setFocusPull(1);
+    advance(200);
+
+    expect(camera.position.distanceTo(onArc)).toBeLessThan(0.001);
   });
 });

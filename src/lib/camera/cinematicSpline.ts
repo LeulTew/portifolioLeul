@@ -19,11 +19,22 @@ export interface CameraChapter {
 }
 
 /**
- * Scroll progress at which the camera arc completes. Past this point the
- * viewpoint holds its final shot while the DOM layer keeps scrolling, so the
- * page never feels like it has hit a wall when the 3D travel runs out.
+ * Share of the MOVING scroll over which the camera arc completes.
+ *
+ * Of the scroll, not of the page. It used to be an absolute page fraction --
+ * the arc finished at 0.62 and held its final shot for the rest -- and the
+ * hold was then subtracted from it. That works while the hold is small and
+ * fails silently as it grows: with the held run at 0.45 of the page there is
+ * only 0.17 of scroll left to move the camera through the entire arc, so the
+ * whole journey is over inside the hero and every section after it shows the
+ * closing shot. At 0.62 of held scroll the remainder goes negative.
+ *
+ * Measured against the scroll that can actually move the camera, the arc is
+ * unaffected by how much of the page is frozen: whatever is left is what it
+ * uses. The remainder holds the final shot, so the page never feels like it
+ * has hit a wall when the travel runs out.
  */
-export const CAMERA_ARC_END = 0.62;
+export const CAMERA_ARC_SETTLE = 0.88;
 
 /**
  * The closing shot, reproduced from the composition this scene had before the
@@ -104,16 +115,20 @@ export function createCameraSpline(
  */
 export function mapScrollToArc(
   scrollProgress: number,
-  arcEnd: number = CAMERA_ARC_END,
+  settle: number = CAMERA_ARC_SETTLE,
   hold: ArcHold = NO_HOLD
 ): number {
   if (!Number.isFinite(scrollProgress) || scrollProgress <= 0) return 0;
-  if (arcEnd <= 0) return 1;
+  if (!Number.isFinite(settle) || settle <= 0) return 1;
 
   const frozen = holdSpan(hold);
-  // Scroll that actually moves the camera, once the hold is taken out.
-  const travelled = arcEnd - frozen;
-  if (travelled <= 0) return scrollProgress >= arcEnd ? 1 : 0;
+  // Scroll that can move the camera at all, once the hold is taken out.
+  const moving = 1 - frozen;
+  if (moving <= 0) return 0;
+
+  // ...and the part of that spent moving it, leaving the rest on the last shot.
+  const travelled = moving * Math.min(settle, 1);
+  if (travelled <= 0) return 1;
 
   let effective = scrollProgress;
   if (scrollProgress > hold.end) {
