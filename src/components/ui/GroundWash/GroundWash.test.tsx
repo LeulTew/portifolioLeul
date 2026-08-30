@@ -71,3 +71,34 @@ describe('GroundWash', () => {
     );
   });
 });
+
+describe('light grounds against the scene', () => {
+  /** The scene's own light sky, from BackgroundScene's palette. */
+  const SCENE_LIGHT = '#f4f7ff';
+
+  const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+  it('mixes the light grounds from the sky they are shown beside', () => {
+    // Education cuts the ground away to show the scene beside it. Two
+    // near-whites from different families leave a visible seam exactly where
+    // the section puts them together.
+    const sky = rgb(SCENE_LIGHT);
+    for (const section of groundSections()) {
+      const ground = rgb(groundFor(section, 'light').base);
+      for (let channel = 0; channel < 3; channel++) {
+        expect(
+          Math.abs(ground[channel] - sky[channel]),
+          `${section} channel ${channel} is far from the sky`
+        ).toBeLessThan(30);
+      }
+    }
+  });
+
+  it('keeps them below the sky, so they still read as covering it', () => {
+    const skySum = rgb(SCENE_LIGHT).reduce((a, b) => a + b, 0);
+    for (const section of groundSections()) {
+      const groundSum = rgb(groundFor(section, 'light').base).reduce((a, b) => a + b, 0);
+      expect(groundSum).toBeLessThan(skySum);
+    }
+  });
+});

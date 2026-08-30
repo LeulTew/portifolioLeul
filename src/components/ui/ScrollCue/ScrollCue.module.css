@@ -7,12 +7,18 @@
   position: absolute;
   cursor: pointer;
   overflow: visible;
-  color: #00ffc2;
+  color: var(--accent-ink, #00ffc2);
   transition: color 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/*
+ * Brighter than the mark's resting colour in either theme -- which means
+ * lighter on the dark scene and darker on the light one. White was written
+ * here literally, and on the light sky the highlight was the least visible
+ * state the mark had.
+ */
 .cue:hover {
-  color: #ffffff;
+  color: var(--accent-hover, #ffffff);
 }
 
 .stroke {

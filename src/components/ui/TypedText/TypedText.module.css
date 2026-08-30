@@ -50,8 +50,8 @@
   top: 0.16em;
   bottom: 0.06em;
   width: 2px;
-  background: #00ffc2;
-  box-shadow: 0 0 10px -1px #00ffc2;
+  background: var(--accent-ink, #00ffc2);
+  box-shadow: 0 0 10px -1px var(--accent-glow, #00ffc2);
   opacity: calc(
     clamp(0, var(--pos), 1) - clamp(0, calc(var(--pos) - 1), 1)
   );

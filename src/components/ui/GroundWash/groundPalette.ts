@@ -23,9 +23,17 @@ const GROUNDS: Record<ThemeName, Record<string, Ground>> = {
     education: { base: '#04161a' },
   },
   light: {
-    // Cool white with the same tint, so the accent still belongs on it.
-    about: { base: '#eef4f6' },
-    education: { base: '#e6eef1' },
+    /*
+     * Drawn from the scene's own light sky (#f4f7ff) rather than picked
+     * separately. Education cuts the ground away to show that sky beside it,
+     * so a ground mixed from a different family puts two near-whites side by
+     * side with a visible seam between them -- the one place the two must
+     * agree is exactly where this section shows them together.
+     *
+     * A shade below the sky, so it still reads as something covering it.
+     */
+    about: { base: '#e7ecf7' },
+    education: { base: '#dde5f3' },
   },
 };
 

@@ -387,7 +387,7 @@
 .subStatementBar {
   width: 28px;
   height: 2px;
-  background-color: #00ff9d;
+  background-color: var(--accent-ink);
   flex-shrink: 0;
 }
 
@@ -417,7 +417,7 @@
   font-family: monospace;
   font-size: clamp(1.15rem, 1.4vw, 1.4rem);
   font-weight: 800;
-  color: #00ff9d;
+  color: var(--accent-ink);
   min-width: 42px;
 }
 
@@ -714,4 +714,33 @@
   .portrait {
     transform: none;
   }
+}
+
+/* ==========================================================================
+   Light
+   ==========================================================================
+   The section stands on a near-white ground in this theme, so anything set in
+   white here was being painted onto it. The tokens above already follow the
+   theme; these are the values that were written literally. */
+
+:global([data-theme='light']) .title {
+  color: #0a1420;
+}
+
+:global([data-theme='light']) .heldField {
+  color: rgba(24, 44, 60, 0.26);
+}
+
+:global([data-theme='light']) .editorialPill {
+  background: rgba(17, 24, 39, 0.05);
+  border-color: rgba(17, 24, 39, 0.14);
+}
+
+:global([data-theme='light']) .window {
+  background: linear-gradient(
+    150deg,
+    rgba(6, 122, 85, 0.5),
+    rgba(6, 122, 85, 0.1) 45%,
+    rgba(40, 90, 110, 0.24)
+  );
 }

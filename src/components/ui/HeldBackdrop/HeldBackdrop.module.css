@@ -52,9 +52,9 @@
   bottom: 0;
   right: calc(var(--aperture-in, 0) * 40%);
   width: 1px;
-  background: #00ffc2;
+  background: var(--accent-ink, #00ffc2);
   opacity: calc(var(--aperture-in, 0) * (1 - var(--aperture-in, 0)) * 3.2);
-  box-shadow: 0 0 22px -2px #00ffc2;
+  box-shadow: 0 0 22px -2px var(--accent-glow, #00ffc2);
 }
 
 @media (max-width: 900px) {
