@@ -2,7 +2,7 @@
 import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FocusScrim } from './FocusScrim';
-import { FULL_FOCUS_COVERAGE } from './focusStrength';
+import { FULL_FOCUS_COVERAGE } from '@/lib/scroll/viewportCoverage';
 
 type ObserverCallback = (entries: any[]) => void;
 

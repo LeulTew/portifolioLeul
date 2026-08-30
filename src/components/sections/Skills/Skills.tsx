@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { KineticHeading, DancingCharText } from '../../ui/KineticText';
 import styles from './Skills.module.css';
 
@@ -10,20 +10,11 @@ const skillCategories = cvData.skills;
 
 export function Skills() {
   const containerRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start center", "end center"]
-  });
-
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
 
   return (
     <section ref={containerRef} className={styles.skills} id="skills">
       <FocusScrim />
-      <motion.div 
-        className={styles.content}
-        style={{ y }}
-      >
+      <motion.div className={styles.content}>
         <motion.div 
           className={styles.header}
           initial={{ opacity: 0, y: 20 }}

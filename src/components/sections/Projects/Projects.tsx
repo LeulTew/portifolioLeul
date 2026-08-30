@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
 import { projectsData } from '../../../data/projects';
@@ -7,6 +7,8 @@ import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { KineticHeading } from '../../ui/KineticText';
 import { FocusScrim } from '../../ui/FocusScrim';
+import { StripReveal } from '../../ui/StripReveal';
+import { useViewportCoverage } from '@/lib/scroll/viewportCoverage';
 
 const categories = [
   { title: 'All', icon: Grid3x3 },
@@ -18,7 +20,7 @@ const categories = [
 ];
 
 export function Projects({ theme }: { theme?: string }) {
-  const containerRef = useRef<HTMLElement>(null);
+  const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isContactInView, setIsContactInView] = useState(false);
 
@@ -87,16 +89,16 @@ export function Projects({ theme }: { theme?: string }) {
     meta: project.categories.join(' • '),
   }));
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
-  const sectionOpacity = useTransform(scrollYProgress, [0, 0.12, 0.88, 1], [0.3, 1, 1, 0.2]);
-  const sectionScale = useTransform(scrollYProgress, [0, 0.15, 0.85, 1], [0.97, 1, 1, 0.97]);
+  // Was driven by framer-motion's useScroll, which tracks the viewport's own
+  // scroll. This page scrolls inside the ScrollControls element, so that
+  // progress was pinned at 0 and the section rendered permanently at its
+  // starting values: opacity 0.3 and scale 0.97.
+  const coverage = useViewportCoverage(sectionElement);
+  const sectionOpacity = 0.35 + coverage * 0.65;
+  const sectionScale = 0.97 + coverage * 0.03;
 
   return (
-    <section ref={containerRef} className={styles.projects} id="projects">
+    <section ref={setSectionElement} className={styles.projects} id="projects">
       <FocusScrim />
       <motion.div
         className={styles.content}
@@ -127,8 +129,9 @@ export function Projects({ theme }: { theme?: string }) {
           />
         </div>
 
-        {/* Focus Rail Component */}
-        <div className="w-full mt-8">
+        {/* Focus Rail Component. Changing category swaps the whole rail, so the
+            swap sweeps across as a bending sheet rather than cutting hard. */}
+        <StripReveal revealKey={activeCategory} className="w-full mt-8">
           <FocusRail 
             items={railItems} 
             theme={theme}
@@ -137,7 +140,7 @@ export function Projects({ theme }: { theme?: string }) {
             loop={true} 
             className="bg-transparent"
           />
-        </div>
+        </StripReveal>
       </motion.div>
     </section>
   );
