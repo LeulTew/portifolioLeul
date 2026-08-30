@@ -15,12 +15,21 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Mock ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+/*
+ * Mock ResizeObserver.
+ *
+ * A class, not `vi.fn().mockImplementation(() => ({...}))`. An arrow function
+ * cannot be constructed, so the mock threw "is not a constructor" the moment
+ * any component actually did `new ResizeObserver(...)` -- which read as the
+ * component being broken rather than the mock being wrong. Matches how
+ * IntersectionObserver is mocked directly below.
+ */
+global.ResizeObserver = class ResizeObserver {
+  constructor() {}
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {

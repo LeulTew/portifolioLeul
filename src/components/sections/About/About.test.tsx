@@ -49,3 +49,29 @@ describe("About Section", () => {
     expect(screen.getByText(/Bootdev/i)).toBeInTheDocument();
   });
 });
+
+describe('About column convergence', () => {
+  it('draws the two columns in from opposite edges', () => {
+    render(<About />);
+    const left = screen.getByTestId('about-left-column');
+    const right = screen.getByTestId('about-right-column');
+
+    // jsdom reports no intersection, so both sit at their far offset. The
+    // point under test is the symmetry: one comes from each side.
+    const offset = (el: HTMLElement) =>
+      /translate3d\((-?[\d.]+)rem/.exec(el.style.transform)?.[1];
+
+    expect(Number(offset(left))).toBeLessThan(0);
+    expect(Number(offset(right))).toBeGreaterThan(0);
+    expect(Number(offset(left))).toBe(-Number(offset(right)));
+  });
+
+  it('holds them out of focus until they are on screen', () => {
+    render(<About />);
+    for (const id of ['about-left-column', 'about-right-column']) {
+      const column = screen.getByTestId(id);
+      expect(column.style.opacity).toBe('0');
+      expect(column.style.filter).toContain('blur(');
+    }
+  });
+});

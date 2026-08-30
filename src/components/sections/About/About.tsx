@@ -1,5 +1,7 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useBandPresence } from '@/lib/scroll/bandPresence';
+import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { Card } from '../../ui/Card';
 import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
@@ -49,8 +51,37 @@ const subItemVariants = {
   }
 };
 
+/**
+ * How far each column starts out from its resting place, in rem.
+ *
+ * The columns already sit either side of the 3D, so they converge from the
+ * edges they belong to rather than arriving from nowhere.
+ */
+const COLUMN_TRAVEL_REM = 7;
+
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
+  const [band, setBand] = useState<HTMLElement | null>(null);
+  const presence = useBandPresence(band);
+  const reducedMotion = getPrefersReducedMotion();
+
+  /**
+   * Symmetric, and driven by the scroll rather than played once on arrival.
+   *
+   * `whileInView` with `once: true` can only ever animate in: the columns
+   * would sit at full opacity for the rest of the page no matter how far past
+   * them the reader had scrolled. Reading presence per frame makes the exit
+   * the entrance in reverse, for free.
+   */
+  const column = (direction: -1 | 1) => ({
+    opacity: presence,
+    transform: reducedMotion
+      ? undefined
+      : `translate3d(${(direction * (1 - presence) * COLUMN_TRAVEL_REM).toFixed(
+          3
+        )}rem, 0, 0)`,
+    filter: reducedMotion ? undefined : `blur(${((1 - presence) * 5).toFixed(2)}px)`,
+  });
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
@@ -74,7 +105,7 @@ export function About() {
         </motion.div>
 
         {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
-        <div className={styles.heroSpatialLayout}>
+        <div className={styles.heroSpatialLayout} ref={setBand}>
           {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
             className={styles.leftColumn}
@@ -82,6 +113,8 @@ export function About() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
+            style={column(-1)}
+            data-testid="about-left-column"
           >
             <h3 className={styles.statementText}>
               <span className={styles.lineOverflowWrapper}>
@@ -112,6 +145,8 @@ export function About() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
+            style={column(1)}
+            data-testid="about-right-column"
           >
             <h3 className={styles.statementText}>
               <span className={styles.lineOverflowWrapper}>
