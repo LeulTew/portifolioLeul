@@ -18,8 +18,14 @@ export interface LiquidFillTextProps {
   settled?: boolean;
   /** Delay before the first letter starts, in ms. */
   delayMs?: number;
-  /** How long one letter takes to fill, in ms. */
+  /** The whole beat: the fall, then the rise, in ms. */
   durationMs?: number;
+  /**
+   * How long snow falls before the level starts moving, in ms. Without it the
+   * letters begin filling the instant the first flake appears, and nothing is
+   * ever seen landing -- the fall has to arrive before it can accumulate.
+   */
+  leadMs?: number;
   /**
    * Per-letter offset. Zero by default: every letter shares one snow line, so
    * the drift rises across the whole word at once instead of sweeping along it.
@@ -34,6 +40,7 @@ export function LiquidFillText({
   settled = false,
   delayMs = 0,
   durationMs = 2400,
+  leadMs = 550,
   staggerMs = 0,
   className,
 }: LiquidFillTextProps) {
@@ -54,7 +61,9 @@ export function LiquidFillText({
       data-filling={filling}
       data-settled={settled}
       style={{
-        ['--fill-duration' as string]: `${durationMs}ms`,
+        /* The fall runs the whole beat; the rise is what is left after it. */
+        ['--snow-duration' as string]: `${durationMs}ms`,
+        ['--fill-duration' as string]: `${Math.max(durationMs - leadMs, 1)}ms`,
         /* The snowfall belongs to the word, so it starts on the word's cue. */
         ['--word-delay' as string]: `${delayMs}ms`,
       }}
@@ -76,7 +85,9 @@ export function LiquidFillText({
             data-testid="liquid-fill-char"
             aria-hidden="true"
             style={{
-              ['--char-delay' as string]: `${delayMs + charDelayMs(index, staggerMs)}ms`,
+              ['--char-delay' as string]: `${
+                delayMs + leadMs + charDelayMs(index, staggerMs)
+              }ms`,
             }}
           >
             {char}

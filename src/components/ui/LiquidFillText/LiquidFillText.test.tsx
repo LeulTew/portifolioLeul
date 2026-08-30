@@ -80,14 +80,33 @@ describe('LiquidFillText', () => {
   });
 
   it('gives every letter one shared snow line by default', () => {
-    render(<LiquidFillText text="Leul" filling delayMs={1000} />);
+    render(<LiquidFillText text="Leul" filling delayMs={1000} leadMs={0} />);
     const delays = chars().map((c) => c.style.getPropertyValue('--char-delay'));
 
     expect(delays).toEqual(['1000ms', '1000ms', '1000ms', '1000ms']);
   });
 
+  it('holds the level still while the snow is still on its way down', () => {
+    // Without a lead the letters start filling as the first flake appears, so
+    // nothing is ever seen landing.
+    render(<LiquidFillText text="Le" filling delayMs={1000} leadMs={400} />);
+    for (const char of chars()) {
+      expect(char.style.getPropertyValue('--char-delay')).toBe('1400ms');
+    }
+  });
+
+  it('spends the beat on the fall and the rise together', () => {
+    render(<LiquidFillText text="Le" filling durationMs={2000} leadMs={500} />);
+    const word = screen.getByTestId('liquid-fill-text');
+
+    expect(word.style.getPropertyValue('--snow-duration')).toBe('2000ms');
+    expect(word.style.getPropertyValue('--fill-duration')).toBe('1500ms');
+  });
+
   it('offsets every letter by the layer delay plus its own when staggered', () => {
-    render(<LiquidFillText text="Leul" filling delayMs={1000} staggerMs={60} />);
+    render(
+      <LiquidFillText text="Leul" filling delayMs={1000} leadMs={0} staggerMs={60} />
+    );
     const delays = chars().map((c) => c.style.getPropertyValue('--char-delay'));
 
     expect(delays[0]).toBe('1000ms');
@@ -98,10 +117,17 @@ describe('LiquidFillText', () => {
   });
 
   it('carries its fill duration to the animation', () => {
-    render(<LiquidFillText text="Leul" filling durationMs={1200} />);
+    render(<LiquidFillText text="Leul" filling durationMs={1200} leadMs={0} />);
     expect(
       screen.getByTestId('liquid-fill-text').style.getPropertyValue('--fill-duration')
     ).toBe('1200ms');
+  });
+
+  it('never asks for a non-positive fill, however short the beat', () => {
+    render(<LiquidFillText text="Le" filling durationMs={300} leadMs={900} />);
+    expect(
+      screen.getByTestId('liquid-fill-text').style.getPropertyValue('--fill-duration')
+    ).toBe('1ms');
   });
 
   it('keeps spaces as spaces rather than fillable glyphs', () => {

@@ -1,17 +1,20 @@
 /*
- * Snow falls over the headline from above, and the letters fill with what
- * lands in them.
+ * Snow falls onto the headline, and the letters hold what lands.
  *
- * Two layers, and the split matters. The fall belongs to the word, not to any
- * letter: it is a field drifting down across the whole headline and behind it,
- * unclipped, so flakes exist in the air above the text and between the letters
- * rather than only inside the letterforms. Painting the flakes through the
- * glyph -- which is what this did before -- means snow can only ever appear
- * where a letter already is, so nothing is ever seen arriving.
+ * The surface and the body it sits on are ONE height.
  *
- * What the letters hold is the drift: a body rising from the baseline behind a
- * scalloped surface that rides on top of it and sloshes as it comes up. That
- * surface is what makes the rise read as liquid rather than as a bar chart.
+ * That is the whole design. The previous attempt drew the surface as a strip
+ * sized in pixels with its position in percent, riding on a body sized in
+ * percent -- two layers on two different scales, animated separately, which
+ * drift apart as they rise. No amount of tuning makes that read as liquid,
+ * because it is not connected: it is a comb sliding over a bar.
+ *
+ * Here both layers are sized `<width> H` and anchored `bottom`, with the same
+ * H written at every keyframe stop. The surface's gradient sits at the top of
+ * its own box, so it is pinned to the body's top edge by construction and no
+ * rounding, unit mismatch or interpolation difference can separate them. Only
+ * the surface's horizontal offset differs, which is what lets the level slosh
+ * while staying attached.
  */
 .word {
   position: relative;
@@ -20,102 +23,140 @@
   align-items: baseline;
 
   /*
-   * Declared on the word, not on the letter. The snowfield is `.word::before`,
-   * so a flake colour scoped to `.char` is simply unset where it is actually
-   * used -- which makes every gradient referencing it invalid and collapses
-   * the whole layer to `background-image: none`. The letters inherit these
-   * from here, so both layers read the same values.
+   * Declared on the word, not on the letter: the snowfield is `.word::before`,
+   * so a colour scoped to `.char` is unset where it is actually used -- and an
+   * unresolved var() inside background-image invalidates the declaration and
+   * collapses the layer to `none`, silently.
    */
-  --crest: color-mix(in srgb, currentColor 40%, white);
-  --flake: color-mix(in srgb, currentColor 45%, white);
-  /* The small field sits further back, so the fall has depth. */
-  --flake-far: color-mix(in srgb, currentColor 78%, white);
+  --vessel: color-mix(in srgb, currentColor 22%, transparent);
+  --crest: color-mix(in srgb, currentColor 30%, white);
+  /* The second row sits behind the first, so the crests read as depth. */
+  --crest-far: color-mix(in srgb, currentColor 62%, white);
+  --flake: color-mix(in srgb, currentColor 58%, white);
+  /* Dimmer, because it is further away. */
+  --flake-far: color-mix(in srgb, currentColor 84%, white);
 }
 
 /*
- * The weather. Absolutely positioned and first in paint order, so it sits
- * behind the letters and shows through their hollow interiors -- the letters
- * are transparent until they fill, so you watch the snow fall through the
- * shape that is about to catch it.
+ * The weather. Two fields, one behind the letters and one in front, so the
+ * fall has depth rather than being a sheet.
+ *
+ * Each field is a CLUSTER of dots scattered inside one large tile, not a
+ * single dot in a small one. A lone dot per tile is a lattice, and a lattice
+ * is exactly what it looks like -- evenly spaced rows marching down the
+ * screen. Scattering several dots at irregular positions inside a tile three
+ * or four times the headline's height puts the repeat far enough apart that
+ * the eye reads it as random.
+ *
+ * Background lists repeat cyclically when they are shorter than the image
+ * list, so one size and one position drive every dot in a field: they move as
+ * one thing, which is what makes it a field and not six of them.
  */
-.word::before {
+.word::before,
+.word::after {
   content: '';
   position: absolute;
-  left: -8%;
-  right: -8%;
-  bottom: 0.06em;
-  /*
-   * Reaches well above the cap height: the fall needs somewhere to fall from.
-   * Capped, because a word that wraps is several lines tall and 340% of that
-   * is a field taller than the screen.
-   */
-  height: min(340%, 44vh);
+  /* Wider than the word, so the fall is not seen starting at its edges. */
+  left: -14%;
+  right: -14%;
+  bottom: 0.05em;
+  /* Capped: a word that wraps is several lines tall, and this is a multiple. */
+  height: min(300%, 40vh);
   pointer-events: none;
   opacity: 0;
 
+  /*
+   * Feathered on every edge, not just top and bottom. A rectangular field has
+   * visible left and right borders where the dots stop dead, which reads as a
+   * panel of texture laid over the headline.
+   */
+  -webkit-mask-image: radial-gradient(
+    ellipse 58% 54% at 50% 60%,
+    #000 0%,
+    #000 42%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 58% 54% at 50% 60%,
+    #000 0%,
+    #000 42%,
+    transparent 100%
+  );
+}
+
+/* The far field: behind the letters, showing through their hollow interiors. */
+.word::before {
   background-image:
-    radial-gradient(circle at 30% 18%, var(--flake) 0 1.6px, transparent 2px),
-    radial-gradient(circle at 74% 64%, var(--flake-far) 0 1.1px, transparent 1.5px),
-    radial-gradient(circle at 12% 82%, var(--flake) 0 1.35px, transparent 1.7px);
-  background-size:
-    15px 15px,
-    23px 23px,
-    10px 10px;
+    radial-gradient(circle at 11% 7%, var(--flake-far) 0 1.2px, transparent 1.6px),
+    radial-gradient(circle at 63% 19%, var(--flake-far) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 34% 41%, var(--flake-far) 0 1.4px, transparent 1.8px),
+    radial-gradient(circle at 86% 57%, var(--flake-far) 0 1px, transparent 1.3px),
+    radial-gradient(circle at 18% 73%, var(--flake-far) 0 1.3px, transparent 1.7px),
+    radial-gradient(circle at 54% 88%, var(--flake-far) 0 1.1px, transparent 1.5px);
+  background-size: 140px 140px;
   background-repeat: repeat;
-
-  /*
-   * Fades in at the top and out at the bottom, so flakes appear out of the air
-   * and are absorbed at the line rather than stopping dead on an edge.
-   */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 16%,
-    #000 68%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 16%,
-    #000 68%,
-    transparent 100%
-  );
 }
 
+/* The near field: in front, fewer and larger, so the depth is legible. */
+.word::after {
+  background-image:
+    radial-gradient(circle at 27% 13%, var(--flake) 0 1.9px, transparent 2.4px),
+    radial-gradient(circle at 72% 38%, var(--flake) 0 1.6px, transparent 2.1px),
+    radial-gradient(circle at 9% 61%, var(--flake) 0 2.1px, transparent 2.6px),
+    radial-gradient(circle at 58% 84%, var(--flake) 0 1.7px, transparent 2.2px);
+  background-size: 194px 194px;
+  background-repeat: repeat;
+}
+
+/*
+ * One pass, not a loop. The fall is over when the letters are full -- snow
+ * still coming down onto a finished headline is the animation failing to know
+ * it has ended, and it reads as exactly that.
+ */
 .filling::before {
-  /*
-   * Two animations on different properties: the drift loops seamlessly (each
-   * travel is a whole multiple of its tile) while the presence is a one-shot,
-   * so the weather arrives, lasts as long as the fill, and clears.
-   */
-  animation:
-    snowdrift 2.6s linear var(--word-delay, 0ms) infinite,
-    weather calc(var(--fill-duration, 2400ms) + 900ms)
-      cubic-bezier(0.4, 0, 0.6, 1) var(--word-delay, 0ms) forwards;
+  animation: snowfar var(--snow-duration, 2400ms) linear var(--word-delay, 0ms)
+    forwards;
 }
 
-@keyframes snowdrift {
-  to {
-    background-position:
-      0 300px,
-      0 322px,
-      0 340px;
-  }
+.filling::after {
+  animation: snownear var(--snow-duration, 2400ms) linear var(--word-delay, 0ms)
+    forwards;
 }
 
-@keyframes weather {
+/* Travel is a whole multiple of the tile, so the field does not step. */
+@keyframes snowfar {
   0% {
     opacity: 0;
+    background-position: 0 0;
   }
-  14% {
+  16% {
     opacity: 1;
   }
-  78% {
-    opacity: 1;
+  /* Gone by the time the last letter tops out. */
+  88% {
+    opacity: 0;
   }
   100% {
     opacity: 0;
+    background-position: 0 420px;
+  }
+}
+
+/* Nearer, so it falls further in the same time. */
+@keyframes snownear {
+  0% {
+    opacity: 0;
+    background-position: 0 0;
+  }
+  16% {
+    opacity: 0.85;
+  }
+  88% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    background-position: 0 582px;
   }
 }
 
@@ -133,124 +174,166 @@
   background-clip: text;
 
   /*
-   * Two layers: the scalloped surface, then the body under it. The surface is
-   * a row of half-ellipses on a thin strip; where they meet, the notches run
-   * down to the body's own top edge, so the join is a wave rather than a seam.
+   * The empty vessel. Without it the letters are simply absent until they
+   * fill, so the snow falls through nothing and the headline reads as missing
+   * rather than as waiting. Faint enough to disappear under the body once the
+   * level passes it.
+   */
+  -webkit-text-stroke: 1px var(--vessel);
+
+  /*
+   * Three layers: two rows of scallops, then the body.
+   *
+   * The surface has to stand ABOVE the body to have a silhouette at all. Both
+   * sit in boxes anchored to the baseline, and each surface box is the body's
+   * height plus a fixed few pixels -- `calc(H + 9px)` against `H` -- so its top
+   * edge is always exactly that far above the body's, at every level, locked by
+   * construction. Drawing the scallops inside the body's own box, which is what
+   * this did before, paints them onto pixels the body has already filled: they
+   * are perfectly attached and completely invisible, and the edge stays flat.
+   *
+   * Two rows rather than one, at tile widths that do not divide each other, so
+   * the crests fall in and out of step and the line undulates instead of
+   * repeating a single scallop across the whole word. Each ellipse is exactly
+   * half its tile wide: any wider and the tile clips it into a flat top.
+   *
+   * Above the cap height the glyph clips everything, so a full letter loses its
+   * wave without needing to be told to.
    */
   background-image:
     radial-gradient(
-      ellipse 13px 9px at 50% 100%,
+      ellipse 8px 6px at 50% 6px,
       var(--crest) 0 99%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 11px 4px at 50% 4px,
+      var(--crest-far) 0 99%,
       transparent 100%
     ),
     linear-gradient(currentColor, currentColor);
 
   background-size:
-    26px 11px,
-    100% 3%;
+    16px calc(4% + 6px),
+    22px calc(4% + 4px),
+    100% 4%;
 
   background-position:
-    0 100%,
-    bottom;
+    0 bottom,
+    0 bottom,
+    center bottom;
 
-  background-repeat: repeat-x, no-repeat;
+  background-repeat: repeat-x, repeat-x, no-repeat;
 
-  will-change: background-position, background-size;
+  will-change: background-size, background-position;
   transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .filling .char {
-  animation: settle var(--fill-duration, 2400ms) linear var(--char-delay, 0ms)
+  animation: settle var(--fill-duration, 1850ms) linear var(--char-delay, 0ms)
     forwards;
 }
 
 /*
- * The rise, with the surface riding on it.
+ * The rise.
  *
- * Timing is in the stops rather than in an easing curve, because the two are
- * not the same shape: the body overshoots at 74%, falls back past its mark,
- * and settles -- a bounce, not a decelerating slide. The surface's horizontal
- * position wanders across the stops, so the wave slops from side to side as
- * the level changes instead of rising as a rigid comb.
+ * Timing lives in the stops, not in an easing curve: the level overshoots at
+ * 76%, falls back past its mark and comes to rest, which is a shape no single
+ * bezier produces. The surface's horizontal offset wanders across the stops so
+ * the level slops from side to side as it changes -- the only thing that
+ * differs between the two layers, and the only thing that can.
  *
- * The surface's y runs 100% to 0% as the body's height runs 0 to full, which
- * keeps the two within a strip-height of each other the whole way up, and
- * finishes above the glyph so there is no ripple left on a full letter.
+ * The last stop lifts the surface clear of the glyph while the body holds at
+ * full, so a finished letter carries no leftover ripple.
  */
 @keyframes settle {
   0% {
     background-position:
-      0 100%,
-      bottom;
+      0px bottom,
+      0px bottom,
+      center bottom;
     background-size:
-      26px 11px,
-      100% 3%;
+      16px calc(4% + 6px),
+      22px calc(4% + 4px),
+      100% 4%;
   }
-  26% {
+  30% {
     background-position:
-      -14px 74%,
-      bottom;
+      -11px bottom,
+      7px bottom,
+      center bottom;
     background-size:
-      26px 11px,
-      100% 26%;
+      16px calc(32% + 6px),
+      22px calc(32% + 4px),
+      100% 32%;
   }
-  50% {
+  55% {
     background-position:
-      9px 46%,
-      bottom;
+      8px bottom,
+      -12px bottom,
+      center bottom;
     background-size:
-      26px 11px,
-      100% 54%;
+      16px calc(63% + 6px),
+      22px calc(63% + 4px),
+      100% 63%;
   }
-  74% {
+  76% {
     background-position:
-      -7px 4%,
-      bottom;
+      -6px bottom,
+      9px bottom,
+      center bottom;
     background-size:
-      26px 11px,
-      100% 106%;
+      16px calc(104% + 6px),
+      22px calc(104% + 4px),
+      100% 104%;
   }
-  87% {
+  88% {
     background-position:
-      5px 14%,
-      bottom;
+      5px bottom,
+      -7px bottom,
+      center bottom;
     background-size:
-      26px 11px,
-      100% 94%;
+      16px calc(96% + 6px),
+      22px calc(96% + 4px),
+      100% 96%;
   }
   95% {
     background-position:
-      -2px 2%,
-      bottom;
+      -2px bottom,
+      4px bottom,
+      center bottom;
     background-size:
-      26px 11px,
-      100% 102%;
+      16px calc(101% + 6px),
+      22px calc(101% + 4px),
+      100% 101%;
   }
   100% {
     background-position:
-      0 -12px,
-      bottom;
+      0px bottom,
+      0px bottom,
+      center bottom;
     background-size:
-      26px 11px,
+      16px calc(100% + 6px),
+      22px calc(100% + 4px),
       100% 100%;
   }
 }
 
+
 /*
- * Backstop. The glyph is unpainted until the drift builds, so a browser that
+ * Backstop. The glyph is unpainted until the body rises, so a browser that
  * never advances the animation would leave the word absent entirely.
  */
 .settled .char {
   animation: none;
-  background-position:
-    0 -12px,
-    bottom;
   background-size:
-    26px 11px,
+    16px calc(100% + 6px),
+    22px calc(100% + 4px),
     100% 100%;
 }
 
-.settled::before {
+.settled::before,
+.settled::after {
   animation: none;
   opacity: 0;
 }
@@ -269,22 +352,25 @@
   /* Without the clip there is no vessel to fill; show the text painted. */
   .char {
     -webkit-text-fill-color: currentColor;
+    -webkit-text-stroke: 0;
     background-image: none;
   }
 
   /* Snow with nothing to collect in is just noise over the headline. */
-  .word::before {
+  .word::before,
+  .word::after {
     display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   /*
-   * No snowfall. The text is simply painted: an unfilled headline is not a
-   * reduced version of the design, it is missing.
+   * The text is simply painted: an unfilled headline is not a reduced version
+   * of the design, it is missing.
    */
   .char {
     -webkit-text-fill-color: currentColor;
+    -webkit-text-stroke: 0;
     background-image: none;
     transition: none;
   }
@@ -294,7 +380,9 @@
   }
 
   .word::before,
-  .filling::before {
+  .word::after,
+  .filling::before,
+  .filling::after {
     display: none;
     animation: none;
   }
