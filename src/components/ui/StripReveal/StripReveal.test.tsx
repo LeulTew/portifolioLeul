@@ -217,4 +217,34 @@ describe('StripReveal', () => {
     );
     expect(sheet()).toBeNull();
   });
+
+  it('releases even when frames are never served', () => {
+    // A backgrounded tab throttles requestAnimationFrame to nothing. Without a
+    // backstop the sheet would sit in its covering pose over the content until
+    // the tab regained focus.
+    const rafSpy = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation(() => 0 as unknown as number);
+
+    const { rerender } = render(
+      <StripReveal revealKey="all">
+        <p>Rail content</p>
+      </StripReveal>
+    );
+    rerender(
+      <StripReveal revealKey="ai">
+        <p>Rail content</p>
+      </StripReveal>
+    );
+
+    expect(sheet()).toHaveAttribute('data-phase', 'covering');
+
+    act(() => vi.advanceTimersByTime(200));
+    expect(sheet()).toHaveAttribute('data-phase', 'clearing');
+
+    act(() => vi.advanceTimersByTime(2000));
+    expect(sheet()).toBeNull();
+
+    rafSpy.mockRestore();
+  });
 });

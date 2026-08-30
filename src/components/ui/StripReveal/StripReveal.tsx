@@ -26,6 +26,13 @@ const MAX_STAGGER = 0.35;
 /** Mid-sweep is where the sheet is most bent, so that is the covering pose. */
 const COVERED_PROGRESS = 0.5;
 
+/**
+ * Backstop for the release. A backgrounded tab throttles requestAnimationFrame
+ * to nothing, and without this the sheet would stay in its covering pose --
+ * opaque strips left sitting over the content until the tab is focused again.
+ */
+const FALLBACK_RELEASE_MS = 120;
+
 type Phase = 'idle' | 'covering' | 'clearing';
 
 export interface StripRevealProps {
@@ -62,11 +69,14 @@ export function StripReveal({
     if (phase !== 'covering') return;
 
     // Release on the next frame, so the browser has painted the covering pose
-    // and has something to transition away from.
+    // and has something to transition away from. The timer is a backstop for
+    // when frames are not being served at all.
     frameRef.current = requestAnimationFrame(() => setPhase('clearing'));
+    const fallback = setTimeout(() => setPhase('clearing'), FALLBACK_RELEASE_MS);
 
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      clearTimeout(fallback);
     };
   }, [phase]);
 
