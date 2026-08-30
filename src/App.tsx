@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useLayoutEffect, useContext } from 'react';
+import { useEffect, useState, useCallback, useRef, useContext } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -27,7 +27,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const [scrollPages, setScrollPages] = useState(1);
-  const mainRef = useRef<HTMLDivElement | null>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const contentObserverRef = useRef<ResizeObserver | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
   const gpuConfig = useGpuTier();
 
@@ -85,25 +86,38 @@ function App() {
     );
   }, []);
 
-  useLayoutEffect(() => {
-    if (isLoading) return;
+  // Measuring from an effect is unreliable here: `Scroll html` portals its host
+  // node from an effect of its own, so <main> is often still detached when a
+  // layout effect runs. A one-shot measurement then freezes the track at
+  // whatever the half-built DOM reported, and nothing ever re-measures.
+  // Binding through a ref callback attaches the observer exactly when the node
+  // appears, however late that is.
+  const attachMain = useCallback((node: HTMLElement | null) => {
+    contentObserverRef.current?.disconnect();
+    contentObserverRef.current = null;
+    mainRef.current = node;
+
+    if (!node) return;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => updateScrollPages());
+      observer.observe(node);
+      contentObserverRef.current = observer;
+    }
+
     updateScrollPages();
+  }, [updateScrollPages]);
 
-    const mainElement = mainRef.current;
-    if (!mainElement) return;
-
-    const observer = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => updateScrollPages())
-      : null;
-
-    observer?.observe(mainElement);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     window.addEventListener('resize', updateScrollPages);
+    return () => window.removeEventListener('resize', updateScrollPages);
+  }, [updateScrollPages]);
 
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', updateScrollPages);
-    };
-  }, [isLoading, updateScrollPages]);
+  useEffect(() => () => {
+    contentObserverRef.current?.disconnect();
+    contentObserverRef.current = null;
+  }, []);
 
   const scrollToSection = useCallback((id: string) => {
     const target = document.getElementById(id);
@@ -164,7 +178,7 @@ function App() {
                 <ParticleBackground theme={theme} />
                 <Scroll html style={{ width: '100%' }}>
                   {!isLoading && (
-                    <main ref={mainRef} className={styles.main}>
+                    <main ref={attachMain} className={styles.main}>
                       <Home onNavigate={scrollToSection} />
                       <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
                         <div className="curveWrapper">
