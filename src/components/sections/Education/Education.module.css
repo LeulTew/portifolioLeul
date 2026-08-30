@@ -1,0 +1,302 @@
+/*
+ * Education, read through an opening in the page.
+ *
+ * The left sixty percent is a portal: a frame drawn first and empty, whose
+ * contents are then uncovered from the bottom. The frame itself never moves.
+ * What changes is how much of what is inside it can be seen, which is what
+ * makes it read as looking THROUGH something rather than at a panel animating
+ * in.
+ *
+ * The right is the opposite: the panel hiding the world draws back off it, so
+ * the scene behind arrives without the scene doing anything at all.
+ */
+.education {
+  position: relative;
+  width: 100%;
+}
+
+/* This section clears the navigation from inside its own held layer. */
+.education.education {
+  padding-top: 0;
+}
+
+.sequence {
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   The two panels
+   ========================================================================== */
+
+.panelLeft,
+.panelRight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/*
+ * The left panel's colour comes from the shared ground palette, so the two
+ * held sections are the same water at different depths. The right one only has
+ * to match it while it is still covering the world.
+ */
+.panelRight {
+  background: var(--ground-base, #04161a);
+  opacity: var(--panel-in, 0);
+}
+
+.panelLeft {
+  left: 0;
+  width: 60%;
+}
+
+/*
+ * Draws back rather than fading.
+ *
+ * A panel that fades reveals the world through a haze across its whole width
+ * at once, which reads as the background turning on. Sliding it keeps a hard
+ * edge travelling across the screen, so the world is uncovered -- there is a
+ * moment where you can see exactly how much has been let in.
+ */
+.panelRight {
+  left: 60%;
+  right: 0;
+  transform: translate3d(calc(var(--aperture-in, 0) * 100%), 0, 0);
+  will-change: transform;
+}
+
+/* The edge that does the uncovering, so the cut is legible as a cut. */
+.panelRight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: #00ffc2;
+  opacity: calc(var(--aperture-in, 0) * (1 - var(--aperture-in, 0)) * 3);
+  box-shadow: 0 0 22px -2px #00ffc2;
+}
+
+/* ==========================================================================
+   The portal
+   ========================================================================== */
+
+.portal {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(2rem, 4vh, 3.5rem);
+  padding: clamp(6rem, 13vh, 10rem) clamp(2.5rem, 6vw, 7rem)
+    clamp(4rem, 9vh, 7rem);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/*
+ * The box itself, drawn before anything is in it.
+ *
+ * Two lines rather than four: a closed rectangle reads as a card, and a card
+ * is a thing on the page rather than a way through it. An open corner keeps it
+ * an aperture.
+ */
+.frame {
+  position: absolute;
+  top: clamp(4rem, 10vh, 8rem);
+  bottom: clamp(2.5rem, 6vh, 5rem);
+  left: clamp(1.5rem, 3.5vw, 4rem);
+  right: clamp(1.5rem, 4vw, 5rem);
+  border-left: 1px solid rgba(0, 255, 194, 0.5);
+  border-top: 1px solid rgba(0, 255, 194, 0.5);
+  /* Drawn from the corner outwards, both directions at once. */
+  clip-path: inset(
+    0 calc((1 - var(--frame-in, 0)) * 100%) calc((1 - var(--frame-in, 0)) * 100%)
+      0
+  );
+}
+
+.portalHead {
+  position: relative;
+  opacity: var(--head-in, 0);
+  transform: translate3d(0, calc((1 - var(--head-in, 0)) * -3vh), 0);
+}
+
+.title {
+  font-size: clamp(2.75rem, 5.5vw, 5.5rem);
+  font-weight: 800;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  color: #ffffff;
+  margin: 0;
+}
+
+:global([data-theme='light']) .title {
+  color: #0a1420;
+}
+
+/* ==========================================================================
+   The entries
+   ========================================================================== */
+
+.entries {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: clamp(1.5rem, 3.5vh, 3rem);
+}
+
+/*
+ * Uncovered from the bottom, inside a frame that does not move.
+ *
+ * `clip-path` rather than opacity: a fade makes the whole entry semi-present
+ * at once, which is a thing appearing. A travelling edge means part of it is
+ * fully there and the rest is not yet, which is a thing being uncovered.
+ */
+.entry {
+  clip-path: inset(0 0 calc((1 - var(--reveal, 0)) * 100%) 0);
+  opacity: calc(0.25 + var(--reveal, 0) * 0.75);
+  will-change: clip-path;
+}
+
+.period {
+  font-size: clamp(0.95rem, 1.1vw, 1.15rem);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #00ffc2;
+  margin: 0 0 0.55rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.school {
+  font-size: clamp(1.6rem, 2.5vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0 0 0.5rem;
+}
+
+.degree {
+  font-size: clamp(1.05rem, 1.35vw, 1.4rem);
+  font-weight: 500;
+  color: rgba(214, 234, 246, 0.8);
+  margin: 0 0 1.1rem;
+}
+
+:global([data-theme='light']) .school {
+  color: #0a1420;
+}
+
+:global([data-theme='light']) .degree {
+  color: rgba(24, 42, 60, 0.78);
+}
+
+.details {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.6rem;
+}
+
+.details li {
+  font-size: clamp(1rem, 1.15vw, 1.2rem);
+  color: rgba(196, 220, 234, 0.72);
+  position: relative;
+  padding-left: 1rem;
+}
+
+.details li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(0, 255, 194, 0.65);
+}
+
+:global([data-theme='light']) .details li {
+  color: rgba(36, 56, 74, 0.76);
+}
+
+/* ==========================================================================
+   Certifications, past the held stretch
+   ========================================================================== */
+
+.certifications {
+  position: relative;
+  padding: clamp(5rem, 12vh, 9rem) clamp(2rem, 9vw, 16rem);
+  box-sizing: border-box;
+}
+
+.certificationsTitle {
+  font-size: clamp(2rem, 3.4vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  margin: 0 0 clamp(2rem, 5vh, 3.5rem);
+}
+
+:global([data-theme='light']) .certificationsTitle {
+  color: #0a1420;
+}
+
+.certificationsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ==========================================================================
+   Narrow
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  /*
+   * There is no room for a portal beside a view. The panel covers the width
+   * and the portal takes it, so the section is read rather than looked
+   * through.
+   */
+  .panelLeft {
+    width: 100%;
+  }
+
+  .panelRight {
+    display: none;
+  }
+
+  .portal {
+    width: 100%;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .frame {
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portalHead {
+    transform: none;
+  }
+}

@@ -1,11 +1,10 @@
-import { useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useContext, useRef } from 'react';
 import { PinnedSequence } from '../../ui/PinnedSequence';
+import { GroundWash } from '../../ui/GroundWash';
+import { ThemeContext } from '../theme/ThemeContext';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import { Card } from '../../ui/Card';
-import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
@@ -21,6 +20,7 @@ import { FocusScrim } from '../../ui/FocusScrim';
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
   const reducedMotion = getPrefersReducedMotion();
+  const theme = useContext(ThemeContext)?.theme ?? 'dark';
 
   /**
    * Symmetric, and driven by the scroll rather than played once on arrival.
@@ -42,8 +42,14 @@ export function About() {
           testId="about-sequence"
         >
           {/* Shuts the world out for exactly as long as the reader is held,
-              and gives it back on the way out. */}
-          <div className={styles.heldGround} aria-hidden="true" />
+              and gives it back on the way out -- as water rising over it,
+              rather than as a panel dimming up. */}
+          <GroundWash
+            section="about"
+            theme={theme}
+            rise="--ground-in"
+            className={styles.heldGround}
+          />
 
           {/*
             Held with everything else rather than left in the flow. A heading
@@ -136,75 +142,6 @@ export function About() {
           </div>
         </PinnedSequence>
 
-        {/* Education Section */}
-        <div className={styles.educationWrapper}>
-          <div className={styles.sectionTitle}>Education</div>
-          <div className={styles.educationGrid}>
-            {cvData.education.map((edu, index) => (
-              <motion.div
-                key={edu.school}
-                className={edu.school.includes('HiLCoE') ? styles.wide : ''}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ 
-                  duration: 0.8, 
-                  ease: [0.76, 0, 0.24, 1],
-                  delay: index * 0.1
-                }}
-              >
-                <Card>
-                  <div className={styles.cardContent}>
-                    <CardTitle>{edu.school}</CardTitle>
-                    <div className={styles.educationMeta}>
-                      <CardText>{edu.degree}</CardText>
-                      <CardText>{edu.period}</CardText>
-                    </div>
-                    <TagsGrid>
-                      {edu.details.map((detail, i) => (
-                        <Tag key={i}>{detail}</Tag>
-                      ))}
-                    </TagsGrid>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Certifications Section */}
-          <div className={styles.sectionTitle} style={{ marginTop: '5rem' }}>Certifications</div>
-          <div className={styles.educationGrid}>
-            {cvData.certifications.map((cert, index) => (
-              <motion.div
-                key={cert.issuer}
-                className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ 
-                  duration: 0.8, 
-                  ease: [0.76, 0, 0.24, 1],
-                  delay: index * 0.1
-                }}
-              >
-                <Card>
-                  <div className={styles.cardContent}>
-                    <CardTitle>{cert.issuer}</CardTitle>
-                    <div className={styles.educationMeta}>
-                      <CardText>{cert.year}</CardText>
-                    </div>
-                    <CardText>{cert.description}</CardText>
-                    <TagsGrid>
-                      {cert.items.map((item, i) => (
-                        <Tag key={i}>{item}</Tag>
-                      ))}
-                    </TagsGrid>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );

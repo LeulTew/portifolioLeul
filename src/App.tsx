@@ -12,6 +12,7 @@ import { BackgroundScene } from './components/BackgroundScene';
 import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
+import { Education } from './components/sections/Education/Education';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
 import { setScrollProgress } from './lib/scroll/scrollProgress';
@@ -30,8 +31,16 @@ import styles from './App.module.css';
  */
 const SCROLL_PAGE_EPSILON = 0.15;
 
-/** The section that covers the world outright, and freezes it while it does. */
-const OPAQUE_SECTION_ID = 'about';
+/**
+ * The run of sections during which the world holds still, first to last.
+ *
+ * Two of them now, and they hold for different reasons. About covers the world
+ * outright, so there is nothing behind it to see. Education uncovers it
+ * deliberately, on one side, and the whole point of that reveal is that the
+ * scene arrives without moving: a camera still travelling as the panel draws
+ * back would turn the uncovering into a move.
+ */
+const HELD_SECTION_IDS = ['about', 'education'] as const;
 
 /**
  * Content settles in bursts as images and fonts land. Collapsing a burst into
@@ -112,12 +121,17 @@ function App() {
     // for exactly as long as it does. Measured from layout rather than assumed,
     // because the same section owns a very different share of the scroll on a
     // tablet and on a 4K display.
-    const opaque = document.getElementById(OPAQUE_SECTION_ID);
+    const held = HELD_SECTION_IDS.map((id) => document.getElementById(id)).filter(
+      (element): element is HTMLElement => element !== null
+    );
+    const first = held[0];
+    const last = held[held.length - 1];
+
     setCameraHold(
-      opaque
+      first && last
         ? computeHoldRange(
-            opaque.offsetTop - (node.offsetTop || 0),
-            opaque.offsetHeight,
+            first.offsetTop - (node.offsetTop || 0),
+            last.offsetTop + last.offsetHeight - first.offsetTop,
             contentHeight,
             viewportHeight
           )
@@ -280,6 +294,7 @@ function App() {
                     <main ref={attachMain} className={styles.main}>
                       <Home onNavigate={scrollToSection} />
                       <About />
+                      <Education />
                       <Skills />
                       <Projects theme={theme} />
                       <div className={styles.spacer} />

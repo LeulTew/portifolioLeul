@@ -38,18 +38,6 @@ describe("About Section", () => {
     });
   });
 
-  it("renders education cards in the layout", () => {
-    render(<About />);
-    expect(screen.getByText("Education")).toBeInTheDocument();
-    expect(screen.getByText(/HiLCoE School of Computer Science/i)).toBeInTheDocument();
-    expect(screen.getByText(/Saint Joseph School/i)).toBeInTheDocument();
-  });
-
-  it("renders certifications cards cleanly", () => {
-    render(<About />);
-    expect(screen.getByText("Certifications")).toBeInTheDocument();
-    expect(screen.getByText(/Bootdev/i)).toBeInTheDocument();
-  });
 });
 
 describe('About held sequence', () => {

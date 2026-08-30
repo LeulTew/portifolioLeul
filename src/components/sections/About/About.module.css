@@ -140,12 +140,6 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: #000c10;
-  opacity: var(--ground-in, 0);
-}
-
-:global([data-theme='light']) .heldGround {
-  background: #f4f7fb;
 }
 
 /*
