@@ -75,3 +75,33 @@ describe('About column convergence', () => {
     }
   });
 });
+
+describe('About stages', () => {
+  it('gives each statement its own stage, so they do not arrive together', () => {
+    render(<About />);
+    expect(screen.getByTestId('about-stage-one')).toBeInTheDocument();
+    expect(screen.getByTestId('about-stage-two')).toBeInTheDocument();
+  });
+
+  it('keeps the left statement in the first stage and the right in the second', () => {
+    render(<About />);
+    expect(
+      screen.getByTestId('about-stage-one').contains(
+        screen.getByTestId('about-left-column')
+      )
+    ).toBe(true);
+    expect(
+      screen.getByTestId('about-stage-two').contains(
+        screen.getByTestId('about-right-column')
+      )
+    ).toBe(true);
+  });
+
+  it('fills the space each statement leaves rather than standing it empty', () => {
+    render(<About />);
+    const plates = screen.getAllByTestId('parallax-plate');
+    expect(plates).toHaveLength(2);
+    expect(screen.getByTestId('about-stage-one').contains(plates[0])).toBe(true);
+    expect(screen.getByTestId('about-stage-two').contains(plates[1])).toBe(true);
+  });
+});

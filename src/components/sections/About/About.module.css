@@ -62,18 +62,38 @@
    Full-Width Spatial Editorial Stage (Dedicated Cinematic Viewport)
    ========================================================================== */
 
-.heroSpatialLayout {
+/*
+ * One statement per screen.
+ *
+ * A full viewport tall with its contents centred, so each statement is
+ * vertically centred when it is the thing on screen -- which is what lets it
+ * be read rather than passed. The two used to share a 70vh row, arriving and
+ * leaving together, so neither was ever the subject.
+ */
+.stage {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
-  min-height: 70vh;
+  min-height: 100vh;
   padding: 0 clamp(2rem, 9vw, 16rem);
-  margin: 2rem 0 16vh;
+  margin: 0 0 4vh;
   pointer-events: auto;
   position: relative;
   box-sizing: border-box;
+  gap: clamp(2rem, 6vw, 8rem);
+}
+
+/*
+ * Below the breakpoint the plate is dropped and the statement takes the width,
+ * so a full screen each would be mostly empty. They stack and share.
+ */
+@media (max-width: 900px) {
+  .stage {
+    min-height: auto;
+    margin-bottom: 12vh;
+  }
 }
 
 .leftColumn {
@@ -91,7 +111,10 @@
 .centerSpace {
   flex: 1;
   min-width: clamp(60px, 12vw, 360px);
+  max-width: clamp(280px, 34vw, 520px);
   pointer-events: none;
+  /* Inherited by the plate's borders and horizon. */
+  color: rgba(210, 236, 255, 0.42);
 }
 
 .rightColumn {
@@ -236,7 +259,7 @@
     padding-right: 1.5rem;
   }
 
-  .heroSpatialLayout {
+  .stage {
     flex-direction: column;
     align-items: stretch;
     gap: 3.5rem;

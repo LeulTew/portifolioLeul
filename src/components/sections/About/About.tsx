@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useBandPresence } from '@/lib/scroll/bandPresence';
+import { useBandProgress } from '@/lib/scroll/bandProgress';
+import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { Card } from '../../ui/Card';
 import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
@@ -59,10 +61,28 @@ const subItemVariants = {
  */
 const COLUMN_TRAVEL_REM = 7;
 
+/**
+ * One statement per screen, each vertically centred in its own stage.
+ *
+ * The two used to sit side by side in a single row, which meant they arrived
+ * and left together and neither was ever the thing being read. Given a stage
+ * each, the first is centred and held while it is read, leaves to the side it
+ * lives on, and the second arrives from the other -- and the space each leaves
+ * is where the plate goes, so nothing is standing empty.
+ */
+function useStage() {
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  return {
+    ref: setElement,
+    presence: useBandPresence(element),
+    progress: useBandProgress(element),
+  };
+}
+
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
-  const [band, setBand] = useState<HTMLElement | null>(null);
-  const presence = useBandPresence(band);
+  const first = useStage();
+  const second = useStage();
   const reducedMotion = getPrefersReducedMotion();
 
   /**
@@ -73,7 +93,7 @@ export function About() {
    * them the reader had scrolled. Reading presence per frame makes the exit
    * the entrance in reverse, for free.
    */
-  const column = (direction: -1 | 1) => ({
+  const column = (direction: -1 | 1, presence: number) => ({
     opacity: presence,
     transform: reducedMotion
       ? undefined
@@ -105,7 +125,7 @@ export function About() {
         </motion.div>
 
         {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
-        <div className={styles.heroSpatialLayout} ref={setBand}>
+        <div className={styles.stage} ref={first.ref} data-testid="about-stage-one">
           {/* Left Column: Bold Philosophy / Core Identity */}
           <motion.div
             className={styles.leftColumn}
@@ -113,7 +133,7 @@ export function About() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
-            style={column(-1)}
+            style={column(-1, first.presence)}
             data-testid="about-left-column"
           >
             <h3 className={styles.statementText}>
@@ -135,17 +155,33 @@ export function About() {
             </motion.div>
           </motion.div>
 
-          {/* Center Column: Expansive Breathing Space for 3D TV & Terrain */}
-          <div className={styles.centerSpace} aria-hidden="true" />
+          <div className={styles.centerSpace}>
+            <ParallaxPlate
+              progress={first.progress}
+              presence={first.presence}
+              reducedMotion={reducedMotion}
+            />
+          </div>
+        </div>
 
-          {/* Right Column: Anchored on the Far Right Edge of the Screen */}
+        {/* The second statement takes the screen once the first has left it. */}
+        <div className={styles.stage} ref={second.ref} data-testid="about-stage-two">
+          <div className={styles.centerSpace}>
+            <ParallaxPlate
+              progress={second.progress}
+              presence={second.presence}
+              flipped
+              reducedMotion={reducedMotion}
+            />
+          </div>
+
           <motion.div
             className={styles.rightColumn}
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
-            style={column(1)}
+            style={column(1, second.presence)}
             data-testid="about-right-column"
           >
             <h3 className={styles.statementText}>

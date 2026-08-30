@@ -1,0 +1,74 @@
+/*
+ * Four concentric planes and a horizon line, drifting against one another.
+ *
+ * Drawn with borders rather than fills: a filled stack reads as a target, and
+ * the space beside a statement should hold the eye for a moment and then give
+ * it back. Nothing here is a gradient wash.
+ */
+.plate {
+  position: relative;
+  width: 100%;
+  /* Locked, so the stage cannot shift as the plate resolves. */
+  aspect-ratio: 1;
+  max-height: 62vh;
+  margin: 0 auto;
+  pointer-events: none;
+  /* Contains the planes' drift without clipping their glow. */
+  isolation: isolate;
+}
+
+.plane {
+  position: absolute;
+  border: 1px solid currentColor;
+  /*
+   * Not a circle and not a square. A rounded rectangle at this radius keeps a
+   * flat top and bottom, so the stack reads as plates seen face-on rather than
+   * as rings.
+   */
+  border-radius: 22%;
+  will-change: transform;
+}
+
+/* The nearest plane carries the accent; the rest are structure. */
+.plane:last-of-type {
+  border-color: #00ffc2;
+  box-shadow: 0 0 24px -8px #00ffc2;
+}
+
+/*
+ * A single line through the middle, which is what fixes the planes in space:
+ * without a horizon the stack has no ground and the drift reads as wobble.
+ */
+.horizon {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    currentColor 22%,
+    currentColor 78%,
+    transparent 100%
+  );
+  opacity: 0.38;
+}
+
+.flipped {
+  /* The second stage is the same construction seen from the other side. */
+  transform: scaleX(-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plane {
+    will-change: auto;
+  }
+}
+
+/* Below the breakpoint the columns stack, and the plate is the thing to cut. */
+@media (max-width: 900px) {
+  .plate {
+    display: none;
+  }
+}

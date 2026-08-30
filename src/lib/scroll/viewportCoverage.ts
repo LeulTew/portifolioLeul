@@ -30,8 +30,24 @@ export function focusStrength(
 }
 
 
-/** Coverage steps sampled by the observer. More steps means a smoother ramp. */
-const THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
+/**
+ * Coverage steps sampled by the observer.
+ *
+ * IntersectionObserver only reports when a threshold is crossed, so this is
+ * the sampling rate of every scroll-driven value in the DOM layer -- and the
+ * thresholds are fractions of the ELEMENT, not of the scroll. A section taller
+ * than the viewport spends its whole transit inside a handful of steps at 21,
+ * so anything scrubbed by it advances in a few large jumps: a line meant to be
+ * drawn by the scroll appears in two or three slides instead.
+ *
+ * A hundred steps is still one observer and one callback per crossing.
+ */
+export const COVERAGE_STEPS = 101;
+
+const THRESHOLDS = Array.from(
+  { length: COVERAGE_STEPS },
+  (_, i) => i / (COVERAGE_STEPS - 1)
+);
 
 /**
  * The raw share of the viewport `element` occupies, in [0, 1].

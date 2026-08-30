@@ -276,8 +276,15 @@
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
   width: 60px;
   height: 300px;
-  /* Above the hero's copy, below About. */
-  z-index: 2;
+  /*
+   * Above About, not below it.
+   *
+   * The mark hangs past the hero's own bottom edge, which is exactly where
+   * About's panel begins -- so letting About paint over it hid the part of the
+   * line that does the bridging the moment the scroll started. It is drawn by
+   * the scroll, so it has to survive the scroll to be seen at all.
+   */
+  z-index: 20;
   pointer-events: auto;
 }
 

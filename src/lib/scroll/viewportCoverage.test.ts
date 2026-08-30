@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { focusStrength, FULL_FOCUS_COVERAGE, useViewportCoverage } from './viewportCoverage';
+import { focusStrength, FULL_FOCUS_COVERAGE, useViewportCoverage, COVERAGE_STEPS } from './viewportCoverage';
 
 describe('focusStrength', () => {
   it('is zero when the section is off screen', () => {
@@ -146,5 +146,14 @@ describe('useViewportCoverage', () => {
     const element = document.createElement('section');
     const { result } = renderHook(() => useViewportCoverage(element));
     expect(result.current).toBe(0);
+  });
+});
+
+describe('coverage sampling', () => {
+  it('samples finely enough to scrub, not just to switch', () => {
+    // Thresholds are fractions of the element. A section taller than the
+    // viewport crosses only a few of them across its whole transit, so a
+    // coarse set turns anything drawn by the scroll into two or three slides.
+    expect(COVERAGE_STEPS).toBeGreaterThanOrEqual(101);
   });
 });
