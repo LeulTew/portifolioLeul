@@ -30,53 +30,94 @@
   -webkit-background-clip: text;
   background-clip: text;
 
+  /*
+   * Three flake fields at different tile sizes, plus the drift they build.
+   * Tiles are small relative to a headline glyph so each letter holds a couple
+   * of dozen flakes -- at 27px and up a letter contains one or two, which
+   * reads as a speck crossing it, not as snow.
+   */
   background-image:
-    radial-gradient(circle at 30% 22%, var(--flake) 0 1.6px, transparent 1.9px),
-    radial-gradient(circle at 72% 58%, var(--flake) 0 1.9px, transparent 2.2px),
-    radial-gradient(circle at 14% 80%, var(--flake) 0 1.3px, transparent 1.6px),
+    radial-gradient(circle at 34% 20%, var(--flake) 0 1.5px, transparent 1.8px),
+    radial-gradient(circle at 68% 62%, var(--flake-far) 0 1.1px, transparent 1.4px),
+    radial-gradient(circle at 12% 78%, var(--flake) 0 1.3px, transparent 1.6px),
     linear-gradient(currentColor, currentColor);
 
   background-size:
-    27px 27px,
-    38px 38px,
-    21px 21px,
-    100% 0%;
+    13px 13px,
+    9px 9px,
+    18px 18px,
+    100% 3%;
 
   background-position:
-    0 -140px,
-    0 -190px,
-    0 -240px,
+    0 0,
+    0 0,
+    0 0,
     bottom;
 
   background-repeat: repeat, repeat, repeat, no-repeat;
 
-  /* Slightly brighter than the drift, so flakes read against what they land in. */
-  --flake: color-mix(in srgb, currentColor 55%, white);
+  /* Brighter than the drift, so flakes read against what they land in. */
+  --flake: color-mix(in srgb, currentColor 45%, white);
+  /* The small field sits further back, so the fall has depth. */
+  --flake-far: color-mix(in srgb, currentColor 78%, white);
 
   will-change: background-position, background-size;
   transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .filling .char {
-  animation: snowfall var(--fill-duration, 900ms) cubic-bezier(0.32, 0.6, 0.3, 1)
+  /*
+   * Near-linear. An eased fall means the flakes decelerate on the way down,
+   * which nothing falling does; the settling belongs to the drift, and that is
+   * shaped by the keyframe stops instead.
+   */
+  animation: snowfall var(--fill-duration, 2400ms) cubic-bezier(0.4, 0.15, 0.5, 1)
     var(--char-delay, 0ms) forwards;
 }
 
 @keyframes snowfall {
-  to {
-    /* The flakes fall past, and the drift they leave behind fills the glyph. */
+  /*
+   * The drift is held near the baseline for the first third: the letter has to
+   * be seen catching snow before it is seen full, or the fall is just texture
+   * on a wipe. Flakes keep falling the whole way down, including after the
+   * glyph is full, so the last thing you see is still weather.
+   */
+  0% {
     background-position:
-      0 190px,
-      0 250px,
-      0 320px,
+      0 0,
+      0 0,
+      0 0,
       bottom;
     background-size:
-      27px 27px,
-      38px 38px,
-      21px 21px,
+      13px 13px,
+      9px 9px,
+      18px 18px,
+      100% 3%;
+  }
+
+  32% {
+    background-size:
+      13px 13px,
+      9px 9px,
+      18px 18px,
+      100% 11%;
+  }
+
+  100% {
+    /* Travel is a whole multiple of each tile, so no field jumps as it lands. */
+    background-position:
+      0 286px,
+      0 342px,
+      0 234px,
+      bottom;
+    background-size:
+      13px 13px,
+      9px 9px,
+      18px 18px,
       100% 100%;
   }
 }
+
 
 /*
  * Backstop. The glyph is unpainted until the drift builds, so a browser that
@@ -85,9 +126,9 @@
 .settled .char {
   animation: none;
   background-size:
-    27px 27px,
-    38px 38px,
-    21px 21px,
+    13px 13px,
+    9px 9px,
+    18px 18px,
     100% 100%;
 }
 

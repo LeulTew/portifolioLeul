@@ -133,8 +133,8 @@ describe('Home choreography', () => {
     ]);
 
     // Delays come from the sequence, never hard-coded in the markup.
-    expect(layers.find((l) => l.id === 'role')?.at).toBe('1.65s');
-    expect(layers.find((l) => l.id === 'actions')?.at).toBe('2.25s');
+    expect(layers.find((l) => l.id === 'role')?.at).toBe('2.1s');
+    expect(layers.find((l) => l.id === 'actions')?.at).toBe('2.8s');
   });
 
   it('never hides a layer behind a JS-driven start state', () => {

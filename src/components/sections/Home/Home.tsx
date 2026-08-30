@@ -139,9 +139,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
               text="Tewodros"
               filling={hasEntered}
               settled={settled}
-              delayMs={
-                (cueDelay(HERO_SEQUENCE, 'title') + 0.22) * 1000
-              }
+              delayMs={cueDelay(HERO_SEQUENCE, 'title') * 1000}
               durationMs={cueDuration(HERO_SEQUENCE, 'title') * 1000}
               className={styles.lastname}
             />

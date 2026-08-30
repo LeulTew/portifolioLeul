@@ -28,13 +28,18 @@ export const HERO_SEQUENCE: readonly SectionCue[] = [
   // The plate wipes in under everything, and finishes before any copy lands.
   { id: 'backdrop', at: 0, duration: 0.7, engine: 'css' },
   { id: 'portrait', at: 0.6, duration: 0.55, engine: 'css' },
-  // The longest beat: characters uncover one by one on their own stagger.
-  { id: 'title', at: 1.0, duration: 0.9, engine: 'css' },
-  { id: 'role', at: 1.65, duration: 0.5, engine: 'css' },
-  { id: 'description', at: 1.9, duration: 0.55, engine: 'css' },
-  { id: 'actions', at: 2.25, duration: 0.45, engine: 'css' },
+  /*
+   * By far the longest beat, and it deliberately runs on underneath the rest.
+   * The name accumulates rather than arriving, and accumulation needs time to
+   * be legible as such -- at under a second it registers as a flash, not as
+   * snow gathering. The cues below start while it is still filling.
+   */
+  { id: 'title', at: 1.0, duration: 2.4, engine: 'css' },
+  { id: 'role', at: 2.1, duration: 0.5, engine: 'css' },
+  { id: 'description', at: 2.4, duration: 0.55, engine: 'css' },
+  { id: 'actions', at: 2.8, duration: 0.45, engine: 'css' },
   // Slowest of all, and last: the line takes its time drawing itself.
-  { id: 'affordance', at: 2.5, duration: 1.4, engine: 'css' },
+  { id: 'affordance', at: 3.05, duration: 1.4, engine: 'css' },
 ] as const;
 
 /** Coverage at which a section counts as having arrived. */

@@ -64,7 +64,13 @@ describe.each(SEQUENCES)('%s sequence', (_name, sequence) => {
   it('gives every layer a real duration', () => {
     for (const cue of sequence) {
       expect(cue.duration).toBeGreaterThan(0.2);
-      expect(cue.duration).toBeLessThanOrEqual(1.5);
+      /*
+       * The ceiling covers the title, which accumulates rather than arriving.
+       * Accumulation has to be watched to read as accumulation; under a second
+       * it registers as a flash. Nothing should run longer than this, though --
+       * past it the reader is waiting on the page rather than reading it.
+       */
+      expect(cue.duration).toBeLessThanOrEqual(2.5);
     }
   });
 
@@ -100,7 +106,7 @@ describe('hero ordering', () => {
 describe('cue lookup', () => {
   it('reports a layer’s delay and duration', () => {
     expect(cueDelay(HERO_SEQUENCE, 'title')).toBe(1.0);
-    expect(cueDuration(HERO_SEQUENCE, 'title')).toBe(0.9);
+    expect(cueDuration(HERO_SEQUENCE, 'title')).toBe(2.4);
   });
 
   it('degrades safely for an unknown layer', () => {
