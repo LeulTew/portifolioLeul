@@ -41,7 +41,7 @@ export function AtmosphericDrift({
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
-    writeDriftInstances(mesh, seeds, count, 0, bounds);
+    writeDriftInstances(mesh, seeds, count, 0, bounds, null);
   }, [seeds, count, bounds]);
 
   useFrame((state) => {
@@ -49,7 +49,16 @@ export function AtmosphericDrift({
     if (!mesh || count <= 0) return;
     if (getPrefersReducedMotion()) return;
 
-    writeDriftInstances(mesh, seeds, count, state.clock.getElapsedTime(), bounds);
+    // The camera orbits through this field, so motes approaching the lens are
+    // scaled away rather than rendering as large bright shapes.
+    writeDriftInstances(
+      mesh,
+      seeds,
+      count,
+      state.clock.getElapsedTime(),
+      bounds,
+      state.camera?.position
+    );
   });
 
   if (count <= 0) return null;

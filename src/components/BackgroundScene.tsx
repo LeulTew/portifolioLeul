@@ -15,7 +15,6 @@ import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
 import { CinematicCameraController } from './3d/CinematicCameraController';
 import { AtmosphericDrift } from './3d/AtmosphericDrift';
-import { DRIFT_FIELD_ORIGIN } from '@/lib/atmosphere/drift';
 import { ChapterGrading } from './3d/ChapterGrading';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
@@ -287,16 +286,14 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
         {/* Distant starfield */}
         <Particles color={palette.highlight} count={particleCount} />
 
-        {/* Motes drifting through the island's air. Anchored over the island
-            and behind the camera's closest approach (z = 8), so no mote can
-            cross the lens and read as a large bright shape. */}
-        <group position={[...DRIFT_FIELD_ORIGIN]}>
-          <AtmosphericDrift
-            count={driftCount}
-            color={palette.highlight}
-            opacity={isLight ? 0.35 : 0.55}
-          />
-        </group>
+        {/* Motes drifting through the island's air. The field is placed in
+            world space by its own bounds, and motes fade out as the orbiting
+            camera passes through them. */}
+        <AtmosphericDrift
+          count={driftCount}
+          color={palette.highlight}
+          opacity={isLight ? 0.35 : 0.55}
+        />
 
         <Suspense fallback={null}>
           {/* Placed next to the prism [12, 2, -15] */}
