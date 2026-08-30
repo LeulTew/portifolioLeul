@@ -4,10 +4,10 @@ import { charDelayMs } from './charDelay';
 /**
  * Text that fills as snow falls into it.
  *
- * Each letter is its own vessel: flakes are painted through the glyph and
- * settle inside it until it is full. Every letter shares one delay, so the
- * drift line rises across the whole word together -- the word fills the way a
- * ledge fills, not the way a wipe crosses it.
+ * Snow drifts down across and behind the whole headline, and each letter fills
+ * with what lands in it -- a body rising behind a scalloped surface that
+ * sloshes as the level changes. Every letter shares one delay, so the word
+ * fills the way a ledge fills, not the way a wipe crosses it.
  */
 
 export interface LiquidFillTextProps {
@@ -53,7 +53,11 @@ export function LiquidFillText({
       data-testid="liquid-fill-text"
       data-filling={filling}
       data-settled={settled}
-      style={{ ['--fill-duration' as string]: `${durationMs}ms` }}
+      style={{
+        ['--fill-duration' as string]: `${durationMs}ms`,
+        /* The snowfall belongs to the word, so it starts on the word's cue. */
+        ['--word-delay' as string]: `${delayMs}ms`,
+      }}
     >
       {characters.map((char, index) => {
         if (char === ' ') {

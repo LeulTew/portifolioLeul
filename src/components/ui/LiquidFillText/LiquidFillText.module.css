@@ -1,20 +1,106 @@
 /*
- * Snow falls through the letterforms and settles inside them until they are
- * full.
+ * Snow falls over the headline from above, and the letters fill with what
+ * lands in them.
  *
- * Every layer here is painted through `background-clip: text`, so the glyph is
- * the container: flakes are only ever visible where a letter is, and the drift
- * that builds up is bounded by the letter's own shape. Nothing moves and
- * nothing is revealed -- the letter fills because something accumulated in it.
+ * Two layers, and the split matters. The fall belongs to the word, not to any
+ * letter: it is a field drifting down across the whole headline and behind it,
+ * unclipped, so flakes exist in the air above the text and between the letters
+ * rather than only inside the letterforms. Painting the flakes through the
+ * glyph -- which is what this did before -- means snow can only ever appear
+ * where a letter already is, so nothing is ever seen arriving.
  *
- * Three flake layers at different tile sizes fall at different rates, so they
- * do not read as one repeating sheet, and a fourth layer is the drift, grown
- * from the baseline by animating its background-size.
+ * What the letters hold is the drift: a body rising from the baseline behind a
+ * scalloped surface that rides on top of it and sloshes as it comes up. That
+ * surface is what makes the rise read as liquid rather than as a bar chart.
  */
 .word {
+  position: relative;
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
+}
+
+/*
+ * The weather. Absolutely positioned and first in paint order, so it sits
+ * behind the letters and shows through their hollow interiors -- the letters
+ * are transparent until they fill, so you watch the snow fall through the
+ * shape that is about to catch it.
+ */
+.word::before {
+  content: '';
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: 0.06em;
+  /* Reaches well above the cap height: the fall needs somewhere to fall from. */
+  height: 340%;
+  pointer-events: none;
+  opacity: 0;
+
+  background-image:
+    radial-gradient(circle at 30% 18%, var(--flake) 0 1.6px, transparent 2px),
+    radial-gradient(circle at 74% 64%, var(--flake-far) 0 1.1px, transparent 1.5px),
+    radial-gradient(circle at 12% 82%, var(--flake) 0 1.35px, transparent 1.7px);
+  background-size:
+    15px 15px,
+    23px 23px,
+    10px 10px;
+  background-repeat: repeat;
+
+  /*
+   * Fades in at the top and out at the bottom, so flakes appear out of the air
+   * and are absorbed at the line rather than stopping dead on an edge.
+   */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 16%,
+    #000 68%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 16%,
+    #000 68%,
+    transparent 100%
+  );
+}
+
+.filling::before {
+  /*
+   * Two animations on different properties: the drift loops seamlessly (each
+   * travel is a whole multiple of its tile) while the presence is a one-shot,
+   * so the weather arrives, lasts as long as the fill, and clears.
+   */
+  animation:
+    snowdrift 2.6s linear var(--word-delay, 0ms) infinite,
+    weather calc(var(--fill-duration, 2400ms) + 900ms)
+      cubic-bezier(0.4, 0, 0.6, 1) var(--word-delay, 0ms) forwards;
+}
+
+@keyframes snowdrift {
+  to {
+    background-position:
+      0 300px,
+      0 322px,
+      0 340px;
+  }
+}
+
+@keyframes weather {
+  0% {
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .char {
@@ -31,32 +117,30 @@
   background-clip: text;
 
   /*
-   * Three flake fields at different tile sizes, plus the drift they build.
-   * Tiles are small relative to a headline glyph so each letter holds a couple
-   * of dozen flakes -- at 27px and up a letter contains one or two, which
-   * reads as a speck crossing it, not as snow.
+   * Two layers: the scalloped surface, then the body under it. The surface is
+   * a row of half-ellipses on a thin strip; where they meet, the notches run
+   * down to the body's own top edge, so the join is a wave rather than a seam.
    */
   background-image:
-    radial-gradient(circle at 34% 20%, var(--flake) 0 1.5px, transparent 1.8px),
-    radial-gradient(circle at 68% 62%, var(--flake-far) 0 1.1px, transparent 1.4px),
-    radial-gradient(circle at 12% 78%, var(--flake) 0 1.3px, transparent 1.6px),
+    radial-gradient(
+      ellipse 13px 9px at 50% 100%,
+      var(--crest) 0 99%,
+      transparent 100%
+    ),
     linear-gradient(currentColor, currentColor);
 
   background-size:
-    13px 13px,
-    9px 9px,
-    18px 18px,
+    26px 11px,
     100% 3%;
 
   background-position:
-    0 0,
-    0 0,
-    0 0,
+    0 100%,
     bottom;
 
-  background-repeat: repeat, repeat, repeat, no-repeat;
+  background-repeat: repeat-x, no-repeat;
 
-  /* Brighter than the drift, so flakes read against what they land in. */
+  /* Brighter than the body, so the surface catches light as it rises. */
+  --crest: color-mix(in srgb, currentColor 40%, white);
   --flake: color-mix(in srgb, currentColor 45%, white);
   /* The small field sits further back, so the fall has depth. */
   --flake-far: color-mix(in srgb, currentColor 78%, white);
@@ -66,58 +150,81 @@
 }
 
 .filling .char {
-  /*
-   * Near-linear. An eased fall means the flakes decelerate on the way down,
-   * which nothing falling does; the settling belongs to the drift, and that is
-   * shaped by the keyframe stops instead.
-   */
-  animation: snowfall var(--fill-duration, 2400ms) cubic-bezier(0.4, 0.15, 0.5, 1)
-    var(--char-delay, 0ms) forwards;
+  animation: settle var(--fill-duration, 2400ms) linear var(--char-delay, 0ms)
+    forwards;
 }
 
-@keyframes snowfall {
-  /*
-   * The drift is held near the baseline for the first third: the letter has to
-   * be seen catching snow before it is seen full, or the fall is just texture
-   * on a wipe. Flakes keep falling the whole way down, including after the
-   * glyph is full, so the last thing you see is still weather.
-   */
+/*
+ * The rise, with the surface riding on it.
+ *
+ * Timing is in the stops rather than in an easing curve, because the two are
+ * not the same shape: the body overshoots at 74%, falls back past its mark,
+ * and settles -- a bounce, not a decelerating slide. The surface's horizontal
+ * position wanders across the stops, so the wave slops from side to side as
+ * the level changes instead of rising as a rigid comb.
+ *
+ * The surface's y runs 100% to 0% as the body's height runs 0 to full, which
+ * keeps the two within a strip-height of each other the whole way up, and
+ * finishes above the glyph so there is no ripple left on a full letter.
+ */
+@keyframes settle {
   0% {
     background-position:
-      0 0,
-      0 0,
-      0 0,
+      0 100%,
       bottom;
     background-size:
-      13px 13px,
-      9px 9px,
-      18px 18px,
+      26px 11px,
       100% 3%;
   }
-
-  32% {
-    background-size:
-      13px 13px,
-      9px 9px,
-      18px 18px,
-      100% 11%;
-  }
-
-  100% {
-    /* Travel is a whole multiple of each tile, so no field jumps as it lands. */
+  26% {
     background-position:
-      0 286px,
-      0 342px,
-      0 234px,
+      -14px 74%,
       bottom;
     background-size:
-      13px 13px,
-      9px 9px,
-      18px 18px,
+      26px 11px,
+      100% 26%;
+  }
+  50% {
+    background-position:
+      9px 46%,
+      bottom;
+    background-size:
+      26px 11px,
+      100% 54%;
+  }
+  74% {
+    background-position:
+      -7px 4%,
+      bottom;
+    background-size:
+      26px 11px,
+      100% 106%;
+  }
+  87% {
+    background-position:
+      5px 14%,
+      bottom;
+    background-size:
+      26px 11px,
+      100% 94%;
+  }
+  95% {
+    background-position:
+      -2px 2%,
+      bottom;
+    background-size:
+      26px 11px,
+      100% 102%;
+  }
+  100% {
+    background-position:
+      0 -12px,
+      bottom;
+    background-size:
+      26px 11px,
       100% 100%;
   }
 }
-
 
 /*
  * Backstop. The glyph is unpainted until the drift builds, so a browser that
@@ -125,11 +232,17 @@
  */
 .settled .char {
   animation: none;
+  background-position:
+    0 -12px,
+    bottom;
   background-size:
-    13px 13px,
-    9px 9px,
-    18px 18px,
+    26px 11px,
     100% 100%;
+}
+
+.settled::before {
+  animation: none;
+  opacity: 0;
 }
 
 .char:hover {
@@ -148,6 +261,11 @@
     -webkit-text-fill-color: currentColor;
     background-image: none;
   }
+
+  /* Snow with nothing to collect in is just noise over the headline. */
+  .word::before {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -162,6 +280,12 @@
   }
 
   .filling .char {
+    animation: none;
+  }
+
+  .word::before,
+  .filling::before {
+    display: none;
     animation: none;
   }
 

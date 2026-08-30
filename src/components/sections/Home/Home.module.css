@@ -264,18 +264,34 @@
 .scrollCue {
   position: absolute;
   left: 15rem;
-  top: 58%;
+  /*
+   * Below the copy and running past the hero's own edge, so the mark spans the
+   * gap between the two sections instead of floating beside the text. About is
+   * opaque and paints over the tail, which is what gives the line something to
+   * arrive at.
+   */
+  top: auto;
+  bottom: -6rem;
   transform: translateX(-50%);
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
-  width: 58px;
-  height: 220px;
-  z-index: 100;
+  width: 60px;
+  height: 300px;
+  /* Above the hero's copy, below About. */
+  z-index: 2;
   pointer-events: auto;
 }
 
 @media (max-width: 1100px) {
   .scrollCue {
     left: 8rem;
+  }
+}
+
+/* Short viewports have no room to hang a 300px mark below the copy. */
+@media (max-height: 760px) {
+  .scrollCue {
+    height: 210px;
+    bottom: -4rem;
   }
 }
 

@@ -17,19 +17,32 @@ import styles from './ScrollCue.module.css';
 /** Dash lengths in the stylesheet are percentages of the path, not units. */
 const PATH_LENGTH = 100;
 
-/** Upper arc out to the bulge, then the lower arc back in. */
+/**
+ * Upper arc out to the bulge, the lower arc back in, then a reversed arc that
+ * takes the 45 degree tangent round to vertical and a straight run down.
+ *
+ * The original two arcs stopped mid-air travelling diagonally, which left the
+ * mark pointing off to one side of the section below it. The S-bend turns that
+ * tangent to plumb: the line leaves the hero heading straight down, and the run
+ * carries it to the edge, so it reads as a connection between the two sections
+ * rather than a flourish sitting inside one of them.
+ *
+ * The turn is a 60-radius arc centred at (-7.7, 307.7) -- the point 60 to the
+ * left of the tangent -- which is the unique arc leaving (34.7, 265.3) at 45
+ * degrees and arriving at (52.3, 307.7) pointing straight down.
+ */
 const TRACE =
-  'M 53.2 53.2 A 181.6 181.6 0 0 0 0 181.6 A 118.4 118.4 0 0 0 34.7 265.3';
+  'M 53.2 53.2 A 181.6 181.6 0 0 0 0 181.6 A 118.4 118.4 0 0 0 34.7 265.3 ' +
+  'A 60 60 0 0 1 52.3 307.7 L 52.3 380';
 
 /**
- * Chevron at the end of the line, aligned to the curve's tangent there.
+ * Chevron at the end of the line, aligned to the tangent there.
  *
- * The lower arc leaves its centre at 45 degrees down and to the right, so the
- * head points that way and its tip sits on the last point of the trace. The
- * original mark had the head floating ~100px below the curve, pointing
- * straight down, which read as a detached mark rather than an arrow.
+ * The straight run leaves the line vertical, so the head points straight down
+ * and its tip sits on the trace's last point. Barbs are 19 long at 34 degrees
+ * either side of the run.
  */
-const HEAD = 'M 31.1 246.6 L 34.7 265.3 L 16.0 261.7';
+const HEAD = 'M 41.7 364.3 L 52.3 380 L 62.9 364.3';
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;
@@ -62,7 +75,7 @@ export function ScrollCue({
   return (
     <svg
       className={[styles.cue, className].filter(Boolean).join(' ')}
-      viewBox="0 0 100 390"
+      viewBox="-2 50 67 334"
       preserveAspectRatio="xMinYMin meet"
       role="button"
       tabIndex={0}

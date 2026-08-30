@@ -90,14 +90,34 @@ describe('ScrollCue', () => {
 
   it('lands the head on the end of the line, pointing along it', () => {
     // The original head floated ~100px below the curve pointing straight down,
-    // which read as a detached mark rather than an arrow.
+    // which read as a detached mark rather than an arrow. Derived from the
+    // paths rather than hardcoded, so it still holds when the line is reshaped.
     render(<ScrollCue progress={1} />);
     const head = screen.getByTestId('scroll-cue-head').getAttribute('d') ?? '';
     const trace = screen.getByTestId('scroll-cue-trace').getAttribute('d') ?? '';
 
-    // The tip is the trace's last point.
-    expect(head).toContain('34.7 265.3');
-    expect(trace).toContain('34.7 265.3');
+    const points = (d: string) =>
+      [...d.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)(?=\s|$)/g)].map(
+        (m) => [Number(m[1]), Number(m[2])] as const
+      );
+
+    const traceEnd = points(trace).at(-1)!;
+    // The chevron's tip is its middle point: barb, tip, barb.
+    const tip = points(head)[1];
+
+    expect(Math.hypot(tip[0] - traceEnd[0], tip[1] - traceEnd[1])).toBeLessThan(1);
+  });
+
+  it('turns the line to plumb before it ends', () => {
+    // A mark bridging into the next section has to arrive pointing at it. The
+    // line used to stop mid-air on a 45 degree tangent, aimed off to one side.
+    render(<ScrollCue progress={1} />);
+    const trace = screen.getByTestId('scroll-cue-trace').getAttribute('d') ?? '';
+    const run = /L\s+(-?[\d.]+)\s+(-?[\d.]+)\s*$/.exec(trace.trim());
+
+    expect(run).not.toBeNull();
+    // The straight run shares its x with the arc that fed it: it is vertical.
+    expect(trace).toContain(`A 60 60 0 0 1 ${run![1]} `);
   });
 
   it('normalises path length, so the dash maths is independent of geometry', () => {
