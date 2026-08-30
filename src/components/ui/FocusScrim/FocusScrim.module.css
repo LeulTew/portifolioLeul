@@ -24,19 +24,23 @@
     rgba(0, 18, 20, 0.86) 100%
   );
 
-  /* Feathered edges, so the scrim reveals the world instead of ending on a seam. */
+  /*
+   * Feathered edges, so the scrim resolves into the world instead of ending on
+   * a seam. Kept short: adjacent sections each feather their own edge, so a
+   * long ramp leaves a band at every seam where neither scrim is at strength.
+   */
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 12vh,
-    #000 calc(100% - 12vh),
+    #000 4vh,
+    #000 calc(100% - 4vh),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 12vh,
-    #000 calc(100% - 12vh),
+    #000 4vh,
+    #000 calc(100% - 4vh),
     transparent 100%
   );
 

@@ -23,6 +23,8 @@ export const enum SeedOffset {
 }
 
 export interface DriftBounds {
+  /** Where the field sits in the scene, in world units. */
+  readonly center: readonly [number, number, number];
   /** Half-width of the field on x and z. */
   readonly radius: number;
   /** Lowest point of the field; instances wrap back to the top from here. */
@@ -31,11 +33,43 @@ export interface DriftBounds {
   readonly ceiling: number;
 }
 
+/** Sized and placed to fill the air around the island. */
 export const DEFAULT_DRIFT_BOUNDS: DriftBounds = {
-  radius: 26,
+  center: [0, 0, -18],
+  radius: 20,
   floor: -4,
-  ceiling: 22,
+  ceiling: 20,
 };
+
+/** Widest sway a seeded instance can reach, from createDriftSeeds. */
+export const MAX_SWAY_AMPLITUDE = 2;
+
+/**
+ * Distance from the camera at which a mote is fully faded out.
+ *
+ * The camera orbits right through this field, and a mote crossing the lens
+ * would render as a large bright shape rather than as distant dust. Shrinking
+ * them away on approach handles any camera path, which placing the field
+ * outside the path cannot once the path encircles the island.
+ */
+export const MOTE_NEAR_FADE_DISTANCE = 7;
+
+/**
+ * Scale for a mote `distance` from the camera: nothing at all up close, full
+ * size beyond the fade distance, ramped smoothly between.
+ */
+export function moteNearFadeScale(
+  distance: number,
+  fadeDistance: number = MOTE_NEAR_FADE_DISTANCE
+): number {
+  if (!Number.isFinite(distance) || distance <= 0) return 0;
+  if (!Number.isFinite(fadeDistance) || fadeDistance <= 0) return 1;
+  if (distance >= fadeDistance) return 1;
+
+  const t = distance / fadeDistance;
+  // Smoothstep, so motes do not pop as they cross the threshold.
+  return t * t * (3 - 2 * t);
+}
 
 /**
  * Deterministic PRNG (mulberry32). The field must look identical on every load

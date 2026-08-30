@@ -3,12 +3,28 @@ import * as THREE from 'three';
 import {
   CAMERA_ARC_END,
   CAMERA_CHAPTERS,
+  CLOSING_SHOT,
   createCameraSpline,
   mapScrollToArc,
   nearestChapterIndex,
   sampleCameraPose,
   sampleChapterPose,
 } from './cinematicSpline';
+
+describe('CLOSING_SHOT', () => {
+  it('reproduces the composition the scene had before the camera used a spline', () => {
+    // Previously the camera sat at [0, 5, 30] looking at the origin while the
+    // world rotated by scrollProgress * PI, so the arc ended a half turn round.
+    // That is the same view as the camera at R(-180) * [0, 5, 30] over a fixed
+    // world -- the shot that brings the television around to face the viewer.
+    expect(CLOSING_SHOT.position).toEqual([0, 5, -30]);
+    expect(CLOSING_SHOT.target).toEqual([0, 0, 0]);
+  });
+
+  it('is where the arc comes to rest', () => {
+    expect(CAMERA_CHAPTERS[CAMERA_CHAPTERS.length - 1]).toBe(CLOSING_SHOT);
+  });
+});
 
 describe('CAMERA_CHAPTERS', () => {
   it('covers every scrolled section anchor in document order', () => {
@@ -27,9 +43,38 @@ describe('CAMERA_CHAPTERS', () => {
     }
   });
 
-  it('always frames a point in front of the camera, not behind it', () => {
+  it('never frames the point the camera is standing on', () => {
     for (const chapter of CAMERA_CHAPTERS) {
-      expect(chapter.target[2]).toBeLessThan(chapter.position[2]);
+      const [px, py, pz] = chapter.position;
+      const [tx, ty, tz] = chapter.target;
+      const distance = Math.hypot(px - tx, py - ty, pz - tz);
+      expect(distance).toBeGreaterThan(1);
+    }
+  });
+
+  it('holds a consistent orbit radius around the island', () => {
+    // The path is the same half-turn orbit the scene had when the world itself
+    // rotated; keeping the radius steady is what makes it read as one move.
+    for (const chapter of CAMERA_CHAPTERS) {
+      const radius = Math.hypot(chapter.position[0], chapter.position[2]);
+      expect(radius).toBeGreaterThan(28);
+      expect(radius).toBeLessThan(36);
+    }
+  });
+
+  it('never jumps between neighbouring shots', () => {
+    for (let i = 1; i < CAMERA_CHAPTERS.length; i++) {
+      const a = CAMERA_CHAPTERS[i - 1].position;
+      const b = CAMERA_CHAPTERS[i].position;
+      expect(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])).toBeLessThan(40);
+    }
+  });
+
+  it('swings out to one side rather than cutting across the island', () => {
+    // Every interior shot sits off to the left, so the path arcs around the
+    // terrain instead of through it.
+    for (const chapter of CAMERA_CHAPTERS.slice(1, -1)) {
+      expect(chapter.position[0]).toBeLessThan(-15);
     }
   });
 

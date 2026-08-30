@@ -1,0 +1,43 @@
+.container {
+  position: relative;
+}
+
+.strips {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  pointer-events: none;
+  overflow: hidden;
+  /* The strips bend away from the reader, so they need real depth. */
+  perspective: 1400px;
+}
+
+.strip {
+  flex: 1 1 0;
+  transform-origin: left center;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 22, 24, 0.96) 0%,
+    rgba(0, 14, 18, 0.99) 50%,
+    rgba(0, 22, 24, 0.96) 100%
+  );
+  will-change: transform, opacity;
+}
+
+.strip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(0, 0, 0);
+  opacity: var(--strip-shadow, 0);
+}
+
+:global([data-theme='light']) .strip {
+  background: linear-gradient(
+    to bottom,
+    rgba(246, 249, 255, 0.96) 0%,
+    rgba(236, 242, 252, 0.99) 50%,
+    rgba(246, 249, 255, 0.96) 100%
+  );
+}

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { writeDriftInstances } from './writeDriftInstances';
 import {
   DEFAULT_DRIFT_BOUNDS,
+  MAX_SWAY_AMPLITUDE,
   createDriftSeeds,
   driftHeight,
   driftSwayX,
@@ -31,11 +32,13 @@ describe('writeDriftInstances', () => {
 
     writeDriftInstances(mesh, seeds, COUNT, 3.5);
 
+    const [cx, cy, cz] = DEFAULT_DRIFT_BOUNDS.center;
     for (let i = 0; i < COUNT; i++) {
       const position = positionOf(mesh, i);
-      expect(position.x).toBeCloseTo(driftSwayX(seeds, i, 3.5), 4);
-      expect(position.y).toBeCloseTo(driftHeight(seeds, i, 3.5), 4);
-      expect(position.z).toBeCloseTo(driftSwayZ(seeds, i, 3.5), 4);
+      // Positions are world-space: the field's own centre plus the local drift.
+      expect(position.x).toBeCloseTo(cx + driftSwayX(seeds, i, 3.5), 4);
+      expect(position.y).toBeCloseTo(cy + driftHeight(seeds, i, 3.5), 4);
+      expect(position.z).toBeCloseTo(cz + driftSwayZ(seeds, i, 3.5), 4);
     }
   });
 
@@ -65,32 +68,33 @@ describe('writeDriftInstances', () => {
   it('keeps every instance inside the field over a long run', () => {
     const mesh = makeMesh();
     const seeds = createDriftSeeds(COUNT);
-    const { radius, floor, ceiling } = DEFAULT_DRIFT_BOUNDS;
+    const { radius, floor, ceiling, center } = DEFAULT_DRIFT_BOUNDS;
 
     for (const time of [0, 30, 600, 100000]) {
       writeDriftInstances(mesh, seeds, COUNT, time);
       for (let i = 0; i < COUNT; i++) {
         const position = positionOf(mesh, i);
-        expect(position.y).toBeGreaterThanOrEqual(floor - 1e-4);
-        expect(position.y).toBeLessThanOrEqual(ceiling + 1e-4);
-        // Origin plus the maximum seeded sway amplitude.
-        expect(Math.abs(position.x)).toBeLessThanOrEqual(radius + 2.1);
-        expect(Math.abs(position.z)).toBeLessThanOrEqual(radius + 2.1);
+        expect(position.y).toBeGreaterThanOrEqual(center[1] + floor - 1e-4);
+        expect(position.y).toBeLessThanOrEqual(center[1] + ceiling + 1e-4);
+        // Centre plus the field radius and the maximum seeded sway amplitude.
+        const reach = radius + MAX_SWAY_AMPLITUDE;
+        expect(Math.abs(position.x - center[0])).toBeLessThanOrEqual(reach);
+        expect(Math.abs(position.z - center[2])).toBeLessThanOrEqual(reach);
       }
     }
   });
 
   it('honours custom bounds', () => {
     const mesh = makeMesh();
-    const bounds = { radius: 4, floor: 0, ceiling: 3 };
+    const bounds = { center: [5, 2, -9] as const, radius: 4, floor: 0, ceiling: 3 };
     const seeds = createDriftSeeds(COUNT, bounds);
 
     writeDriftInstances(mesh, seeds, COUNT, 17, bounds);
 
     for (let i = 0; i < COUNT; i++) {
       const y = positionOf(mesh, i).y;
-      expect(y).toBeGreaterThanOrEqual(-1e-4);
-      expect(y).toBeLessThanOrEqual(3 + 1e-4);
+      expect(y).toBeGreaterThanOrEqual(2 - 1e-4);
+      expect(y).toBeLessThanOrEqual(5 + 1e-4);
     }
   });
 
@@ -114,5 +118,55 @@ describe('writeDriftInstances', () => {
 
     writeDriftInstances(mesh, seeds, 400, 2);
     expect(positionOf(mesh, 399).distanceTo(first)).toBe(0);
+  });
+
+  it('scales away motes that the camera passes through', () => {
+    const mesh = makeMesh();
+    const seeds = createDriftSeeds(COUNT);
+    const [cx, cy, cz] = DEFAULT_DRIFT_BOUNDS.center;
+
+    // Camera sitting exactly on instance 0.
+    const onTop = new THREE.Vector3(
+      cx + driftSwayX(seeds, 0, 0),
+      cy + driftHeight(seeds, 0, 0),
+      cz + driftSwayZ(seeds, 0, 0)
+    );
+
+    writeDriftInstances(mesh, seeds, COUNT, 0, DEFAULT_DRIFT_BOUNDS, onTop);
+
+    const matrix = new THREE.Matrix4();
+    mesh.getMatrixAt(0, matrix);
+    const scale = new THREE.Vector3().setFromMatrixScale(matrix);
+    expect(scale.length()).toBeCloseTo(0, 5);
+  });
+
+  it('leaves motes far from the camera at full size', () => {
+    const mesh = makeMesh();
+    const seeds = createDriftSeeds(COUNT);
+
+    writeDriftInstances(
+      mesh,
+      seeds,
+      COUNT,
+      0,
+      DEFAULT_DRIFT_BOUNDS,
+      new THREE.Vector3(0, 5, 400)
+    );
+
+    const matrix = new THREE.Matrix4();
+    mesh.getMatrixAt(0, matrix);
+    const scale = new THREE.Vector3().setFromMatrixScale(matrix);
+    expect(scale.x).toBeCloseTo(1, 5);
+  });
+
+  it('keeps every mote at full size when no camera is supplied', () => {
+    const mesh = makeMesh();
+    writeDriftInstances(mesh, createDriftSeeds(COUNT), COUNT, 1);
+
+    const matrix = new THREE.Matrix4();
+    for (let i = 0; i < COUNT; i++) {
+      mesh.getMatrixAt(i, matrix);
+      expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(1, 5);
+    }
   });
 });
