@@ -1,7 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { LiquidFillText } from './LiquidFillText';
-import { charDelayMs, BASE_STEP_MS } from './charDelay';
+import {
+  charDelayMs,
+  BASE_STEP_MS,
+  wavePhasePx,
+  WAVE_PERIOD_PX,
+} from './charDelay';
 
 const chars = () => screen.getAllByTestId('liquid-fill-char');
 
@@ -138,5 +143,44 @@ describe('LiquidFillText', () => {
   it('renders no glyphs for empty text', () => {
     render(<LiquidFillText text="" />);
     expect(screen.queryAllByTestId('liquid-fill-char')).toHaveLength(0);
+  });
+});
+
+describe('wavePhasePx', () => {
+  it('gives neighbouring letters different places in the pattern', () => {
+    const phases = [0, 1, 2, 3, 4, 5].map(wavePhasePx);
+    expect(new Set(phases).size).toBe(phases.length);
+  });
+
+  it('stays inside the pattern, so no letter is shifted off its own crest', () => {
+    for (let i = 0; i < 200; i++) {
+      expect(Math.abs(wavePhasePx(i))).toBeLessThanOrEqual(WAVE_PERIOD_PX);
+    }
+  });
+
+  it('does not walk steadily along the pattern', () => {
+    // A constant step is a diagonal march across the word, which is just a
+    // different regularity from the one it is meant to break.
+    const steps = [1, 2, 3, 4, 5].map((i) => wavePhasePx(i) - wavePhasePx(i - 1));
+    expect(new Set(steps).size).toBeGreaterThan(1);
+  });
+
+  it('is stable across renders, so a re-render cannot move the surface', () => {
+    expect(wavePhasePx(7)).toBe(wavePhasePx(7));
+  });
+
+  it('treats non-finite input as the head of the word', () => {
+    expect(wavePhasePx(Number.NaN)).toBe(0);
+    expect(wavePhasePx(-3)).toBe(0);
+  });
+});
+
+describe('LiquidFillText surface phase', () => {
+  it('gives each letter its own place in the crest pattern', () => {
+    render(<LiquidFillText text="Leul" filling />);
+    const waves = chars().map((c) => c.style.getPropertyValue('--wave'));
+
+    expect(waves).toEqual([0, 1, 2, 3].map((i) => `${wavePhasePx(i)}px`));
+    expect(new Set(waves).size).toBe(4);
   });
 });

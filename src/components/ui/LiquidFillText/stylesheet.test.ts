@@ -93,8 +93,17 @@ function ruleBody(selector: string): string {
   return bodies!.join('\n');
 }
 
+/**
+ * Custom properties read WITHOUT a fallback.
+ *
+ * `var(--x, 0px)` cannot collapse a declaration, so it is safe to leave unset
+ * -- which is how a value supplied per element from the component is written.
+ * Only a bare `var(--x)` takes the whole declaration down with it.
+ */
 function propertiesRead(body: string): string[] {
-  return [...body.matchAll(/var\((--[\w-]+)/g)].map((match) => match[1]);
+  return [...body.matchAll(/var\((--[\w-]+)\s*([,)])/g)]
+    .filter(([, , next]) => next === ')')
+    .map(([, property]) => property);
 }
 
 describe('LiquidFillText stylesheet', () => {

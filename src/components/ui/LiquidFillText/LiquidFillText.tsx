@@ -1,5 +1,5 @@
 import styles from './LiquidFillText.module.css';
-import { charDelayMs } from './charDelay';
+import { charDelayMs, wavePhasePx } from './charDelay';
 
 /**
  * Text that fills as snow falls into it.
@@ -88,6 +88,8 @@ export function LiquidFillText({
               ['--char-delay' as string]: `${
                 delayMs + leadMs + charDelayMs(index, staggerMs)
               }ms`,
+              /* Its own place in the crest pattern, so no two letters match. */
+              ['--wave' as string]: `${wavePhasePx(index)}px`,
             }}
           >
             {char}

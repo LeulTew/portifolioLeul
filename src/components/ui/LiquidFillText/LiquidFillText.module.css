@@ -28,7 +28,6 @@
    * unresolved var() inside background-image invalidates the declaration and
    * collapses the layer to `none`, silently.
    */
-  --vessel: color-mix(in srgb, currentColor 22%, transparent);
   --crest: color-mix(in srgb, currentColor 30%, white);
   /* The second row sits behind the first, so the crests read as depth. */
   --crest-far: color-mix(in srgb, currentColor 62%, white);
@@ -71,15 +70,15 @@
    * panel of texture laid over the headline.
    */
   -webkit-mask-image: radial-gradient(
-    ellipse 58% 54% at 50% 60%,
+    ellipse 72% 62% at 50% 58%,
     #000 0%,
-    #000 42%,
+    #000 50%,
     transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 58% 54% at 50% 60%,
+    ellipse 72% 62% at 50% 58%,
     #000 0%,
-    #000 42%,
+    #000 50%,
     transparent 100%
   );
 }
@@ -149,7 +148,7 @@
     background-position: 0 0;
   }
   16% {
-    opacity: 0.85;
+    opacity: 1;
   }
   88% {
     opacity: 0;
@@ -173,13 +172,6 @@
   -webkit-background-clip: text;
   background-clip: text;
 
-  /*
-   * The empty vessel. Without it the letters are simply absent until they
-   * fill, so the snow falls through nothing and the headline reads as missing
-   * rather than as waiting. Faint enough to disappear under the body once the
-   * level passes it.
-   */
-  -webkit-text-stroke: 1px var(--vessel);
 
   /*
    * Three layers: two rows of scallops, then the body.
@@ -214,13 +206,13 @@
     linear-gradient(currentColor, currentColor);
 
   background-size:
-    16px calc(4% + 6px),
-    22px calc(4% + 4px),
-    100% 4%;
+    16px calc(0% + 6px),
+    22px calc(0% + 4px),
+    100% 0%;
 
   background-position:
-    0 bottom,
-    0 bottom,
+    var(--wave, 0px) bottom,
+    var(--wave, 0px) bottom,
     center bottom;
 
   background-repeat: repeat-x, repeat-x, no-repeat;
@@ -249,18 +241,18 @@
 @keyframes settle {
   0% {
     background-position:
-      0px bottom,
-      0px bottom,
+      calc(0px + var(--wave, 0px)) bottom,
+      calc(0px + var(--wave, 0px)) bottom,
       center bottom;
     background-size:
-      16px calc(4% + 6px),
-      22px calc(4% + 4px),
-      100% 4%;
+      16px calc(0% + 6px),
+      22px calc(0% + 4px),
+      100% 0%;
   }
   30% {
     background-position:
-      -11px bottom,
-      7px bottom,
+      calc(-11px + var(--wave, 0px)) bottom,
+      calc(7px + var(--wave, 0px)) bottom,
       center bottom;
     background-size:
       16px calc(32% + 6px),
@@ -269,8 +261,8 @@
   }
   55% {
     background-position:
-      8px bottom,
-      -12px bottom,
+      calc(8px + var(--wave, 0px)) bottom,
+      calc(-12px + var(--wave, 0px)) bottom,
       center bottom;
     background-size:
       16px calc(63% + 6px),
@@ -279,8 +271,8 @@
   }
   76% {
     background-position:
-      -6px bottom,
-      9px bottom,
+      calc(-6px + var(--wave, 0px)) bottom,
+      calc(9px + var(--wave, 0px)) bottom,
       center bottom;
     background-size:
       16px calc(104% + 6px),
@@ -289,8 +281,8 @@
   }
   88% {
     background-position:
-      5px bottom,
-      -7px bottom,
+      calc(5px + var(--wave, 0px)) bottom,
+      calc(-7px + var(--wave, 0px)) bottom,
       center bottom;
     background-size:
       16px calc(96% + 6px),
@@ -299,8 +291,8 @@
   }
   95% {
     background-position:
-      -2px bottom,
-      4px bottom,
+      calc(-2px + var(--wave, 0px)) bottom,
+      calc(4px + var(--wave, 0px)) bottom,
       center bottom;
     background-size:
       16px calc(101% + 6px),
@@ -309,8 +301,8 @@
   }
   100% {
     background-position:
-      0px bottom,
-      0px bottom,
+      calc(0px + var(--wave, 0px)) bottom,
+      calc(0px + var(--wave, 0px)) bottom,
       center bottom;
     background-size:
       16px calc(100% + 6px),
@@ -352,7 +344,6 @@
   /* Without the clip there is no vessel to fill; show the text painted. */
   .char {
     -webkit-text-fill-color: currentColor;
-    -webkit-text-stroke: 0;
     background-image: none;
   }
 
@@ -370,7 +361,6 @@
    */
   .char {
     -webkit-text-fill-color: currentColor;
-    -webkit-text-stroke: 0;
     background-image: none;
     transition: none;
   }
