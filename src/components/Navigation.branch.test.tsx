@@ -93,7 +93,7 @@ describe('Navigation Branch Coverage', () => {
     // 2. Test with intersecting entry (different ID)
     act(() => {
       observerCallback([
-        { isIntersecting: true, intersectionRatio: 0.8, target: { id: 'about' } } as IntersectionObserverEntry
+        { isIntersecting: true, intersectionRect: { height: 260 }, target: { id: 'about' } } as unknown as IntersectionObserverEntry
       ], mockObserver);
     });
     // Should update to 'about'
@@ -104,7 +104,7 @@ describe('Navigation Branch Coverage', () => {
     // 3. Test with intersecting entry (SAME ID) - covers the 'prev === visibleEntry.target.id' branch
     act(() => {
       observerCallback([
-        { isIntersecting: true, intersectionRatio: 0.8, target: { id: 'about' } } as IntersectionObserverEntry
+        { isIntersecting: true, intersectionRect: { height: 260 }, target: { id: 'about' } } as unknown as IntersectionObserverEntry
       ], mockObserver);
     });
     // Should still be 'about'
@@ -113,8 +113,8 @@ describe('Navigation Branch Coverage', () => {
     // 4. Test with multiple entries, picking the one with highest ratio
     act(() => {
       observerCallback([
-        { isIntersecting: true, intersectionRatio: 0.5, target: { id: 'skills' } } as IntersectionObserverEntry,
-        { isIntersecting: true, intersectionRatio: 0.9, target: { id: 'projects' } } as IntersectionObserverEntry
+        { isIntersecting: true, intersectionRect: { height: 90 }, target: { id: 'skills' } } as unknown as IntersectionObserverEntry,
+        { isIntersecting: true, intersectionRect: { height: 300 }, target: { id: 'projects' } } as unknown as IntersectionObserverEntry
       ], mockObserver);
     });
     // Should update to 'projects'

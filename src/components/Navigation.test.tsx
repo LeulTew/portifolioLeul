@@ -131,7 +131,7 @@ describe('Navigation', () => {
     if (intersectionCallback) {
       const mockEntries: IntersectionObserverEntry[] = [{
         isIntersecting: true,
-        intersectionRatio: 0.5,
+        intersectionRect: { height: 200 },
         target: mockSection,
         boundingClientRect: {} as DOMRectReadOnly,
         intersectionRect: {} as DOMRectReadOnly,
@@ -187,7 +187,7 @@ describe('Navigation', () => {
       const mockEntries: IntersectionObserverEntry[] = [
         {
           isIntersecting: true,
-          intersectionRatio: 0.3,
+          intersectionRect: { height: 90 },
           target: mockSection1,
           boundingClientRect: {} as DOMRectReadOnly,
           intersectionRect: {} as DOMRectReadOnly,
@@ -196,7 +196,7 @@ describe('Navigation', () => {
         },
         {
           isIntersecting: true,
-          intersectionRatio: 0.6,
+          intersectionRect: { height: 240 },
           target: mockSection2,
           boundingClientRect: {} as DOMRectReadOnly,
           intersectionRect: {} as DOMRectReadOnly,
@@ -324,8 +324,12 @@ describe('Navigation', () => {
     act(() => {
       intersectionCallback?.(
         [
-          { target: { id: 'projects' }, isIntersecting: true, intersectionRatio: 0.2 },
-          { target: { id: 'contact' }, isIntersecting: true, intersectionRatio: 0.8 },
+          // How much of the focus band each section fills, in pixels. Not a
+          // ratio of the section's own height: a section taller than twice the
+          // band can never reach a ratio threshold, which is how About and
+          // Projects used to be skipped entirely.
+          { target: { id: 'projects' }, isIntersecting: true, intersectionRect: { height: 40 } },
+          { target: { id: 'contact' }, isIntersecting: true, intersectionRect: { height: 260 } },
         ] as any,
         {} as any
       );
@@ -349,7 +353,7 @@ describe('Navigation', () => {
 
     act(() => {
       intersectionCallback?.(
-        [{ target: { id: 'contact' }, isIntersecting: false, intersectionRatio: 0 }] as any,
+        [{ target: { id: 'contact' }, isIntersecting: false, intersectionRect: { height: 0 } }] as any,
         {} as any
       );
     });
