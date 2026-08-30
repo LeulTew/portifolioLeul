@@ -14,12 +14,16 @@ import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
 import { CinematicCameraController } from './3d/CinematicCameraController';
+import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
 
 /** Used when the caller has no GPU-tier reading yet. */
 const DEFAULT_PARTICLE_COUNT = 800;
+
+/** Share of the particle budget spent on animated motes rather than stars. */
+const DRIFT_BUDGET_SHARE = 0.3;
 
 useGLTF.preload('/models/terrain-mobile.glb');
 
@@ -152,6 +156,9 @@ interface BackgroundSceneProps {
 }
 
 export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT }: BackgroundSceneProps) {
+  // A fraction of the starfield budget: motes are animated every frame, so they
+  // cost far more per instance than the static point cloud.
+  const driftCount = Math.max(Math.round(particleCount * DRIFT_BUDGET_SHARE), 0);
   const prismRef = useRef<THREE.Group>(null);
 
   const isLight = theme === 'light';
@@ -271,8 +278,15 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
           />
         </group>
 
-        {/* Ambient Particles */}
+        {/* Distant starfield */}
         <Particles color={palette.highlight} count={particleCount} />
+
+        {/* Motes drifting through the island's air */}
+        <AtmosphericDrift
+          count={driftCount}
+          color={palette.highlight}
+          opacity={isLight ? 0.35 : 0.55}
+        />
 
         <Suspense fallback={null}>
           {/* Placed next to the prism [12, 2, -15] */}

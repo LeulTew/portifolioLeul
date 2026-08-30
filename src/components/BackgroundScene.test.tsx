@@ -66,6 +66,9 @@ vi.mock('./Ocean', () => ({ Ocean: () => null }));
 vi.mock('./ocean/ShorelineBreak', () => ({ ShorelineBreak: () => null }));
 vi.mock('./TVModel', () => ({ TVModel: () => null }));
 vi.mock('./MeModel', () => ({ MeModel: () => null }));
+// Covered by its own suite; the reconciler is faked here, so its instanced mesh
+// would resolve to a DOM node rather than a THREE.InstancedMesh.
+vi.mock('./3d/AtmosphericDrift', () => ({ AtmosphericDrift: () => null }));
 
 describe('BackgroundScene', () => {
   beforeEach(() => {
