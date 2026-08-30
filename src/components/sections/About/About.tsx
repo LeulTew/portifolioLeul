@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useBandProgress, centreFocus } from '@/lib/scroll/bandProgress';
+import { PinnedSequence } from '../../ui/PinnedSequence';
+import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { Card } from '../../ui/Card';
@@ -9,83 +10,16 @@ import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.14,
-      delayChildren: 0.08,
-    }
-  }
-};
 
-const lineVariants = {
-  hidden: { 
-    opacity: 0, 
-    y: "120%", 
-    rotateX: -25,
-    filter: "blur(10px)" 
-  },
-  visible: {
-    opacity: 1,
-    y: "0%",
-    rotateX: 0,
-    filter: "blur(0px)",
-    transition: {
-      duration: 0.9,
-      ease: [0.16, 1, 0.3, 1]
-    }
-  }
-};
 
-const subItemVariants = {
-  hidden: { opacity: 0, y: 24, filter: "blur(6px)" },
-  visible: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: {
-      duration: 0.8,
-      ease: [0.16, 1, 0.3, 1]
-    }
-  }
-};
 
-/** How far out of focus a statement is at the edges of its stage, in px. */
-const MAX_STATEMENT_BLUR = 14;
 
-/**
- * One statement per screen, each vertically centred in its own stage.
- *
- * The two used to sit side by side in a single row, which meant they arrived
- * and left together and neither was ever the thing being read. Given a stage
- * each, the first is centred and held while it is read, leaves to the side it
- * lives on, and the second arrives from the other -- and the space each leaves
- * is where the plate goes, so nothing is standing empty.
- */
-function useStage() {
-  const [element, setElement] = useState<HTMLElement | null>(null);
-  const progress = useBandProgress(element);
 
-  return {
-    ref: setElement,
-    progress,
-    /*
-     * Peak, not plateau. Presence holds at full for as long as the stage is on
-     * screen, so a statement driven by it would be sharp from the moment it
-     * appeared until the moment it began to leave -- resolving only where it
-     * is actually being looked at needs a value that is only full in one
-     * place.
-     */
-    focus: centreFocus(progress),
-  };
-}
+
+
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
-  const first = useStage();
-  const second = useStage();
   const reducedMotion = getPrefersReducedMotion();
 
   /**
@@ -96,16 +30,6 @@ export function About() {
    * them the reader had scrolled. Reading presence per frame makes the exit
    * the entrance in reverse, for free.
    */
-  /** The first statement resolves by arriving; the second by sharpening. */
-  const fadesIn = (focus: number) => ({ opacity: focus });
-
-  const blursIn = (focus: number) => ({
-    opacity: focus,
-    filter: reducedMotion
-      ? undefined
-      : `blur(${((1 - focus) * MAX_STATEMENT_BLUR).toFixed(2)}px)`,
-  });
-
   return (
     <section ref={containerRef} className={styles.about} id="about">
       {/* Mostly copy, and long: close the world out entirely. */}
@@ -128,103 +52,85 @@ export function About() {
         </motion.div>
 
         {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
-        <div className={styles.stage} ref={first.ref} data-testid="about-stage-one">
-          {/* Behind the statement rather than beside it: the writing is the
-              subject, and the geometry moves around it. */}
-          <div className={styles.stageBackdrop} aria-hidden="true">
-            <ParallaxPlate
-              progress={first.progress}
-              presence={first.focus * 0.55 + 0.45}
-              reducedMotion={reducedMotion}
-            />
+        <PinnedSequence
+          screens={ABOUT_SCREENS}
+          layers={STATEMENT_LAYERS}
+          className={styles.aboutSequence}
+          testId="about-sequence"
+        >
+          {/* Held for the whole stretch: the one thing that does not come and
+              go, so the statements read as arriving on it. */}
+          <div className={styles.heldField} aria-hidden="true">
+            <ParallaxPlate reducedMotion={reducedMotion} />
+            <ParallaxPlate flipped reducedMotion={reducedMotion} />
           </div>
 
-          {/* Left Column: Bold Philosophy / Core Identity */}
-          <motion.div
-            className={styles.leftColumn}
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-            style={fadesIn(first.focus)}
-            data-testid="about-left-column"
-          >
-            <h3 className={styles.statementText}>
-              <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineVariants} className={styles.statementLine}>
-                  KEEP IT SIMPLE
-                </motion.span>
-              </span>
-              <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+          <div className={styles.statements}>
+            <div
+              className={`${styles.leftColumn} ${styles.layerOne}`}
+              data-testid="about-left-column"
+            >
+              <h3 className={styles.statementText}>
+                <span className={styles.statementLine}>KEEP IT SIMPLE</span>
+                <span
+                  className={`${styles.statementLine} ${styles.statementHighlight}`}
+                >
                   BUT SIGNIFICANT
-                </motion.span>
-              </span>
-            </h3>
-            
-            <motion.div variants={subItemVariants} className={styles.subStatement}>
-              <span className={styles.subStatementBar} />
-              <span className={styles.subStatementText}>CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS</span>
-            </motion.div>
-          </motion.div>
+                </span>
+              </h3>
 
-        </div>
+              <div className={styles.subStatement}>
+                <span className={styles.subStatementBar} />
+                <span className={styles.subStatementText}>
+                  CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS
+                </span>
+              </div>
+            </div>
 
-        {/* The second statement takes the screen once the first has left it. */}
-        <div className={styles.stage} ref={second.ref} data-testid="about-stage-two">
-          <div className={styles.stageBackdrop} aria-hidden="true">
-            <ParallaxPlate
-              progress={second.progress}
-              presence={second.focus * 0.55 + 0.45}
-              flipped
-              reducedMotion={reducedMotion}
-            />
-          </div>
-
-          <motion.div
-            className={styles.rightColumn}
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-            style={blursIn(second.focus)}
-            data-testid="about-right-column"
-          >
-            <h3 className={styles.statementText}>
-              <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineVariants} className={styles.statementLine}>
-                  SCALABLE SYSTEMS
-                </motion.span>
-              </span>
-              <span className={styles.lineOverflowWrapper}>
-                <motion.span variants={lineVariants} className={`${styles.statementLine} ${styles.statementHighlight}`}>
+            <div
+              className={`${styles.rightColumn} ${styles.layerTwo}`}
+              data-testid="about-right-column"
+            >
+              <h3 className={styles.statementText}>
+                <span className={styles.statementLine}>SCALABLE SYSTEMS</span>
+                <span
+                  className={`${styles.statementLine} ${styles.statementHighlight}`}
+                >
                   CRAFTED TO EMPOWER
-                </motion.span>
-              </span>
-            </h3>
-            
-            <motion.div variants={subItemVariants} className={styles.metricsList}>
-              <div className={styles.metricItem}>
-                <span className={styles.metricValue}>3+</span>
-                <span className={styles.metricLabel}>Years Engineering Production Web &amp; Mobile Systems</span>
-              </div>
-              <div className={styles.metricItem}>
-                <span className={styles.metricValue}>30+</span>
-                <span className={styles.metricLabel}>Applications Delivered Across AI/ML, 3D &amp; Cloud</span>
-              </div>
-              <div className={styles.metricItem}>
-                <span className={styles.metricValue}>BSc</span>
-                <span className={styles.metricLabel}>Computer Science Graduate (HiLCoE)</span>
-              </div>
-            </motion.div>
+                </span>
+              </h3>
 
-            <motion.div variants={subItemVariants} className={styles.pillContainer}>
-              {cvData.about.highlights.map((highlight, i) => (
-                <span key={i} className={styles.editorialPill}>{highlight}</span>
-              ))}
-            </motion.div>
-          </motion.div>
-        </div>
+              <div className={styles.metricsList}>
+                <div className={styles.metricItem}>
+                  <span className={styles.metricValue}>3+</span>
+                  <span className={styles.metricLabel}>
+                    Years Engineering Production Web &amp; Mobile Systems
+                  </span>
+                </div>
+                <div className={styles.metricItem}>
+                  <span className={styles.metricValue}>30+</span>
+                  <span className={styles.metricLabel}>
+                    Applications Delivered Across AI/ML, 3D &amp; Cloud
+                  </span>
+                </div>
+                <div className={styles.metricItem}>
+                  <span className={styles.metricValue}>BSc</span>
+                  <span className={styles.metricLabel}>
+                    Computer Science Graduate (HiLCoE)
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.pillContainer}>
+                {cvData.about.highlights.map((highlight, i) => (
+                  <span key={i} className={styles.editorialPill}>
+                    {highlight}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </PinnedSequence>
 
         {/* Education Section */}
         <div className={styles.educationWrapper}>

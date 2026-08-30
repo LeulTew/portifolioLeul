@@ -74,37 +74,100 @@
  * be read rather than passed. The two used to share a 70vh row, arriving and
  * leaving together, so neither was ever the subject.
  */
-.stage {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  min-height: 100vh;
+/*
+ * The held stretch. Everything below is positioned against the screen, not the
+ * page, because the overlay is fixed: the reader is standing still inside it.
+ */
+.aboutSequence {
   padding: 0 clamp(2rem, 9vw, 16rem);
-  margin: 0;
-  pointer-events: auto;
-  position: relative;
   box-sizing: border-box;
 }
 
 /*
- * The geometry the statement stands in.
- *
- * Behind rather than beside: one statement per screen means the screen is the
- * statement's, and a second thing holding its own column turns the stage back
- * into the two-up row this replaced.
+ * The one thing that does not come and go. It carries the whole stretch, so it
+ * moves continuously with `--seq` rather than appearing and disappearing with
+ * the statements standing on it.
  */
-.stageBackdrop {
+.heldField {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6vw;
+  padding: 0 clamp(2rem, 8vw, 14rem);
+  pointer-events: none;
+  color: rgba(210, 236, 255, 0.3);
+  box-sizing: border-box;
+  /* Leans across the stretch, so the ground is never quite still. */
+  transform: translate3d(
+    calc((var(--seq, 0.5) - 0.5) * -6vw),
+    calc((var(--seq, 0.5) - 0.5) * 4vh),
+    0
+  );
+}
+
+.heldField > * {
+  width: min(38vmin, 460px);
+  flex: 0 0 auto;
+}
+
+.statements {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
+  padding: 0 clamp(2rem, 9vw, 16rem);
+  box-sizing: border-box;
   pointer-events: none;
-  z-index: 0;
-  color: rgba(210, 236, 255, 0.34);
 }
 
-.stageBackdrop > * {
-  width: min(78vmin, 900px);
+/*
+ * Each statement sits in the same cell, so they occupy the same held screen
+ * rather than following one another down the page.
+ */
+.statements > * {
+  grid-area: 1 / 1;
+}
+
+/*
+ * Opacity and blur are driven by two different values on purpose.
+ *
+ * `-on` is cubed presence and `-in` is presence itself, so a statement is at
+ * nothing while it is still on its way in and only becomes visible once it is
+ * most of the way there -- by which point most of the blur has already come
+ * off. Driving both from one value puts a large soft ghost of the text on
+ * screen for the whole approach, legible and blurred, which is the opposite of
+ * arriving.
+ */
+.layerOne,
+.layerTwo {
+  will-change: opacity, filter, transform;
+}
+
+.layerOne {
+  opacity: var(--one-on, 0);
+  filter: blur(calc((1 - var(--one-in, 0)) * 18px));
+  transform: translate3d(0, calc((1 - var(--one-in, 0)) * 2.5vh), 0);
+}
+
+.layerTwo {
+  opacity: var(--two-on, 0);
+  filter: blur(calc((1 - var(--two-in, 0)) * 18px));
+  transform: translate3d(0, calc((1 - var(--two-in, 0)) * 2.5vh), 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The fade carries the sequence; the blur and the drift are decoration. */
+  .layerOne,
+  .layerTwo {
+    filter: none;
+    transform: none;
+  }
+
+  .heldField {
+    transform: none;
+  }
 }
 
 /*
@@ -112,10 +175,9 @@
  * so a full screen each would be mostly empty. They stack and share.
  */
 @media (max-width: 900px) {
-  .stage {
-    min-height: auto;
-    padding-top: 6vh;
-    padding-bottom: 6vh;
+  /* The held field is decoration, and it is the first thing to go. */
+  .heldField {
+    display: none;
   }
 }
 
@@ -290,10 +352,10 @@
     padding-right: 1.5rem;
   }
 
-  .stage {
-    /* Still a screen each, but without the wide gutters to spend it on. */
-    padding: 4rem 1.5rem;
-    min-height: 82vh;
+  .statements,
+  .aboutSequence {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 
   .leftColumn,

@@ -1,0 +1,36 @@
+/*
+ * The spacer is the scroll the sequence spends. It has no contents and paints
+ * nothing: the section's own background shows through it, which is what makes
+ * the background read as held rather than as a panel travelling with the page.
+ */
+.spacer {
+  width: 100%;
+  pointer-events: none;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  /*
+   * Above the sections and the canvas, below the navigation, which stays
+   * reachable throughout.
+   */
+  z-index: 40;
+  /* Only what asks for them; the sequence itself is not a click target. */
+  pointer-events: none;
+}
+
+/*
+ * `visibility`, not opacity. An overlay fixed to the viewport is over every
+ * section on the page, so one left merely transparent still swallows the
+ * layout and hit-testing of everything after it.
+ */
+.overlay[data-active='false'] {
+  visibility: hidden;
+}
+
+.overlay[data-active='true'] {
+  visibility: visible;
+}

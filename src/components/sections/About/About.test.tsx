@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { About } from "./About";
+import { STATEMENT_LAYERS } from "./statementLayers";
+import { windowPresence, layerOpacity } from "@/lib/motion/sequenceWindow";
 import { cvData } from "../../../data/cv";
 
 // Mock framer-motion useScroll & useSpring
@@ -50,62 +52,46 @@ describe("About Section", () => {
   });
 });
 
-describe('About statement focus', () => {
-  it('resolves the first statement by arriving and the second by sharpening', () => {
+describe('About held sequence', () => {
+  it('spends real scroll being held, rather than passing by', () => {
     render(<About />);
-    const left = screen.getByTestId('about-left-column');
-    const right = screen.getByTestId('about-right-column');
-
-    // Two different treatments, so the second reads as a new beat rather than
-    // a repeat of the first.
-    expect(left.style.filter).toBe('');
-    expect(right.style.filter).toContain('blur(');
+    const spacer = screen.getByTestId('about-sequence');
+    expect(Number.parseFloat(spacer.style.height)).toBeGreaterThanOrEqual(200);
   });
 
-  it('holds both out of focus until they reach the middle of the screen', () => {
+  it('puts both statements on the one held background', () => {
+    // Not a stage each: the background is the only thing continuous across
+    // the handover, which is what makes the reader feel held rather than
+    // carried past two panels.
     render(<About />);
-    // jsdom reports no intersection, which is the away-from-centre case.
-    for (const id of ['about-left-column', 'about-right-column']) {
-      expect(screen.getByTestId(id).style.opacity).toBe('0');
-    }
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    expect(overlay).toContainElement(screen.getByTestId('about-left-column'));
+    expect(overlay).toContainElement(screen.getByTestId('about-right-column'));
   });
 
-  it('centres both statements rather than pinning them to a side', () => {
-    render(<About />);
-    for (const id of ['about-left-column', 'about-right-column']) {
-      // Nothing offsets them horizontally any more: the screen is the stage.
-      expect(screen.getByTestId(id).style.transform).toBe('');
-    }
-  });
-});
-
-describe('About stages', () => {
-  it('gives each statement its own stage, so they do not arrive together', () => {
-    render(<About />);
-    expect(screen.getByTestId('about-stage-one')).toBeInTheDocument();
-    expect(screen.getByTestId('about-stage-two')).toBeInTheDocument();
-  });
-
-  it('keeps the left statement in the first stage and the right in the second', () => {
-    render(<About />);
-    expect(
-      screen.getByTestId('about-stage-one').contains(
-        screen.getByTestId('about-left-column')
-      )
-    ).toBe(true);
-    expect(
-      screen.getByTestId('about-stage-two').contains(
-        screen.getByTestId('about-right-column')
-      )
-    ).toBe(true);
-  });
-
-  it('fills the space each statement leaves rather than standing it empty', () => {
+  it('holds the background for the whole stretch, not per statement', () => {
     render(<About />);
     const plates = screen.getAllByTestId('parallax-plate');
-    expect(plates).toHaveLength(2);
-    expect(screen.getByTestId('about-stage-one').contains(plates[0])).toBe(true);
-    expect(screen.getByTestId('about-stage-two').contains(plates[1])).toBe(true);
+    expect(plates.length).toBeGreaterThan(0);
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    for (const plate of plates) {
+      expect(overlay).toContainElement(plate);
+    }
+  });
+
+  it('hands over rather than crossfading: neither is on at the changeover', () => {
+    for (const layer of STATEMENT_LAYERS) {
+      expect(windowPresence(0.5, layer.start, layer.end, 0.09)).toBe(0);
+    }
+  });
+
+  it('starts each statement from nothing, not from a blurred ghost', () => {
+    // A fifth of the way in must be invisible, not a large soft copy of the
+    // text sitting on screen for the whole approach.
+    const first = STATEMENT_LAYERS[0];
+    const early = windowPresence(first.start + 0.02, first.start, first.end, 0.09);
+    expect(early).toBeGreaterThan(0);
+    expect(layerOpacity(early)).toBeLessThan(0.05);
   });
 });
 
