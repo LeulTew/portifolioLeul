@@ -18,6 +18,18 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
+
+  /*
+   * Declared on the word, not on the letter. The snowfield is `.word::before`,
+   * so a flake colour scoped to `.char` is simply unset where it is actually
+   * used -- which makes every gradient referencing it invalid and collapses
+   * the whole layer to `background-image: none`. The letters inherit these
+   * from here, so both layers read the same values.
+   */
+  --crest: color-mix(in srgb, currentColor 40%, white);
+  --flake: color-mix(in srgb, currentColor 45%, white);
+  /* The small field sits further back, so the fall has depth. */
+  --flake-far: color-mix(in srgb, currentColor 78%, white);
 }
 
 /*
@@ -32,8 +44,12 @@
   left: -8%;
   right: -8%;
   bottom: 0.06em;
-  /* Reaches well above the cap height: the fall needs somewhere to fall from. */
-  height: 340%;
+  /*
+   * Reaches well above the cap height: the fall needs somewhere to fall from.
+   * Capped, because a word that wraps is several lines tall and 340% of that
+   * is a field taller than the screen.
+   */
+  height: min(340%, 44vh);
   pointer-events: none;
   opacity: 0;
 
@@ -138,12 +154,6 @@
     bottom;
 
   background-repeat: repeat-x, no-repeat;
-
-  /* Brighter than the body, so the surface catches light as it rises. */
-  --crest: color-mix(in srgb, currentColor 40%, white);
-  --flake: color-mix(in srgb, currentColor 45%, white);
-  /* The small field sits further back, so the fall has depth. */
-  --flake-far: color-mix(in srgb, currentColor 78%, white);
 
   will-change: background-position, background-size;
   transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
