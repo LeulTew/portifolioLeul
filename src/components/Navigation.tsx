@@ -19,7 +19,6 @@ interface NavigationProps {
 
 export function Navigation({ scrollToSection }: NavigationProps) {
   const [activeSection, setActiveSection] = useState('home');
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => soundFx.getSoundEnabled());
 
   const themeContext = useContext(ThemeContext);
@@ -32,17 +31,12 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   };
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
+    // The page scrolls inside the ScrollControls element, so window.scrollY and
+    // documentElement.scrollHeight are always 0 here. IntersectionObserver is
+    // the only reliable signal, and it does account for the container's
+    // transform -- including at the very bottom, where Contact fills the band.
     let observer: IntersectionObserver | null = null;
     let retryId: number | null = null;
-    let scrollHandler: (() => void) | null = null;
 
     const initObserver = () => {
       const sections = menuItems
@@ -61,15 +55,6 @@ export function Navigation({ scrollToSection }: NavigationProps) {
 
       observer = new IntersectionObserver(
         entries => {
-          // Check if we are at the bottom of the page
-          // Added scrollY check to prevent triggering at the top if page height is small initially
-          const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
-          
-          if (isAtBottom) {
-            setActiveSection('contact');
-            return;
-          }
-
           const visibleEntry = entries
             .filter(entry => entry.isIntersecting)
             .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -86,24 +71,11 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       );
 
       sections.forEach(section => observer?.observe(section));
-      
-      // Also add a scroll listener to check for bottom
-      const handleScrollCheck = () => {
-        const isAtBottom = window.scrollY > 100 && (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
-        if (isAtBottom) {
-          setActiveSection('contact');
-        }
-      };
-      window.addEventListener('scroll', handleScrollCheck);
-      scrollHandler = handleScrollCheck;
     };
 
     initObserver();
 
     return () => {
-      if (scrollHandler) {
-        window.removeEventListener('scroll', scrollHandler);
-      }
       if (observer) {
         observer.disconnect();
       }
@@ -123,7 +95,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   };
 
   return (
-    <header className={`${styles.header} ${isScrolled ? styles.scrolled : ''}`}>
+    <header className={styles.header}>
       <nav className={styles.nav}>
         <div 
           className={styles.logo}

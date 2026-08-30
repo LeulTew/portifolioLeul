@@ -303,8 +303,11 @@ describe('Navigation', () => {
     vi.useRealTimers();
   });
 
-  it('detects bottom of page via scroll listener', () => {
-    // Add sections to DOM so initObserver proceeds
+  it('marks Contact active when the contact section dominates the viewport', () => {
+    // Replaces a test that drove window.scrollY. The page scrolls inside the
+    // ScrollControls element, so window scroll never fires here and that path
+    // was unreachable; IntersectionObserver is the real signal, including at
+    // the very bottom where Contact fills the observer band.
     const sections = ['home', 'about', 'skills', 'projects', 'contact'].map(id => {
       const el = document.createElement('section');
       el.id = id;
@@ -318,16 +321,41 @@ describe('Navigation', () => {
       </ThemeContext.Provider>
     );
 
-    // Simulate bottom of page
-    vi.spyOn(window, 'scrollY', 'get').mockReturnValue(1000);
-    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(1000);
-    vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(2000);
+    act(() => {
+      intersectionCallback?.(
+        [
+          { target: { id: 'projects' }, isIntersecting: true, intersectionRatio: 0.2 },
+          { target: { id: 'contact' }, isIntersecting: true, intersectionRatio: 0.8 },
+        ] as any,
+        {} as any
+      );
+    });
 
-    fireEvent.scroll(window);
+    expect(screen.getByText('Contact').closest('button')).toHaveClass(/active/);
 
-    const contactButton = screen.getByText('Contact').closest('button');
-    expect(contactButton).toHaveClass(/active/);
-    
     sections.forEach(el => document.body.removeChild(el));
+  });
+
+  it('ignores an observer batch where nothing is intersecting', () => {
+    const section = document.createElement('section');
+    section.id = 'home';
+    document.body.appendChild(section);
+
+    render(
+      <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
+        <Navigation scrollToSection={mockScrollToSection} />
+      </ThemeContext.Provider>
+    );
+
+    act(() => {
+      intersectionCallback?.(
+        [{ target: { id: 'contact' }, isIntersecting: false, intersectionRatio: 0 }] as any,
+        {} as any
+      );
+    });
+
+    expect(screen.getByText('Home').closest('button')).toHaveClass(/active/);
+
+    document.body.removeChild(section);
   });
 });
