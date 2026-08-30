@@ -10,6 +10,35 @@
   margin-bottom: 0;
 }
 
+/*
+ * The hero deliberately has no focus scrim: it is meant to sit in the world.
+ * But the terrain behind it ranges from near-black to bright surf, so the copy
+ * cannot rely on the backdrop for contrast. A soft plate local to the text
+ * column carries it without walling off the scene.
+ */
+.content::before {
+  content: '';
+  position: absolute;
+  inset: -3rem -6rem -3rem -8rem;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 75% 90% at 30% 50%,
+    rgba(0, 14, 16, 0.72) 0%,
+    rgba(0, 14, 16, 0.45) 55%,
+    rgba(0, 14, 16, 0) 100%
+  );
+}
+
+:global([data-theme='light']) .content::before {
+  background: radial-gradient(
+    ellipse 75% 90% at 30% 50%,
+    rgba(248, 250, 255, 0.88) 0%,
+    rgba(248, 250, 255, 0.6) 55%,
+    rgba(248, 250, 255, 0) 100%
+  );
+}
+
 .content {
   position: relative;
   z-index: 1;

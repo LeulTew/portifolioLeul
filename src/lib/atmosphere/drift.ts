@@ -31,11 +31,25 @@ export interface DriftBounds {
   readonly ceiling: number;
 }
 
+/**
+ * Sized to the island volume, in the field's own local space. The caller
+ * positions that space away from the camera path: a mote that drifts across
+ * the lens renders as a large bright shape rather than as distant dust.
+ */
 export const DEFAULT_DRIFT_BOUNDS: DriftBounds = {
-  radius: 26,
+  radius: 18,
   floor: -4,
-  ceiling: 22,
+  ceiling: 20,
 };
+
+/**
+ * Where the field's local space sits in the scene: over the island, and behind
+ * the camera's closest approach, so no mote can drift across the lens.
+ */
+export const DRIFT_FIELD_ORIGIN: readonly [number, number, number] = [0, 0, -18];
+
+/** Widest sway a seeded instance can reach, from createDriftSeeds. */
+export const MAX_SWAY_AMPLITUDE = 2;
 
 /**
  * Deterministic PRNG (mulberry32). The field must look identical on every load

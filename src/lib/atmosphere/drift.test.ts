@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { CAMERA_CHAPTERS } from '@/lib/camera/cinematicSpline';
 import {
+  DRIFT_FIELD_ORIGIN,
+  MAX_SWAY_AMPLITUDE,
   SEED_STRIDE,
   SeedOffset,
   DEFAULT_DRIFT_BOUNDS,
@@ -147,5 +150,31 @@ describe('drift sway and spin', () => {
   it('tumbles continuously from the phase offset', () => {
     expect(driftSpin(seeds, 4, 0)).toBeCloseTo(seeds[4 * SEED_STRIDE + SeedOffset.Phase], 5);
     expect(driftSpin(seeds, 4, 10)).not.toBeCloseTo(driftSpin(seeds, 4, 0), 3);
+  });
+});
+
+describe('field placement', () => {
+  it('never lets a mote reach the camera path', () => {
+    // A mote that crosses the lens renders as a large bright shape rather than
+    // as distant dust. Keep the whole field behind the nearest camera shot.
+    const seeds = createDriftSeeds(256);
+
+    let farthestZ = -Infinity;
+    for (let i = 0; i < 256; i++) {
+      for (let t = 0; t < 200; t += 1.7) {
+        farthestZ = Math.max(farthestZ, DRIFT_FIELD_ORIGIN[2] + driftSwayZ(seeds, i, t));
+      }
+    }
+
+    const nearestCameraZ = Math.min(...CAMERA_CHAPTERS.map((c) => c.position[2]));
+    expect(farthestZ).toBeLessThan(nearestCameraZ);
+  });
+
+  it('bounds sway within the documented maximum amplitude', () => {
+    const seeds = createDriftSeeds(256);
+    for (let i = 0; i < 256; i++) {
+      expect(seeds[i * SEED_STRIDE + SeedOffset.Amplitude])
+        .toBeLessThanOrEqual(MAX_SWAY_AMPLITUDE);
+    }
   });
 });

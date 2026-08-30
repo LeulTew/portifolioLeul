@@ -15,6 +15,8 @@ import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
 import { CinematicCameraController } from './3d/CinematicCameraController';
 import { AtmosphericDrift } from './3d/AtmosphericDrift';
+import { DRIFT_FIELD_ORIGIN } from '@/lib/atmosphere/drift';
+import { ChapterGrading } from './3d/ChapterGrading';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
@@ -24,6 +26,7 @@ const DEFAULT_PARTICLE_COUNT = 800;
 
 /** Share of the particle budget spent on animated motes rather than stars. */
 const DRIFT_BUDGET_SHARE = 0.3;
+
 
 useGLTF.preload('/models/terrain-mobile.glb');
 
@@ -160,6 +163,8 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
   // cost far more per instance than the static point cloud.
   const driftCount = Math.max(Math.round(particleCount * DRIFT_BUDGET_SHARE), 0);
   const prismRef = useRef<THREE.Group>(null);
+  const ambientRef = useRef<THREE.AmbientLight>(null);
+  const keyLightRef = useRef<THREE.DirectionalLight>(null);
 
   const isLight = theme === 'light';
 
@@ -212,6 +217,7 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
     <>
       <ResponsiveCamera />
       <CinematicCameraController />
+      <ChapterGrading isLight={isLight} ambientRef={ambientRef} keyLightRef={keyLightRef} />
       <color attach="background" args={[palette.background]} />
       <fog attach="fog" args={[palette.fog, 30, 70]} />
 
@@ -281,12 +287,16 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
         {/* Distant starfield */}
         <Particles color={palette.highlight} count={particleCount} />
 
-        {/* Motes drifting through the island's air */}
-        <AtmosphericDrift
-          count={driftCount}
-          color={palette.highlight}
-          opacity={isLight ? 0.35 : 0.55}
-        />
+        {/* Motes drifting through the island's air. Anchored over the island
+            and behind the camera's closest approach (z = 8), so no mote can
+            cross the lens and read as a large bright shape. */}
+        <group position={[...DRIFT_FIELD_ORIGIN]}>
+          <AtmosphericDrift
+            count={driftCount}
+            color={palette.highlight}
+            opacity={isLight ? 0.35 : 0.55}
+          />
+        </group>
 
         <Suspense fallback={null}>
           {/* Placed next to the prism [12, 2, -15] */}
@@ -302,11 +312,14 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
         </Suspense>
 
         {/* Enhanced Lighting */}
-        <ambientLight intensity={palette.ambient} />
-        <directionalLight 
-          position={[10, 20, 10]} 
-          intensity={palette.directional} 
-          color="#ffffff" 
+        {/* Intensity and colour are cross-faded per chapter by ChapterGrading;
+            the palette values below are only the opening state. */}
+        <ambientLight ref={ambientRef} intensity={palette.ambient} />
+        <directionalLight
+          ref={keyLightRef}
+          position={[10, 20, 10]}
+          intensity={palette.directional}
+          color="#ffffff"
           castShadow
         />
         <spotLight
