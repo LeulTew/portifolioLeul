@@ -1,5 +1,9 @@
+/*
+ * No negative pull-up. The -142vh here compensated for a scroll track that was
+ * over-sized by a hard-coded page buffer; with the track measured from content
+ * it dragged Contact up over the end of Projects and over the spacer.
+ */
 .contact {
-  margin-top: -142vh;
   position: relative;
   min-height: 100vh;
   display: flex;

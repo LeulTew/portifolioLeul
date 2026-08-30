@@ -5,19 +5,10 @@
   flex-direction: column;
   justify-content: center;
   padding: 0 max(2rem, 5vw) 8rem;
-  margin: -8rem 0 0 0;
   overflow: hidden;
   mix-blend-mode: difference;
   pointer-events: none;
   background: transparent;
-}
-
-/* Fix for 1080p screens where overlap occurs */
-@media (min-width: 769px) and (max-width: 1920px) {
-  .projects {
-    padding-top: 15rem; /* Increase padding to push content down */
-    margin-top: -4rem; /* Adjust negative margin */
-  }
 }
 
 .content {
