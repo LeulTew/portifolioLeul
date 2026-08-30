@@ -84,9 +84,31 @@
 }
 
 /*
+ * The ground the stretch stands on.
+ *
+ * Opaque, and ramped at both ends by its own layer rather than switched: the
+ * world is shut out for exactly as long as the reader is held, and is handed
+ * back as they leave instead of reappearing.
+ */
+.heldGround {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #000c10;
+  opacity: var(--ground-in, 0);
+}
+
+:global([data-theme='light']) .heldGround {
+  background: #f4f7fb;
+}
+
+/*
  * The one thing that does not come and go. It carries the whole stretch, so it
  * moves continuously with `--seq` rather than appearing and disappearing with
  * the statements standing on it.
+ *
+ * It leaves before the stretch does: geometry still drifting as the section
+ * hands over reads as scenery someone forgot to clear.
  */
 .heldField {
   position: absolute;
@@ -99,12 +121,14 @@
   pointer-events: none;
   color: rgba(210, 236, 255, 0.3);
   box-sizing: border-box;
-  /* Leans across the stretch, so the ground is never quite still. */
+  opacity: var(--field-in, 0);
+  /* Leans across the stretch, and draws back as it goes. */
   transform: translate3d(
-    calc((var(--seq, 0.5) - 0.5) * -6vw),
-    calc((var(--seq, 0.5) - 0.5) * 4vh),
-    0
-  );
+      calc((var(--seq, 0.5) - 0.5) * -6vw),
+      calc((var(--seq, 0.5) - 0.5) * 4vh),
+      0
+    )
+    scale(calc(0.86 + var(--field-in, 0) * 0.14));
 }
 
 .heldField > * {
@@ -146,23 +170,72 @@
 }
 
 .layerOne {
-  opacity: var(--one-on, 0);
-  filter: blur(calc((1 - var(--one-in, 0)) * 18px));
-  transform: translate3d(0, calc((1 - var(--one-in, 0)) * 2.5vh), 0);
+  --on: var(--one-on, 0);
+  --in: var(--one-in, 0);
 }
 
 .layerTwo {
-  opacity: var(--two-on, 0);
-  filter: blur(calc((1 - var(--two-in, 0)) * 18px));
-  transform: translate3d(0, calc((1 - var(--two-in, 0)) * 2.5vh), 0);
+  --on: var(--two-on, 0);
+  --in: var(--two-in, 0);
+}
+
+.layerOne,
+.layerTwo {
+  opacity: var(--on);
+  transform: translate3d(0, calc((1 - var(--in)) * 2.5vh), 0);
+}
+
+/*
+ * The lines resolve in turn, without a second value being published for each.
+ *
+ * Squaring the layer's own progress delays a line without moving its end: the
+ * second line is always behind the first and they finish together, so the
+ * statement settles as one thing rather than trailing. A stagger written as a
+ * fixed delay cannot do that -- it would have to end late too.
+ */
+.lineFirst {
+  --line: var(--in);
+}
+
+.lineSecond {
+  --line: calc(var(--in) * var(--in));
+}
+
+.lineFirst,
+.lineSecond {
+  display: block;
+  filter: blur(calc((1 - var(--line, 0)) * 20px));
+  /*
+   * Emerges through a rising edge rather than sliding in from one. The band is
+   * soft, so the line surfaces out of the ground instead of being uncovered by
+   * something with an edge of its own.
+   */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 calc(var(--line, 0) * 100%),
+    transparent calc(var(--line, 0) * 100% + 34%)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 calc(var(--line, 0) * 100%),
+    transparent calc(var(--line, 0) * 100% + 34%)
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {
   /* The fade carries the sequence; the blur and the drift are decoration. */
   .layerOne,
   .layerTwo {
-    filter: none;
     transform: none;
+  }
+
+  .lineFirst,
+  .lineSecond {
+    filter: none;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .heldField {

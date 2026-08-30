@@ -12,8 +12,20 @@ import type { SequenceLayer } from '../../ui/PinnedSequence';
  * file exports only components and fast refresh keeps working.
  */
 export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
-  { name: 'one', start: 0.06, end: 0.46 },
-  { name: 'two', start: 0.54, end: 0.94 },
+  /*
+   * The ground. Covers the whole stretch and ramps at both ends, so the world
+   * is shut out for exactly as long as the reader is held and is given back on
+   * the way out instead of being switched off.
+   */
+  { name: 'ground', start: 0, end: 1, feather: 0.14 },
+  /*
+   * The geometry leaves before the stretch does. Something still drifting as
+   * the section hands over reads as scenery that was forgotten rather than
+   * cleared.
+   */
+  { name: 'field', start: 0.02, end: 0.88, feather: 0.16 },
+  { name: 'one', start: 0.08, end: 0.46 },
+  { name: 'two', start: 0.54, end: 0.92 },
 ] as const;
 
 /** Screens of scroll the held stretch spends. */

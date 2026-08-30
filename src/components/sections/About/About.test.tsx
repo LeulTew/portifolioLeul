@@ -80,15 +80,32 @@ describe('About held sequence', () => {
   });
 
   it('hands over rather than crossfading: neither is on at the changeover', () => {
-    for (const layer of STATEMENT_LAYERS) {
+    // The statements only. The ground and the field are meant to be on here:
+    // they are what stays continuous across the handover.
+    for (const name of ['one', 'two']) {
+      const layer = STATEMENT_LAYERS.find((l) => l.name === name)!;
       expect(windowPresence(0.5, layer.start, layer.end, 0.09)).toBe(0);
     }
+  });
+
+  it('keeps the ground up for the whole stretch it is held for', () => {
+    const ground = STATEMENT_LAYERS.find((l) => l.name === 'ground')!;
+    expect(windowPresence(0.5, ground.start, ground.end, ground.feather)).toBe(1);
+    // Ramped at both ends, so the world is handed back rather than switched on.
+    expect(windowPresence(0.02, ground.start, ground.end, ground.feather)).toBeLessThan(1);
+    expect(windowPresence(0.98, ground.start, ground.end, ground.feather)).toBeLessThan(1);
+  });
+
+  it('clears the geometry before the stretch ends', () => {
+    // Something still drifting at the handover reads as scenery left behind.
+    const field = STATEMENT_LAYERS.find((l) => l.name === 'field')!;
+    expect(windowPresence(0.97, field.start, field.end, field.feather)).toBe(0);
   });
 
   it('starts each statement from nothing, not from a blurred ghost', () => {
     // A fifth of the way in must be invisible, not a large soft copy of the
     // text sitting on screen for the whole approach.
-    const first = STATEMENT_LAYERS[0];
+    const first = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
     const early = windowPresence(first.start + 0.02, first.start, first.end, 0.09);
     expect(early).toBeGreaterThan(0);
     expect(layerOpacity(early)).toBeLessThan(0.05);

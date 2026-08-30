@@ -74,13 +74,22 @@ export function PinnedSequence({
       const progress = localProgress(rect.top, rect.height, rootHeight);
 
       /*
-       * Hidden outright when the sequence is not on screen. An overlay is
-       * fixed to the viewport, so one left mounted at zero opacity still sits
-       * over every other section for the rest of the page.
+       * Shown only while the stretch is actually being held, which is a
+       * narrower window than being on screen at all.
+       *
+       * Intersecting is not the test. The spacer starts intersecting a whole
+       * screen before it reaches the top, so an overlay switched on by
+       * intersection is drawn over whatever still sits above it -- the
+       * section's own heading, in this case, with the held content laid across
+       * it. The reader should scroll TO the stretch, and only then be held.
+       *
+       * Hidden outright rather than left transparent: an overlay is fixed to
+       * the viewport, so one merely faded out still covers every section after
+       * it for the rest of the page.
        */
-      const onScreen = rect.top < rootHeight && rect.bottom > 0;
-      overlay.dataset.active = String(onScreen);
-      if (!onScreen) return;
+      const pinned = rect.top <= 0 && rect.bottom >= rootHeight;
+      overlay.dataset.active = String(pinned);
+      if (!pinned) return;
 
       overlay.style.setProperty('--seq', progress.toFixed(4));
       for (const layer of layers) {

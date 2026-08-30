@@ -58,6 +58,10 @@ export function About() {
           className={styles.aboutSequence}
           testId="about-sequence"
         >
+          {/* Shuts the world out for exactly as long as the reader is held,
+              and gives it back on the way out. */}
+          <div className={styles.heldGround} aria-hidden="true" />
+
           {/* Held for the whole stretch: the one thing that does not come and
               go, so the statements read as arriving on it. */}
           <div className={styles.heldField} aria-hidden="true">
@@ -71,9 +75,11 @@ export function About() {
               data-testid="about-left-column"
             >
               <h3 className={styles.statementText}>
-                <span className={styles.statementLine}>KEEP IT SIMPLE</span>
+                <span className={`${styles.statementLine} ${styles.lineFirst}`}>
+                  KEEP IT SIMPLE
+                </span>
                 <span
-                  className={`${styles.statementLine} ${styles.statementHighlight}`}
+                  className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight}`}
                 >
                   BUT SIGNIFICANT
                 </span>
@@ -92,9 +98,11 @@ export function About() {
               data-testid="about-right-column"
             >
               <h3 className={styles.statementText}>
-                <span className={styles.statementLine}>SCALABLE SYSTEMS</span>
+                <span className={`${styles.statementLine} ${styles.lineFirst}`}>
+                  SCALABLE SYSTEMS
+                </span>
                 <span
-                  className={`${styles.statementLine} ${styles.statementHighlight}`}
+                  className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight}`}
                 >
                   CRAFTED TO EMPOWER
                 </span>

@@ -129,3 +129,45 @@ describe('PinnedSequence', () => {
     expect(on).toBeLessThan(0.1);
   });
 });
+
+describe('PinnedSequence activation', () => {
+  beforeEach(() => resetScrollProgress());
+
+  const mount = () => {
+    render(
+      <PinnedSequence layers={LAYERS}>
+        <p>held</p>
+      </PinnedSequence>
+    );
+    return screen.getByTestId('pinned-sequence');
+  };
+
+  const activeAfter = (spacer: HTMLElement, rect: Partial<DOMRect>) => {
+    spacer.getBoundingClientRect = () => rect as DOMRect;
+    act(() => setScrollProgress(Math.random()));
+    return screen.getByTestId('pinned-sequence-overlay').dataset.active;
+  };
+
+  it('stays off while the stretch is merely approaching', () => {
+    // It intersects a whole screen before it reaches the top, and switching on
+    // there lays the held content over whatever is still above it.
+    const spacer = mount();
+    expect(activeAfter(spacer, { top: 400, bottom: 2800, height: 2400 })).toBe(
+      'false'
+    );
+  });
+
+  it('holds only once the stretch has reached the top of the screen', () => {
+    const spacer = mount();
+    expect(activeAfter(spacer, { top: -400, bottom: 2000, height: 2400 })).toBe(
+      'true'
+    );
+  });
+
+  it('lets go once the stretch has been spent', () => {
+    const spacer = mount();
+    expect(activeAfter(spacer, { top: -2400, bottom: 0, height: 2400 })).toBe(
+      'false'
+    );
+  });
+});
