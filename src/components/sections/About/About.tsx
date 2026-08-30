@@ -6,7 +6,6 @@ import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
-import { FocusScrim } from '../../ui/FocusScrim';
 
 
 
@@ -30,13 +29,12 @@ export function About() {
    */
   return (
     <section ref={containerRef} className={styles.about} id="about">
-      {/* Mostly copy, and long: close the world out entirely. */}
-      <FocusScrim variant="solid" />
       <div className={styles.content}>
         <PinnedSequence
           screens={ABOUT_SCREENS}
           layers={STATEMENT_LAYERS}
           className={styles.aboutSequence}
+          id="about-held"
           testId="about-sequence"
         >
           {/*

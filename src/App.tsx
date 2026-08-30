@@ -278,12 +278,17 @@ function App() {
         the start of the next, with the world flashing through the gap in
         between -- two backgrounds with a hole in them, not one background
         being scrolled along.
+
+        Measured from the held stretches, NOT from the sections that contain
+        them. Education's section is its pinned stretch plus a run of
+        certifications afterwards, so a ground spanning the section covers
+        that reading too -- an opaque panel over content nobody can then see.
       */}
       {!isLoading && (
         <HeldBackdrop
-          from="about"
-          to="education"
-          apertureId="education"
+          from="about-held"
+          to="education-held"
+          apertureId="education-held"
           theme={theme}
         />
       )}

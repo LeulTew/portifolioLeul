@@ -85,8 +85,14 @@ export function HeldBackdrop({
         // the opening: the colour belongs to the section, the aperture to the
         // reading of it.
         write(layer, '--depth-in', clamp01(through * 5).toFixed(3));
-        // Opens once the portal's frame is established, and stays open.
-        write(layer, '--aperture-in', clamp01((through - 0.06) / 0.42).toFixed(3));
+        /*
+         * Opens once the portal's frame is established, and stays open.
+         *
+         * Over a third of the held stretch rather than half of it: the cut is
+         * the whole point of this section, and one that is still opening as
+         * the reader leaves has not been seen.
+         */
+        write(layer, '--aperture-in', clamp01((through - 0.04) / 0.3).toFixed(3));
 
         /*
          * The camera leans toward the figure as the reader crosses this

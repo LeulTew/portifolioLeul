@@ -25,6 +25,7 @@ export function Education() {
         screens={EDUCATION_SCREENS}
         layers={EDUCATION_LAYERS}
         className={styles.sequence}
+        id="education-held"
         testId="education-sequence"
       >
         <div className={styles.portal} data-testid="education-portal">

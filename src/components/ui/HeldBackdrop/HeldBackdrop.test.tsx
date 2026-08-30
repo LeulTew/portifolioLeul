@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, cleanup } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { HeldBackdrop } from './HeldBackdrop';
 import { runProgress, runGround } from './runProgress';
@@ -135,5 +135,115 @@ describe('HeldBackdrop', () => {
     expect(backdrop.dataset.active).toBe('true');
     expect(backdrop.style.getPropertyValue('--run')).not.toBe('');
     expect(backdrop.style.getPropertyValue('--ground-in')).not.toBe('');
+  });
+});
+
+describe('HeldBackdrop extent', () => {
+  beforeEach(() => resetScrollProgress());
+
+  it('covers only what is actually held, not the sections around it', () => {
+    // Education's section is its pinned stretch plus a run of certifications
+    // after it. A ground spanning the section is an opaque panel over that
+    // reading, and the reader sees a blank screen where the content should be.
+    render(
+      <>
+        <section id="education">
+          <div id="education-held" />
+          <div data-testid="certifications" />
+        </section>
+        <div id="about-held" />
+        <HeldBackdrop from="about-held" to="education-held" />
+      </>
+    );
+
+    const held = document.getElementById('education-held')!;
+    const about = document.getElementById('about-held')!;
+    about.getBoundingClientRect = () =>
+      ({ top: -2400, bottom: 0, height: 2400 }) as DOMRect;
+    // The held stretch is behind us; only the certifications are on screen.
+    held.getBoundingClientRect = () =>
+      ({ top: -1600, bottom: -1, height: 1600 }) as DOMRect;
+
+    act(() => setScrollProgress(0.6));
+
+    expect(screen.getByTestId('held-backdrop').dataset.active).toBe('false');
+  });
+
+  it('is still up while the held stretch is on screen', () => {
+    render(
+      <>
+        <div id="about-held" />
+        <div id="education-held" />
+        <HeldBackdrop from="about-held" to="education-held" />
+      </>
+    );
+
+    const about = document.getElementById('about-held')!;
+    const held = document.getElementById('education-held')!;
+    about.getBoundingClientRect = () =>
+      ({ top: -2000, bottom: 400, height: 2400 }) as DOMRect;
+    held.getBoundingClientRect = () =>
+      ({ top: 400, bottom: 2000, height: 1600 }) as DOMRect;
+
+    act(() => setScrollProgress(0.5));
+
+    const backdrop = screen.getByTestId('held-backdrop');
+    expect(backdrop.dataset.active).toBe('true');
+    expect(Number(backdrop.style.getPropertyValue('--ground-in'))).toBeGreaterThan(0);
+  });
+});
+
+describe('HeldBackdrop aperture timing', () => {
+  beforeEach(() => resetScrollProgress());
+
+  const at = (throughSpacer: number) => {
+    // Each call mounts its own portal into the body; without this a second
+    // reading in one test finds two backdrops.
+    cleanup();
+    render(
+      <>
+        <div id="about-held" />
+        <div id="education-held" />
+        <HeldBackdrop
+          from="about-held"
+          to="education-held"
+          apertureId="education-held"
+        />
+      </>
+    );
+
+    const about = document.getElementById('about-held')!;
+    const held = document.getElementById('education-held')!;
+    const height = 2400;
+    const travel = height - 768;
+
+    about.getBoundingClientRect = () =>
+      ({ top: -3000, bottom: -600, height: 2400 }) as DOMRect;
+    held.getBoundingClientRect = () =>
+      ({
+        top: -travel * throughSpacer,
+        bottom: height - travel * throughSpacer,
+        height,
+      }) as DOMRect;
+
+    act(() => setScrollProgress(0.5 + throughSpacer / 100));
+    return Number(
+      screen.getByTestId('held-backdrop').style.getPropertyValue('--aperture-in')
+    );
+  };
+
+  it('is shut as the held stretch begins', () => {
+    expect(at(0)).toBe(0);
+  });
+
+  it('is fully open by a third of the way through', () => {
+    // A cut still opening as the reader leaves has not been seen, and the cut
+    // is the whole point of this section.
+    expect(at(0.34)).toBe(1);
+  });
+
+  it('stays open for the rest of it', () => {
+    expect(at(0.7)).toBe(1);
+    expect(at(1)).toBe(1);
   });
 });
