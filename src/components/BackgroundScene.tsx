@@ -18,6 +18,9 @@ import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 const TERRAIN_URL = '/models/terrain-mobile.glb';
 
+/** Used when the caller has no GPU-tier reading yet. */
+const DEFAULT_PARTICLE_COUNT = 800;
+
 useGLTF.preload('/models/terrain-mobile.glb');
 
 interface TerrainProps {
@@ -85,25 +88,24 @@ function Terrain({ surfaceColor }: TerrainProps) {
 
 interface ParticlesProps {
   color: string;
+  count: number;
 }
 
-function Particles({ color }: ParticlesProps) {
-  const count = 1000;
+function Particles({ color, count }: ParticlesProps) {
   const positions = useMemo(() => {
-    const positions = new Float32Array(count * 3);
+    const buffer = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 50;
-      positions[i * 3 + 1] = Math.random() * 30;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+      buffer[i * 3] = (Math.random() - 0.5) * 50;
+      buffer[i * 3 + 1] = Math.random() * 30;
+      buffer[i * 3 + 2] = (Math.random() - 0.5) * 50;
     }
-    return positions;
-  }, []);
+    return buffer;
+  }, [count]);
 
   return (
     <Points>
       <PointMaterial
         transparent
-        vertexColors
         size={0.15}
         sizeAttenuation={true}
         depthWrite={false}
@@ -149,7 +151,7 @@ interface BackgroundSceneProps {
   particleCount?: number;
 }
 
-export function BackgroundScene({ theme }: BackgroundSceneProps) {
+export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT }: BackgroundSceneProps) {
   const sceneRef = useRef<THREE.Group>(null);
   const prismRef = useRef<THREE.Group>(null);
   const scroll = useScroll();
@@ -277,7 +279,7 @@ export function BackgroundScene({ theme }: BackgroundSceneProps) {
         </group>
 
         {/* Ambient Particles */}
-        <Particles color={palette.highlight} />
+        <Particles color={palette.highlight} count={particleCount} />
 
         <Suspense fallback={null}>
           {/* Placed next to the prism [12, 2, -15] */}

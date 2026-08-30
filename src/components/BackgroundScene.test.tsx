@@ -76,4 +76,39 @@ describe('BackgroundScene', () => {
     const { container } = render(<BackgroundScene theme="light" />);
     expect(container).toBeDefined();
   });
+
+  const positionAttribute = (container: HTMLElement) =>
+    container.querySelector('bufferattribute[attach="attributes-position"]');
+
+  it('sizes the ambient particle field from the GPU tier budget', () => {
+    const { container } = render(
+      <BackgroundScene theme="dark" particleCount={350} />
+    );
+
+    const attribute = positionAttribute(container);
+    expect(attribute?.getAttribute('count')).toBe('350');
+  });
+
+  it('allocates exactly three floats per particle', () => {
+    const { container } = render(
+      <BackgroundScene theme="dark" particleCount={12} />
+    );
+
+    const attribute = positionAttribute(container);
+    expect(attribute?.getAttribute('itemsize')).toBe('3');
+    expect(attribute?.getAttribute('count')).toBe('12');
+  });
+
+  it('falls back to a mid-tier budget when no count is supplied', () => {
+    const { container } = render(<BackgroundScene theme="dark" />);
+
+    expect(positionAttribute(container)?.getAttribute('count')).toBe('800');
+  });
+
+  it('does not request vertex colors it never supplies', () => {
+    // A vertexColors material with no color attribute renders black points.
+    const { container } = render(<BackgroundScene theme="dark" />);
+
+    expect(container.querySelector('[vertexcolors]')).toBeNull();
+  });
 });
