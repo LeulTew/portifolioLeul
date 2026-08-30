@@ -11,17 +11,19 @@
 }
 
 /*
- * The hero deliberately has no focus scrim: it is meant to sit in the world.
- * But the terrain behind it ranges from near-black to bright surf, so the copy
- * cannot rely on the backdrop for contrast. A soft plate local to the text
- * column carries it without walling off the scene.
+ * The plate the hero copy sits on.
+ *
+ * A real element rather than a ::before, because it is the first beat of the
+ * sequence and a pseudo-element cannot be animated independently of its host.
+ * The wipe is a CSS animation so it runs on the compositor and cannot be left
+ * half-open by a throttled main thread.
  */
-.content::before {
-  content: '';
+.plate {
   position: absolute;
   inset: -3rem -6rem -3rem -8rem;
   z-index: -1;
   pointer-events: none;
+  clip-path: inset(0 100% 0 0);
   background: radial-gradient(
     ellipse 75% 90% at 30% 50%,
     rgba(0, 14, 16, 0.72) 0%,
@@ -30,13 +32,34 @@
   );
 }
 
-:global([data-theme='light']) .content::before {
+:global([data-theme='light']) .plate {
   background: radial-gradient(
     ellipse 75% 90% at 30% 50%,
     rgba(248, 250, 255, 0.88) 0%,
     rgba(248, 250, 255, 0.6) 55%,
     rgba(248, 250, 255, 0) 100%
   );
+}
+
+.plateDrawn {
+  animation: plateWipe 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes plateWipe {
+  to {
+    clip-path: inset(0 0% 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The plate carries text contrast, so it must be present, only not wiped. */
+  .plate {
+    clip-path: inset(0 0% 0 0);
+  }
+
+  .plateDrawn {
+    animation: none;
+  }
 }
 
 .content {
@@ -235,10 +258,16 @@
  */
 .scrollCue {
   position: fixed;
-  left: clamp(2rem, 14vw, 18rem);
-  top: 52vh;
+  left: 18rem;
+  top: 66vh;
   transform: translateX(-50%);
-  width: auto;
-  height: min(34vh, 300px);
+  width: 100px;
+  height: 380px;
   z-index: 100;
+}
+
+@media (max-width: 1100px) {
+  .scrollCue {
+    left: 9rem;
+  }
 }

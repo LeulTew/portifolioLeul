@@ -38,7 +38,7 @@ describe.each(SEQUENCES)('%s sequence', (_name, sequence) => {
     expect(new Set(starts).size).toBe(starts.length);
   });
 
-  it('overlaps neighbours rather than leaving dead air', () => {
+  it('hands over between beats without leaving dead air', () => {
     for (let i = 1; i < sequence.length; i++) {
       const previous = sequence[i - 1];
       const gap = sequence[i].at - (previous.at + previous.duration);
@@ -46,15 +46,30 @@ describe.each(SEQUENCES)('%s sequence', (_name, sequence) => {
     }
   });
 
+  it('separates its beats rather than running them together', () => {
+    // The complaint that fixed this: everything moving at once, at one speed,
+    // reads as a single slide however many layers are involved.
+    for (let i = 1; i < sequence.length; i++) {
+      const step = sequence[i].at - sequence[i - 1].at;
+      expect(step).toBeGreaterThanOrEqual(0.25);
+    }
+  });
+
+  it('varies pace across the sequence', () => {
+    const durations = sequence.map((cue) => cue.duration);
+    const spread = Math.max(...durations) / Math.min(...durations);
+    expect(spread).toBeGreaterThan(2);
+  });
+
   it('gives every layer a real duration', () => {
     for (const cue of sequence) {
       expect(cue.duration).toBeGreaterThan(0.2);
-      expect(cue.duration).toBeLessThanOrEqual(1.2);
+      expect(cue.duration).toBeLessThanOrEqual(1.5);
     }
   });
 
   it('finishes before the reader loses patience', () => {
-    expect(sequenceDuration(sequence)).toBeLessThan(2.5);
+    expect(sequenceDuration(sequence)).toBeLessThan(4.5);
   });
 });
 
@@ -75,16 +90,19 @@ describe('hero ordering', () => {
     const engineOf = (id: string) =>
       HERO_SEQUENCE.find((cue) => cue.id === id)?.engine;
 
-    expect(engineOf('backdrop')).toBe('framer');
+    // The two whose start state hides content run on CSS, so a throttled main
+    // thread cannot leave them half-played.
+    expect(engineOf('backdrop')).toBe('css');
+    expect(engineOf('affordance')).toBe('css');
     expect(engineOf('title')).toBe('gsap');
     expect(engineOf('description')).toBe('gsap');
-    expect(engineOf('affordance')).toBe('framer');
+    expect(engineOf('portrait')).toBe('framer');
   });
 });
 
 describe('cue lookup', () => {
   it('reports a layer’s delay and duration', () => {
-    expect(cueDelay(HERO_SEQUENCE, 'title')).toBe(0.32);
+    expect(cueDelay(HERO_SEQUENCE, 'title')).toBe(1.0);
     expect(cueDuration(HERO_SEQUENCE, 'title')).toBe(0.9);
   });
 

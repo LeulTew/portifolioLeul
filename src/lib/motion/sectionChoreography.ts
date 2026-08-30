@@ -7,7 +7,7 @@
  */
 
 /** Which engine drives a layer. Recorded so the sequence documents itself. */
-export type CueEngine = 'framer' | 'gsap';
+export type CueEngine = 'framer' | 'gsap' | 'css';
 
 export interface SectionCue {
   /** Layer this cue drives. Unique within a sequence. */
@@ -25,13 +25,16 @@ export interface SectionCue {
  * next move rather than competing with what just arrived.
  */
 export const HERO_SEQUENCE: readonly SectionCue[] = [
-  { id: 'backdrop', at: 0, duration: 0.9, engine: 'framer' },
-  { id: 'portrait', at: 0.18, duration: 0.7, engine: 'framer' },
-  { id: 'title', at: 0.32, duration: 0.9, engine: 'gsap' },
-  { id: 'role', at: 0.52, duration: 0.7, engine: 'gsap' },
-  { id: 'description', at: 0.66, duration: 0.7, engine: 'gsap' },
-  { id: 'actions', at: 0.82, duration: 0.6, engine: 'framer' },
-  { id: 'affordance', at: 1.04, duration: 0.8, engine: 'framer' },
+  // The plate wipes in under everything, and finishes before any copy lands.
+  { id: 'backdrop', at: 0, duration: 0.7, engine: 'css' },
+  { id: 'portrait', at: 0.6, duration: 0.55, engine: 'framer' },
+  // The longest beat: characters uncover one by one on their own stagger.
+  { id: 'title', at: 1.0, duration: 0.9, engine: 'gsap' },
+  { id: 'role', at: 1.65, duration: 0.5, engine: 'gsap' },
+  { id: 'description', at: 1.9, duration: 0.55, engine: 'gsap' },
+  { id: 'actions', at: 2.25, duration: 0.45, engine: 'framer' },
+  // Slowest of all, and last: the line takes its time drawing itself.
+  { id: 'affordance', at: 2.5, duration: 1.4, engine: 'css' },
 ] as const;
 
 /** Coverage at which a section counts as having arrived. */

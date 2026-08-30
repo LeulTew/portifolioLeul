@@ -146,6 +146,14 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           visibility: isVisible ? 'visible' : 'hidden',
         }}
       >
+        {/* First beat: the plate wipes in under the copy, before any of it
+            arrives. It is a real element so it can be sequenced at all. */}
+        <div
+          className={`${styles.plate} ${hasEntered ? styles.plateDrawn : ''}`}
+          aria-hidden="true"
+          data-cue-layer="backdrop"
+        />
+
         <motion.div
           className={styles.header}
           initial={{ opacity: 0, y: 20 }}
@@ -229,6 +237,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       <ScrollCue
         className={styles.scrollCue}
         drawn={hasEntered}
+        delay={cueDelay(HERO_SEQUENCE, 'affordance')}
         onActivate={scrollToAbout}
         label="Scroll to about section"
       />

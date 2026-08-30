@@ -42,12 +42,13 @@
 }
 
 /* Drawing: the line arrives, then the head lands on the end of it. */
-.drawn .trace {
-  animation: draw 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
+/*
+ * Every delay is offset by --cue-delay, so the cue takes its place in the
+ * section's sequence instead of drawing the moment the section arrives.
+ */
 .drawn .head {
-  animation: draw 0.45s cubic-bezier(0.22, 1, 0.36, 1) 1.15s forwards;
+  animation: draw 0.4s cubic-bezier(0.22, 1, 0.36, 1)
+    calc(var(--cue-delay, 0s) + 1.1s) forwards;
 }
 
 @keyframes draw {
@@ -72,8 +73,9 @@
 
 .drawn .current {
   animation:
-    currentFlow 2.6s cubic-bezier(0.5, 0, 0.5, 1) 1.6s infinite,
-    currentFade 2.6s linear 1.6s infinite;
+    currentFlow 2.6s cubic-bezier(0.5, 0, 0.5, 1)
+      calc(var(--cue-delay, 0s) + 1.6s) infinite,
+    currentFade 2.6s linear calc(var(--cue-delay, 0s) + 1.6s) infinite;
 }
 
 @keyframes currentFlow {
@@ -96,11 +98,11 @@
   }
 }
 
-/* A slow breathing glow, so the cue stays alive between currents. */
+/* Draws, then breathes slowly so the mark stays alive between currents. */
 .drawn .trace {
   animation:
-    draw 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-    breathe 4.5s ease-in-out 1.6s infinite;
+    draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) var(--cue-delay, 0s) forwards,
+    breathe 4.5s ease-in-out calc(var(--cue-delay, 0s) + 1.6s) infinite;
 }
 
 @keyframes breathe {

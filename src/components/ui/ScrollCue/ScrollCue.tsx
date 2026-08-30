@@ -15,15 +15,21 @@ import styles from './ScrollCue.module.css';
  */
 const PATH_LENGTH = 100;
 
-/** The sweep: down and out to the right, easing into its steepest fall. */
-const TRACE = 'M 16 4 C 14 132, 26 250, 116 392';
+/**
+ * The original mark's geometry: a long, nearly vertical fall that drifts only
+ * about 34px across as it descends 356. It reads as a line dropping away down
+ * the page, not as a sweep across it.
+ */
+const TRACE = 'M 8 6 C 3 140, 12 262, 34 352';
 
-/** Chevron at the tip, aligned to the curve's tangent where it lands. */
-const HEAD = 'M 92 368 L 118 396 L 78 402';
+/** Chevron at the foot of the fall, opening back up the way the line came. */
+const HEAD = 'M 20 330 L 34 356 L 47 327';
 
 export interface ScrollCueProps {
   /** Plays the draw. Held false until the section's cue is reached. */
   drawn?: boolean;
+  /** Seconds to wait before drawing, from the section's sequence. */
+  delay?: number;
   onActivate?: () => void;
   className?: string;
   label?: string;
@@ -31,6 +37,7 @@ export interface ScrollCueProps {
 
 export function ScrollCue({
   drawn = false,
+  delay = 0,
   onActivate,
   className,
   label = 'Scroll to the next section',
@@ -40,14 +47,14 @@ export function ScrollCue({
       className={[styles.cue, drawn ? styles.drawn : '', className]
         .filter(Boolean)
         .join(' ')}
-      viewBox="0 0 140 410"
-      width="140"
-      height="410"
+      viewBox="0 0 100 380"
+      preserveAspectRatio="xMidYMin meet"
       role="button"
       tabIndex={0}
       aria-label={label}
       data-testid="scroll-cue"
       data-drawn={drawn}
+      style={{ ['--cue-delay' as string]: `${delay}s` }}
       onClick={onActivate}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
