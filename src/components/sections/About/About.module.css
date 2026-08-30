@@ -33,7 +33,11 @@
   text-align: left;
   margin-bottom: 2rem;
   width: 100%;
-  padding-left: clamp(2rem, 9vw, 16rem);
+  /*
+   * A shade further in than the stages below it, so the heading sits just off
+   * their left edge rather than stacking flush with it. Still left aligned.
+   */
+  padding-left: clamp(3.5rem, 11.5vw, 20rem);
   padding-right: clamp(2rem, 9vw, 16rem);
   box-sizing: border-box;
 }
@@ -121,13 +125,36 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  max-width: clamp(380px, 52vw, 860px);
-  /* Centred in the window: the statement is what the screen is for. */
-  margin: 0 auto;
+  max-width: clamp(380px, 46vw, 780px);
   z-index: 10;
   position: relative;
   box-sizing: border-box;
   will-change: opacity, filter;
+}
+
+/*
+ * Each statement keeps the side it belongs to. The stage centres its contents
+ * vertically -- which is what makes a statement the thing on screen -- but
+ * centring it horizontally as well threw away the left/right composition the
+ * two are written as a pair for.
+ */
+.leftColumn {
+  justify-self: start;
+}
+
+.rightColumn {
+  justify-self: end;
+  /* Set from the edge it sits on, so the two are mirror images. */
+  text-align: right;
+}
+
+.rightColumn .subStatement,
+.rightColumn .metricItem {
+  justify-content: flex-end;
+}
+
+.rightColumn .pillContainer {
+  justify-content: flex-end;
 }
 
 

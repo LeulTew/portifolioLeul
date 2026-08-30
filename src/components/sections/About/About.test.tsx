@@ -108,3 +108,17 @@ describe('About stages', () => {
     expect(screen.getByTestId('about-stage-two').contains(plates[1])).toBe(true);
   });
 });
+
+describe('About statement alignment', () => {
+  it('keeps each statement on the side it is written for', () => {
+    // Centring both horizontally threw away the left/right composition the
+    // pair is written as.
+    render(<About />);
+    expect(screen.getByTestId('about-left-column').className).toContain(
+      'leftColumn'
+    );
+    expect(screen.getByTestId('about-right-column').className).toContain(
+      'rightColumn'
+    );
+  });
+});

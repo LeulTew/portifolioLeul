@@ -1,3 +1,20 @@
+/*
+ * Doubled deliberately, to outrank `.main > *` in App.module.css.
+ *
+ * That rule puts `position: relative; z-index: 1` on EVERY section, which makes
+ * each one its own stacking context -- so no z-index on anything inside the
+ * hero can lift it above About, which is a later sibling at the same level and
+ * therefore always wins on document order. The scroll cue hangs past the
+ * hero's bottom edge on purpose, so it has to be raised here, at the section,
+ * or it is painted under About however high its own z-index goes.
+ *
+ * The hero fades to nothing on its way out and takes no pointer events, so
+ * being above the next section costs it nothing.
+ */
+.home.home {
+  z-index: 6;
+}
+
 .home {
   position: relative;
   min-height: 100vh;
