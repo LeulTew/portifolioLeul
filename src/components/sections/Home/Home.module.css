@@ -263,18 +263,19 @@
  */
 .scrollCue {
   position: absolute;
-  left: 18rem;
-  top: 62%;
+  left: 15rem;
+  top: 58%;
   transform: translateX(-50%);
-  width: 100px;
-  height: 380px;
+  /* Sized to the drawn geometry, so the box is the mark and nothing else. */
+  width: 58px;
+  height: 220px;
   z-index: 100;
   pointer-events: auto;
 }
 
 @media (max-width: 1100px) {
   .scrollCue {
-    left: 9rem;
+    left: 8rem;
   }
 }
 

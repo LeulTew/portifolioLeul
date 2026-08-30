@@ -21,8 +21,15 @@ const PATH_LENGTH = 100;
 const TRACE =
   'M 53.2 53.2 A 181.6 181.6 0 0 0 0 181.6 A 118.4 118.4 0 0 0 34.7 265.3';
 
-/** Chevron where `.point` used to sit. */
-const HEAD = 'M 17 348 L 34 366 L 51 348';
+/**
+ * Chevron at the end of the line, aligned to the curve's tangent there.
+ *
+ * The lower arc leaves its centre at 45 degrees down and to the right, so the
+ * head points that way and its tip sits on the last point of the trace. The
+ * original mark had the head floating ~100px below the curve, pointing
+ * straight down, which read as a detached mark rather than an arrow.
+ */
+const HEAD = 'M 31.1 246.6 L 34.7 265.3 L 16.0 261.7';
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;

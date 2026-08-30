@@ -68,9 +68,27 @@
 /*
  * Solid: reading-dense sections close the world out entirely. Fully opaque, so
  * nothing shows through at any viewport size or pixel density.
+ *
+ * Sharp along the top edge, unlike the veil. A panel that fades in at its
+ * leading edge reads as a torn cut across the heading beneath it; a full-bleed
+ * page should begin on a line. The trailing edge keeps its feather so the
+ * world returns underneath rather than ending abruptly.
  */
 .scrim.solid {
   background: rgb(0, 12, 16);
+
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--scrim-feather)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--scrim-feather)),
+    transparent 100%
+  );
 }
 
 :global([data-theme='light']) .scrim.solid {

@@ -88,6 +88,18 @@ describe('ScrollCue', () => {
     expect(d).toContain('34.7 265.3');
   });
 
+  it('lands the head on the end of the line, pointing along it', () => {
+    // The original head floated ~100px below the curve pointing straight down,
+    // which read as a detached mark rather than an arrow.
+    render(<ScrollCue progress={1} />);
+    const head = screen.getByTestId('scroll-cue-head').getAttribute('d') ?? '';
+    const trace = screen.getByTestId('scroll-cue-trace').getAttribute('d') ?? '';
+
+    // The tip is the trace's last point.
+    expect(head).toContain('34.7 265.3');
+    expect(trace).toContain('34.7 265.3');
+  });
+
   it('normalises path length, so the dash maths is independent of geometry', () => {
     render(<ScrollCue progress={1} />);
     for (const id of ['scroll-cue-trace', 'scroll-cue-current']) {
