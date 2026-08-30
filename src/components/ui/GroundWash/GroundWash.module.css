@@ -1,0 +1,20 @@
+/*
+ * The ground of a held section: solid, and simply arriving.
+ *
+ * It used to rise behind a scalloped waterline. The idea was that the ground
+ * and the headline's snow-filled letters would read as the same weather, but at
+ * full screen width the scallops are not a surface -- they are a line
+ * travelling up the page, and a line crossing the whole screen is the most
+ * conspicuous thing on it. Whatever it was meant to evoke, what it did was draw
+ * the eye to the transition instead of to what the transition was for.
+ *
+ * A ground has no business being interesting. It covers the world so the copy
+ * can be read, and the least it can do while covering it is nothing.
+ */
+.wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--ground-base, #000c10);
+  opacity: var(--rise, 0);
+}

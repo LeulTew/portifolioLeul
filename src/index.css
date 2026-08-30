@@ -35,6 +35,23 @@
   --footer-text-color: rgba(255, 255, 255, 0.4);
   --footer-line-color: rgba(255, 255, 255, 0.2);
   --footer-line-glow: rgba(255, 255, 255, 0.6);
+
+  /*
+   * The accent, as tokens rather than a hex repeated across every stylesheet.
+   *
+   * It was written literally everywhere it was used, which meant it could not
+   * follow the theme: #00ff9d against a near-white ground is about 1.3:1, so
+   * every accented number, hairline and label went from legible to invisible
+   * the moment the page turned light. Its own value can stay bright -- it is a
+   * glow on a dark scene -- but as INK it has to darken with the ground it
+   * sits on.
+   */
+  --accent: #00ff9d;
+  --accent-ink: #00ff9d;
+  --accent-line: rgba(0, 255, 194, 0.5);
+  --accent-glow: rgba(0, 255, 194, 0.55);
+  /* Where a mark goes on hover: away from the ground, not toward it. */
+  --accent-hover: #ffffff;
 }
 
 [data-theme="light"] {
@@ -53,6 +70,19 @@
   --pill-active-text: rgba(17, 24, 39, 0.9);
   --pill-rail-bg: rgba(17, 24, 39, 0.05);
   --pill-rail-border: rgba(17, 24, 39, 0.12);
+  /*
+   * Dark enough to read as ink on the light grounds: 5.7:1 on About's and
+   * 5.4:1 on Education's, where the dark theme's accent manages 1.1:1. Chosen
+   * against the DARKER of the two -- the first value that cleared 4.5:1 on
+   * About came out at 4.2:1 on Education, which is a fail on the section that
+   * uses the accent for its smallest text. The glow goes with it, since a
+   * bloom on a white page is just a smudge.
+   */
+  --accent: #00b073;
+  --accent-ink: #05684a;
+  --accent-line: rgba(5, 104, 74, 0.45);
+  --accent-glow: rgba(5, 104, 74, 0.3);
+  --accent-hover: #06301f;
   --footer-blend-mode: normal;
   --footer-text-color: rgba(17, 24, 39, 0.55);
   --footer-line-color: rgba(17, 24, 39, 0.2);

@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 import {
-  CAMERA_ARC_END,
+  CAMERA_ARC_SETTLE,
   createCameraSpline,
   mapScrollToArc,
   nearestChapterIndex,
@@ -11,6 +11,8 @@ import {
   sampleChapterPose,
 } from '@/lib/camera/cinematicSpline';
 import { getCameraHold } from '@/lib/camera/cameraHold';
+import { isWithinHold } from '@/lib/camera/holdRange';
+import { getFocusPull } from '@/lib/camera/focusPull';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 /**
@@ -36,13 +38,23 @@ const MAX_FRAME_DELTA = 0.1;
 
 export interface CinematicCameraControllerProps {
   /** Scroll progress at which the camera arc completes and holds. */
-  arcEnd?: number;
+  settle?: number;
   /** World units of pointer parallax. Zero disables pointer response. */
   mouseSway?: number;
 }
 
+/**
+ * Where the camera leans to while the figure is being read.
+ *
+ * The model stands at [22, -2.5, -15] at scale 8, so this is a shot off its
+ * near shoulder rather than a position on top of it -- close enough to be
+ * about him, far enough to still be a composition.
+ */
+const FOCUS_POSITION = new THREE.Vector3(14, 2, 6);
+const FOCUS_TARGET = new THREE.Vector3(22, 1.5, -15);
+
 export function CinematicCameraController({
-  arcEnd = CAMERA_ARC_END,
+  settle = CAMERA_ARC_SETTLE,
   mouseSway = DEFAULT_MOUSE_SWAY,
 }: CinematicCameraControllerProps = {}) {
   const camera = useThree((state) => state.camera);
@@ -54,7 +66,10 @@ export function CinematicCameraController({
     if (!camera) return;
 
     const reducedMotion = getPrefersReducedMotion();
-    const arc = mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold());
+    const hold = getCameraHold();
+    const offset = scroll?.offset ?? 0;
+    const held = isWithinHold(offset, hold);
+    const arc = mapScrollToArc(offset, settle, hold);
 
     if (reducedMotion) {
       // Discrete cuts between authored shots: no scrubbing, no pointer drift.
@@ -68,10 +83,39 @@ export function CinematicCameraController({
 
     sampleCameraPose(spline, arc, desiredPosition, desiredTarget);
 
-    const pointerX = state.mouse?.x ?? 0;
-    const pointerY = state.mouse?.y ?? 0;
-    desiredPosition.x += pointerX * mouseSway;
-    desiredPosition.y += pointerY * mouseSway * 0.5;
+    /*
+     * A lean toward the figure while the world is otherwise held.
+     *
+     * The arc is not advanced by it -- the pull rises and returns to nothing
+     * within the section that owns it, so the hold ends on exactly the shot it
+     * started on. Without that the world would appear to have moved during the
+     * stretch it was supposed to be still for.
+     *
+     * Only inside the hold: out on the open arc the camera has its own
+     * business and a second thing tugging at it would fight the authored
+     * shots.
+     */
+    const pull = held ? getFocusPull() : 0;
+    if (pull > 0) {
+      desiredPosition.lerpVectors(desiredPosition, FOCUS_POSITION, pull);
+      desiredTarget.lerpVectors(desiredTarget, FOCUS_TARGET, pull);
+    }
+
+    /*
+     * No sway while the world is held.
+     *
+     * The hold freezes what the scroll asks for, but the pointer was still
+     * being added on top of it -- so a section meant to be completely still
+     * drifted with the mouse the whole time it was up. Held means held: the
+     * only thing that should be able to move the camera is the scroll, and
+     * during a hold the scroll is not asking it to.
+     */
+    if (!held) {
+      const pointerX = state.mouse?.x ?? 0;
+      const pointerY = state.mouse?.y ?? 0;
+      desiredPosition.x += pointerX * mouseSway;
+      desiredPosition.y += pointerY * mouseSway * 0.5;
+    }
 
     if (!hasSettled.current) {
       // First frame: take the shot as authored rather than easing in from the

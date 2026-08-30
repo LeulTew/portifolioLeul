@@ -31,8 +31,8 @@
 
 /* The nearest plane carries the accent; the rest are structure. */
 .plane:last-of-type {
-  border-color: #00ffc2;
-  box-shadow: 0 0 24px -8px #00ffc2;
+  border-color: var(--accent-line, #00ffc2);
+  box-shadow: 0 0 24px -8px var(--accent-glow, #00ffc2);
 }
 
 /*

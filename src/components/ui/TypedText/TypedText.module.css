@@ -1,0 +1,72 @@
+/*
+ * Typing, done with arithmetic rather than a timeline.
+ *
+ * `--pos` is how far the typing has passed this character: below zero it has
+ * not reached it, above one it is behind it. Opacity is that clamped, so a
+ * character is either typed or not -- no fade, because a fading character is
+ * a character appearing, and typing does not do that.
+ *
+ * Nothing here re-renders or reflows while it runs. The whole paragraph is
+ * laid out from the start; only what is painted changes.
+ */
+.typed {
+  margin: 0;
+  font-size: clamp(1.15rem, 1.5vw, 1.6rem);
+  line-height: 1.55;
+  font-weight: 500;
+  color: rgba(222, 240, 250, 0.92);
+  max-width: 34ch;
+}
+
+:global([data-theme='light']) .typed {
+  color: rgba(20, 38, 54, 0.9);
+}
+
+/* Words wrap; characters inside them do not. */
+.word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.glyph {
+  position: relative;
+  display: inline-block;
+  --pos: calc(var(--typed, 0) * var(--n, 1) - var(--i, 0));
+  opacity: clamp(0, var(--pos), 1);
+}
+
+/*
+ * The caret, carried by every character and lit only for the one being typed.
+ *
+ * The expression is a triangle peaking where `--pos` is one: nothing before
+ * the character is reached, brightest as it lands, gone by the next. A single
+ * caret element would have to be told where the text currently ends, on every
+ * line, at every width.
+ */
+.glyph::after {
+  content: '';
+  position: absolute;
+  right: -0.055em;
+  top: 0.16em;
+  bottom: 0.06em;
+  width: 2px;
+  background: var(--accent-ink, #00ffc2);
+  box-shadow: 0 0 10px -1px var(--accent-glow, #00ffc2);
+  opacity: calc(
+    clamp(0, var(--pos), 1) - clamp(0, calc(var(--pos) - 1), 1)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * Typing is motion; the words are not. They are simply present, with no
+   * caret chasing them.
+   */
+  .glyph {
+    opacity: 1;
+  }
+
+  .glyph::after {
+    display: none;
+  }
+}

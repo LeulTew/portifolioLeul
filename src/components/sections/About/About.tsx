@@ -1,14 +1,11 @@
 import { useRef } from 'react';
-import { motion } from 'framer-motion';
 import { PinnedSequence } from '../../ui/PinnedSequence';
+import { TypedText } from '../../ui/TypedText';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import { Card } from '../../ui/Card';
-import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
-import { FocusScrim } from '../../ui/FocusScrim';
 
 
 
@@ -32,19 +29,14 @@ export function About() {
    */
   return (
     <section ref={containerRef} className={styles.about} id="about">
-      {/* Mostly copy, and long: close the world out entirely. */}
-      <FocusScrim variant="solid" />
       <div className={styles.content}>
         <PinnedSequence
           screens={ABOUT_SCREENS}
           layers={STATEMENT_LAYERS}
           className={styles.aboutSequence}
+          id="about-held"
           testId="about-sequence"
         >
-          {/* Shuts the world out for exactly as long as the reader is held,
-              and gives it back on the way out. */}
-          <div className={styles.heldGround} aria-hidden="true" />
-
           {/*
             Held with everything else rather than left in the flow. A heading
             above the pin travels with the page, so it climbs away while the
@@ -66,6 +58,34 @@ export function About() {
           </div>
 
           <div className={styles.statements}>
+            {/*
+              The opening beat: the person, then what they have to say. The
+              window opens from its middle and the line types itself out
+              beside it, so the two halves arrive as one move rather than a
+              picture and a paragraph that happen to share a screen.
+            */}
+            <div className={styles.introBeat} data-testid="about-intro">
+              <div className={styles.windowMask} data-testid="about-window">
+                <figure className={styles.window}>
+                  <div className={styles.windowInner}>
+                    <img
+                      className={styles.portrait}
+                      src="/images/leul-about.webp"
+                      alt="Leul Tewodros Agonafer"
+                      width={900}
+                      height={1125}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                </figure>
+              </div>
+
+              <div className={styles.introCopy}>
+                <TypedText text={cvData.about.intro} typedVar="--intro-in" />
+              </div>
+            </div>
+
             <div
               className={`${styles.leftColumn} ${styles.layerOne}`}
               data-testid="about-left-column"
@@ -136,75 +156,6 @@ export function About() {
           </div>
         </PinnedSequence>
 
-        {/* Education Section */}
-        <div className={styles.educationWrapper}>
-          <div className={styles.sectionTitle}>Education</div>
-          <div className={styles.educationGrid}>
-            {cvData.education.map((edu, index) => (
-              <motion.div
-                key={edu.school}
-                className={edu.school.includes('HiLCoE') ? styles.wide : ''}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ 
-                  duration: 0.8, 
-                  ease: [0.76, 0, 0.24, 1],
-                  delay: index * 0.1
-                }}
-              >
-                <Card>
-                  <div className={styles.cardContent}>
-                    <CardTitle>{edu.school}</CardTitle>
-                    <div className={styles.educationMeta}>
-                      <CardText>{edu.degree}</CardText>
-                      <CardText>{edu.period}</CardText>
-                    </div>
-                    <TagsGrid>
-                      {edu.details.map((detail, i) => (
-                        <Tag key={i}>{detail}</Tag>
-                      ))}
-                    </TagsGrid>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Certifications Section */}
-          <div className={styles.sectionTitle} style={{ marginTop: '5rem' }}>Certifications</div>
-          <div className={styles.educationGrid}>
-            {cvData.certifications.map((cert, index) => (
-              <motion.div
-                key={cert.issuer}
-                className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ 
-                  duration: 0.8, 
-                  ease: [0.76, 0, 0.24, 1],
-                  delay: index * 0.1
-                }}
-              >
-                <Card>
-                  <div className={styles.cardContent}>
-                    <CardTitle>{cert.issuer}</CardTitle>
-                    <div className={styles.educationMeta}>
-                      <CardText>{cert.year}</CardText>
-                    </div>
-                    <CardText>{cert.description}</CardText>
-                    <TagsGrid>
-                      {cert.items.map((item, i) => (
-                        <Tag key={i}>{item}</Tag>
-                      ))}
-                    </TagsGrid>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );

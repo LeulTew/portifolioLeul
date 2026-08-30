@@ -1,0 +1,69 @@
+/*
+ * One ground for the whole run, fixed to the screen.
+ *
+ * Behind the held content and in front of the world: the sections put their
+ * copy on it, and none of them owns it.
+ */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+/*
+ * Hidden outright off the run. A fixed layer covers every section on the page,
+ * so one left merely transparent still swallows what is behind it.
+ */
+.backdrop[data-active='false'] {
+  visibility: hidden;
+}
+
+/*
+ * The ground is CUT BACK to uncover the world, rather than covered by a panel
+ * that then slides away.
+ *
+ * Sliding a panel off the right leaves the ground it was sitting on still
+ * spanning the whole screen, so what is uncovered is more ground -- no reveal
+ * at all. Clipping the ground itself is the only version where something is
+ * actually taken away.
+ *
+ * The edge travels, so there is a moment where you can see exactly how much
+ * has been let in; a fade would show the world through a haze across the whole
+ * width at once, which reads as the background turning on.
+ */
+.ground {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 calc(var(--aperture-in, 0) * 40%) 0 0);
+  will-change: clip-path;
+}
+
+/* The next section's depth, over the run's own ground rather than beside it. */
+.depth {
+  position: absolute;
+  inset: 0;
+}
+
+/* The cut, so it reads as a cut rather than as an edge of the layout. */
+.edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: calc(var(--aperture-in, 0) * 40%);
+  width: 1px;
+  background: var(--accent-ink, #00ffc2);
+  opacity: calc(var(--aperture-in, 0) * (1 - var(--aperture-in, 0)) * 3.2);
+  box-shadow: 0 0 22px -2px var(--accent-glow, #00ffc2);
+}
+
+@media (max-width: 900px) {
+  /* No room for a view beside a portal; the ground keeps the whole width. */
+  .ground {
+    clip-path: none;
+  }
+
+  .edge {
+    display: none;
+  }
+}

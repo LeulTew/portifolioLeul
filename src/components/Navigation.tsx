@@ -6,11 +6,25 @@ import { ThemeContext } from './sections/theme/ThemeContext';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { useActiveSection } from '@/lib/scroll/useActiveSection';
 
-const SECTION_IDS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
+/*
+ * Every section on the page, in order. Education is here as well as in the
+ * menu: the active item is chosen from what is on screen, so a section left
+ * out of this list leaves the previous one highlighted for as long as the
+ * reader spends in it.
+ */
+const SECTION_IDS = [
+  'home',
+  'about',
+  'education',
+  'skills',
+  'projects',
+  'contact',
+] as const;
 
 const menuItems = [
   { id: 'home', label: 'Home' },
   { id: 'about', label: 'About' },
+  { id: 'education', label: 'Education' },
   { id: 'skills', label: 'Skills' },
   { id: 'projects', label: 'Projects' },
   { id: 'contact', label: 'Contact' }

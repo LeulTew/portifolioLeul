@@ -45,6 +45,11 @@ export interface PinnedSequenceProps {
   className?: string;
   /** Marks the spacer, so a test can find the scroll it reserves. */
   testId?: string;
+  /**
+   * Names the spacer, so anything spanning several held stretches can measure
+   * the holding itself rather than the section around it.
+   */
+  id?: string;
 }
 
 const DEFAULT_FEATHER = 0.09;
@@ -72,6 +77,7 @@ export function PinnedSequence({
   children,
   className,
   testId = 'pinned-sequence',
+  id,
 }: PinnedSequenceProps) {
   const [spacer, setSpacer] = useState<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -149,6 +155,7 @@ export function PinnedSequence({
     <>
       <div
         ref={setSpacer}
+        id={id}
         className={styles.spacer}
         style={{ height: `${screens * 100}vh` }}
         data-testid={testId}
