@@ -259,8 +259,13 @@
   transform: rotate(12deg);
 }
 
+/*
+ * A breath between the project rail and the contact form, where both focus
+ * scrims sit at zero and the 3D world is fully revealed. One screen was two
+ * screens of nothing; just over half gives the beat without the void.
+ */
 .spacer {
-  height: 120vh;
+  height: 60vh;
   width: 100%;
   position: relative;
   z-index: 1;

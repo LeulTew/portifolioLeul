@@ -63,46 +63,19 @@ describe('Navigation Branch Coverage', () => {
     expect(screen.getAllByLabelText('Toggle theme')[0]).toBeInTheDocument();
   });
 
-  it('handles scroll to bottom check', () => {
+  it('does not react to window scroll at all', () => {
     render(<Navigation scrollToSection={vi.fn()} />);
 
-    // Mock window properties to simulate bottom of page
-    Object.defineProperty(window, 'scrollY', { value: 1000, writable: true });
+    // The page scrolls inside the ScrollControls element, so window scroll is
+    // never the signal here. Firing it must change nothing.
+    Object.defineProperty(window, 'scrollY', { value: 5000, writable: true });
     Object.defineProperty(window, 'innerHeight', { value: 500, writable: true });
     Object.defineProperty(document.documentElement, 'scrollHeight', { value: 1500, writable: true });
 
-    // Trigger scroll event
     fireEvent.scroll(window);
-    
-    // Check if Contact button has the active indicator
-    // The active indicator is a motion.div with layoutId="activeIndicator"
-    // We can check if the Contact button contains a child that represents this.
-    // Since we didn't mock framer-motion here yet, it might render as a normal div.
-    // Let's look for the button that contains the indicator.
-    
-    // We can also check if the button has the 'active' class if we mock styles.
-    // But let's try to find the indicator.
-    // Or we can just check if the 'Contact' button is the one that is active.
-    // Let's mock the styles to return 'active' for the active class.
-    const contactLink = screen.getByText('Contact').closest('button');
-    expect(contactLink).toHaveClass('active');
-  });
 
-  it('handles scroll not at bottom', () => {
-    render(<Navigation scrollToSection={vi.fn()} />);
-
-    // Mock window properties to simulate NOT bottom of page
-    Object.defineProperty(window, 'scrollY', { value: 50, writable: true });
-    Object.defineProperty(window, 'innerHeight', { value: 500, writable: true });
-    Object.defineProperty(document.documentElement, 'scrollHeight', { value: 1500, writable: true });
-
-    // Trigger scroll event
-    fireEvent.scroll(window);
-    
-    // Should NOT set active section to contact (unless it was already contact, but default is home)
-    // We can check that 'Contact' is NOT active.
-    const contactLink = screen.getByText('Contact').closest('button');
-    expect(contactLink).not.toHaveClass('active');
+    expect(screen.getByText('Contact').closest('button')).not.toHaveClass('active');
+    expect(screen.getByText('Home').closest('button')).toHaveClass('active');
   });
 
   it('handles IntersectionObserver updates', async () => {
