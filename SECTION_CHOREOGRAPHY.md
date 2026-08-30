@@ -79,6 +79,14 @@ Both engines are already in the bundle. Pick per layer, not per section:
 GSAP work must be scoped in `gsap.context()` and reverted on unmount.
 `@gsap/react` is deliberately **not** a dependency; `context()` covers it.
 
+**The hero runs entirely on CSS**, and every entrance should. Both JS engines
+apply a hidden start state synchronously and animate on `requestAnimationFrame`;
+a tab served no frames keeps that state, and the section is simply absent.
+Worse, entry is triggered by `IntersectionObserver`, whose callbacks arrive with
+the rendering lifecycle — so no frames means no callback, no entry, and nothing
+to rescue it. Every section therefore needs a **timer** that forces the finished
+state, ungated by having entered.
+
 ---
 
 ## 2a. Techniques — what "arrive" actually means
@@ -118,6 +126,25 @@ Once drawn, a short bright dash (`stroke-dasharray: 7 93`) looping along the
 same path reads as a current running down the line, and keeps the mark alive
 without blinking it.
 
+### Fill the glyph, don't move it
+
+The strongest reveal for a headline is not motion at all: leave the glyph
+unpainted and let the fill arrive inside it.
+
+`-webkit-text-fill-color: transparent` on the character, a painted copy in an
+`::after`, and a tall feathered gradient mask slid up through it. Use
+`-webkit-text-fill-color`, never `color: transparent` — `color` would make
+`currentColor` transparent for the painted copy too and the word renders as
+nothing.
+
+Angle the mask a few degrees off `to top` so the front crosses the glyph
+diagonally; a level front reads as a wipe. Keep the angle **near 0deg**: near
+180deg inverts the mask and the glyph is hidden at exactly the point it should
+be full.
+
+No outline. An outlined-then-filled letter reads as a colouring-in exercise;
+an unpainted one reads as the fill arriving.
+
 ### Prefer CSS animation for anything that must not be left half-finished
 
 GSAP and Framer both tween on `requestAnimationFrame`. A tab that is never
@@ -137,8 +164,15 @@ The exit is one shared transform, applied to the whole section, derived from
 coverage as it falls:
 
 ```
-amount = 1 - clamp01(coverage / EXIT_THRESHOLD)   // 0 while focused, 1 when gone
+amount = 1 - clamp01(share / EXIT_THRESHOLD)   // 0 while focused, 1 when gone
 ```
+
+`share` is the **raw** fraction of the viewport the section fills, and
+`EXIT_THRESHOLD` is 1, so the exit tracks the scroll from the first pixel.
+
+Do not drive it from the scrim's focus curve. That curve holds at 1 until a
+section is nearly half gone, which leaves the section sitting untouched while
+the reader is already scrolling past it — it reads as the page not responding.
 
 and mapped to:
 

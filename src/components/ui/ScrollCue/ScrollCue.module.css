@@ -1,9 +1,7 @@
 /*
- * The cue draws itself, then a current runs down the line it drew.
- *
- * Both are CSS animations on stroke-dashoffset rather than JS: they run on the
- * compositor, so they survive a throttled main thread, and the draw cannot be
- * left half-finished the way a requestAnimationFrame-driven tween can.
+ * The line is traced by scroll, so stroke-dashoffset is set inline rather than
+ * animated: the reader's own movement is the timeline. Only the current, which
+ * loops once the line is complete, is a CSS animation.
  */
 .cue {
   position: absolute;
@@ -24,58 +22,34 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 0 5px currentColor);
+  /* Smooths the scrub without decoupling it from the scroll. */
+  transition: stroke-dashoffset 180ms linear;
 }
 
-/*
- * `pathLength` is normalised to 100 on the paths themselves, so the dash maths
- * here is independent of the actual geometry.
- */
-.trace {
+.trace,
+.head {
   stroke-dasharray: 100;
-  stroke-dashoffset: 100;
 }
 
 .head {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
   stroke-width: 2.5;
 }
 
-/* Drawing: the line arrives, then the head lands on the end of it. */
-/*
- * Every delay is offset by --cue-delay, so the cue takes its place in the
- * section's sequence instead of drawing the moment the section arrives.
- */
-.drawn .head {
-  animation: draw 0.4s cubic-bezier(0.22, 1, 0.36, 1)
-    calc(var(--cue-delay, 0s) + 1.1s) forwards;
-}
-
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/*
- * The current: a short bright segment travelling the length of the path, over
- * and over. Reads as flow down the line rather than a blinking arrow.
- */
 .current {
   fill: none;
   stroke: currentColor;
   stroke-width: 3.5;
   stroke-linecap: round;
-  opacity: 0;
   stroke-dasharray: 7 93;
+  opacity: 0;
   filter: drop-shadow(0 0 8px currentColor);
 }
 
-.drawn .current {
+/* Only once the reader has drawn the whole line does it start to flow. */
+.current[data-flowing='true'] {
   animation:
-    currentFlow 2.6s cubic-bezier(0.5, 0, 0.5, 1)
-      calc(var(--cue-delay, 0s) + 1.6s) infinite,
-    currentFade 2.6s linear calc(var(--cue-delay, 0s) + 1.6s) infinite;
+    currentFlow 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite,
+    currentFade 2.4s linear infinite;
 }
 
 @keyframes currentFlow {
@@ -98,40 +72,18 @@
   }
 }
 
-/* Draws, then breathes slowly so the mark stays alive between currents. */
-.drawn .trace {
-  animation:
-    draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) var(--cue-delay, 0s) forwards,
-    breathe 4.5s ease-in-out calc(var(--cue-delay, 0s) + 1.6s) infinite;
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    opacity: 0.75;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 .cue:hover .stroke {
   filter: drop-shadow(0 0 9px currentColor) brightness(1.4);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /*
-   * No drawing and no current: the cue is simply present. It is a wayfinding
-   * mark, so it must never be missing, only still.
-   */
-  .drawn .trace,
-  .drawn .head {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
-
-  .drawn .current {
+  /* No current, and no easing on the scrub. The mark is simply present. */
+  .current[data-flowing='true'] {
     animation: none;
     opacity: 0;
+  }
+
+  .stroke {
+    transition: none;
   }
 }

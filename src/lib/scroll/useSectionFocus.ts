@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useViewportCoverage } from './viewportCoverage';
+import { useViewportShare } from './viewportCoverage';
 import {
   ENTER_THRESHOLD,
   exitAmount,
@@ -15,7 +15,13 @@ import {
  */
 
 export interface SectionFocus {
-  /** Share of the viewport the section occupies, 0 to 1. */
+  /**
+   * Raw share of the viewport the section occupies, 0 to 1.
+   *
+   * Deliberately the raw share, not the scrim's focus curve: that curve holds
+   * at 1 until a section is nearly half gone, which made the exit start long
+   * after the reader had begun scrolling past.
+   */
   readonly coverage: number;
   /** True once the section has arrived. Never goes back to false. */
   readonly hasEntered: boolean;
@@ -27,7 +33,7 @@ export function useSectionFocus(
   element: HTMLElement | null,
   enterThreshold: number = ENTER_THRESHOLD
 ): SectionFocus {
-  const coverage = useViewportCoverage(element);
+  const coverage = useViewportShare(element);
   const [hasEntered, setHasEntered] = useState(false);
   const latched = useRef(false);
 

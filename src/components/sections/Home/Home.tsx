@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import gsap from 'gsap';
 import { MagneticButton } from '../../ui/MagneticButton';
-import { DancingCharText, KineticRotator } from '../../ui/KineticText';
+import { KineticRotator } from '../../ui/KineticText';
 import { ScrollCue } from '../../ui/ScrollCue';
+import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
 import { useSectionFocus } from '@/lib/scroll/useSectionFocus';
 import {
@@ -22,7 +22,6 @@ interface HomeProps {
 
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
-  const copyRef = useRef<HTMLDivElement>(null);
 
   // Shared focus lifecycle: a timed entry that plays once, and an exit that is
   // scrubbed from scroll. See SECTION_CHOREOGRAPHY.md.
@@ -32,84 +31,35 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const hero = exitStyle(exit, reducedMotion);
   const isVisible = exit < 0.98;
 
-  // Type is GSAP's half of the sequence: a per-line timeline with its own
-  // internal stagger, which would need a component per node in Framer.
-  useLayoutEffect(() => {
-    if (!hasEntered) return;
-    const scope = copyRef.current;
-    if (!scope) return;
+  /**
+   * Complete within the first third of the hero leaving, so the line is drawn
+   * while the reader is still deciding rather than once they have gone.
+   */
+  const cueProgress = Math.min(exit / 0.3, 1);
 
-    const context = gsap.context(() => {
-      const cue = (id: string) => ({
-        delay: cueDelay(HERO_SEQUENCE, id),
-        duration: cueDuration(HERO_SEQUENCE, id),
-      });
+  const [settled, setSettled] = useState(false);
 
-      if (reducedMotion) {
-        // One fade, no movement, everything at once.
-        gsap.fromTo(
-          '[data-cue]',
-          { opacity: 0, clipPath: 'none' },
-          { opacity: 1, duration: 0.4, ease: 'none' }
-        );
-        return;
-      }
-
-      for (const id of ['role', 'description']) {
-        const { delay, duration } = cue(id);
-        // Revealed from behind an edge rather than faded: the line is clipped
-        // away and rises into place, which reads as uncovering rather than
-        // as an element sliding in.
-        gsap.fromTo(
-          `[data-cue="${id}"]`,
-          {
-            opacity: 0,
-            yPercent: 60,
-            clipPath: 'inset(100% 0% 0% 0%)',
-          },
-          {
-            opacity: 1,
-            yPercent: 0,
-            clipPath: 'inset(0% 0% -12% 0%)',
-            duration,
-            delay,
-            ease: 'expo.out',
-          }
-        );
-      }
-    }, scope);
-
-    /*
-     * Backstop. `fromTo` applies its start state synchronously but animates on
-     * requestAnimationFrame, so in a tab that is never served frames the copy
-     * would sit at opacity 0 indefinitely. A timer settles it to the finished
-     * pose; if the sequence already played this is a no-op.
-     */
+  /*
+   * Guarantees the hero ends up visible, and deliberately not gated on having
+   * entered. Every entrance layer starts hidden, and the entry is triggered by
+   * IntersectionObserver, whose callbacks are delivered as part of the
+   * rendering lifecycle -- so a tab served no frames gets no observer callback,
+   * never enters, and never animates. Timers do not depend on frames.
+   *
+   * The hero is the first thing on the page and always on screen at load, so
+   * settling on a timer from mount is safe. If the sequence played normally
+   * this changes nothing.
+   */
+  useEffect(() => {
     const settle = setTimeout(
-      () => {
-        gsap.set(scope.querySelectorAll('[data-cue]'), {
-          opacity: 1,
-          yPercent: 0,
-          filter: 'none',
-          // Must match every property the sequence starts from, or a layer
-          // stays hidden behind the one it forgot -- clipPath especially,
-          // which hides a line completely.
-          clipPath: 'none',
-        });
-      },
-      (sequenceDuration(HERO_SEQUENCE) + 0.6) * 1000
+      () => setSettled(true),
+      (sequenceDuration(HERO_SEQUENCE) + 0.8) * 1000
     );
+    return () => clearTimeout(settle);
+  }, []);
 
-    return () => {
-      clearTimeout(settle);
-      context.revert();
-    };
-  }, [hasEntered, reducedMotion]);
-
-  // A profile-image travel driven by viewport scrollY used to sit here. This
-  // page scrolls inside the ScrollControls element, so that value never moved
-  // and both transforms returned their constants forever. The hero exit is
-  // driven by inViewRatio above, which does work.
+  /** Puts a layer on its beat, keeping the sequence in the cue list. */
+  const at = (id: string) => ({ ['--cue-at' as string]: `${cueDelay(HERO_SEQUENCE, id)}s` });
 
   const scrollToAbout = () => {
     if (onNavigate) {
@@ -138,8 +88,13 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   return (
     <section ref={setSectionElement} className={styles.home} id="home">
       <div
-        ref={copyRef}
-        className={styles.content}
+        className={[
+          styles.content,
+          hasEntered ? styles.entered : '',
+          settled ? styles.settled : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         style={{
           ...hero,
           pointerEvents: isVisible ? 'auto' : 'none',
@@ -154,25 +109,12 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           data-cue-layer="backdrop"
         />
 
-        <motion.div
-          className={styles.header}
-          initial={{ opacity: 0, y: 20 }}
-          animate={hasEntered ? { opacity: 1, y: 0 } : undefined}
-          transition={{
-            duration: cueDuration(HERO_SEQUENCE, 'backdrop'),
-            ease: [0.76, 0, 0.24, 1],
-            delay: cueDelay(HERO_SEQUENCE, 'backdrop'),
-          }}
-        >
-          <motion.div
-            className={styles.imageContainer}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={hasEntered ? { opacity: 1, scale: 1 } : undefined}
-            transition={{
-              duration: cueDuration(HERO_SEQUENCE, 'portrait'),
-              ease: [0.76, 0, 0.24, 1],
-              delay: cueDelay(HERO_SEQUENCE, 'portrait'),
-            }}
+        {/* Always present: it is the frame the sequenced layers arrive into. */}
+        <div className={styles.header}>
+          <div
+            className={`${styles.imageContainer} ${styles.reveal} ${styles.revealPortrait}`}
+            style={at('portrait')}
+            data-cue-layer="portrait"
           >
             <div className={styles.imagePlaceholder}>
               <span className={styles.circleText}>L</span>
@@ -182,32 +124,52 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
                 className={styles.circleImage}
               />
             </div>
-          </motion.div>
+          </div>
 
-          <h1 className={styles.title} data-cue="title">
-            <DancingCharText text="Leul" className="mr-3" />
-            <DancingCharText text="Tewodros" className={styles.lastname} />
+          <h1 className={styles.title} data-cue-layer="title">
+            <LiquidFillText
+              text="Leul"
+              filling={hasEntered}
+              settled={settled}
+              delayMs={cueDelay(HERO_SEQUENCE, 'title') * 1000}
+              durationMs={cueDuration(HERO_SEQUENCE, 'title') * 1000}
+              className="mr-3"
+            />
+            <LiquidFillText
+              text="Tewodros"
+              filling={hasEntered}
+              settled={settled}
+              delayMs={
+                (cueDelay(HERO_SEQUENCE, 'title') + 0.22) * 1000
+              }
+              durationMs={cueDuration(HERO_SEQUENCE, 'title') * 1000}
+              className={styles.lastname}
+            />
           </h1>
 
-          <div className={styles.info} data-cue="role">
+          <div
+            className={`${styles.info} ${styles.reveal} ${styles.revealLine}`}
+            style={at('role')}
+            data-cue-layer="role"
+          >
             <span className="opacity-80">ARCHITECTING</span>
             <KineticRotator words={['FULL-STACK APPS', 'THREE.JS 3D EXPERIENCES', 'INTELLIGENT SYSTEMS', 'HIGH-PERFORMANCE UI']} />
           </div>
-        </motion.div>
+        </div>
 
-        <p className={styles.description} data-cue="description">
+        <p
+          className={`${styles.description} ${styles.reveal} ${styles.revealLine}`}
+          style={at('description')}
+          data-cue-layer="description"
+        >
           Full-Stack Developer &amp; 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
         </p>
 
         {/* Magnetic CTA Buttons */}
-        <motion.div
-          className="flex flex-wrap items-center gap-4 mt-6 pointer-events-auto"
-          initial={{ opacity: 0, y: 15 }}
-          animate={hasEntered ? { opacity: 1, y: 0 } : undefined}
-          transition={{
-            duration: cueDuration(HERO_SEQUENCE, 'actions'),
-            delay: cueDelay(HERO_SEQUENCE, 'actions'),
-          }}
+        <div
+          className={`flex flex-wrap items-center gap-4 mt-6 pointer-events-auto ${styles.reveal}`}
+          style={at('actions')}
+          data-cue-layer="actions"
         >
           <MagneticButton onClick={scrollToAbout} variant="primary" theme={theme}>
             Explore My Work
@@ -215,7 +177,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           <MagneticButton onClick={scrollToContact} variant="secondary" icon={false} theme={theme}>
             Get In Touch
           </MagneticButton>
-        </motion.div>
+        </div>
       </div>
 
       <motion.div 
@@ -234,10 +196,11 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       {/* Last cue: the affordance invites the next move, so it must not compete
           with the content that has only just arrived. It draws itself; a
           border-radius div could only ever have faded in. */}
+      {/* Traced by the reader's own scroll toward About, rather than played at
+          them on arrival: the mark is drawn by the movement it is inviting. */}
       <ScrollCue
         className={styles.scrollCue}
-        drawn={hasEntered}
-        delay={cueDelay(HERO_SEQUENCE, 'affordance')}
+        progress={cueProgress}
         onActivate={scrollToAbout}
         label="Scroll to about section"
       />

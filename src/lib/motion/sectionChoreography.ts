@@ -27,12 +27,12 @@ export interface SectionCue {
 export const HERO_SEQUENCE: readonly SectionCue[] = [
   // The plate wipes in under everything, and finishes before any copy lands.
   { id: 'backdrop', at: 0, duration: 0.7, engine: 'css' },
-  { id: 'portrait', at: 0.6, duration: 0.55, engine: 'framer' },
+  { id: 'portrait', at: 0.6, duration: 0.55, engine: 'css' },
   // The longest beat: characters uncover one by one on their own stagger.
-  { id: 'title', at: 1.0, duration: 0.9, engine: 'gsap' },
-  { id: 'role', at: 1.65, duration: 0.5, engine: 'gsap' },
-  { id: 'description', at: 1.9, duration: 0.55, engine: 'gsap' },
-  { id: 'actions', at: 2.25, duration: 0.45, engine: 'framer' },
+  { id: 'title', at: 1.0, duration: 0.9, engine: 'css' },
+  { id: 'role', at: 1.65, duration: 0.5, engine: 'css' },
+  { id: 'description', at: 1.9, duration: 0.55, engine: 'css' },
+  { id: 'actions', at: 2.25, duration: 0.45, engine: 'css' },
   // Slowest of all, and last: the line takes its time drawing itself.
   { id: 'affordance', at: 2.5, duration: 1.4, engine: 'css' },
 ] as const;
@@ -40,8 +40,14 @@ export const HERO_SEQUENCE: readonly SectionCue[] = [
 /** Coverage at which a section counts as having arrived. */
 export const ENTER_THRESHOLD = 0.35;
 
-/** Coverage below which the exit is fully played out. */
-export const EXIT_THRESHOLD = 0.55;
+/**
+ * Share of the viewport at which the exit has not started.
+ *
+ * One, so the exit tracks the scroll from the very first pixel: anything less
+ * leaves the section sitting untouched while the reader is already moving past
+ * it, which reads as the page failing to respond.
+ */
+export const EXIT_THRESHOLD = 1;
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;

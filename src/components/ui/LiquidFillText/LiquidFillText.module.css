@@ -1,0 +1,111 @@
+/*
+ * Letters fill from the baseline up, the fill running through the word one
+ * character after another.
+ *
+ * No outline: the glyph is simply not painted until the fill reaches it, so
+ * what you see is the fill arriving rather than a hollow shape being coloured
+ * in. The front is angled and soft rather than a level line -- a horizontal
+ * hard edge reads as a wipe, this reads as something flowing in.
+ */
+.word {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.char {
+  position: relative;
+  display: inline-block;
+
+  /*
+   * `-webkit-text-fill-color`, not `color`. Setting `color` would make
+   * `currentColor` transparent for the painted copy as well, and the whole
+   * word would render as nothing at all.
+   */
+  -webkit-text-fill-color: transparent;
+
+  will-change: transform;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.char::after {
+  content: attr(data-char);
+  position: absolute;
+  inset: 0;
+  -webkit-text-fill-color: currentColor;
+
+  /*
+   * An angled, feathered front sliding up through the glyph. Oversized so the
+   * front travels diagonally: it enters at one corner and leaves at the other,
+   * which keeps the surface from reading as a straight waterline.
+   *
+   * 8deg, not 172deg. Near zero is `to top`, so the opaque end of the mask sits
+   * at the bottom and the fill rises. Near 180 inverts it, and the glyph is
+   * masked out at exactly the point it should be full.
+   */
+  -webkit-mask-image: linear-gradient(
+    8deg,
+    #000 26%,
+    rgba(0, 0, 0, 0.72) 38%,
+    rgba(0, 0, 0, 0.28) 49%,
+    transparent 60%
+  );
+  mask-image: linear-gradient(
+    8deg,
+    #000 26%,
+    rgba(0, 0, 0, 0.72) 38%,
+    rgba(0, 0, 0, 0.28) 49%,
+    transparent 60%
+  );
+  -webkit-mask-size: 150% 300%;
+  mask-size: 150% 300%;
+  -webkit-mask-position: 100% 0%;
+  mask-position: 100% 0%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.filling .char::after {
+  animation: fillRise var(--fill-duration, 900ms) cubic-bezier(0.3, 0.86, 0.36, 1)
+    var(--char-delay, 0ms) forwards;
+}
+
+@keyframes fillRise {
+  to {
+    -webkit-mask-position: 0% 100%;
+    mask-position: 0% 100%;
+  }
+}
+
+/*
+ * Backstop. The glyph is unpainted until the fill runs, so a browser that never
+ * advances the animation would leave the word absent entirely.
+ */
+.settled .char::after {
+  animation: none;
+  -webkit-mask-position: 0% 100%;
+  mask-position: 0% 100%;
+}
+
+.char:hover {
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * No fill. The text is simply painted: an unfilled headline is not a reduced
+   * version of the design, it is missing.
+   */
+  .char {
+    -webkit-text-fill-color: currentColor;
+    transition: none;
+  }
+
+  .char::after {
+    display: none;
+  }
+
+  .char:hover {
+    transform: none;
+  }
+}

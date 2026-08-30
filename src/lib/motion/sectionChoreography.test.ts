@@ -86,17 +86,14 @@ describe('hero ordering', () => {
     ]);
   });
 
-  it('drives type with GSAP and containers with Framer', () => {
-    const engineOf = (id: string) =>
-      HERO_SEQUENCE.find((cue) => cue.id === id)?.engine;
-
-    // The two whose start state hides content run on CSS, so a throttled main
-    // thread cannot leave them half-played.
-    expect(engineOf('backdrop')).toBe('css');
-    expect(engineOf('affordance')).toBe('css');
-    expect(engineOf('title')).toBe('gsap');
-    expect(engineOf('description')).toBe('gsap');
-    expect(engineOf('portrait')).toBe('framer');
+  it('runs every entrance layer on CSS', () => {
+    // Every one of these starts from a state that hides content. Framer and
+    // GSAP both apply that start state synchronously and then animate on
+    // requestAnimationFrame, so a tab never served frames keeps it and the
+    // hero is simply absent. CSS animations cannot be left half-played.
+    for (const cue of HERO_SEQUENCE) {
+      expect(cue.engine).toBe('css');
+    }
   });
 });
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSectionFocus } from './useSectionFocus';
-import { ENTER_THRESHOLD, EXIT_THRESHOLD } from '@/lib/motion/sectionChoreography';
+import { ENTER_THRESHOLD } from '@/lib/motion/sectionChoreography';
 
 type ObserverCallback = (entries: unknown[]) => void;
 
@@ -28,9 +28,7 @@ const cover = (share: number) =>
     capturedCallback?.([
       {
         isIntersecting: share > 0,
-        // Coverage is scaled by FULL_FOCUS_COVERAGE inside the hook's source,
-        // so feed a height that produces the share we want directly.
-        intersectionRect: { height: share * VIEWPORT * 0.55 },
+        intersectionRect: { height: share * VIEWPORT },
         rootBounds: { height: VIEWPORT },
       },
     ]);
@@ -81,14 +79,18 @@ describe('useSectionFocus', () => {
     expect(result.current.hasEntered).toBe(true);
   });
 
-  it('scrubs the exit as the section leaves', () => {
+  it('scrubs the exit from the first pixel of scroll', () => {
+    // The exit used to sit at zero until the section was nearly half gone,
+    // which read as the page not responding to the scroll at all.
     const { result } = renderHook(() => useSectionFocus(element));
     cover(1);
     expect(result.current.exit).toBe(0);
 
-    cover(EXIT_THRESHOLD / 2);
-    expect(result.current.exit).toBeGreaterThan(0);
-    expect(result.current.exit).toBeLessThan(1);
+    cover(0.9);
+    expect(result.current.exit).toBeCloseTo(0.1, 5);
+
+    cover(0.5);
+    expect(result.current.exit).toBeCloseTo(0.5, 5);
 
     cover(0);
     expect(result.current.exit).toBe(1);
@@ -99,6 +101,7 @@ describe('useSectionFocus', () => {
     cover(1);
     cover(0.1);
     const leaving = result.current.exit;
+    expect(leaving).toBeCloseTo(0.9, 5);
 
     cover(1);
     expect(result.current.exit).toBeLessThan(leaving);

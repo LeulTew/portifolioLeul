@@ -116,38 +116,77 @@ describe('Home choreography', () => {
     vi.useRealTimers();
   });
 
-  it('tags every GSAP-driven layer with its cue', () => {
+  it('puts every layer on its own beat from the cue list', () => {
     const { container } = render(<Home />);
-    const cues = [...container.querySelectorAll('[data-cue]')].map(
-      (el) => (el as HTMLElement).dataset.cue
-    );
-    expect(cues).toEqual(['title', 'role', 'description']);
+    const layers = [...container.querySelectorAll('[data-cue-layer]')].map((el) => ({
+      id: (el as HTMLElement).dataset.cueLayer,
+      at: (el as HTMLElement).style.getPropertyValue('--cue-at'),
+    }));
+
+    expect(layers.map((l) => l.id)).toEqual([
+      'backdrop',
+      'portrait',
+      'title',
+      'role',
+      'description',
+      'actions',
+    ]);
+
+    // Delays come from the sequence, never hard-coded in the markup.
+    expect(layers.find((l) => l.id === 'role')?.at).toBe('1.65s');
+    expect(layers.find((l) => l.id === 'actions')?.at).toBe('2.25s');
   });
 
-  it('settles the copy visible even if no animation frame ever runs', () => {
-    // A tab that is never served frames would otherwise leave the hero copy
-    // at the sequence's opacity-0 start state indefinitely.
-    vi.useFakeTimers();
+  it('never hides a layer behind a JS-driven start state', () => {
+    // The reason the entrance is CSS: an inline opacity:0 waiting on a tween
+    // is what left the hero invisible in a tab that was never served frames.
     const { container } = render(<Home />);
     enterHero();
 
-    act(() => vi.advanceTimersByTime(5000));
-
-    for (const el of container.querySelectorAll('[data-cue]')) {
+    for (const el of container.querySelectorAll('[data-cue-layer]')) {
       const style = (el as HTMLElement).style;
-      expect(style.opacity).toBe('1');
-      // The settle must clear every property the sequence starts from. A
-      // forgotten clipPath leaves the line invisible even at full opacity.
-      expect(style.clipPath === '' || style.clipPath === 'none').toBe(true);
+      expect(style.opacity).toBe('');
+      expect(style.clipPath).toBe('');
     }
   });
 
-  it('draws the scroll cue once the hero has arrived', () => {
+  it('leaves the cue untraced while the hero holds the screen', () => {
     const { getByTestId } = render(<Home />);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-drawn', 'false');
+    enterHero();
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+  });
+
+  it('traces the cue as the reader scrolls toward about', () => {
+    const { getByTestId } = render(<Home />);
+    enterHero();
+
+    act(() => {
+      notify?.([
+        {
+          isIntersecting: true,
+          intersectionRect: { height: 200 },
+          rootBounds: { height: 1000 },
+        },
+      ]);
+    });
+
+    const progress = Number(getByTestId('scroll-cue').dataset.progress);
+    expect(progress).toBeGreaterThan(0);
+  });
+
+  it('fills the title rather than sliding it in', () => {
+    const { getAllByTestId, getByTestId } = render(<Home />);
+    expect(getAllByTestId('liquid-fill-text')[0]).toHaveAttribute(
+      'data-filling',
+      'false'
+    );
 
     enterHero();
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-drawn', 'true');
+    expect(getAllByTestId('liquid-fill-text')[0]).toHaveAttribute(
+      'data-filling',
+      'true'
+    );
+    expect(getByTestId('scroll-cue')).toBeInTheDocument();
   });
 
   it('scrolls to about when the cue is activated', () => {
@@ -200,5 +239,21 @@ describe('Home choreography', () => {
 
     const content = container.querySelector('section > div') as HTMLElement;
     expect(Number(content.style.opacity)).toBeGreaterThan(0.1);
+  });
+
+  it('settles the hero visible even if it never enters', () => {
+    // The entry is triggered by IntersectionObserver, whose callbacks come with
+    // the rendering lifecycle: a tab served no frames never gets one, so the
+    // settle must not be gated on having entered. Observed on a pane serving
+    // no frames, where the hero stayed blank indefinitely.
+    vi.useFakeTimers();
+    const { container } = render(<Home />);
+
+    const content = container.querySelector('section > div') as HTMLElement;
+    expect(content.className).not.toMatch(/settled/);
+
+    // Never entered: no observer callback is delivered at all.
+    act(() => vi.advanceTimersByTime(8000));
+    expect(content.className).toMatch(/settled/);
   });
 });
