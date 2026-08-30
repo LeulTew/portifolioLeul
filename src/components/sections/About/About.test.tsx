@@ -42,10 +42,12 @@ describe("About Section", () => {
 
 });
 
-/** The beats that take the stage in turn, as opposed to what carries them. */
-const BEATS = STATEMENT_LAYERS.filter(
-  (l) => !['ground', 'head', 'field'].includes(l.name)
-);
+/**
+ * The beats that take the stage in turn, as opposed to what carries them or
+ * what drives one beat's own exit.
+ */
+const CARRIERS = ['ground', 'head', 'field', 'introOut'];
+const BEATS = STATEMENT_LAYERS.filter((l) => !CARRIERS.includes(l.name));
 
 describe('About held sequence', () => {
   it('spends real scroll being held, rather than passing by', () => {
@@ -74,18 +76,44 @@ describe('About held sequence', () => {
     }
   });
 
-  it('hands over rather than crossfading: nothing is on between beats', () => {
-    // The beats only. The ground and the field are meant to be on: they are
-    // what stays continuous across a handover.
-    for (let i = 0; i < BEATS.length - 1; i++) {
-      const gap = (BEATS[i].end + BEATS[i + 1].start) / 2;
-      for (const beat of BEATS) {
-        expect(
-          windowPresence(gap, beat.start, beat.end, beat.feather ?? 0.09),
-          `${beat.name} still on at ${gap.toFixed(3)}`
-        ).toBe(0);
-      }
+  it('hands the statements over cleanly, with nothing on between them', () => {
+    // The ground and the field are meant to be on: they are what stays
+    // continuous across a handover.
+    const one = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
+    const two = STATEMENT_LAYERS.find((l) => l.name === 'two')!;
+    const gap = (one.end + two.start) / 2;
+
+    for (const beat of BEATS) {
+      expect(
+        windowPresence(gap, beat.start, beat.end, beat.feather ?? 0.09),
+        `${beat.name} still on at ${gap.toFixed(3)}`
+      ).toBe(0);
     }
+  });
+
+  it('overlaps the opening beat with the first statement, on purpose', () => {
+    // The window leaving and the statement arriving are one move. Handed over
+    // cleanly, the reader waits through a blank screen between them.
+    const intro = STATEMENT_LAYERS.find((l) => l.name === 'intro')!;
+    const one = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
+
+    expect(one.start).toBeLessThan(intro.end);
+
+    const during = (intro.end + one.start) / 2;
+    expect(windowPresence(during, intro.start, intro.end, 0.09)).toBeGreaterThan(0);
+    expect(windowPresence(during, one.start, one.end, 0.09)).toBeGreaterThan(0);
+  });
+
+  it('slides the window out on a value that only rises', () => {
+    // Read backwards off the beat's own presence it would run both ways: the
+    // window would arrive sliding as well as leave sliding.
+    const out = STATEMENT_LAYERS.find((l) => l.name === 'introOut')!;
+    const intro = STATEMENT_LAYERS.find((l) => l.name === 'intro')!;
+
+    expect(out.start).toBeGreaterThan(intro.start);
+    expect(out.start).toBeLessThan(intro.end);
+    // Still climbing when the beat is gone, so the exit never reverses.
+    expect(out.end).toBeGreaterThan(intro.end);
   });
 
   it('keeps the ground up for the whole stretch it is held for', () => {

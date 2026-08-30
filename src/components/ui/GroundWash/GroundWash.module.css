@@ -1,87 +1,20 @@
 /*
- * Water rising over the world, with a scalloped line where it meets it.
+ * The ground of a held section: solid, and simply arriving.
  *
- * The body is a solid, masked so that only the part below the line is painted.
- * The mask is a FIXED image at twice the box height -- clear on top, solid
- * underneath, with a soft join -- and only its position moves. Putting the
- * rise into the gradient's colour stops instead would make the mask a new
- * image on every frame, regenerated and re-uploaded at full screen size.
+ * It used to rise behind a scalloped waterline. The idea was that the ground
+ * and the headline's snow-filled letters would read as the same weather, but at
+ * full screen width the scallops are not a surface -- they are a line
+ * travelling up the page, and a line crossing the whole screen is the most
+ * conspicuous thing on it. Whatever it was meant to evoke, what it did was draw
+ * the eye to the transition instead of to what the transition was for.
  *
- * The surface is the same scallop the headline fills behind, so the two read
- * as one piece of weather rather than two effects that happen to be nearby.
+ * A ground has no business being interesting. It covers the world so the copy
+ * can be read, and the least it can do while covering it is nothing.
  */
 .wash {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  overflow: hidden;
-}
-
-.body {
-  position: absolute;
-  inset: 0;
   background: var(--ground-base, #000c10);
-
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0 48%,
-    #000 52% 100%
-  );
-  mask-image: linear-gradient(to bottom, transparent 0 48%, #000 52% 100%);
-  -webkit-mask-size: 100% 200%;
-  mask-size: 100% 200%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  /*
-   * At 0 the image's clear half covers the box and nothing is painted; at 1
-   * its solid half does and the ground is complete.
-   */
-  -webkit-mask-position: 0 calc(var(--rise, 0) * 100%);
-  mask-position: 0 calc(var(--rise, 0) * 100%);
-  will-change: mask-position;
-}
-
-/*
- * The line itself, riding at the top of what has risen.
- *
- * Scalloped rather than straight: a hard horizontal edge travelling up the
- * screen is a wipe, and a wipe is a transition someone chose. A broken line is
- * a surface.
- */
-.surface {
-  position: absolute;
-  left: -2%;
-  right: -2%;
-  height: 14px;
-  bottom: calc(var(--rise, 0) * 100%);
-  margin-bottom: -7px;
-
-  background-image: radial-gradient(
-    ellipse 11px 7px at 50% 100%,
-    var(--ground-surface, #0d3f42) 0 99%,
-    transparent 100%
-  );
-  background-size: 22px 14px;
-  background-repeat: repeat-x;
-
-  /* Gone at both ends: there is no surface before it starts or once it is up. */
-  opacity: calc(var(--rise, 0) * (1 - var(--rise, 0)) * 3.4);
-  will-change: bottom;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  /*
-   * The ground still has to arrive -- an uncovered world under held copy is
-   * not a reduced version of the design, it is the design missing. It simply
-   * arrives without the line.
-   */
-  .body {
-    -webkit-mask-image: none;
-    mask-image: none;
-    opacity: var(--rise, 0);
-  }
-
-  .surface {
-    display: none;
-  }
+  opacity: var(--rise, 0);
 }

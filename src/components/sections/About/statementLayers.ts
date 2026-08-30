@@ -29,13 +29,24 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * names the section, so it has to be there for as long as the section is.
    */
   { name: 'head', start: 0, end: 1, feather: 0.04 },
-  /*
-   * The opening beat: who is speaking, before what they have to say. It takes
-   * the first third and hands over cleanly, like the two after it.
-   */
+  /* The opening beat: who is speaking, before what they have to say. */
   { name: 'intro', start: 0.02, end: 0.35 },
-  { name: 'one', start: 0.38, end: 0.66 },
-  { name: 'two', start: 0.69, end: 0.97 },
+  /*
+   * The window's exit, on its own rather than read backwards off the beat.
+   *
+   * The beat's presence falls at the end AND is low at the start, so a slide
+   * driven from it would run in both directions -- the window would arrive
+   * sliding as well as leave sliding. This only rises, and only over the
+   * closing half, so the movement belongs to the exit alone.
+   */
+  { name: 'introOut', start: 0.24, end: 0.5, feather: 0.2 },
+  /*
+   * Overlaps the opening beat on purpose. The window sliding away and the
+   * first statement arriving are one move, not two: hand them over cleanly and
+   * the reader waits through a blank screen between them.
+   */
+  { name: 'one', start: 0.26, end: 0.6 },
+  { name: 'two', start: 0.66, end: 0.97 },
 ] as const;
 
 /**

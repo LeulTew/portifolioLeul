@@ -7,9 +7,7 @@ describe('groundFor', () => {
   it('gives every held section a ground in both themes', () => {
     for (const section of groundSections()) {
       for (const theme of ['dark', 'light'] as const) {
-        const ground = groundFor(section, theme);
-        expect(ground.base).toMatch(/^#[0-9a-f]{6}$/i);
-        expect(ground.surface).toMatch(/^#[0-9a-f]{6}$/i);
+        expect(groundFor(section, theme).base).toMatch(/^#[0-9a-f]{6}$/i);
       }
     }
   });
@@ -32,13 +30,6 @@ describe('groundFor', () => {
       expect(luminance(groundFor(section, 'light').base)).toBeGreaterThan(
         luminance(groundFor(section, 'dark').base)
       );
-    }
-  });
-
-  it('keeps the surface distinct from the body it rides on', () => {
-    for (const section of groundSections()) {
-      const ground = groundFor(section, 'dark');
-      expect(ground.surface).not.toBe(ground.base);
     }
   });
 

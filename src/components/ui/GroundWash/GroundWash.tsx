@@ -2,17 +2,13 @@ import styles from './GroundWash.module.css';
 import { groundFor, type ThemeName } from './groundPalette';
 
 /**
- * The ground of a held section, arriving as water rises rather than as a panel
- * fading up.
+ * The ground of a held section: the colour that covers the world while its copy
+ * is being read.
  *
- * A fade puts the whole ground on screen at a fraction of its strength, so for
- * the length of the transition the reader sees the world through a haze -- the
- * page dimming rather than something covering it. A rising line covers it
- * properly from the bottom, and there is a moment where you can see exactly how
- * far it has come.
- *
- * The line carries a scalloped surface, the same shape the headline fills
- * behind, so the two read as the same weather rather than two effects.
+ * Deliberately plain. It arrived behind a rising scalloped waterline at first,
+ * which at full screen width was not a surface but a line travelling up the
+ * page -- and a line crossing the whole screen draws the eye to the transition
+ * rather than to what the transition is for.
  *
  * Driven by a custom property set by the sequence, so nothing here re-renders
  * while it moves.
@@ -44,11 +40,7 @@ export function GroundWash({
       style={{
         ['--rise' as string]: `var(${rise}, 0)`,
         ['--ground-base' as string]: ground.base,
-        ['--ground-surface' as string]: ground.surface,
       }}
-    >
-      <div className={styles.body} />
-      <div className={styles.surface} />
-    </div>
+    />
   );
 }

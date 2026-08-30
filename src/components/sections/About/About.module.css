@@ -622,7 +622,13 @@
     calc((1 - var(--intro-in, 0)) * 50%) 0
       calc((1 - var(--intro-in, 0)) * 50%) 0
   );
-  will-change: clip-path;
+  /*
+   * Leaves to the right as it closes, while the first statement is already
+   * arriving underneath it. Driven by its own rising value rather than by the
+   * beat's falling one, so the window does not also arrive sliding.
+   */
+  transform: translate3d(calc(var(--introOut-in, 0) * 46%), 0, 0);
+  will-change: clip-path, transform;
 }
 
 /*
@@ -699,9 +705,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The window is simply open. */
+  /* The window is simply open, and stays where it is. */
   .windowMask {
     clip-path: none;
+    transform: none;
   }
 
   .portrait {
