@@ -41,9 +41,7 @@ describe('LiquidFillText', () => {
     expect(chars()).toHaveLength(4);
   });
 
-  it('carries each glyph for the fill layer to draw', () => {
-    // The fill is a second copy of the glyph behind a rising mask, and it
-    // reads the character from this attribute.
+  it('carries each glyph so the snow can be clipped to it', () => {
     render(<LiquidFillText text="Le" />);
     expect(chars().map((c) => c.dataset.char)).toEqual(['L', 'e']);
   });

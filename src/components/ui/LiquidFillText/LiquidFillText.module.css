@@ -1,11 +1,15 @@
 /*
- * Letters fill from the baseline up, the fill running through the word one
- * character after another.
+ * Snow falls through the letterforms and settles inside them until they are
+ * full.
  *
- * No outline: the glyph is simply not painted until the fill reaches it, so
- * what you see is the fill arriving rather than a hollow shape being coloured
- * in. The front is angled and soft rather than a level line -- a horizontal
- * hard edge reads as a wipe, this reads as something flowing in.
+ * Every layer here is painted through `background-clip: text`, so the glyph is
+ * the container: flakes are only ever visible where a letter is, and the drift
+ * that builds up is bounded by the letter's own shape. Nothing moves and
+ * nothing is revealed -- the letter fills because something accumulated in it.
+ *
+ * Three flake layers at different tile sizes fall at different rates, so they
+ * do not read as one repeating sheet, and a fourth layer is the drift, grown
+ * from the baseline by animating its background-size.
  */
 .word {
   display: inline-flex;
@@ -19,90 +23,105 @@
 
   /*
    * `-webkit-text-fill-color`, not `color`. Setting `color` would make
-   * `currentColor` transparent for the painted copy as well, and the whole
-   * word would render as nothing at all.
+   * `currentColor` transparent for every layer below as well, and the word
+   * would render as nothing at all.
    */
   -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
 
-  will-change: transform;
+  background-image:
+    radial-gradient(circle at 30% 22%, var(--flake) 0 1.6px, transparent 1.9px),
+    radial-gradient(circle at 72% 58%, var(--flake) 0 1.9px, transparent 2.2px),
+    radial-gradient(circle at 14% 80%, var(--flake) 0 1.3px, transparent 1.6px),
+    linear-gradient(currentColor, currentColor);
+
+  background-size:
+    27px 27px,
+    38px 38px,
+    21px 21px,
+    100% 0%;
+
+  background-position:
+    0 -140px,
+    0 -190px,
+    0 -240px,
+    bottom;
+
+  background-repeat: repeat, repeat, repeat, no-repeat;
+
+  /* Slightly brighter than the drift, so flakes read against what they land in. */
+  --flake: color-mix(in srgb, currentColor 55%, white);
+
+  will-change: background-position, background-size;
   transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.char::after {
-  content: attr(data-char);
-  position: absolute;
-  inset: 0;
-  -webkit-text-fill-color: currentColor;
-
-  /*
-   * An angled, feathered front sliding up through the glyph. Oversized so the
-   * front travels diagonally: it enters at one corner and leaves at the other,
-   * which keeps the surface from reading as a straight waterline.
-   *
-   * 8deg, not 172deg. Near zero is `to top`, so the opaque end of the mask sits
-   * at the bottom and the fill rises. Near 180 inverts it, and the glyph is
-   * masked out at exactly the point it should be full.
-   */
-  -webkit-mask-image: linear-gradient(
-    8deg,
-    #000 26%,
-    rgba(0, 0, 0, 0.72) 38%,
-    rgba(0, 0, 0, 0.28) 49%,
-    transparent 60%
-  );
-  mask-image: linear-gradient(
-    8deg,
-    #000 26%,
-    rgba(0, 0, 0, 0.72) 38%,
-    rgba(0, 0, 0, 0.28) 49%,
-    transparent 60%
-  );
-  -webkit-mask-size: 150% 300%;
-  mask-size: 150% 300%;
-  -webkit-mask-position: 100% 0%;
-  mask-position: 100% 0%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-}
-
-.filling .char::after {
-  animation: fillRise var(--fill-duration, 900ms) cubic-bezier(0.3, 0.86, 0.36, 1)
+.filling .char {
+  animation: snowfall var(--fill-duration, 900ms) cubic-bezier(0.32, 0.6, 0.3, 1)
     var(--char-delay, 0ms) forwards;
 }
 
-@keyframes fillRise {
+@keyframes snowfall {
   to {
-    -webkit-mask-position: 0% 100%;
-    mask-position: 0% 100%;
+    /* The flakes fall past, and the drift they leave behind fills the glyph. */
+    background-position:
+      0 190px,
+      0 250px,
+      0 320px,
+      bottom;
+    background-size:
+      27px 27px,
+      38px 38px,
+      21px 21px,
+      100% 100%;
   }
 }
 
 /*
- * Backstop. The glyph is unpainted until the fill runs, so a browser that never
- * advances the animation would leave the word absent entirely.
+ * Backstop. The glyph is unpainted until the drift builds, so a browser that
+ * never advances the animation would leave the word absent entirely.
  */
-.settled .char::after {
+.settled .char {
   animation: none;
-  -webkit-mask-position: 0% 100%;
-  mask-position: 0% 100%;
+  background-size:
+    27px 27px,
+    38px 38px,
+    21px 21px,
+    100% 100%;
 }
 
 .char:hover {
   transform: translateY(-6px);
 }
 
+/*
+ * Both spellings. The unprefixed `background-clip: text` only became a
+ * supported query in Chrome 120; testing it alone reports false on browsers
+ * that do the job perfectly well under the -webkit- prefix, and the fallback
+ * then replaces the whole effect with plain text.
+ */
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  /* Without the clip there is no vessel to fill; show the text painted. */
+  .char {
+    -webkit-text-fill-color: currentColor;
+    background-image: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /*
-   * No fill. The text is simply painted: an unfilled headline is not a reduced
-   * version of the design, it is missing.
+   * No snowfall. The text is simply painted: an unfilled headline is not a
+   * reduced version of the design, it is missing.
    */
   .char {
     -webkit-text-fill-color: currentColor;
+    background-image: none;
     transition: none;
   }
 
-  .char::after {
-    display: none;
+  .filling .char {
+    animation: none;
   }
 
   .char:hover {

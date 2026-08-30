@@ -2,10 +2,12 @@ import styles from './LiquidFillText.module.css';
 import { charDelayMs } from './charDelay';
 
 /**
- * Text whose letters arrive hollow and then fill from the baseline up.
+ * Text that fills as snow falls into it.
  *
- * The stagger decelerates along the word, so the fill runs through the letters
- * rather than stepping between them at a fixed interval.
+ * Each letter is its own vessel: flakes are painted through the glyph and
+ * settle inside it until it is full. The stagger decelerates along the word, so
+ * the snow banks up through the letters rather than stepping between them at a
+ * fixed interval.
  */
 
 export interface LiquidFillTextProps {
