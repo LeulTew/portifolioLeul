@@ -15,21 +15,41 @@ import { Contact } from './components/sections/Contact/Contact';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
 import { setScrollProgress } from './lib/scroll/scrollProgress';
+import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
 
 import './index.css';
 import styles from './App.module.css';
 import './components/Arrow.css';
 
-/** Page-count churn below this is ignored, so card expansions don't retrigger layout. */
-const SCROLL_PAGE_EPSILON = 0.05;
+/**
+ * Page-count churn below this is ignored. Every applied change makes
+ * ScrollControls rebuild its track, so the threshold is set well above routine
+ * layout jitter -- roughly 135px on a 900px viewport -- while staying small
+ * enough that no section becomes unreachable.
+ */
+const SCROLL_PAGE_EPSILON = 0.15;
+
+/**
+ * Content settles in bursts as images and fonts land. Collapsing a burst into
+ * one track rebuild keeps the reader still instead of restoring repeatedly.
+ */
+const CONTENT_SETTLE_MS = 120;
 
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const [scrollPages, setScrollPages] = useState(1);
+  /** Mirrors scrollPages, so the observer can compare without a stale closure. */
+  const scrollPagesRef = useRef(1);
   const mainRef = useRef<HTMLElement | null>(null);
   const contentObserverRef = useRef<ResizeObserver | null>(null);
+  const scrollElementRef = useRef<HTMLDivElement | null>(null);
+  /** Reader position captured just before the track is resized. */
+  const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
+  /** Frames left to re-announce a restored position to ScrollControls. */
+  const restoreSyncFramesRef = useRef(0);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
   const gpuConfig = useGpuTier();
 
@@ -59,6 +79,7 @@ function App() {
   }, []);
 
   const handleScrollElement = useCallback((element: HTMLDivElement | null) => {
+    scrollElementRef.current = element;
     setScrollElement(element);
   }, []);
 
@@ -72,19 +93,35 @@ function App() {
   }, []);
 
   const updateScrollPages = useCallback(() => {
-    if (!mainRef.current) return;
+    const node = mainRef.current;
+    if (!node) return;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight || 1 : 1;
-    const contentHeight = mainRef.current.scrollHeight || viewportHeight;
+    const contentHeight = node.scrollHeight || viewportHeight;
 
     // ScrollControls translates the html layer by -(pages - 1) * viewportHeight
     // across the full scroll, so pages === contentHeight / viewportHeight maps
     // the content 1:1 onto the scroll track. Every section stays reachable and
     // the track ends exactly where the content does, with no dead scroll.
     const calculatedPages = Math.max(contentHeight / viewportHeight, 1);
+    const previousPages = scrollPagesRef.current;
 
-    setScrollPages((previous) =>
-      Math.abs(previous - calculatedPages) > SCROLL_PAGE_EPSILON ? calculatedPages : previous
-    );
+    if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) return;
+
+    // ScrollControls rebuilds its track whenever `pages` changes, and that
+    // rebuild resets scrollTop to 1. Capture where the reader is *now*, while
+    // the old geometry is still in place, so the rebuild can be undone instead
+    // of throwing them back to the top. Captured here rather than inside the
+    // state updater, which React may defer or re-run.
+    const track = scrollElementRef.current;
+    if (track) {
+      pendingRestoreRef.current = {
+        offset: readScrollOffset(track),
+        fromPages: previousPages,
+      };
+    }
+
+    scrollPagesRef.current = calculatedPages;
+    setScrollPages(calculatedPages);
   }, []);
 
   // Measuring from an effect is unreliable here: `Scroll html` portals its host
@@ -93,6 +130,42 @@ function App() {
   // whatever the half-built DOM reported, and nothing ever re-measures.
   // Binding through a ref callback attaches the observer exactly when the node
   // appears, however late that is.
+  /**
+   * Puts the reader back where they were after ScrollControls rebuilds its
+   * track. Driven from the render loop rather than an effect: Canvas mounts a
+   * separate React root, so there is no parent/child effect ordering between
+   * this component and ScrollControls, and an effect here can run *before* the
+   * rebuild that resets scrollTop.
+   */
+  const applyPendingRestore = useCallback(() => {
+    const track = scrollElementRef.current;
+    if (!track) return;
+
+    if (restoreSyncFramesRef.current > 0) {
+      restoreSyncFramesRef.current -= 1;
+      // ScrollControls ignores scroll events for one frame after a rebuild, so
+      // re-announce the position once that guard has lifted.
+      track.dispatchEvent(new Event('scroll'));
+      return;
+    }
+
+    const pending = pendingRestoreRef.current;
+    if (!pending) return;
+
+    const scrollable = track.scrollHeight - track.clientHeight;
+    if (scrollable <= 0) return;
+
+    const nextPages = track.scrollHeight / track.clientHeight - 1;
+    // Wait for the rebuild: until the track carries its new height, restoring
+    // would measure against the geometry we are trying to leave behind.
+    if (Math.abs(nextPages - pending.fromPages) < 1e-3) return;
+
+    pendingRestoreRef.current = null;
+    track.scrollTop =
+      preserveScrollOffset(pending.offset, pending.fromPages, nextPages) * scrollable;
+    restoreSyncFramesRef.current = 2;
+  }, []);
+
   const attachMain = useCallback((node: HTMLElement | null) => {
     contentObserverRef.current?.disconnect();
     contentObserverRef.current = null;
@@ -101,7 +174,10 @@ function App() {
     if (!node) return;
 
     if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(() => updateScrollPages());
+      const observer = new ResizeObserver(() => {
+        if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = setTimeout(updateScrollPages, CONTENT_SETTLE_MS);
+      });
       observer.observe(node);
       contentObserverRef.current = observer;
     }
@@ -118,6 +194,7 @@ function App() {
   useEffect(() => () => {
     contentObserverRef.current?.disconnect();
     contentObserverRef.current = null;
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
   }, []);
 
   const scrollToSection = useCallback((id: string) => {
@@ -174,7 +251,7 @@ function App() {
           >
             <ThemeContext.Provider value={{ theme, toggleTheme }}>
               <ScrollControls pages={scrollPages} damping={0.3}>
-                <ScrollManager onReady={handleScrollElement} />
+                <ScrollManager onReady={handleScrollElement} onFrame={applyPendingRestore} />
                 <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
                 <ParticleBackground theme={theme} />
                 <Scroll html style={{ width: '100%' }}>
@@ -228,7 +305,13 @@ function App() {
 
 export default App;
 
-function ScrollManager({ onReady }: { onReady: (el: HTMLDivElement | null) => void }) {
+function ScrollManager({
+  onReady,
+  onFrame,
+}: {
+  onReady: (el: HTMLDivElement | null) => void;
+  onFrame: () => void;
+}) {
   const scroll = useScroll();
 
   useEffect(() => {
@@ -240,6 +323,7 @@ function ScrollManager({ onReady }: { onReady: (el: HTMLDivElement | null) => vo
   // place that knows the real progress. Publish it for the DOM layer.
   useFrame(() => {
     setScrollProgress(scroll?.offset ?? 0);
+    onFrame();
   });
 
   return null;

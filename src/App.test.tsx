@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, act } from "@testing-library/react";
+import * as ReactModule from "react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
 
@@ -73,9 +74,19 @@ vi.mock("framer-motion", () => ({
   }),
 }));
 
+/** Frame callbacks registered through useFrame, so tests can drive the loop. */
+const frameCallbacks: Array<() => void> = [];
+const runFrames = (count = 1) => {
+  for (let i = 0; i < count; i += 1) {
+    frameCallbacks.forEach((cb) => cb());
+  }
+};
+
 vi.mock("@react-three/fiber", () => ({
   Canvas: ({ children }: any) => <div data-testid="r3f-canvas">{children}</div>,
-  useFrame: vi.fn(),
+  useFrame: (cb: () => void) => {
+    if (!frameCallbacks.includes(cb)) frameCallbacks.push(cb);
+  },
   useThree: () => ({
     camera: { fov: 50, position: { set: vi.fn() }, updateProjectionMatrix: vi.fn() },
     size: { width: 1920, height: 1080 },
@@ -84,10 +95,35 @@ vi.mock("@react-three/fiber", () => ({
 
 const mockScroll = { el: document.createElement("div"), offset: 0 };
 
+/**
+ * The track's geometry, modelled on ScrollControls: it stacks a sticky
+ * full-height element plus a fill of `pages * 100%`, so scrollHeight works out
+ * to (pages + 1) * clientHeight.
+ */
+const track = { clientHeight: 1000, pages: 1, rebuilds: 0 };
+
+Object.defineProperty(mockScroll.el, "clientHeight", {
+  configurable: true,
+  get: () => track.clientHeight,
+});
+Object.defineProperty(mockScroll.el, "scrollHeight", {
+  configurable: true,
+  get: () => (track.pages + 1) * track.clientHeight,
+});
+
 vi.mock("@react-three/drei", () => ({
-  ScrollControls: ({ children, pages }: any) => (
-    <div data-testid="scroll-controls" data-pages={pages}>{children}</div>
-  ),
+  ScrollControls: ({ children, pages }: any) => {
+    // Mirrors drei: `pages` is in the deps of the effect that builds the track,
+    // that effect resizes the fill, and it resets scrollTop to 1 on every run.
+    ReactModule.useEffect(() => {
+      track.pages = pages;
+      track.rebuilds += 1;
+      mockScroll.el.scrollTop = 1;
+    }, [pages]);
+    return (
+      <div data-testid="scroll-controls" data-pages={pages}>{children}</div>
+    );
+  },
   Scroll: ({ children }: any) => <div>{children}</div>,
   useScroll: () => mockScroll,
   Preload: () => null,
@@ -226,5 +262,195 @@ describe("App scroll track sizing", () => {
     renderApp();
 
     expect(pagesOf()).toBeCloseTo(3, 5);
+  });
+});
+
+describe("App scroll position across a track resize", () => {
+  const originalInnerHeight = window.innerHeight;
+  let scrollHeightSpy: ReturnType<typeof vi.spyOn> | null = null;
+  let contentHeight = 9000;
+
+  const setViewportHeight = (height: number) => {
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      writable: true,
+      value: height,
+    });
+  };
+
+  beforeEach(() => {
+    frameCallbacks.length = 0;
+    contentHeight = 9000;
+    track.clientHeight = 1000;
+    setViewportHeight(1000);
+    // The <main> element and the track both read scrollHeight; only <main>
+    // drives the page count, so vary it through the shared spy.
+    scrollHeightSpy = vi
+      .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+      .mockImplementation(() => contentHeight);
+  });
+
+  afterEach(() => {
+    scrollHeightSpy?.mockRestore();
+    scrollHeightSpy = null;
+    setViewportHeight(originalInnerHeight);
+  });
+
+  const renderApp = () =>
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+
+  const pagesOf = () =>
+    Number(screen.getByTestId("scroll-controls").getAttribute("data-pages"));
+
+  it("does not throw the reader back to the top when content grows", () => {
+    // Regression: ScrollControls resets scrollTop to 1 whenever `pages`
+    // changes, so a lazily loaded image mid-scroll yanked the page to the top.
+    renderApp();
+    expect(pagesOf()).toBeCloseTo(9, 5);
+
+    // Reader is halfway down a 9-page track.
+    mockScroll.el.scrollTop = 4000;
+
+    act(() => {
+      contentHeight = 11000;
+      window.dispatchEvent(new Event("resize"));
+    });
+    act(() => runFrames(3));
+
+    expect(pagesOf()).toBeCloseTo(11, 5);
+    expect(mockScroll.el.scrollTop).toBeGreaterThan(1);
+  });
+
+  it("keeps the same content under the reader across the resize", () => {
+    renderApp();
+
+    /**
+     * How far the html layer is translated. ScrollControls derives its offset
+     * from the track's own scrollable length -- pages * clientHeight -- and
+     * then translates the content by offset * (pages - 1) * clientHeight.
+     */
+    const contentTranslation = (pages: number) => {
+      const scrollable = (pages + 1) * track.clientHeight - track.clientHeight;
+      const offset = mockScroll.el.scrollTop / scrollable;
+      return offset * (pages - 1) * track.clientHeight;
+    };
+
+    mockScroll.el.scrollTop = 4000;
+    const translationBefore = contentTranslation(9);
+
+    act(() => {
+      contentHeight = 11000;
+      window.dispatchEvent(new Event("resize"));
+    });
+    act(() => runFrames(3));
+
+    // Same pixel of content under the reader, on a track two pages longer.
+    expect(contentTranslation(11)).toBeCloseTo(translationBefore, 4);
+  });
+
+  it("leaves a reader at the very top at the top", () => {
+    renderApp();
+
+    mockScroll.el.scrollTop = 0;
+
+    act(() => {
+      contentHeight = 11000;
+      window.dispatchEvent(new Event("resize"));
+    });
+    act(() => runFrames(3));
+
+    expect(mockScroll.el.scrollTop).toBe(0);
+  });
+});
+
+describe("App content settling", () => {
+  const originalObserver = globalThis.ResizeObserver;
+  const originalInnerHeight = window.innerHeight;
+  let notify: (() => void) | null = null;
+  let scrollHeightSpy: ReturnType<typeof vi.spyOn> | null = null;
+  let contentHeight = 9000;
+
+  class BurstResizeObserver {
+    constructor(callback: () => void) {
+      notify = callback;
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    frameCallbacks.length = 0;
+    notify = null;
+    contentHeight = 9000;
+    track.clientHeight = 1000;
+    track.rebuilds = 0;
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      writable: true,
+      value: 1000,
+    });
+    scrollHeightSpy = vi
+      .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+      .mockImplementation(() => contentHeight);
+    (globalThis as any).ResizeObserver = BurstResizeObserver;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    scrollHeightSpy?.mockRestore();
+    (globalThis as any).ResizeObserver = originalObserver;
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      writable: true,
+      value: originalInnerHeight,
+    });
+  });
+
+  it("collapses a burst of layout changes into a single track rebuild", () => {
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+
+    const rebuildsAfterMount = track.rebuilds;
+
+    // Images and fonts landing one after another, as they do on first paint.
+    act(() => {
+      for (const height of [9500, 10000, 10500, 11000]) {
+        contentHeight = height;
+        notify?.();
+      }
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(track.rebuilds).toBe(rebuildsAfterMount + 1);
+    expect(
+      Number(screen.getByTestId("scroll-controls").getAttribute("data-pages"))
+    ).toBeCloseTo(11, 5);
+  });
+
+  it("ignores layout jitter too small to matter", () => {
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+
+    const rebuildsAfterMount = track.rebuilds;
+
+    act(() => {
+      contentHeight = 9050;
+      notify?.();
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(track.rebuilds).toBe(rebuildsAfterMount);
   });
 });
