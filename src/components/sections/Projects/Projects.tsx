@@ -99,6 +99,7 @@ export function Projects({ theme }: { theme?: string }) {
 
   return (
     <section ref={setSectionElement} className={styles.projects} id="projects">
+      {/* Carries its own imagery, so the world stays faintly behind it. */}
       <FocusScrim />
       <motion.div
         className={styles.content}

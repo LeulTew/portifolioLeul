@@ -16,6 +16,8 @@ import { ThemeContext } from './components/sections/theme/ThemeContext';
 import { useGpuTier } from './lib/gateways/gpuTier';
 import { setScrollProgress } from './lib/scroll/scrollProgress';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
+import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
+import { setCameraHold } from './lib/camera/cameraHold';
 
 import './index.css';
 import styles from './App.module.css';
@@ -28,6 +30,9 @@ import './components/Arrow.css';
  * enough that no section becomes unreachable.
  */
 const SCROLL_PAGE_EPSILON = 0.15;
+
+/** The section that covers the world outright, and freezes it while it does. */
+const OPAQUE_SECTION_ID = 'about';
 
 /**
  * Content settles in bursts as images and fonts land. Collapsing a burst into
@@ -103,6 +108,23 @@ function App() {
     // the content 1:1 onto the scroll track. Every section stays reachable and
     // the track ends exactly where the content does, with no dead scroll.
     const calculatedPages = Math.max(contentHeight / viewportHeight, 1);
+
+    // The opaque section covers the world completely, so the world holds still
+    // for exactly as long as it does. Measured from layout rather than assumed,
+    // because the same section owns a very different share of the scroll on a
+    // tablet and on a 4K display.
+    const opaque = document.getElementById(OPAQUE_SECTION_ID);
+    setCameraHold(
+      opaque
+        ? computeHoldRange(
+            opaque.offsetTop - (node.offsetTop || 0),
+            opaque.offsetHeight,
+            contentHeight,
+            viewportHeight
+          )
+        : NO_HOLD
+    );
+
     const previousPages = scrollPagesRef.current;
 
     if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) return;

@@ -54,7 +54,8 @@ export function About() {
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
-      <FocusScrim />
+      {/* Mostly copy, and long: close the world out entirely. */}
+      <FocusScrim variant="solid" />
       <div className={styles.content}>
         {/* Section Header: Left-Aligned Directly Below the Indicator Arrow */}
         <motion.div 

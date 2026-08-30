@@ -12,15 +12,27 @@ import { useViewportCoverage } from '@/lib/scroll/viewportCoverage';
  * Render it as a direct child of a positioned section; it measures that parent.
  */
 
+/**
+ * How completely a section closes out the 3D world behind it.
+ *
+ * `veil` keeps the world faintly present, which suits sections carrying their
+ * own imagery. `solid` covers it entirely, for sections that are mostly copy.
+ */
+export type ScrimVariant = 'veil' | 'solid';
+
 /** Enough to carry text contrast while the world stays faintly present. */
-const DEFAULT_MAX_OPACITY = 0.92;
+const VEIL_MAX_OPACITY = 0.92;
 
 export interface FocusScrimProps {
-  /** Peak scrim opacity. */
+  variant?: ScrimVariant;
+  /** Peak scrim opacity. Defaults to full coverage for `solid`. */
   maxOpacity?: number;
 }
 
-export function FocusScrim({ maxOpacity = DEFAULT_MAX_OPACITY }: FocusScrimProps = {}) {
+export function FocusScrim({
+  variant = 'veil',
+  maxOpacity = variant === 'solid' ? 1 : VEIL_MAX_OPACITY,
+}: FocusScrimProps = {}) {
   const [section, setSection] = useState<HTMLElement | null>(null);
 
   const attach = useCallback((node: HTMLDivElement | null) => {
@@ -32,11 +44,12 @@ export function FocusScrim({ maxOpacity = DEFAULT_MAX_OPACITY }: FocusScrimProps
   return (
     <div
       ref={attach}
-      className={styles.scrim}
+      className={`${styles.scrim} ${styles[variant]}`}
       style={{ opacity: strength * maxOpacity }}
       aria-hidden="true"
       data-testid="focus-scrim"
       data-focus-strength={strength.toFixed(3)}
+      data-variant={variant}
     />
   );
 }

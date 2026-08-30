@@ -10,6 +10,7 @@ import {
   sampleCameraPose,
   sampleChapterPose,
 } from './cinematicSpline';
+import { NO_HOLD } from './holdRange';
 
 describe('CLOSING_SHOT', () => {
   it('reproduces the composition the scene had before the camera used a spline', () => {
@@ -110,6 +111,52 @@ describe('mapScrollToArc', () => {
 
   it('treats a zero-length arc as already complete', () => {
     expect(mapScrollToArc(0.5, 0)).toBe(1);
+  });
+});
+
+describe('mapScrollToArc with a hold', () => {
+  const hold = { start: 0.2, end: 0.4 };
+
+  it('freezes the camera for the whole hold', () => {
+    const atStart = mapScrollToArc(0.2, 0.8, hold);
+    expect(mapScrollToArc(0.3, 0.8, hold)).toBeCloseTo(atStart, 6);
+    expect(mapScrollToArc(0.4, 0.8, hold)).toBeCloseTo(atStart, 6);
+  });
+
+  it('resumes exactly where it left off, with no jump', () => {
+    const atEnd = mapScrollToArc(0.4, 0.8, hold);
+    const justAfter = mapScrollToArc(0.4001, 0.8, hold);
+    expect(justAfter - atEnd).toBeLessThan(0.001);
+    expect(justAfter).toBeGreaterThanOrEqual(atEnd);
+  });
+
+  it('still completes the arc by the time the arc ends', () => {
+    expect(mapScrollToArc(0.8, 0.8, hold)).toBe(1);
+  });
+
+  it('is unchanged before the hold begins', () => {
+    expect(mapScrollToArc(0.1, 0.8, hold)).toBeCloseTo(mapScrollToArc(0.1, 0.6), 6);
+  });
+
+  it('advances monotonically across the whole range', () => {
+    let previous = -Infinity;
+    for (let s = 0; s <= 1; s += 0.01) {
+      const arc = mapScrollToArc(s, 0.8, hold);
+      expect(arc).toBeGreaterThanOrEqual(previous - 1e-9);
+      previous = arc;
+    }
+  });
+
+  it('behaves exactly as before when there is no hold', () => {
+    for (const s of [0, 0.1, 0.3, 0.62, 1]) {
+      expect(mapScrollToArc(s, 0.62, NO_HOLD)).toBeCloseTo(mapScrollToArc(s, 0.62), 9);
+    }
+  });
+
+  it('degenerates safely when the hold swallows the entire arc', () => {
+    const whole = { start: 0, end: 0.9 };
+    expect(mapScrollToArc(0.5, 0.8, whole)).toBe(0);
+    expect(mapScrollToArc(0.95, 0.8, whole)).toBe(1);
   });
 });
 

@@ -1,6 +1,7 @@
 import { useRef, useMemo, useEffect, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { 
+  useScroll,
   Environment, 
   useGLTF,
   PerspectiveCamera,
@@ -14,6 +15,8 @@ import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
 import { CinematicCameraController } from './3d/CinematicCameraController';
+import { getCameraHold } from '@/lib/camera/cameraHold';
+import { isWithinHold } from '@/lib/camera/holdRange';
 import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { ChapterGrading } from './3d/ChapterGrading';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
@@ -164,6 +167,7 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
   const prismRef = useRef<THREE.Group>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const keyLightRef = useRef<THREE.DirectionalLight>(null);
+  const scroll = useScroll();
 
   const isLight = theme === 'light';
 
@@ -203,6 +207,9 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
 
   useFrame((state) => {
     if (!prismRef.current) return;
+
+    // The world holds completely still behind an opaque section.
+    if (isWithinHold(scroll?.offset ?? 0, getCameraHold())) return;
 
     const time = state.clock.getElapsedTime();
     const reducedMotion = getPrefersReducedMotion();

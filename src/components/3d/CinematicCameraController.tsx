@@ -10,6 +10,7 @@ import {
   sampleCameraPose,
   sampleChapterPose,
 } from '@/lib/camera/cinematicSpline';
+import { getCameraHold } from '@/lib/camera/cameraHold';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 /**
@@ -53,7 +54,7 @@ export function CinematicCameraController({
     if (!camera) return;
 
     const reducedMotion = getPrefersReducedMotion();
-    const arc = mapScrollToArc(scroll?.offset ?? 0, arcEnd);
+    const arc = mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold());
 
     if (reducedMotion) {
       // Discrete cuts between authored shots: no scrubbing, no pointer drift.

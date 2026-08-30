@@ -18,6 +18,9 @@ export function Contact() {
 
   return (
     <section ref={containerRef} className={styles.contact} id="contact">
+      {/* Left as a veil on purpose: the camera arc comes to rest here, on the
+          shot that turns the television to face the viewer. Covering this
+          section would hide the payoff of the whole scroll. */}
       <FocusScrim />
       <div className={styles.content}>
         <div className={styles.header}>

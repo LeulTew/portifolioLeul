@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { NO_HOLD, holdSpan, type ArcHold } from './holdRange';
 
 /**
  * Camera choreography for the scroll-driven 3D chapters.
@@ -94,13 +95,34 @@ export function createCameraSpline(
 }
 
 /**
- * Rescales page scroll onto the camera arc and clamps it. Scroll past
- * `arcEnd` returns 1, which parks the camera on its final shot.
+ * Rescales page scroll onto the camera arc and clamps it.
+ *
+ * A `hold` is a stretch of scroll that advances the camera not at all -- the
+ * section covering it is opaque, so there is nothing to move. The remaining
+ * scroll is stretched to cover the whole arc, so the camera picks up exactly
+ * where it left off rather than jumping when the hold ends.
  */
-export function mapScrollToArc(scrollProgress: number, arcEnd: number = CAMERA_ARC_END): number {
+export function mapScrollToArc(
+  scrollProgress: number,
+  arcEnd: number = CAMERA_ARC_END,
+  hold: ArcHold = NO_HOLD
+): number {
   if (!Number.isFinite(scrollProgress) || scrollProgress <= 0) return 0;
   if (arcEnd <= 0) return 1;
-  const arc = scrollProgress / arcEnd;
+
+  const frozen = holdSpan(hold);
+  // Scroll that actually moves the camera, once the hold is taken out.
+  const travelled = arcEnd - frozen;
+  if (travelled <= 0) return scrollProgress >= arcEnd ? 1 : 0;
+
+  let effective = scrollProgress;
+  if (scrollProgress > hold.end) {
+    effective = scrollProgress - frozen;
+  } else if (scrollProgress > hold.start) {
+    effective = hold.start;
+  }
+
+  const arc = effective / travelled;
   return arc >= 1 ? 1 : arc;
 }
 
