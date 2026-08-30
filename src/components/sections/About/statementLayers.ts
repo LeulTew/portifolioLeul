@@ -24,6 +24,11 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * cleared.
    */
   { name: 'field', start: 0.02, end: 0.88, feather: 0.16 },
+  /*
+   * The heading. Up almost immediately and held for the whole stretch: it
+   * names the section, so it has to be there for as long as the section is.
+   */
+  { name: 'head', start: 0, end: 1, feather: 0.06 },
   { name: 'one', start: 0.08, end: 0.46 },
   { name: 'two', start: 0.54, end: 0.92 },
 ] as const;

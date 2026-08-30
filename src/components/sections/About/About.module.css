@@ -84,6 +84,39 @@
 }
 
 /*
+ * The heading, held.
+ *
+ * Anchored to the screen for the whole stretch instead of travelling with the
+ * page: a heading left in the flow above the pin climbs away while the reader
+ * is being held still underneath it, so the one thing naming the section
+ * leaves exactly as the section begins.
+ *
+ * It lifts out at the end rather than fading, so it reads as the page finally
+ * being allowed to move on. The same expression brings it down on the way in,
+ * which is why it arrives from above.
+ */
+.heldHeader {
+  position: absolute;
+  top: clamp(6rem, 14vh, 11rem);
+  left: 0;
+  right: 0;
+  padding-left: clamp(3.5rem, 11.5vw, 20rem);
+  padding-right: clamp(2rem, 9vw, 16rem);
+  box-sizing: border-box;
+  text-align: left;
+  pointer-events: none;
+  opacity: var(--head-in, 0);
+  transform: translate3d(0, calc((1 - var(--head-in, 0)) * -7vh), 0);
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heldHeader {
+    transform: none;
+  }
+}
+
+/*
  * The ground the stretch stands on.
  *
  * Opaque, and ramped at both ends by its own layer rather than switched: the

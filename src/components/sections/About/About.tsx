@@ -35,23 +35,6 @@ export function About() {
       {/* Mostly copy, and long: close the world out entirely. */}
       <FocusScrim variant="solid" />
       <div className={styles.content}>
-        {/* Section Header: Left-Aligned Directly Below the Indicator Arrow */}
-        <motion.div 
-          className={styles.header}
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <h2 className={styles.title}>
-            About Me
-          </h2>
-          <p className={styles.subtitle}>
-            {cvData.about.subtitle}
-          </p>
-        </motion.div>
-
-        {/* Spatial Editorial Layout Framing the 3D Canvas across the Full Screen */}
         <PinnedSequence
           screens={ABOUT_SCREENS}
           layers={STATEMENT_LAYERS}
@@ -61,6 +44,19 @@ export function About() {
           {/* Shuts the world out for exactly as long as the reader is held,
               and gives it back on the way out. */}
           <div className={styles.heldGround} aria-hidden="true" />
+
+          {/*
+            Held with everything else rather than left in the flow. A heading
+            above the pin travels with the page, so it climbs away while the
+            reader is being held still underneath it -- the one thing naming
+            the section leaves as the section begins. It stays for the whole
+            stretch and lifts out at the end, once there is nothing left to
+            name.
+          */}
+          <div className={styles.heldHeader} data-testid="about-held-header">
+            <h2 className={styles.title}>About Me</h2>
+            <p className={styles.subtitle}>{cvData.about.subtitle}</p>
+          </div>
 
           {/* Held for the whole stretch: the one thing that does not come and
               go, so the statements read as arriving on it. */}

@@ -125,3 +125,32 @@ describe('About statement alignment', () => {
     );
   });
 });
+
+describe('About held heading', () => {
+  it('holds the heading with the rest, not in the flow above it', () => {
+    // A heading left in the flow climbs away while the reader is held still
+    // underneath it: the one thing naming the section leaves as it begins.
+    render(<About />);
+    expect(screen.getByTestId('about-sequence-overlay')).toContainElement(
+      screen.getByTestId('about-held-header')
+    );
+  });
+
+  it('keeps the heading up for the whole stretch', () => {
+    const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
+    for (const at of [0.15, 0.5, 0.85]) {
+      expect(windowPresence(at, head.start, head.end, head.feather)).toBe(1);
+    }
+  });
+
+  it('lets the heading go only at the very ends', () => {
+    const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
+    expect(windowPresence(0.01, head.start, head.end, head.feather)).toBeLessThan(1);
+    expect(windowPresence(0.99, head.start, head.end, head.feather)).toBeLessThan(1);
+  });
+
+  it('still names the section exactly once', () => {
+    render(<About />);
+    expect(screen.getAllByText('About Me')).toHaveLength(1);
+  });
+});
