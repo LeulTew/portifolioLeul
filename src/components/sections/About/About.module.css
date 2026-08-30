@@ -1,3 +1,16 @@
+/*
+ * Doubled to outrank `.main > *`, which puts 100px of padding above every
+ * section to clear the navigation.
+ *
+ * This section clears it a different way: its heading lives in the held
+ * overlay and is positioned against the screen, so the flow padding buys
+ * nothing here and costs a hundred pixels of empty scroll before the pin can
+ * engage -- which is felt as the section being slow to start.
+ */
+.about.about {
+  padding-top: 0;
+}
+
 .about {
   position: relative;
   min-height: 120vh;
@@ -33,7 +46,11 @@
   text-align: left;
   margin-bottom: 2rem;
   width: 100%;
-  padding-left: clamp(2rem, 9vw, 16rem);
+  /*
+   * A shade further in than the stages below it, so the heading sits just off
+   * their left edge rather than stacking flush with it. Still left aligned.
+   */
+  padding-left: clamp(3.5rem, 11.5vw, 20rem);
   padding-right: clamp(2rem, 9vw, 16rem);
   box-sizing: border-box;
 }
@@ -62,50 +79,284 @@
    Full-Width Spatial Editorial Stage (Dedicated Cinematic Viewport)
    ========================================================================== */
 
-.heroSpatialLayout {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: flex-start;
-  width: 100%;
-  min-height: 70vh;
+/*
+ * One statement per screen.
+ *
+ * A full viewport tall with its contents centred, so each statement is
+ * vertically centred when it is the thing on screen -- which is what lets it
+ * be read rather than passed. The two used to share a 70vh row, arriving and
+ * leaving together, so neither was ever the subject.
+ */
+/*
+ * The held stretch. Everything below is positioned against the screen, not the
+ * page, because the overlay is fixed: the reader is standing still inside it.
+ */
+.aboutSequence {
   padding: 0 clamp(2rem, 9vw, 16rem);
-  margin: 2rem 0 16vh;
-  pointer-events: auto;
-  position: relative;
   box-sizing: border-box;
 }
 
-.leftColumn {
+/*
+ * The heading, held.
+ *
+ * Anchored to the screen for the whole stretch instead of travelling with the
+ * page: a heading left in the flow above the pin climbs away while the reader
+ * is being held still underneath it, so the one thing naming the section
+ * leaves exactly as the section begins.
+ *
+ * It lifts out at the end rather than fading, so it reads as the page finally
+ * being allowed to move on. The same expression brings it down on the way in,
+ * which is why it arrives from above.
+ */
+.heldHeader {
+  position: absolute;
+  top: clamp(6rem, 14vh, 11rem);
+  left: 0;
+  right: 0;
+  padding-left: clamp(3.5rem, 11.5vw, 20rem);
+  padding-right: clamp(2rem, 9vw, 16rem);
+  box-sizing: border-box;
+  text-align: left;
+  pointer-events: none;
+  opacity: var(--head-in, 0);
+  transform: translate3d(0, calc((1 - var(--head-in, 0)) * -7vh), 0);
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heldHeader {
+    transform: none;
+  }
+}
+
+/*
+ * The ground the stretch stands on.
+ *
+ * Opaque, and ramped at both ends by its own layer rather than switched: the
+ * world is shut out for exactly as long as the reader is held, and is handed
+ * back as they leave instead of reappearing.
+ */
+.heldGround {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #000c10;
+  opacity: var(--ground-in, 0);
+}
+
+:global([data-theme='light']) .heldGround {
+  background: #f4f7fb;
+}
+
+/*
+ * The one thing that does not come and go. It carries the whole stretch, so it
+ * moves continuously with `--seq` rather than appearing and disappearing with
+ * the statements standing on it.
+ *
+ * It leaves before the stretch does: geometry still drifting as the section
+ * hands over reads as scenery someone forgot to clear.
+ */
+.heldField {
+  position: absolute;
+  inset: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  padding-left: 0;
-  width: auto;
-  max-width: clamp(380px, 42vw, 750px);
-  flex-shrink: 0;
-  z-index: 10;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6vw;
+  padding: 0 clamp(2rem, 8vw, 14rem);
+  pointer-events: none;
+  color: rgba(210, 236, 255, 0.3);
   box-sizing: border-box;
+  opacity: var(--field-in, 0);
+  /* Leans across the stretch, and draws back as it goes. */
+  transform: translate3d(
+      calc((var(--seq, 0.5) - 0.5) * -6vw),
+      calc((var(--seq, 0.5) - 0.5) * 4vh),
+      0
+    )
+    scale(calc(0.86 + var(--field-in, 0) * 0.14));
 }
 
-.centerSpace {
-  flex: 1;
-  min-width: clamp(60px, 12vw, 360px);
+.heldField > * {
+  width: min(38vmin, 460px);
+  flex: 0 0 auto;
+}
+
+.statements {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 clamp(2rem, 9vw, 16rem);
+  box-sizing: border-box;
   pointer-events: none;
 }
 
+/*
+ * Each statement sits in the same cell, so they occupy the same held screen
+ * rather than following one another down the page.
+ */
+.statements > * {
+  grid-area: 1 / 1;
+}
+
+/*
+ * Opacity and blur are driven by two different values on purpose.
+ *
+ * `-on` is cubed presence and `-in` is presence itself, so a statement is at
+ * nothing while it is still on its way in and only becomes visible once it is
+ * most of the way there -- by which point most of the blur has already come
+ * off. Driving both from one value puts a large soft ghost of the text on
+ * screen for the whole approach, legible and blurred, which is the opposite of
+ * arriving.
+ */
+.layerOne,
+.layerTwo {
+  will-change: opacity, filter, transform;
+}
+
+.layerOne {
+  --on: var(--one-on, 0);
+  --in: var(--one-in, 0);
+}
+
+.layerTwo {
+  --on: var(--two-on, 0);
+  --in: var(--two-in, 0);
+}
+
+.layerOne,
+.layerTwo {
+  opacity: var(--on);
+  transform: translate3d(0, calc((1 - var(--in)) * 2.5vh), 0);
+}
+
+/*
+ * The lines resolve in turn, without a second value being published for each.
+ *
+ * Squaring the layer's own progress delays a line without moving its end: the
+ * second line is always behind the first and they finish together, so the
+ * statement settles as one thing rather than trailing. A stagger written as a
+ * fixed delay cannot do that -- it would have to end late too.
+ */
+.lineFirst {
+  --line: var(--in);
+}
+
+.lineSecond {
+  --line: calc(var(--in) * var(--in));
+}
+
+.lineFirst,
+.lineSecond {
+  display: block;
+  /*
+   * Ten, not twenty. A blur is re-rasterised at every distinct radius, and the
+   * cost climbs with the radius over the area of a headline -- most of the
+   * effect is in the first few pixels anyway.
+   */
+  filter: blur(calc((1 - var(--line, 0)) * 10px));
+
+  /*
+   * Emerges through a rising edge rather than sliding in from one, and the
+   * edge MOVES rather than being redrawn.
+   *
+   * Putting the variable in the gradient's colour stops, which is what this
+   * did first, means the mask is a different image on every frame: it has to
+   * be regenerated and re-uploaded sixty times a second, for the whole area of
+   * a headline. The image is fixed now at twice the box height, half of it
+   * clear and half of it solid with a soft join, and only its position moves --
+   * which the compositor can do without touching the image at all.
+   */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0 34%,
+    #000 62% 100%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0 34%, #000 62% 100%);
+  -webkit-mask-size: 100% 200%;
+  mask-size: 100% 200%;
+  -webkit-mask-position: 0 calc(var(--line, 0) * 100%);
+  mask-position: 0 calc(var(--line, 0) * 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The fade carries the sequence; the blur and the drift are decoration. */
+  .layerOne,
+  .layerTwo {
+    transform: none;
+  }
+
+  .lineFirst,
+  .lineSecond {
+    filter: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .heldField {
+    transform: none;
+  }
+
+  .heldField {
+    transform: none;
+  }
+}
+
+/*
+ * Below the breakpoint the plate is dropped and the statement takes the width,
+ * so a full screen each would be mostly empty. They stack and share.
+ */
+@media (max-width: 900px) {
+  /* The held field is decoration, and it is the first thing to go. */
+  .heldField {
+    display: none;
+  }
+}
+
+.leftColumn,
 .rightColumn {
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  padding-right: 0;
-  width: auto;
-  max-width: clamp(380px, 42vw, 750px);
-  flex-shrink: 0;
-  margin-left: auto;
+  width: 100%;
+  max-width: clamp(380px, 46vw, 780px);
   z-index: 10;
+  position: relative;
   box-sizing: border-box;
+  will-change: opacity, filter;
 }
+
+/*
+ * Each statement keeps the side it belongs to. The stage centres its contents
+ * vertically -- which is what makes a statement the thing on screen -- but
+ * centring it horizontally as well threw away the left/right composition the
+ * two are written as a pair for.
+ */
+.leftColumn {
+  justify-self: start;
+}
+
+.rightColumn {
+  justify-self: end;
+  /* Set from the edge it sits on, so the two are mirror images. */
+  text-align: right;
+}
+
+.rightColumn .subStatement,
+.rightColumn .metricItem {
+  justify-content: flex-end;
+}
+
+.rightColumn .pillContainer {
+  justify-content: flex-end;
+}
+
+
+
+
 
 .statementText {
   font-size: clamp(2rem, 3.6vw, 3.85rem);
@@ -236,13 +487,10 @@
     padding-right: 1.5rem;
   }
 
-  .heroSpatialLayout {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 3.5rem;
-    min-height: auto;
-    padding: 0 1.5rem;
-    margin: 2rem 0 6rem;
+  .statements,
+  .aboutSequence {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 
   .leftColumn,
@@ -258,9 +506,7 @@
     white-space: normal;
   }
 
-  .centerSpace {
-    display: none;
-  }
+
 
   .educationWrapper {
     padding: 0 1.5rem;

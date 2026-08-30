@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 import { DEFAULT_DRIFT_BOUNDS, createDriftSeeds, type DriftBounds } from '@/lib/atmosphere/drift';
 import { writeDriftInstances } from '@/lib/atmosphere/writeDriftInstances';
+import { getCameraHold } from '@/lib/camera/cameraHold';
+import { isWithinHold } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 /**
@@ -34,6 +37,7 @@ export function AtmosphericDrift({
   opacity = 0.55,
 }: AtmosphericDriftProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  const scroll = useScroll();
   const seeds = useMemo(() => createDriftSeeds(count, bounds), [count, bounds]);
 
   // Lay the field out once, so a reduced-motion visitor still sees it and the
@@ -48,6 +52,8 @@ export function AtmosphericDrift({
     const mesh = meshRef.current;
     if (!mesh || count <= 0) return;
     if (getPrefersReducedMotion()) return;
+    // Nothing to see while an opaque section covers the world.
+    if (isWithinHold(scroll?.offset ?? 0, getCameraHold())) return;
 
     // The camera orbits through this field, so motes approaching the lens are
     // scaled away rather than rendering as large bright shapes.

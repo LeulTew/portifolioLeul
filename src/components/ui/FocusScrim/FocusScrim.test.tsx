@@ -156,4 +156,39 @@ describe('FocusScrim', () => {
     expect(() => renderInSection()).not.toThrow();
     expect(opacityOf()).toBe(0);
   });
+
+  it('defaults to a veil, keeping the world faintly present', () => {
+    renderInSection();
+    act(() => capturedCallback?.([entry(VIEWPORT)]));
+
+    expect(scrim()).toHaveAttribute('data-variant', 'veil');
+    // Short of 1, so the scene still reads behind the copy.
+    expect(opacityOf()).toBeLessThan(1);
+    expect(opacityOf()).toBeGreaterThan(0.8);
+  });
+
+  it('covers the world completely when solid', () => {
+    renderInSection({ variant: 'solid' });
+    act(() => capturedCallback?.([entry(VIEWPORT)]));
+
+    expect(scrim()).toHaveAttribute('data-variant', 'solid');
+    expect(opacityOf()).toBe(1);
+  });
+
+  it('still fades a solid scrim in and out with its section', () => {
+    renderInSection({ variant: 'solid' });
+
+    act(() => capturedCallback?.([entry(VIEWPORT * FULL_FOCUS_COVERAGE * 0.5)]));
+    expect(opacityOf()).toBeCloseTo(0.5, 3);
+
+    act(() => capturedCallback?.([entry(0, false)]));
+    expect(opacityOf()).toBe(0);
+  });
+
+  it('lets an explicit opacity override the variant default', () => {
+    renderInSection({ variant: 'solid', maxOpacity: 0.7 });
+    act(() => capturedCallback?.([entry(VIEWPORT)]));
+
+    expect(opacityOf()).toBeCloseTo(0.7, 5);
+  });
 });

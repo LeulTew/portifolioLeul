@@ -1,2 +1,2 @@
 export { FocusScrim } from './FocusScrim';
-export type { FocusScrimProps } from './FocusScrim';
+export type { FocusScrimProps, ScrimVariant } from './FocusScrim';

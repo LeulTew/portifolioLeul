@@ -13,6 +13,7 @@ export function Skills() {
 
   return (
     <section ref={containerRef} className={styles.skills} id="skills">
+      {/* The veil already carries this grid; the world stays behind it. */}
       <FocusScrim />
       <motion.div className={styles.content}>
         <motion.div 

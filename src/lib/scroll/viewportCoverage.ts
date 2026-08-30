@@ -30,11 +30,27 @@ export function focusStrength(
 }
 
 
-/** Coverage steps sampled by the observer. More steps means a smoother ramp. */
-const THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
+/**
+ * Coverage steps sampled by the observer.
+ *
+ * IntersectionObserver only reports when a threshold is crossed, so this is
+ * the sampling rate of every scroll-driven value in the DOM layer -- and the
+ * thresholds are fractions of the ELEMENT, not of the scroll. A section taller
+ * than the viewport spends its whole transit inside a handful of steps at 21,
+ * so anything scrubbed by it advances in a few large jumps: a line meant to be
+ * drawn by the scroll appears in two or three slides instead.
+ *
+ * A hundred steps is still one observer and one callback per crossing.
+ */
+export const COVERAGE_STEPS = 101;
+
+const THRESHOLDS = Array.from(
+  { length: COVERAGE_STEPS },
+  (_, i) => i / (COVERAGE_STEPS - 1)
+);
 
 /**
- * How strongly `element` occupies the viewport, in [0, 1].
+ * The raw share of the viewport `element` occupies, in [0, 1].
  *
  * The single source of viewport-relative section progress for the DOM layer.
  * framer-motion's `useScroll` cannot serve this role here: it tracks the
@@ -42,8 +58,8 @@ const THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
  * element, so its progress is pinned at 0 and every transform derived from it
  * silently freezes at its starting value.
  */
-export function useViewportCoverage(element: HTMLElement | null): number {
-  const [strength, setStrength] = useState(0);
+export function useViewportShare(element: HTMLElement | null): number {
+  const [share, setShare] = useState(0);
 
   useEffect(() => {
     if (!element || typeof IntersectionObserver === 'undefined') return;
@@ -61,7 +77,9 @@ export function useViewportCoverage(element: HTMLElement | null): number {
           ? (entry.intersectionRect?.height ?? 0)
           : 0;
 
-        setStrength(focusStrength(visibleHeight, rootHeight));
+        setShare(
+          rootHeight > 0 ? Math.min(visibleHeight / rootHeight, 1) : 0
+        );
       },
       { threshold: THRESHOLDS }
     );
@@ -70,5 +88,18 @@ export function useViewportCoverage(element: HTMLElement | null): number {
     return () => observer.disconnect();
   }, [element]);
 
-  return strength;
+  return share;
+}
+
+/**
+ * Scrim strength for `element`: viewport share, rescaled so a section that
+ * covers most of the screen counts as fully in focus.
+ *
+ * Distinct from the raw share on purpose. This curve is tuned for how opaque a
+ * scrim should be, and using it to drive an exit made the hero hold at full
+ * opacity until it was already 45% gone.
+ */
+export function useViewportCoverage(element: HTMLElement | null): number {
+  const share = useViewportShare(element);
+  return focusStrength(share, 1);
 }

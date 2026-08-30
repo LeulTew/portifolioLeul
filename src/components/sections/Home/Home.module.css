@@ -1,3 +1,20 @@
+/*
+ * Doubled deliberately, to outrank `.main > *` in App.module.css.
+ *
+ * That rule puts `position: relative; z-index: 1` on EVERY section, which makes
+ * each one its own stacking context -- so no z-index on anything inside the
+ * hero can lift it above About, which is a later sibling at the same level and
+ * therefore always wins on document order. The scroll cue hangs past the
+ * hero's bottom edge on purpose, so it has to be raised here, at the section,
+ * or it is painted under About however high its own z-index goes.
+ *
+ * The hero fades to nothing on its way out and takes no pointer events, so
+ * being above the next section costs it nothing.
+ */
+.home.home {
+  z-index: 6;
+}
+
 .home {
   position: relative;
   min-height: 100vh;
@@ -11,17 +28,19 @@
 }
 
 /*
- * The hero deliberately has no focus scrim: it is meant to sit in the world.
- * But the terrain behind it ranges from near-black to bright surf, so the copy
- * cannot rely on the backdrop for contrast. A soft plate local to the text
- * column carries it without walling off the scene.
+ * The plate the hero copy sits on.
+ *
+ * A real element rather than a ::before, because it is the first beat of the
+ * sequence and a pseudo-element cannot be animated independently of its host.
+ * The wipe is a CSS animation so it runs on the compositor and cannot be left
+ * half-open by a throttled main thread.
  */
-.content::before {
-  content: '';
+.plate {
   position: absolute;
   inset: -3rem -6rem -3rem -8rem;
   z-index: -1;
   pointer-events: none;
+  clip-path: inset(0 100% 0 0);
   background: radial-gradient(
     ellipse 75% 90% at 30% 50%,
     rgba(0, 14, 16, 0.72) 0%,
@@ -30,13 +49,34 @@
   );
 }
 
-:global([data-theme='light']) .content::before {
+:global([data-theme='light']) .plate {
   background: radial-gradient(
     ellipse 75% 90% at 30% 50%,
     rgba(248, 250, 255, 0.88) 0%,
     rgba(248, 250, 255, 0.6) 55%,
     rgba(248, 250, 255, 0) 100%
   );
+}
+
+.plateDrawn {
+  animation: plateWipe 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes plateWipe {
+  to {
+    clip-path: inset(0 0% 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The plate carries text contrast, so it must be present, only not wiped. */
+  .plate {
+    clip-path: inset(0 0% 0 0);
+  }
+
+  .plateDrawn {
+    animation: none;
+  }
 }
 
 .content {
@@ -219,5 +259,161 @@
     width: 90px;
     height: 90px;
     font-size: 2rem;
+  }
+}
+
+/*
+ * Sits under the hero copy, out of the text column. Fixed like the mark it
+ * replaces, so it stays put against the world rather than scrolling with the
+ * html layer.
+ */
+/*
+ * Sits under the hero copy, out of the text column. Fixed like the mark it
+ * replaces, so it stays put against the world rather than scrolling with the
+ * html layer. Height is capped against the viewport so the tail of the curve
+ * never runs off the bottom on a short screen.
+ */
+/*
+ * Absolute within the hero, not fixed. The html layer sits inside a transformed
+ * ancestor, which makes position:fixed resolve against that ancestor anyway --
+ * so `fixed` bought nothing and only made the placement hard to reason about.
+ */
+.scrollCue {
+  position: absolute;
+  left: 15rem;
+  /*
+   * Below the copy and running past the hero's own edge, so the mark spans the
+   * gap between the two sections instead of floating beside the text. About is
+   * opaque and paints over the tail, which is what gives the line something to
+   * arrive at.
+   */
+  top: auto;
+  bottom: -6rem;
+  transform: translateX(-50%);
+  /* Sized to the drawn geometry, so the box is the mark and nothing else. */
+  width: 60px;
+  height: 300px;
+  /*
+   * Above About, not below it.
+   *
+   * The mark hangs past the hero's own bottom edge, which is exactly where
+   * About's panel begins -- so letting About paint over it hid the part of the
+   * line that does the bridging the moment the scroll started. It is drawn by
+   * the scroll, so it has to survive the scroll to be seen at all.
+   */
+  z-index: 20;
+  pointer-events: auto;
+}
+
+@media (max-width: 1100px) {
+  .scrollCue {
+    left: 8rem;
+  }
+}
+
+/* Short viewports have no room to hang a 300px mark below the copy. */
+@media (max-height: 760px) {
+  .scrollCue {
+    height: 210px;
+    bottom: -4rem;
+  }
+}
+
+/*
+ * Hero entrance.
+ *
+ * Driven entirely by CSS. Framer and GSAP both apply a hidden start state
+ * synchronously and then animate on requestAnimationFrame, so a tab that is
+ * never served frames keeps that hidden state -- which for an entrance means
+ * the hero simply is not there. CSS animations cannot be left half-played, and
+ * every layer here has a start state that hides content.
+ *
+ * Delays come from the section's cue list, injected as custom properties, so
+ * the sequence stays data rather than being duplicated in the stylesheet.
+ */
+.reveal {
+  opacity: 0;
+}
+
+.entered .reveal {
+  animation: revealRise 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--cue-at, 0s)
+    forwards;
+}
+
+@keyframes revealRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Lines are uncovered rather than faded: the clip resolves as they rise. */
+.entered .revealLine {
+  animation: revealLine 620ms cubic-bezier(0.16, 1, 0.3, 1) var(--cue-at, 0s)
+    forwards;
+}
+
+@keyframes revealLine {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 30px, 0);
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    clip-path: inset(0 0 -14% 0);
+  }
+}
+
+/* The portrait settles in rather than rising, so it reads as a different beat. */
+.entered .revealPortrait {
+  animation: revealPortrait 640ms cubic-bezier(0.16, 1, 0.3, 1) var(--cue-at, 0s)
+    forwards;
+}
+
+@keyframes revealPortrait {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Backstop. Every layer above starts hidden, so if animations never advance --
+ * a tab that is served no frames at all -- the hero would simply not be there.
+ * A timer adds this once the sequence would have finished; if it played
+ * normally this changes nothing.
+ */
+.settled .reveal,
+.settled .revealLine,
+.settled .revealPortrait {
+  animation: none;
+  opacity: 1;
+  transform: none;
+  clip-path: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* One fade, no movement, and nothing left hidden. */
+  .reveal {
+    opacity: 1;
+  }
+
+  .entered .reveal,
+  .entered .revealLine,
+  .entered .revealPortrait {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    clip-path: none;
   }
 }

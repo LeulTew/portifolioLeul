@@ -121,26 +121,41 @@ export function DancingCharText({
           );
         }
 
+        /*
+         * Each character rises out from behind its own clipping edge rather
+         * than fading in place. The mask is the point: letters are uncovered,
+         * which reads as typesetting rather than as elements arriving.
+         *
+         * The padding/negative-margin pair keeps descenders (g, y, p) from
+         * being cropped by that same edge.
+         */
         return (
-          <motion.span
+          <span
             key={index}
-            className="inline-block cursor-default select-none will-change-transform hover:text-[#00ff9d] transition-colors duration-200"
-            initial={{ opacity: 0, y: 18, rotate: -8 }}
-            animate={{ opacity: 1, y: 0, rotate: 0 }}
-            whileHover={{
-              y: -8,
-              rotate: (index % 2 === 0 ? 12 : -12),
-              scale: 1.15,
-              transition: Springs.snappy,
-            }}
-            transition={{
-              duration: 0.5,
-              delay: delay + index * 0.03,
-              ease: Easings.easeOutCubic,
-            }}
+            className="inline-block overflow-hidden align-bottom pb-[0.14em] mb-[-0.14em]"
+            aria-hidden="true"
           >
-            {char}
-          </motion.span>
+            <motion.span
+              className="inline-block cursor-default select-none will-change-transform hover:text-[#00ff9d] transition-colors duration-200"
+              initial={{ y: '115%', rotate: -6, opacity: 0 }}
+              animate={{ y: '0%', rotate: 0, opacity: 1 }}
+              whileHover={{
+                y: -8,
+                rotate: index % 2 === 0 ? 12 : -12,
+                scale: 1.15,
+                transition: Springs.snappy,
+              }}
+              transition={{
+                duration: 0.85,
+                // Eases out along the word, so the tail settles rather than
+                // marching at a fixed interval.
+                delay: delay + Math.pow(index, 0.82) * 0.045,
+                ease: Easings.easeOutExpo,
+              }}
+            >
+              {char}
+            </motion.span>
+          </span>
         );
       })}
     </Tag>

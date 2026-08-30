@@ -4,6 +4,9 @@ import { Sun, Moon, Volume2, VolumeX } from 'lucide-react';
 import styles from './Navigation.module.css';
 import { ThemeContext } from './sections/theme/ThemeContext';
 import { soundFx } from '@/lib/gateways/soundFx';
+import { useActiveSection } from '@/lib/scroll/useActiveSection';
+
+const SECTION_IDS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
 const menuItems = [
   { id: 'home', label: 'Home' },
@@ -18,7 +21,13 @@ interface NavigationProps {
 }
 
 export function Navigation({ scrollToSection }: NavigationProps) {
-  const [activeSection, setActiveSection] = useState('home');
+  // Chosen by how much of the focus band each section fills, in pixels: the
+  // previous threshold-on-ratio approach could never activate About or
+  // Projects, which are both taller than the band can ever be a 0.15 fraction
+  // of. See useActiveSection.
+  const trackedSection = useActiveSection(SECTION_IDS);
+  const [pinnedSection, setPinnedSection] = useState<string | null>(null);
+  const activeSection = pinnedSection ?? trackedSection;
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => soundFx.getSoundEnabled());
 
   const themeContext = useContext(ThemeContext);
@@ -30,64 +39,23 @@ export function Navigation({ scrollToSection }: NavigationProps) {
     setIsSoundEnabled(next);
   };
 
-  useEffect(() => {
-    // The page scrolls inside the ScrollControls element, so window.scrollY and
-    // documentElement.scrollHeight are always 0 here. IntersectionObserver is
-    // the only reliable signal, and it does account for the container's
-    // transform -- including at the very bottom, where Contact fills the band.
-    let observer: IntersectionObserver | null = null;
-    let retryId: number | null = null;
-
-    const initObserver = () => {
-      const sections = menuItems
-        .map(({ id }) => document.getElementById(id))
-        .filter((section): section is HTMLElement => Boolean(section));
-
-      if (!sections.length) {
-        retryId = window.setTimeout(initObserver, 250);
-        return;
-      }
-
-      if (retryId) {
-        window.clearTimeout(retryId);
-        retryId = null;
-      }
-
-      observer = new IntersectionObserver(
-        entries => {
-          const visibleEntry = entries
-            .filter(entry => entry.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-          if (visibleEntry?.target?.id) {
-            setActiveSection(prev => (prev === visibleEntry.target.id ? prev : visibleEntry.target.id));
-          }
-        },
-        {
-          root: null,
-          threshold: [0.15, 0.35, 0.55],
-          rootMargin: '-35% 0px -35% 0px',
-        }
-      );
-
-      sections.forEach(section => observer?.observe(section));
-    };
-
-    initObserver();
-
-    return () => {
-      if (observer) {
-        observer.disconnect();
-      }
-      if (retryId) window.clearTimeout(retryId);
-    };
-  }, []);
-
   const handleNavClick = (id: string, index: number = 0) => {
     soundFx.playTabHum(index);
     scrollToSection(id);
-    setActiveSection(id);
+    // Show the destination immediately, then hand back to live tracking once
+    // the smooth scroll has actually arrived.
+    setPinnedSection(id);
   };
+
+  useEffect(() => {
+    if (pinnedSection === null) return;
+    if (trackedSection === pinnedSection) {
+      setPinnedSection(null);
+      return;
+    }
+    const release = setTimeout(() => setPinnedSection(null), 1200);
+    return () => clearTimeout(release);
+  }, [pinnedSection, trackedSection]);
 
   const handleThemeToggle = () => {
     soundFx.playLaserClick(700);

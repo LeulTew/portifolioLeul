@@ -9,6 +9,7 @@ import {
   createGradeTarget,
   sampleGrade,
 } from '@/lib/atmosphere/chapterGrade';
+import { getCameraHold } from '@/lib/camera/cameraHold';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 /**
@@ -45,7 +46,7 @@ export function ChapterGrading({
   const grades = useMemo(() => (isLight ? LIGHT_GRADES : DARK_GRADES), [isLight]);
 
   useFrame((_state, delta) => {
-    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd), target);
+    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold()), target);
 
     // Reduced motion still gets the grade, just without the easing: the point
     // is the depth and colour of the shot, not the transition.

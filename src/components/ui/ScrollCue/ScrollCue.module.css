@@ -1,0 +1,89 @@
+/*
+ * The line is traced by scroll, so stroke-dashoffset is set inline rather than
+ * animated: the reader's own movement is the timeline. Only the current, which
+ * loops once the line is complete, is a CSS animation.
+ */
+.cue {
+  position: absolute;
+  cursor: pointer;
+  overflow: visible;
+  color: #00ffc2;
+  transition: color 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cue:hover {
+  color: #ffffff;
+}
+
+.stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px currentColor);
+  /* Smooths the scrub without decoupling it from the scroll. */
+  transition: stroke-dashoffset 180ms linear;
+}
+
+.trace,
+.head {
+  stroke-dasharray: 100;
+}
+
+.head {
+  stroke-width: 2.5;
+}
+
+.current {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 7 93;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* Only once the reader has drawn the whole line does it start to flow. */
+.current[data-flowing='true'] {
+  animation:
+    currentFlow 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite,
+    currentFade 2.4s linear infinite;
+}
+
+@keyframes currentFlow {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes currentFade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  18%,
+  72% {
+    opacity: 0.9;
+  }
+}
+
+.cue:hover .stroke {
+  filter: drop-shadow(0 0 9px currentColor) brightness(1.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No current, and no easing on the scrub. The mark is simply present. */
+  .current[data-flowing='true'] {
+    animation: none;
+    opacity: 0;
+  }
+
+  .stroke {
+    transition: none;
+  }
+}
