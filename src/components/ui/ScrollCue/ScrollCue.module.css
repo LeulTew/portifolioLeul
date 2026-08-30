@@ -1,0 +1,135 @@
+/*
+ * The cue draws itself, then a current runs down the line it drew.
+ *
+ * Both are CSS animations on stroke-dashoffset rather than JS: they run on the
+ * compositor, so they survive a throttled main thread, and the draw cannot be
+ * left half-finished the way a requestAnimationFrame-driven tween can.
+ */
+.cue {
+  position: absolute;
+  cursor: pointer;
+  overflow: visible;
+  color: #00ffc2;
+  transition: color 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cue:hover {
+  color: #ffffff;
+}
+
+.stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+/*
+ * `pathLength` is normalised to 100 on the paths themselves, so the dash maths
+ * here is independent of the actual geometry.
+ */
+.trace {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+.head {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  stroke-width: 2.5;
+}
+
+/* Drawing: the line arrives, then the head lands on the end of it. */
+.drawn .trace {
+  animation: draw 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.drawn .head {
+  animation: draw 0.45s cubic-bezier(0.22, 1, 0.36, 1) 1.15s forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/*
+ * The current: a short bright segment travelling the length of the path, over
+ * and over. Reads as flow down the line rather than a blinking arrow.
+ */
+.current {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  opacity: 0;
+  stroke-dasharray: 7 93;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.drawn .current {
+  animation:
+    currentFlow 2.6s cubic-bezier(0.5, 0, 0.5, 1) 1.6s infinite,
+    currentFade 2.6s linear 1.6s infinite;
+}
+
+@keyframes currentFlow {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes currentFade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  18%,
+  72% {
+    opacity: 0.9;
+  }
+}
+
+/* A slow breathing glow, so the cue stays alive between currents. */
+.drawn .trace {
+  animation:
+    draw 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    breathe 4.5s ease-in-out 1.6s infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.cue:hover .stroke {
+  filter: drop-shadow(0 0 9px currentColor) brightness(1.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * No drawing and no current: the cue is simply present. It is a wayfinding
+   * mark, so it must never be missing, only still.
+   */
+  .drawn .trace,
+  .drawn .head {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .drawn .current {
+    animation: none;
+    opacity: 0;
+  }
+}

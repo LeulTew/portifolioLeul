@@ -21,7 +21,6 @@ import { setCameraHold } from './lib/camera/cameraHold';
 
 import './index.css';
 import styles from './App.module.css';
-import './components/Arrow.css';
 
 /**
  * Page-count churn below this is ignored. Every applied change makes
@@ -280,12 +279,6 @@ function App() {
                   {!isLoading && (
                     <main ref={attachMain} className={styles.main}>
                       <Home onNavigate={scrollToSection} />
-                      <div id="homeToAboutArrow" onClick={() => scrollToSection('about')}>
-                        <div className="curveWrapper">
-                          <div className="curve"></div>
-                        </div>
-                        <div className="point"></div>
-                      </div>
                       <About />
                       <Skills />
                       <Projects theme={theme} />

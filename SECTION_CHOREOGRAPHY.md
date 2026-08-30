@@ -81,6 +81,56 @@ GSAP work must be scoped in `gsap.context()` and reverted on unmount.
 
 ---
 
+## 2a. Techniques — what "arrive" actually means
+
+A fade plus a translate is the default, and it reads as one: everything slides.
+Reach for these instead.
+
+### Reveal from behind an edge, don't fade in
+
+Type should be **uncovered**, not faded. Wrap the line (or each character) so it
+is clipped, and move it out from behind that clip:
+
+- **Per character** — each char in an `overflow: hidden` inline-block, the char
+  itself starting at `y: 115%`. Pair the clip with
+  `padding-bottom: 0.14em; margin-bottom: -0.14em` or descenders (g, y, p) get
+  cropped by the same edge that does the reveal.
+- **Per line** — `clip-path: inset(100% 0 0 0)` resolving to
+  `inset(0 0 -12% 0)`, with a small `yPercent`. The negative bottom inset stops
+  the clip shaving the descenders once it has finished.
+
+### Stagger should decelerate
+
+A fixed interval per character marches. Space them on a curve —
+`Math.pow(index, 0.82) * 0.045` — so the tail of a word settles instead of
+arriving on a metronome.
+
+### Lines are drawn, not faded
+
+Anything that reads as a stroke — a rule, an underline, the scroll cue — should
+**trace itself**. That means a real SVG `path`, never a `border-radius` box: a
+border cannot be drawn on, so a box can only ever fade or slide.
+
+Set `pathLength={100}` on the path and every dash length becomes a percentage,
+independent of the geometry. Then animate `stroke-dashoffset` from 100 to 0.
+
+Once drawn, a short bright dash (`stroke-dasharray: 7 93`) looping along the
+same path reads as a current running down the line, and keeps the mark alive
+without blinking it.
+
+### Prefer CSS animation for anything that must not be left half-finished
+
+GSAP and Framer both tween on `requestAnimationFrame`. A tab that is never
+served frames keeps the start state — which for a reveal means **invisible
+content**. CSS animations run on the compositor and finish regardless, so they
+are the right tool for a draw-on or any reveal whose start state is hidden.
+
+Where a JS tween is the right tool anyway, give it a timer backstop that sets
+the finished pose. The backstop must clear **every** property the tween starts
+from: a forgotten `clip-path` leaves a line invisible at full opacity.
+
+---
+
 ## 3. The exit
 
 The exit is one shared transform, applied to the whole section, derived from

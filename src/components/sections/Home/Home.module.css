@@ -221,3 +221,24 @@
     font-size: 2rem;
   }
 }
+
+/*
+ * Sits under the hero copy, out of the text column. Fixed like the mark it
+ * replaces, so it stays put against the world rather than scrolling with the
+ * html layer.
+ */
+/*
+ * Sits under the hero copy, out of the text column. Fixed like the mark it
+ * replaces, so it stays put against the world rather than scrolling with the
+ * html layer. Height is capped against the viewport so the tail of the curve
+ * never runs off the bottom on a short screen.
+ */
+.scrollCue {
+  position: fixed;
+  left: clamp(2rem, 14vw, 18rem);
+  top: 52vh;
+  transform: translateX(-50%);
+  width: auto;
+  height: min(34vh, 300px);
+  z-index: 100;
+}

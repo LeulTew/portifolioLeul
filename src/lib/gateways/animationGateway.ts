@@ -52,6 +52,8 @@ export const Springs = {
  */
 export const Easings = {
   easeOutCubic: [0.22, 1, 0.36, 1] as const,
+  /** Long, decisive settle. Almost all of the travel happens up front. */
+  easeOutExpo: [0.16, 1, 0.3, 1] as const,
   easeInOutQuart: [0.76, 0, 0.24, 1] as const,
   anticipate: [0.36, 0, 0.66, -0.56] as const,
 };

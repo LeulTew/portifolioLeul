@@ -134,8 +134,31 @@ describe('Home choreography', () => {
     act(() => vi.advanceTimersByTime(5000));
 
     for (const el of container.querySelectorAll('[data-cue]')) {
-      expect((el as HTMLElement).style.opacity).toBe('1');
+      const style = (el as HTMLElement).style;
+      expect(style.opacity).toBe('1');
+      // The settle must clear every property the sequence starts from. A
+      // forgotten clipPath leaves the line invisible even at full opacity.
+      expect(style.clipPath === '' || style.clipPath === 'none').toBe(true);
     }
+  });
+
+  it('draws the scroll cue once the hero has arrived', () => {
+    const { getByTestId } = render(<Home />);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-drawn', 'false');
+
+    enterHero();
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-drawn', 'true');
+  });
+
+  it('scrolls to about when the cue is activated', () => {
+    const onNavigate = vi.fn();
+    const { getByTestId } = render(<Home onNavigate={onNavigate} />);
+
+    fireEvent.click(getByTestId('scroll-cue'));
+    expect(onNavigate).toHaveBeenCalledWith('about');
+
+    fireEvent.keyDown(getByTestId('scroll-cue'), { key: 'Enter' });
+    expect(onNavigate).toHaveBeenCalledTimes(2);
   });
 
   it('leaves the hero untransformed while it holds the screen', () => {

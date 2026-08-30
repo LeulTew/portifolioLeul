@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import gsap from 'gsap';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { DancingCharText, KineticRotator } from '../../ui/KineticText';
+import { ScrollCue } from '../../ui/ScrollCue';
 import styles from './Home.module.css';
 import { useSectionFocus } from '@/lib/scroll/useSectionFocus';
 import {
@@ -48,21 +49,28 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
         // One fade, no movement, everything at once.
         gsap.fromTo(
           '[data-cue]',
-          { opacity: 0 },
+          { opacity: 0, clipPath: 'none' },
           { opacity: 1, duration: 0.4, ease: 'none' }
         );
         return;
       }
 
-      for (const id of ['title', 'role', 'description']) {
+      for (const id of ['role', 'description']) {
         const { delay, duration } = cue(id);
+        // Revealed from behind an edge rather than faded: the line is clipped
+        // away and rises into place, which reads as uncovering rather than
+        // as an element sliding in.
         gsap.fromTo(
           `[data-cue="${id}"]`,
-          { opacity: 0, yPercent: 40, filter: 'blur(8px)' },
+          {
+            opacity: 0,
+            yPercent: 60,
+            clipPath: 'inset(100% 0% 0% 0%)',
+          },
           {
             opacity: 1,
             yPercent: 0,
-            filter: 'blur(0px)',
+            clipPath: 'inset(0% 0% -12% 0%)',
             duration,
             delay,
             ease: 'expo.out',
@@ -83,6 +91,10 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           opacity: 1,
           yPercent: 0,
           filter: 'none',
+          // Must match every property the sequence starts from, or a layer
+          // stays hidden behind the one it forgot -- clipPath especially,
+          // which hides a line completely.
+          clipPath: 'none',
         });
       },
       (sequenceDuration(HERO_SEQUENCE) + 0.6) * 1000
@@ -211,33 +223,16 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
         <img src="/images/leul-profile.webp" alt="Leul" />
       </motion.div>
 
-      {/* Last cue: the scroll affordance invites the next move, so it must not
-          compete with the content that has only just arrived. */}
-      <motion.div
-        className={styles.scrollArrow}
-        initial={{ opacity: 0, y: -12 }}
-        // Enters on its cue, then follows the section out: one property, so
-        // the entry and the scrubbed exit never fight over it.
-        animate={hasEntered ? { opacity: hero.opacity, y: 0 } : undefined}
-        transition={{
-          duration: cueDuration(HERO_SEQUENCE, 'affordance'),
-          ease: [0.16, 1, 0.3, 1],
-          delay: cueDelay(HERO_SEQUENCE, 'affordance'),
-        }}
-        onClick={scrollToAbout}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            scrollToAbout();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-label="Scroll to about section"
-      >
-        <div className={styles.curve} />
-        <div className={styles.point} />
-      </motion.div>
+      {/* Last cue: the affordance invites the next move, so it must not compete
+          with the content that has only just arrived. It draws itself; a
+          border-radius div could only ever have faded in. */}
+      <ScrollCue
+        className={styles.scrollCue}
+        drawn={hasEntered}
+        onActivate={scrollToAbout}
+        label="Scroll to about section"
+      />
+
     </section>
   );
 }
