@@ -4,6 +4,7 @@ import { KineticHeading, DancingCharText } from '../../ui/KineticText';
 import styles from './Skills.module.css';
 
 import { cvData } from '../../../data/cv';
+import { FocusScrim } from '../../ui/FocusScrim';
 
 const skillCategories = cvData.skills;
 
@@ -18,6 +19,7 @@ export function Skills() {
 
   return (
     <section ref={containerRef} className={styles.skills} id="skills">
+      <FocusScrim />
       <motion.div 
         className={styles.content}
         style={{ y }}

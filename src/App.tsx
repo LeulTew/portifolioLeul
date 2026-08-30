@@ -23,6 +23,7 @@ import './components/Arrow.css';
 /** Page-count churn below this is ignored, so card expansions don't retrigger layout. */
 const SCROLL_PAGE_EPSILON = 0.05;
 
+
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);

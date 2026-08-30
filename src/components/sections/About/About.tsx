@@ -4,6 +4,7 @@ import { Card } from '../../ui/Card';
 import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
+import { FocusScrim } from '../../ui/FocusScrim';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -53,6 +54,7 @@ export function About() {
 
   return (
     <section ref={containerRef} className={styles.about} id="about">
+      <FocusScrim />
       <div className={styles.content}>
         {/* Section Header: Left-Aligned Directly Below the Indicator Arrow */}
         <motion.div 
