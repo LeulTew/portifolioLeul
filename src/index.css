@@ -169,3 +169,34 @@ body {
 .hover-lift:hover {
   transform: translateY(-5px);
 }
+
+/*
+ * ---------------------------------------------------------------------------
+ * Backdrop blur budget
+ * ---------------------------------------------------------------------------
+ *
+ * A backdrop-filter is not a paint, it is a readback: the compositor copies
+ * everything behind the element, blurs the copy, and composites it back, on
+ * every frame the element or anything behind it moves. This page stacks them
+ * -- cards, rails, pills, panels, a full-viewport scrim -- directly over a
+ * live WebGL canvas, so on a scroll every one of them re-reads a surface that
+ * changed that frame. On integrated graphics that alone can cost more than the
+ * 3D scene it sits on top of.
+ *
+ * Almost all of them are also blurring nothing. Each section draws a focus
+ * scrim behind its copy at 0.86 alpha or higher, so the backdrop these panels
+ * sample is already a flat fill; blurring a flat fill returns the same flat
+ * fill. The effect is only truly visible on the few elements that float over
+ * the live scene, and those carry their own background at 0.8 alpha.
+ *
+ * So the tier detector turns the whole class of effect off on hardware that
+ * cannot afford it, and the elements that do float over the world get a little
+ * more of their own background to make up for it. The attribute is written by
+ * App from the GPU tier reading -- there is no media query for "this GPU".
+ */
+:root[data-backdrop-blur='false'] *,
+:root[data-backdrop-blur='false'] *::before,
+:root[data-backdrop-blur='false'] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

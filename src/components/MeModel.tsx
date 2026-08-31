@@ -2,8 +2,12 @@ import { useRef, useEffect } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { isFrameDrawn } from '@/lib/render/frameGate';
 
-const MODEL_PATH = '/models/me_animated_opt.glb';
+const MODEL_PATH = '/models/me-animated-lite.glb';
+
+/** See BackgroundScene: meshopt everywhere, so no gstatic decoder fetch. */
+const NO_DRACO = false;
 
 interface MeModelProps {
   position?: [number, number, number];
@@ -16,7 +20,7 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
   const groupRef = useRef<THREE.Group>(null);
   
   // Load the GLB model with animations
-  const { scene, animations } = useGLTF(MODEL_PATH);
+  const { scene, animations } = useGLTF(MODEL_PATH, NO_DRACO);
   
   // Setup animations
   const { actions, names } = useAnimations(animations, groupRef);
@@ -66,6 +70,8 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
 
   // Fallback: subtle floating if no animations
   useFrame((state) => {
+    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
+
     if (groupRef.current && names.length === 0) {
       const time = state.clock.getElapsedTime();
       groupRef.current.position.y = position[1] + Math.sin(time * 0.8) * 0.15;
@@ -80,4 +86,4 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
 }
 
 // Preload the model
-useGLTF.preload(MODEL_PATH);
+useGLTF.preload(MODEL_PATH, NO_DRACO);

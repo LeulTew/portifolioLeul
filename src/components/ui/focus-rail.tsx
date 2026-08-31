@@ -27,6 +27,29 @@ interface FocusRailProps {
 }
 
 /**
+ * Shown when a project's image is missing.
+ *
+ * Inline, so a missing file costs nothing. The previous fallback pointed at
+ * images.unsplash.com, which turned every 404 into a request to a third party
+ * -- a stranger's photograph standing in for the reader's own work, fetched
+ * across the network, on a page that otherwise loads entirely from its own
+ * origin.
+ */
+const MISSING_IMAGE =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E" +
+  "%3Crect width='16' height='9' fill='%230a0f0d'/%3E" +
+  "%3Cpath d='M0 9L16 0' stroke='%2300ff9d' stroke-opacity='.12' stroke-width='.08'/%3E" +
+  "%3Cpath d='M0 0L16 9' stroke='%2300ff9d' stroke-opacity='.12' stroke-width='.08'/%3E" +
+  "%3C/svg%3E";
+
+/** Swaps in the placeholder once, without looping if it too fails. */
+function handleImageError(event: React.SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget;
+  if (image.src === MISSING_IMAGE) return;
+  image.src = MISSING_IMAGE;
+}
+
+/**
  * Helper to wrap indices (e.g., -1 becomes length-1)
  */
 function wrap(min: number, max: number, v: number) {
@@ -184,9 +207,9 @@ export function FocusRail({
             <img
               src={activeItem.imageSrc}
               alt=""
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80';
-              }}
+              loading="lazy"
+              decoding="async"
+              onError={handleImageError}
               className="h-full w-full object-cover blur-3xl saturate-200"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/50 to-transparent" />
@@ -251,9 +274,9 @@ export function FocusRail({
                 <img
                   src={item.imageSrc}
                   alt={item.title}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80';
-                  }}
+                  loading="lazy"
+                  decoding="async"
+                  onError={handleImageError}
                   className="h-full w-full object-cover pointer-events-none"
                 />
                 <span className="sr-only">{item.title}</span>

@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { KineticRotator } from '../../ui/KineticText';
 import { ScrollCue } from '../../ui/ScrollCue';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
-import { useSectionFocus } from '@/lib/scroll/useSectionFocus';
+import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
+import { useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
 import {
   HERO_SEQUENCE,
   cueDelay,
   cueDuration,
+  exitAmount,
   exitStyle,
   sequenceDuration,
 } from '@/lib/motion/sectionChoreography';
@@ -22,20 +24,41 @@ interface HomeProps {
 
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
-  // Shared focus lifecycle: a timed entry that plays once, and an exit that is
-  // scrubbed from scroll. See SECTION_CHOREOGRAPHY.md.
-  const { hasEntered, exit } = useSectionFocus(sectionElement);
   const reducedMotion = getPrefersReducedMotion();
 
-  const hero = exitStyle(exit, reducedMotion);
-  const isVisible = exit < 0.98;
-
-  /**
-   * Complete within the first third of the hero leaving, so the line is drawn
-   * while the reader is still deciding rather than once they have gone.
+  /*
+   * Shared focus lifecycle: a timed entry that plays once, and an exit that is
+   * scrubbed from scroll. See SECTION_CHOREOGRAPHY.md.
+   *
+   * Only the entry latch comes back as a value. The exit is a transform, and
+   * it is written straight to the element: as state it re-rendered the whole
+   * hero -- the filling headline, the word rotator, both magnetic buttons --
+   * on each of a hundred coverage steps, to move one translate.
    */
-  const cueProgress = Math.min(exit / 0.3, 1);
+  const hasEntered = useSectionFocusEffect(sectionElement, ({ exit }) => {
+    const content = contentRef.current;
+    if (!content) return;
+
+    const hero = exitStyle(exit, reducedMotion);
+    const isVisible = exit < 0.98;
+
+    if (content.style.opacity !== String(hero.opacity)) {
+      content.style.opacity = String(hero.opacity);
+    }
+    if (content.style.transform !== hero.transform) {
+      content.style.transform = hero.transform;
+    }
+    if (content.style.filter !== hero.filter) content.style.filter = hero.filter;
+
+    const pointerEvents = isVisible ? 'auto' : 'none';
+    if (content.style.pointerEvents !== pointerEvents) {
+      content.style.pointerEvents = pointerEvents;
+    }
+    const visibility = isVisible ? 'visible' : 'hidden';
+    if (content.style.visibility !== visibility) content.style.visibility = visibility;
+  });
 
   const [settled, setSettled] = useState(false);
 
@@ -88,6 +111,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   return (
     <section ref={setSectionElement} className={styles.home} id="home">
       <div
+        ref={contentRef}
         className={[
           styles.content,
           hasEntered ? styles.entered : '',
@@ -95,11 +119,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
         ]
           .filter(Boolean)
           .join(' ')}
-        style={{
-          ...hero,
-          pointerEvents: isVisible ? 'auto' : 'none',
-          visibility: isVisible ? 'visible' : 'hidden',
-        }}
+        style={{ opacity: 1, transform: 'none', filter: 'none' }}
       >
         {/* First beat: the plate wipes in under the copy, before any of it
             arrives. It is a real element so it can be sequenced at all. */}
@@ -196,13 +216,52 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           border-radius div could only ever have faded in. */}
       {/* Traced by the reader's own scroll toward About, rather than played at
           them on arrival: the mark is drawn by the movement it is inviting. */}
-      <ScrollCue
-        className={styles.scrollCue}
-        progress={cueProgress}
+      <HeroScrollCue
+        section={sectionElement}
+        entered={hasEntered}
         onActivate={scrollToAbout}
-        label="Scroll to about section"
       />
 
     </section>
+  );
+}
+/**
+ * The scroll cue, and only the scroll cue, re-rendering as the hero leaves.
+ *
+ * The cue is genuinely a function of scroll progress -- it is a line traced by
+ * the reader's own movement -- so it does need a render per step. Isolating it
+ * here keeps that cost to three SVG paths instead of the entire hero.
+ */
+function HeroScrollCue({
+  section,
+  entered,
+  onActivate,
+}: {
+  section: HTMLElement | null;
+  entered: boolean;
+  onActivate: () => void;
+}) {
+  const [progress, setProgress] = useState(0);
+
+  useViewportShareEffect(section, (coverage) => {
+    const exit = entered ? exitAmount(coverage) : 0;
+    /*
+     * Complete within the first third of the hero leaving, so the line is
+     * drawn while the reader is still deciding rather than once they have
+     * gone.
+     */
+    const next = Math.min(exit / 0.3, 1);
+    // Finer than the stroke can show, and it drops the steps a slow scroll
+    // spends re-reporting a value the line already sits at.
+    setProgress((current) => (Math.abs(current - next) < 0.002 ? current : next));
+  });
+
+  return (
+    <ScrollCue
+      className={styles.scrollCue}
+      progress={progress}
+      onActivate={onActivate}
+      label="Scroll to about section"
+    />
   );
 }

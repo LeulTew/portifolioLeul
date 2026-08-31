@@ -12,6 +12,7 @@ import {
 } from '@/lib/camera/cinematicSpline';
 import { getCameraHold } from '@/lib/camera/cameraHold';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { isFrameDrawn } from '@/lib/render/frameGate';
 
 /**
  * Scrubs the camera along the cinematic spline as the page scrolls, and parks
@@ -52,6 +53,9 @@ export function CinematicCameraController({
 
   useFrame((state, delta) => {
     if (!camera) return;
+    // Same reasoning as the grade: the damping is exact over an accumulated
+    // delta, so posing the camera for an undrawn frame buys nothing.
+    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
 
     const reducedMotion = getPrefersReducedMotion();
     const arc = mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold());

@@ -18,12 +18,23 @@ const OCEAN_THEME_COLORS: Record<OceanTheme, THREE.Color> = {
   dark: new THREE.Color('#04303a'),
 };
 
-export function getOceanSurfaceConfig(theme: OceanTheme) {
+/**
+ * Default edge of the reflection render target.
+ *
+ * The water renders the entire scene a second time into this target on every
+ * drawn frame, so its area is a direct multiplier on the page's GPU cost.
+ */
+export const DEFAULT_REFLECTION_SIZE = 512;
+
+export function getOceanSurfaceConfig(
+  theme: OceanTheme,
+  reflectionSize: number = DEFAULT_REFLECTION_SIZE
+) {
   const isDark = theme === 'dark';
 
   return {
-    textureWidth: 512,
-    textureHeight: 512,
+    textureWidth: reflectionSize,
+    textureHeight: reflectionSize,
     distortionScale: isDark ? 2.25 : COMMON_WATER_COLOR.distortionScale,
     alpha: isDark ? 0.95 : COMMON_WATER_COLOR.alpha,
     sunDirection: COMMON_WATER_COLOR.sunDirection,

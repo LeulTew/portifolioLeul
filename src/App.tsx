@@ -18,6 +18,7 @@ import { setScrollProgress } from './lib/scroll/scrollProgress';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraHold } from './lib/camera/cameraHold';
+import { RenderGovernor } from './components/3d/RenderGovernor';
 
 import './index.css';
 import styles from './App.module.css';
@@ -56,6 +57,22 @@ function App() {
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { theme, toggleTheme } = useContext(ThemeContext);
   const gpuConfig = useGpuTier();
+
+  /*
+   * Publishes the tier to CSS.
+   *
+   * The heaviest thing in the stylesheet is not a colour or a transform, it is
+   * backdrop-filter: every blurred panel makes the compositor read back and
+   * blur everything behind it -- here, a live WebGL canvas -- on every frame
+   * it moves. There is no media query for "this GPU cannot afford that", so
+   * the tier has to travel from the detector to the stylesheet as an
+   * attribute.
+   */
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.dataset.quality = gpuConfig.tier;
+    document.documentElement.dataset.backdropBlur = String(gpuConfig.enableBackdropBlur);
+  }, [gpuConfig.tier, gpuConfig.enableBackdropBlur]);
 
 
   useEffect(() => {
@@ -273,8 +290,12 @@ function App() {
             <ThemeContext.Provider value={{ theme, toggleTheme }}>
               <ScrollControls pages={scrollPages} damping={0.3}>
                 <ScrollManager onReady={handleScrollElement} onFrame={applyPendingRestore} />
-                <BackgroundScene theme={theme} particleCount={gpuConfig.particleCount} />
-                <ParticleBackground theme={theme} />
+                <BackgroundScene
+                  theme={theme}
+                  particleCount={gpuConfig.particleCount}
+                  reflectionSize={gpuConfig.waterReflectionSize}
+                />
+                <ParticleBackground theme={theme} count={gpuConfig.particleCount} />
                 <Scroll html style={{ width: '100%' }}>
                   {!isLoading && (
                     <main ref={attachMain} className={styles.main}>
@@ -289,6 +310,12 @@ function App() {
                 </Scroll>
               </ScrollControls>
               <Preload all />
+              {/*
+                Owns the render call, so frames behind an opaque section -- and
+                frames above the tier's redraw ceiling -- are never drawn.
+                Mounted last so it sits above every other frame subscriber.
+              */}
+              <RenderGovernor maxFps={gpuConfig.maxFps} />
             </ThemeContext.Provider>
           </Canvas>
         

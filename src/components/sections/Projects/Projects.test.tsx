@@ -305,7 +305,7 @@ describe('Projects', () => {
     rerender(<Projects />);
   });
 
-  it('handles image load errors with fallback', () => {
+  it('falls back to a local placeholder rather than a third-party image', () => {
     render(<Projects />);
     
     const images = screen.getAllByRole('img');
@@ -315,10 +315,15 @@ describe('Projects', () => {
       
       // Trigger error event
       fireEvent.error(img);
-      
-      // Should have fallback image
+
+      // A missing project image must not turn into a request to a stranger.
       expect(img.src).not.toBe(originalSrc);
-      expect(img.src).toContain('unsplash.com');
+      expect(img.src).toMatch(/^data:image\/svg\+xml/);
+      expect(img.src).not.toContain('unsplash.com');
+
+      // And a placeholder that itself fails must not loop.
+      fireEvent.error(img);
+      expect(img.src).toMatch(/^data:image\/svg\+xml/);
     }
   });
 

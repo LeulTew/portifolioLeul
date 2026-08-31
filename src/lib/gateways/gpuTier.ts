@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-
 /**
  * Hardware Capability & GPU Tier Detector
  * Automatically tunes WebGL fidelity, particle counts, and shader quality for 60fps.
@@ -12,6 +10,32 @@ export interface GpuTierConfig {
   enablePostProcessing: boolean;
   enableComplexShaders: boolean;
   shadowMapSize: number;
+  /**
+   * Redraw ceiling for the 3D layer, in frames per second. Zero means every
+   * frame the browser offers.
+   *
+   * Only the backdrop is capped. The DOM layer -- the copy the reader is
+   * actually scrolling -- is never throttled, so the page still scrolls at the
+   * display's rate while the world behind it redraws less often.
+   */
+  maxFps: number;
+  /**
+   * Resolution of the water's reflection render target.
+   *
+   * The ocean renders the whole scene a second time into this target every
+   * drawn frame, so it is the single most expensive thing on the page after
+   * the scene itself. Halving the edge quarters that cost, and the result is
+   * a reflection that was already being distorted by the normal map.
+   */
+  waterReflectionSize: number;
+  /**
+   * Whether the device can afford backdrop-filter blurs.
+   *
+   * A backdrop blur forces the compositor to read back and blur everything
+   * behind the element on every frame it moves, and this page stacks them --
+   * cards, panels, the full-viewport scrim -- over a live WebGL canvas.
+   */
+  enableBackdropBlur: boolean;
 }
 
 export function detectGpuTier(): GpuTierConfig {
@@ -23,6 +47,9 @@ export function detectGpuTier(): GpuTierConfig {
       enablePostProcessing: false,
       enableComplexShaders: true,
       shadowMapSize: 1024,
+      maxFps: 0,
+      waterReflectionSize: 512,
+      enableBackdropBlur: true,
     };
   }
 
@@ -57,6 +84,12 @@ export function detectGpuTier(): GpuTierConfig {
       enablePostProcessing: false,
       enableComplexShaders: false,
       shadowMapSize: 512,
+      // Half rate for the backdrop only. The camera arc is damped on elapsed
+      // time rather than frame count, so it sits in exactly the same place on
+      // the frames that are drawn.
+      maxFps: 30,
+      waterReflectionSize: 256,
+      enableBackdropBlur: false,
     };
   }
 
@@ -68,6 +101,9 @@ export function detectGpuTier(): GpuTierConfig {
       enablePostProcessing: true,
       enableComplexShaders: true,
       shadowMapSize: 2048,
+      maxFps: 0,
+      waterReflectionSize: 512,
+      enableBackdropBlur: true,
     };
   }
 
@@ -78,15 +114,35 @@ export function detectGpuTier(): GpuTierConfig {
     enablePostProcessing: false,
     enableComplexShaders: true,
     shadowMapSize: 1024,
+    maxFps: 0,
+    waterReflectionSize: 512,
+    enableBackdropBlur: true,
   };
 }
 
+/**
+ * Detected once per document.
+ *
+ * Detection probes for a WebGL context to read the renderer string, so each
+ * call allocates a canvas and a GL context. Nothing it measures can change
+ * while the page is open, and it previously ran twice on mount -- once for the
+ * initial state and once from an effect that then re-rendered the whole app
+ * with an identical value.
+ */
+let cached: GpuTierConfig | null = null;
+
+export function getGpuTier(): GpuTierConfig {
+  if (!cached) cached = detectGpuTier();
+  return cached;
+}
+
+/** Test-only: drop the memoized reading so detection runs again. */
+export function resetGpuTier(): void {
+  cached = null;
+}
+
 export function useGpuTier(): GpuTierConfig {
-  const [tierConfig, setTierConfig] = useState<GpuTierConfig>(() => detectGpuTier());
-
-  useEffect(() => {
-    setTierConfig(detectGpuTier());
-  }, []);
-
-  return tierConfig;
+  // Deliberately not state: the value is fixed for the life of the document,
+  // so there is nothing to subscribe to and nothing to re-render for.
+  return getGpuTier();
 }

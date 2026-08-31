@@ -14,6 +14,15 @@
   border-bottom: 1px solid rgba(var(--text-color), 0.1);
 }
 
+/*
+ * The bar floats over the live scene rather than over a scrim, so it is one of
+ * the few places the blur was doing real work. With it off, the bar carries
+ * the separation itself. See the backdrop blur budget in index.css.
+ */
+:global(:root[data-backdrop-blur='false']) .header.scrolled {
+  background: rgba(var(--bg-color), 0.94);
+}
+
 .nav {
   display: flex;
   justify-content: space-between;

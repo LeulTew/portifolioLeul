@@ -2,10 +2,13 @@ import { useGLTF, useVideoTexture } from '@react-three/drei';
 import { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 
+/** How long each clip holds the screen before the set changes. */
+const CLIP_DURATION_MS = 8000;
+
 export function TVModel(props: JSX.IntrinsicElements['group']) {
-  const { scene } = useGLTF('/models/crt-opt.glb');
+  const { scene } = useGLTF('/models/crt-lite.glb', false);
   const [videoIndex, setVideoIndex] = useState(0);
-  
+
   const texture1 = useVideoTexture('/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4', {
     start: true,
     muted: true,
@@ -20,10 +23,15 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
     video.loop = true;
     video.muted = true;
     video.playsInline = true;
-    const playPromise = video.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch(() => {});
-    }
+    /*
+     * Fetched only as it is needed, and not played until it is shown.
+     *
+     * This clip is 4.5MB and used to begin downloading and decoding the moment
+     * the page mounted, alongside the one actually on screen -- two video
+     * decoders running for a prop in the far background, of which only ever
+     * one is visible.
+     */
+    video.preload = 'metadata';
     const tex = new THREE.VideoTexture(video);
     return tex;
   }, [texture1]);
@@ -34,12 +42,34 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
   useEffect(() => {
     const interval = setInterval(() => {
       setVideoIndex((prev: number) => (prev + 1) % textures.length);
-    }, 8000);
+    }, CLIP_DURATION_MS);
 
     return () => {
       clearInterval(interval);
     };
   }, [textures.length]);
+
+  /*
+   * Only the clip on screen decodes.
+   *
+   * A paused <video> stops feeding frames, so the texture it backs stops being
+   * re-uploaded to the GPU as well. Running both continuously spent a decoder
+   * and a per-frame texture upload on an image that was not being drawn.
+   */
+  useEffect(() => {
+    textures.forEach((texture, index) => {
+      const video = texture?.image;
+      if (!video || typeof video.play !== 'function') return;
+
+      if (index === videoIndex) {
+        video.preload = 'auto';
+        const playing = video.play();
+        if (playing && typeof playing.catch === 'function') playing.catch(() => {});
+      } else if (typeof video.pause === 'function') {
+        video.pause();
+      }
+    });
+  }, [textures, videoIndex]);
 
   useEffect(() => {
     return () => {
@@ -74,7 +104,7 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
   return (
     <group {...props} onClick={() => setVideoIndex((prev: number) => (prev + 1) % textures.length)}>
       <primitive object={scene} />
-      
+
       {/* Video Screen Plane */}
       <group position={[0.145, 0.11, 0.13]} rotation={[-0.03, Math.PI / 2, 0]}>
         <mesh rotation={[0.08, 0, 0]}>

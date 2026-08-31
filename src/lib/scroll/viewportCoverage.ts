@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Share of the viewport a section must cover before the scrim reaches full
@@ -58,6 +58,56 @@ const THRESHOLDS = Array.from(
  * element, so its progress is pinned at 0 and every transform derived from it
  * silently freezes at its starting value.
  */
+/** The share of the viewport `entry`'s target occupies, in [0, 1]. */
+function shareFromEntry(entry: IntersectionObserverEntry): number {
+  const rootHeight =
+    entry.rootBounds?.height ??
+    (typeof window !== 'undefined' ? window.innerHeight : 0);
+
+  const visibleHeight = entry.isIntersecting
+    ? (entry.intersectionRect?.height ?? 0)
+    : 0;
+
+  return rootHeight > 0 ? Math.min(visibleHeight / rootHeight, 1) : 0;
+}
+
+/**
+ * Reports the viewport share of `element` to a callback, without re-rendering.
+ *
+ * Prefer this to `useViewportShare` for anything that ends up as a style. A
+ * hundred thresholds is a hundred state updates per transit, and a section's
+ * scrim, opacity or scale is a value React has no reason to see: routing it
+ * through state re-renders the entire section -- for Projects, that means
+ * rebuilding thirty rail items and reconciling the whole carousel -- to change
+ * a number the compositor could have taken directly.
+ *
+ * The callback is held in a ref, so a caller may pass an inline function
+ * without tearing down and rebuilding the observer on every render.
+ */
+export function useViewportShareEffect(
+  element: HTMLElement | null,
+  onChange: (share: number) => void
+): void {
+  const callbackRef = useRef(onChange);
+  callbackRef.current = onChange;
+
+  useEffect(() => {
+    if (!element || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (!entry) return;
+        callbackRef.current(shareFromEntry(entry));
+      },
+      { threshold: THRESHOLDS }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+}
+
 export function useViewportShare(element: HTMLElement | null): number {
   const [share, setShare] = useState(0);
 
@@ -68,18 +118,7 @@ export function useViewportShare(element: HTMLElement | null): number {
       (entries) => {
         const entry = entries[entries.length - 1];
         if (!entry) return;
-
-        const rootHeight =
-          entry.rootBounds?.height ??
-          (typeof window !== 'undefined' ? window.innerHeight : 0);
-
-        const visibleHeight = entry.isIntersecting
-          ? (entry.intersectionRect?.height ?? 0)
-          : 0;
-
-        setShare(
-          rootHeight > 0 ? Math.min(visibleHeight / rootHeight, 1) : 0
-        );
+        setShare(shareFromEntry(entry));
       },
       { threshold: THRESHOLDS }
     );

@@ -11,6 +11,7 @@ import {
 } from '@/lib/atmosphere/chapterGrade';
 import { getCameraHold } from '@/lib/camera/cameraHold';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { isFrameDrawn } from '@/lib/render/frameGate';
 
 /**
  * Cross-fades lighting and fog depth along the camera arc.
@@ -45,7 +46,12 @@ export function ChapterGrading({
   const scroll = useScroll();
   const grades = useMemo(() => (isLight ? LIGHT_GRADES : DARK_GRADES), [isLight]);
 
-  useFrame((_state, delta) => {
+  useFrame((state, delta) => {
+    // Damping is exponential in elapsed time, so a grade advanced only on
+    // drawn frames lands in exactly the same place as one advanced on all of
+    // them -- it simply is not computed for images that are never shown.
+    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
+
     sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold()), target);
 
     // Reduced motion still gets the grade, just without the easing: the point

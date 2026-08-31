@@ -2,13 +2,28 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Theme } from './sections/theme/ThemeContext';
+import { isFrameDrawn } from '@/lib/render/frameGate';
 
 interface ParticleBackgroundProps {
   theme: Theme;
+  /** Instance count, normally taken from the GPU tier budget. */
+  count?: number;
 }
 
-const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
-  const count = 2000;
+/** Used when the caller has no GPU-tier reading yet. */
+const DEFAULT_COUNT = 800;
+
+/**
+ * Vertical drift amplitude, in world units.
+ *
+ * Matches what the old per-frame loop actually produced. That loop integrated
+ * `sin(t) * 0.001` into the position every frame, which at its drift rate
+ * settles into an oscillation of roughly this size -- so the field looks the
+ * same, it is simply no longer computed one vertex at a time on the CPU.
+ */
+const DRIFT_AMPLITUDE = 0.006;
+
+const ParticleBackground = ({ theme, count = DEFAULT_COUNT }: ParticleBackgroundProps) => {
   const particlesRef = useRef<THREE.Points>(null);
   const isLight = theme === 'light';
 
@@ -16,6 +31,7 @@ const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
     const positions = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const colors = new Float32Array(count * 3);
+    const mixedColor = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
@@ -26,7 +42,6 @@ const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
       // Vary the size of particles
       sizes[i] = Math.random() * 0.2;
 
-      const mixedColor = new THREE.Color();
       const baseHue = isLight ? 0.08 : 0.4;
       const baseLightness = isLight ? 0.6 : 0.3;
       mixedColor.setHSL(
@@ -34,7 +49,7 @@ const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
         isLight ? 0.65 : 0.8,
         baseLightness + Math.random() * (isLight ? 0.2 : 0.15)
       );
-      
+
       colors[i3] = mixedColor.r;
       colors[i3 + 1] = mixedColor.g;
       colors[i3 + 2] = mixedColor.b;
@@ -47,18 +62,34 @@ const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
     };
   }, [count, isLight]);
 
+  /**
+   * Shared with the vertex shader, which does the drifting.
+   *
+   * The field used to be animated on the CPU: a loop over every vertex, then
+   * the whole position buffer re-uploaded to the GPU, on every frame. At the
+   * old count that was six thousand float writes and a 24KB transfer per
+   * frame, to move each mote by a fraction of a pixel. The same displacement
+   * costs nothing as a term in the vertex shader, and the geometry becomes
+   * static -- uploaded once, never touched again.
+   */
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uDrift: { value: DRIFT_AMPLITUDE },
+    }),
+    []
+  );
+
   useFrame((state) => {
-    if (!particlesRef.current) return;
+    const points = particlesRef.current;
+    if (!points) return;
+
+    const time = state.clock.elapsedTime;
+    if (!isFrameDrawn(time)) return;
 
     // Slow rotation
-    particlesRef.current.rotation.y = state.clock.elapsedTime * 0.05;
-
-    // Make particles move slightly
-    const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < count * 3; i += 3) {
-      positions[i + 1] += Math.sin(state.clock.elapsedTime * 0.2 + positions[i]) * 0.001;
-    }
-    particlesRef.current.geometry.attributes.position.needsUpdate = true;
+    points.rotation.y = time * 0.05;
+    uniforms.uTime.value = time;
   });
 
   return (
@@ -88,13 +119,22 @@ const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
         depthWrite={false}
         transparent
         vertexColors
+        uniforms={uniforms}
         vertexShader={`
           attribute float size;
+          uniform float uTime;
+          uniform float uDrift;
           varying vec3 vColor;
 
           void main() {
             vColor = color;
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+
+            // Seeded off x so neighbouring motes drift out of step, which is
+            // what the CPU version got for free by reading each position.
+            vec3 drifted = position;
+            drifted.y += sin(uTime * 0.2 + position.x) * uDrift;
+
+            vec4 mvPosition = modelViewMatrix * vec4(drifted, 1.0);
             gl_PointSize = size * (300.0 / -mvPosition.z);
             gl_Position = projectionMatrix * mvPosition;
           }
@@ -116,4 +156,4 @@ const ParticleBackground = ({ theme }: ParticleBackgroundProps) => {
   );
 };
 
-export default ParticleBackground; 
+export default ParticleBackground;

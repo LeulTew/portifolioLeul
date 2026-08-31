@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useViewportShare } from './viewportCoverage';
+import { useViewportShare, useViewportShareEffect } from './viewportCoverage';
 import {
   ENTER_THRESHOLD,
   exitAmount,
@@ -51,4 +51,45 @@ export function useSectionFocus(
     // as leaving.
     exit: hasEntered ? exitAmount(coverage) : 0,
   };
+}
+
+/**
+ * The same lifecycle, reported to a callback instead of through a render.
+ *
+ * Only `hasEntered` comes back as a value, because only `hasEntered` changes
+ * what a section renders -- and it changes once, ever. Coverage and exit are
+ * styles: a hundred coverage steps per transit routed through state re-renders
+ * the whole section a hundred times to move one transform, and for the hero
+ * that means re-rendering the animated headline, the rotator and both magnetic
+ * buttons on every step of a scroll they are not involved in.
+ *
+ * The callback is invoked during the observer callback, so treat it as a place
+ * to write to the DOM, not to set state.
+ */
+export function useSectionFocusEffect(
+  element: HTMLElement | null,
+  onChange: (focus: SectionFocus) => void,
+  enterThreshold: number = ENTER_THRESHOLD
+): boolean {
+  const [hasEntered, setHasEntered] = useState(false);
+  const latched = useRef(false);
+  const callbackRef = useRef(onChange);
+  callbackRef.current = onChange;
+
+  useViewportShareEffect(element, (coverage) => {
+    if (!latched.current && coverage >= enterThreshold) {
+      latched.current = true;
+      setHasEntered(true);
+    }
+
+    callbackRef.current({
+      coverage,
+      hasEntered: latched.current,
+      // A section on its way in also has low coverage, and must not be
+      // treated as leaving.
+      exit: latched.current ? exitAmount(coverage) : 0,
+    });
+  });
+
+  return hasEntered;
 }

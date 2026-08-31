@@ -29,7 +29,7 @@ vi.mock('three/examples/jsm/objects/Water.js', () => {
 // Mock @react-three/fiber
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn((callback) => {
-    callback({}, 0.016);
+    callback({ clock: { getElapsedTime: () => 0.016 } }, 0.016);
   }),
   useLoader: vi.fn(() => new THREE.Texture()),
 }));

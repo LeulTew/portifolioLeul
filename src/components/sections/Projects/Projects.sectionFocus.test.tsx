@@ -30,6 +30,12 @@ vi.mock('../../ui/FocusScrim', () => ({
 
 vi.mock('@/lib/scroll/viewportCoverage', () => ({
   useViewportCoverage: () => 1,
+  // The section is fully covered, as before -- the value simply reaches the
+  // element directly now instead of through a re-render.
+  useViewportShareEffect: (_element: unknown, onChange: (share: number) => void) => {
+    onChange(1);
+  },
+  focusStrength: (share: number) => share,
 }));
 
 vi.mock('../../ui/StripReveal', () => ({

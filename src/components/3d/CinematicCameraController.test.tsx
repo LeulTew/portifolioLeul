@@ -33,9 +33,15 @@ vi.mock('@/lib/gateways/animationGateway', () => ({
 }));
 
 /** Runs `count` frames of the loop, which is how damping is meant to converge. */
+let clockTime = 0;
+
 const advance = (count = 1, delta = 0.016) => {
   for (let i = 0; i < count; i += 1) {
-    frameCallback?.({ mouse: pointer, clock: { getElapsedTime: () => i * delta } }, delta);
+    // Monotonic across the whole file, as a real clock is. Restarting it per
+    // call would ask the render gate to accept time running backwards.
+    clockTime += delta;
+    const now = clockTime;
+    frameCallback?.({ mouse: pointer, clock: { getElapsedTime: () => now } }, delta);
   }
 };
 

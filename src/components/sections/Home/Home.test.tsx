@@ -79,11 +79,23 @@ describe('Home Section', () => {
 
 describe('Home choreography', () => {
   const originalObserver = globalThis.IntersectionObserver;
-  let notify: ((entries: unknown[]) => void) | null = null;
+
+  /*
+   * Every live observer, not just the most recent one.
+   *
+   * The hero observes its own coverage twice: once for the exit transform it
+   * writes to the element, and once from the scroll cue, which is the one
+   * thing on the section that genuinely re-renders per step. Keeping only the
+   * last-constructed callback silently delivered scroll to one of them.
+   */
+  let observers: Array<(entries: unknown[]) => void> = [];
+  const notify = (entries: unknown[]) => {
+    observers.forEach((observer) => observer(entries));
+  };
 
   class FakeIntersectionObserver {
     constructor(callback: (entries: unknown[]) => void) {
-      notify = callback;
+      observers.push(callback);
     }
     observe() {}
     unobserve() {}
@@ -95,7 +107,7 @@ describe('Home choreography', () => {
 
   const enterHero = () =>
     act(() => {
-      notify?.([
+      notify([
         {
           isIntersecting: true,
           intersectionRect: { height: 1000 },
@@ -105,7 +117,7 @@ describe('Home choreography', () => {
     });
 
   beforeEach(() => {
-    notify = null;
+    observers = [];
     (globalThis as unknown as Record<string, unknown>).IntersectionObserver =
       FakeIntersectionObserver;
   });
@@ -161,7 +173,7 @@ describe('Home choreography', () => {
     enterHero();
 
     act(() => {
-      notify?.([
+      notify([
         {
           isIntersecting: true,
           intersectionRect: { height: 200 },
@@ -214,7 +226,7 @@ describe('Home choreography', () => {
     enterHero();
 
     act(() => {
-      notify?.([
+      notify([
         {
           isIntersecting: true,
           intersectionRect: { height: 40 },
@@ -236,7 +248,7 @@ describe('Home choreography', () => {
     enterHero();
 
     act(() => {
-      notify?.([{ isIntersecting: false, intersectionRect: { height: 0 }, rootBounds: { height: 1000 } }]);
+      notify([{ isIntersecting: false, intersectionRect: { height: 0 }, rootBounds: { height: 1000 } }]);
     });
 
     const content = container.querySelector('section > div') as HTMLElement;
@@ -250,7 +262,7 @@ describe('Home choreography', () => {
     enterHero();
 
     act(() => {
-      notify?.([{ isIntersecting: true, intersectionRect: { height: 700 }, rootBounds: { height: 1000 } }]);
+      notify([{ isIntersecting: true, intersectionRect: { height: 700 }, rootBounds: { height: 1000 } }]);
     });
 
     const content = container.querySelector('section > div') as HTMLElement;

@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
 import { projectsData } from '../../../data/projects';
@@ -8,7 +7,7 @@ import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { KineticHeading } from '../../ui/KineticText';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { StripReveal } from '../../ui/StripReveal';
-import { useViewportCoverage } from '@/lib/scroll/viewportCoverage';
+import { focusStrength, useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
 
 const categories = [
   { title: 'All', icon: Grid3x3 },
@@ -21,6 +20,7 @@ const categories = [
 
 export function Projects({ theme }: { theme?: string }) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isContactInView, setIsContactInView] = useState(false);
 
@@ -57,12 +57,27 @@ export function Projects({ theme }: { theme?: string }) {
   }, []);
 
   // Filter projects based on active category
-  const filteredProjects = activeCategory === 'All' 
-    ? projectsData 
-    : projectsData.filter(project => project.categories.includes(activeCategory));
+  const filteredProjects = useMemo(
+    () =>
+      activeCategory === 'All'
+        ? projectsData
+        : projectsData.filter((project) => project.categories.includes(activeCategory)),
+    [activeCategory]
+  );
 
-  // Map projects to FocusRail items
-  const railItems: FocusRailItem[] = filteredProjects.map((project) => ({
+  /*
+   * Memoised on the category, which is the only thing that changes it.
+   *
+   * Building this list splits and regex-matches the long description of every
+   * project and allocates a tree of elements for each. It used to be rebuilt
+   * on every render -- and the section re-rendered on every one of a hundred
+   * coverage steps per transit, purely to restyle itself. That is thirty
+   * descriptions re-parsed and the whole carousel reconciled, per step, while
+   * the reader scrolls past.
+   */
+  const railItems: FocusRailItem[] = useMemo(
+    () =>
+      filteredProjects.map((project) => ({
     id: project.id,
     title: project.title,
     description: project.longDescription ? (
@@ -87,26 +102,39 @@ export function Projects({ theme }: { theme?: string }) {
     demoUrl: project.demoUrl,
     repoUrl: project.githubUrl,
     meta: project.categories.join(' • '),
-  }));
+      })),
+    [filteredProjects]
+  );
 
-  // Was driven by framer-motion's useScroll, which tracks the viewport's own
-  // scroll. This page scrolls inside the ScrollControls element, so that
-  // progress was pinned at 0 and the section rendered permanently at its
-  // starting values: opacity 0.3 and scale 0.97.
-  const coverage = useViewportCoverage(sectionElement);
-  const sectionOpacity = 0.35 + coverage * 0.65;
-  const sectionScale = 0.97 + coverage * 0.03;
+  /*
+   * Was driven by framer-motion's useScroll, which tracks the viewport's own
+   * scroll. This page scrolls inside the ScrollControls element, so that
+   * progress was pinned at 0 and the section rendered permanently at its
+   * starting values: opacity 0.3 and scale 0.97.
+   *
+   * Written to the element rather than held in state, for the reason given on
+   * the rail items above: this is a style, and React has no reason to see it.
+   */
+  useViewportShareEffect(sectionElement, (share) => {
+    const content = contentRef.current;
+    if (!content) return;
+
+    const coverage = focusStrength(share, 1);
+    const opacity = (0.35 + coverage * 0.65).toFixed(3);
+    const transform = `scale(${(0.97 + coverage * 0.03).toFixed(4)})`;
+
+    if (content.style.opacity !== opacity) content.style.opacity = opacity;
+    if (content.style.transform !== transform) content.style.transform = transform;
+  });
 
   return (
     <section ref={setSectionElement} className={styles.projects} id="projects">
       {/* Carries its own imagery, so the world stays faintly behind it. */}
       <FocusScrim />
-      <motion.div
+      <div
+        ref={contentRef}
         className={styles.content}
-        style={{
-          opacity: sectionOpacity,
-          scale: sectionScale,
-        }}
+        style={{ opacity: 0.35, transform: 'scale(0.97)', willChange: 'opacity, transform' }}
       >
         <header className={styles.header}>
           <KineticHeading 
@@ -142,7 +170,7 @@ export function Projects({ theme }: { theme?: string }) {
             className="bg-transparent"
           />
         </StripReveal>
-      </motion.div>
+      </div>
     </section>
   );
 }

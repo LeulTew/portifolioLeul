@@ -30,8 +30,17 @@ vi.mock('@/lib/gateways/animationGateway', () => ({
   getPrefersReducedMotion: () => reducedMotion(),
 }));
 
+let clockTime = 0;
+
+/** One frame of the loop, with the clock a real state always carries. */
+const frame = (delta = 0.016) => {
+  clockTime += delta;
+  const now = clockTime;
+  frameCallback?.({ clock: { getElapsedTime: () => now } }, delta);
+};
+
 const advance = (count = 1, delta = 0.016) => {
-  for (let i = 0; i < count; i += 1) frameCallback?.({}, delta);
+  for (let i = 0; i < count; i += 1) frame(delta);
 };
 
 const setup = (isLight = false) => {
@@ -128,11 +137,11 @@ describe('ChapterGrading', () => {
     const { ambientRef } = setup();
     const start = ambientRef.current!.intensity;
 
-    frameCallback?.({}, 30);
+    frame(30);
     const jumped = Math.abs(ambientRef.current!.intensity - start);
 
     ambientRef.current!.intensity = start;
-    frameCallback?.({}, 0.1);
+    frame(0.1);
     const clamped = Math.abs(ambientRef.current!.intensity - start);
 
     expect(jumped).toBeCloseTo(clamped, 6);

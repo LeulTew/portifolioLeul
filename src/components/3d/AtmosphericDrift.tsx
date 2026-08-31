@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 import { DEFAULT_DRIFT_BOUNDS, createDriftSeeds, type DriftBounds } from '@/lib/atmosphere/drift';
 import { writeDriftInstances } from '@/lib/atmosphere/writeDriftInstances';
-import { getCameraHold } from '@/lib/camera/cameraHold';
-import { isWithinHold } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { isFrameDrawn } from '@/lib/render/frameGate';
 
 /**
  * Slow motes drifting through the island's air, on a single instanced draw
@@ -37,7 +35,6 @@ export function AtmosphericDrift({
   opacity = 0.55,
 }: AtmosphericDriftProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const scroll = useScroll();
   const seeds = useMemo(() => createDriftSeeds(count, bounds), [count, bounds]);
 
   // Lay the field out once, so a reduced-motion visitor still sees it and the
@@ -52,8 +49,11 @@ export function AtmosphericDrift({
     const mesh = meshRef.current;
     if (!mesh || count <= 0) return;
     if (getPrefersReducedMotion()) return;
-    // Nothing to see while an opaque section covers the world.
-    if (isWithinHold(scroll?.offset ?? 0, getCameraHold())) return;
+    // Writing a matrix per mote is the most expensive thing this page does per
+    // frame on the CPU. Skip it on any frame that will not be drawn -- which
+    // includes every frame behind the opaque section this used to test for
+    // directly, and every frame above the tier's redraw ceiling.
+    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
 
     // The camera orbits through this field, so motes approaching the lens are
     // scaled away rather than rendering as large bright shapes.

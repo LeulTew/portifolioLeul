@@ -1,8 +1,6 @@
 import { useRef, useMemo, useEffect, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { 
-  useScroll,
-  Environment, 
+import {
   useGLTF,
   PerspectiveCamera,
   Points,
@@ -15,13 +13,24 @@ import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
 import { ShorelineBreak } from './ocean/ShorelineBreak';
 import { CinematicCameraController } from './3d/CinematicCameraController';
-import { getCameraHold } from '@/lib/camera/cameraHold';
-import { isWithinHold } from '@/lib/camera/holdRange';
 import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { ChapterGrading } from './3d/ChapterGrading';
+import { LocalEnvironment } from './3d/LocalEnvironment';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { DEFAULT_REFLECTION_SIZE } from './ocean/oceanConfig';
 
-const TERRAIN_URL = '/models/terrain-mobile.glb';
+const TERRAIN_URL = '/models/terrain-opt.glb';
+
+/**
+ * Draco is deliberately off for every model on this page.
+ *
+ * drei fetches the Draco decoder from gstatic.com on first use, so a
+ * Draco-compressed model cannot begin decoding until a third-party request
+ * completes -- and Draco then decodes several times slower than meshopt, on
+ * the main thread. Every model here is re-encoded with meshopt, whose decoder
+ * ships inside three-stdlib and is already in the bundle.
+ */
+const NO_DRACO = false;
 
 /** Used when the caller has no GPU-tier reading yet. */
 const DEFAULT_PARTICLE_COUNT = 800;
@@ -30,14 +39,14 @@ const DEFAULT_PARTICLE_COUNT = 800;
 const DRIFT_BUDGET_SHARE = 0.3;
 
 
-useGLTF.preload('/models/terrain-mobile.glb');
+useGLTF.preload(TERRAIN_URL, NO_DRACO);
 
 interface TerrainProps {
   surfaceColor: string;
 }
 
 function Terrain({ surfaceColor }: TerrainProps) {
-  const { scene } = useGLTF(TERRAIN_URL);
+  const { scene } = useGLTF(TERRAIN_URL, NO_DRACO);
   
   const terrain = useMemo(() => {
     const clone = scene.clone();
@@ -158,16 +167,21 @@ function ResponsiveCamera() {
 interface BackgroundSceneProps {
   theme: Theme;
   particleCount?: number;
+  /** Edge of the water's reflection target. See the GPU tier budget. */
+  reflectionSize?: number;
 }
 
-export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT }: BackgroundSceneProps) {
+export function BackgroundScene({
+  theme,
+  particleCount = DEFAULT_PARTICLE_COUNT,
+  reflectionSize = DEFAULT_REFLECTION_SIZE,
+}: BackgroundSceneProps) {
   // A fraction of the starfield budget: motes are animated every frame, so they
   // cost far more per instance than the static point cloud.
   const driftCount = Math.max(Math.round(particleCount * DRIFT_BUDGET_SHARE), 0);
   const prismRef = useRef<THREE.Group>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const keyLightRef = useRef<THREE.DirectionalLight>(null);
-  const scroll = useScroll();
 
   const isLight = theme === 'light';
 
@@ -178,7 +192,6 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
       terrain: isLight ? '#e9e2d4' : '#0a1a1a',
       ground: isLight ? '#3a5f5f' : '#001a1a',
       highlight: '#00ff9d',
-      environment: (isLight ? 'city' : 'night') as 'city' | 'night',
       ambient: isLight ? 0.6 : 0.2,
       directional: isLight ? 1.1 : 0.5,
       spotIntensity: isLight ? 0.8 : 1,
@@ -208,10 +221,11 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
   useFrame((state) => {
     if (!prismRef.current) return;
 
-    // The world holds completely still behind an opaque section.
-    if (isWithinHold(scroll?.offset ?? 0, getCameraHold())) return;
-
+    // The world holds completely still behind an opaque section, and redraws
+    // no faster than the tier allows.
     const time = state.clock.getElapsedTime();
+    if (!isFrameDrawn(time)) return;
+
     const reducedMotion = getPrefersReducedMotion();
 
     // Parallax now lives on the camera, not on this group: rotating the world
@@ -228,11 +242,11 @@ export function BackgroundScene({ theme, particleCount = DEFAULT_PARTICLE_COUNT 
       <fog attach="fog" args={[palette.fog, 30, 70]} />
 
       <group>
-        <Environment preset={palette.environment} />
+        <LocalEnvironment />
 
         {/* Realistic Ocean */}
         <Suspense fallback={null}>
-          <Ocean theme={theme} position={[0, -4, 0]} />
+          <Ocean theme={theme} position={[0, -4, 0]} reflectionSize={reflectionSize} />
         </Suspense>
 
         {/* Shore break crest lines where waves meet the island edge */}

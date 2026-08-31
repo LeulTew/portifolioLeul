@@ -75,22 +75,39 @@ vi.mock("framer-motion", () => ({
 }));
 
 /** Frame callbacks registered through useFrame, so tests can drive the loop. */
-const frameCallbacks: Array<() => void> = [];
-const runFrames = (count = 1) => {
+const frameCallbacks: Array<(state: any, delta: number) => void> = [];
+
+/**
+ * Elapsed time, monotonic across the file as a real clock is. The render gate
+ * treats time running backwards as a restarted clock, so a per-call counter
+ * would quietly exercise a different path than production.
+ */
+let clockTime = 0;
+
+const runFrames = (count = 1, delta = 0.016) => {
   for (let i = 0; i < count; i += 1) {
-    frameCallbacks.forEach((cb) => cb());
+    clockTime += delta;
+    const now = clockTime;
+    const state = { clock: { getElapsedTime: () => now } };
+    frameCallbacks.forEach((cb) => cb(state, delta));
   }
+};
+
+/** Stands in for the renderer the governor drives. */
+const threeState = {
+  camera: { fov: 50, position: { set: vi.fn() }, updateProjectionMatrix: vi.fn() },
+  size: { width: 1920, height: 1080 },
+  gl: { render: vi.fn() },
+  scene: {},
 };
 
 vi.mock("@react-three/fiber", () => ({
   Canvas: ({ children }: any) => <div data-testid="r3f-canvas">{children}</div>,
-  useFrame: (cb: () => void) => {
+  useFrame: (cb: (state: any, delta: number) => void) => {
     if (!frameCallbacks.includes(cb)) frameCallbacks.push(cb);
   },
-  useThree: () => ({
-    camera: { fov: 50, position: { set: vi.fn() }, updateProjectionMatrix: vi.fn() },
-    size: { width: 1920, height: 1080 },
-  }),
+  useThree: (selector?: (state: any) => unknown) =>
+    selector ? selector(threeState) : threeState,
 }));
 
 const mockScroll = { el: document.createElement("div"), offset: 0 };

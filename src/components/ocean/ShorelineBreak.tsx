@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OceanTheme } from './oceanConfig';
+import { isFrameDrawn } from '@/lib/render/frameGate';
 
 interface ShorelineBreakProps {
   theme: OceanTheme;
@@ -41,6 +42,7 @@ export function ShorelineBreak({ theme, position = [0, -3.92, -20] }: ShorelineB
 
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
+    if (!isFrameDrawn(time)) return;
 
     ringRefs.current.forEach((ring, index) => {
       if (!ring) return;
