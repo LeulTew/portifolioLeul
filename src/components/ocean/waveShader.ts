@@ -35,9 +35,6 @@ import * as THREE from 'three';
  * waterline, which surges as each crest arrives and drains between them.
  */
 
-/** Waves in the set. Unrolled in the shader, so this is a documented constant. */
-export const WAVE_COUNT = 4;
-
 export interface ShoreFieldLayout {
   /** World XZ of the field's minimum corner. */
   readonly origin: readonly [number, number];
@@ -98,7 +95,6 @@ const VERTEX_HELPERS = /* glsl */ `
 
   varying vec3 vWaveNormal;
   varying float vFoam;
-  varying float vShoreDepth;
 
   /** Signed distance to the coast in world units; negative inland. */
   float shoreDistance( vec2 worldXZ ) {
@@ -221,7 +217,6 @@ const VERTEX_BODY = /* glsl */ `
     wavePosition.xyz += waveOffset;
 
     vWaveNormal = normalize( waveNormal );
-    vShoreDepth = depth;
 
     /*
      * The wash, in two parts, because a beach has two.
@@ -268,7 +263,6 @@ const FRAGMENT_HELPERS = /* glsl */ `
 
   varying vec3 vWaveNormal;
   varying float vFoam;
-  varying float vShoreDepth;
 `;
 
 /**
