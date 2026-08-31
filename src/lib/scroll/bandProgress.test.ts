@@ -33,7 +33,7 @@ describe('transitProgress', () => {
       [Number.NaN, BAND, ROOT],
       [0, Number.NaN, ROOT],
       [0, BAND, Number.NaN],
-    ] as const) {
+    ] as ReadonlyArray<readonly [number, number, number]>) {
       expect(transitProgress(...args)).toBe(0);
     }
   });

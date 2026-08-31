@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, act } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach, type Mock } from 'vitest';
 import React from 'react';
 import { Projects } from './Projects';
 
@@ -57,7 +57,7 @@ type ObserverCallback = (entries: any[]) => void;
 
 let capturedCallback: ObserverCallback | null = null;
 let observedIds: string[] = [];
-let disconnectSpy: ReturnType<typeof vi.fn>;
+let disconnectSpy: Mock<() => void>;
 const originalObserver = globalThis.IntersectionObserver;
 
 class FakeIntersectionObserver {

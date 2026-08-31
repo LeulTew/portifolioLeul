@@ -36,6 +36,14 @@ export interface GpuTierConfig {
    * cards, panels, the full-viewport scrim -- over a live WebGL canvas.
    */
   enableBackdropBlur: boolean;
+  /**
+   * How many clips the CRT cycles through.
+   *
+   * The second clip is 4.5MB, for a screen that occupies roughly sixty pixels
+   * across in the far background. One clip still gives the prop a live screen;
+   * it simply stops alternating.
+   */
+  videoClips: number;
 }
 
 export function detectGpuTier(): GpuTierConfig {
@@ -50,6 +58,7 @@ export function detectGpuTier(): GpuTierConfig {
       maxFps: 0,
       waterReflectionSize: 512,
       enableBackdropBlur: true,
+      videoClips: 2,
     };
   }
 
@@ -90,6 +99,7 @@ export function detectGpuTier(): GpuTierConfig {
       maxFps: 30,
       waterReflectionSize: 256,
       enableBackdropBlur: false,
+      videoClips: 1,
     };
   }
 
@@ -104,6 +114,7 @@ export function detectGpuTier(): GpuTierConfig {
       maxFps: 0,
       waterReflectionSize: 512,
       enableBackdropBlur: true,
+      videoClips: 2,
     };
   }
 
@@ -117,6 +128,7 @@ export function detectGpuTier(): GpuTierConfig {
     maxFps: 0,
     waterReflectionSize: 512,
     enableBackdropBlur: true,
+    videoClips: 2,
   };
 }
 

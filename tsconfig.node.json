@@ -2,6 +2,11 @@
   "$schema": "./tsconfig.schema.json",
   "compilerOptions": {
     "composite": true,
+    // Without a target this project defaulted to ES5, which cannot even parse
+    // the private fields in its own dependencies' type declarations.
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,

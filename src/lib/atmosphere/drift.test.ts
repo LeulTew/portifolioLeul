@@ -120,7 +120,7 @@ describe('driftHeight', () => {
   });
 
   it('collapses to the floor for a degenerate field', () => {
-    const flat = { radius: 10, floor: 2, ceiling: 2 };
+    const flat = { center: [0, 0, 0] as const, radius: 10, floor: 2, ceiling: 2 };
     expect(driftHeight(seeds, 0, 5, flat)).toBe(2);
   });
 });

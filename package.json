@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "optimize:models": "bun scripts/optimize-models.mjs"
+    "optimize:models": "bun scripts/optimize-models.mjs",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

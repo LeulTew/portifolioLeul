@@ -17,6 +17,7 @@ import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { ChapterGrading } from './3d/ChapterGrading';
 import { LocalEnvironment } from './3d/LocalEnvironment';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { isFrameDrawn } from '@/lib/render/frameGate';
 import { DEFAULT_REFLECTION_SIZE } from './ocean/oceanConfig';
 
 const TERRAIN_URL = '/models/terrain-opt.glb';
@@ -142,12 +143,13 @@ function Particles({ color, count }: ParticlesProps) {
   );
 }
 
-function ResponsiveTV() {
+function ResponsiveTV({ clips }: { clips: number }) {
   return (
-    <TVModel 
-      position={[-10, 0.5, -14]} 
-      rotation={[0.1, Math.PI * 0.2, 0.1]} 
-      scale={[8, 8, 8]} 
+    <TVModel
+      clips={clips}
+      position={[-10, 0.5, -14]}
+      rotation={[0.1, Math.PI * 0.2, 0.1]}
+      scale={[8, 8, 8]}
     />
   );
 }
@@ -169,12 +171,15 @@ interface BackgroundSceneProps {
   particleCount?: number;
   /** Edge of the water's reflection target. See the GPU tier budget. */
   reflectionSize?: number;
+  /** How many clips the CRT cycles. See the GPU tier budget. */
+  videoClips?: number;
 }
 
 export function BackgroundScene({
   theme,
   particleCount = DEFAULT_PARTICLE_COUNT,
   reflectionSize = DEFAULT_REFLECTION_SIZE,
+  videoClips = 2,
 }: BackgroundSceneProps) {
   // A fraction of the starfield budget: motes are animated every frame, so they
   // cost far more per instance than the static point cloud.
@@ -326,7 +331,7 @@ export function BackgroundScene({
           />
           
           {/* TV Model with Video */}
-          <ResponsiveTV />
+          <ResponsiveTV clips={videoClips} />
         </Suspense>
 
         {/* Enhanced Lighting */}

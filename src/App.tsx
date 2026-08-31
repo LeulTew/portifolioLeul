@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useContext } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -13,6 +13,7 @@ import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import ParticleBackground from './components/ParticleBackground';
 import { Contact } from './components/sections/Contact/Contact';
 import { ThemeContext } from './components/sections/theme/ThemeContext';
+import { useTheme } from './components/sections/theme/useTheme';
 import { useGpuTier } from './lib/gateways/gpuTier';
 import { setScrollProgress } from './lib/scroll/scrollProgress';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
@@ -55,7 +56,9 @@ function App() {
   /** Frames left to re-announce a restored position to ScrollControls. */
   const restoreSyncFramesRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { theme, toggleTheme } = useContext(ThemeContext);
+  // The context is optional by type -- it has no sensible default -- and this
+  // hook is the project's existing way of asserting the provider is there.
+  const { theme, toggleTheme } = useTheme();
   const gpuConfig = useGpuTier();
 
   /*
@@ -294,6 +297,7 @@ function App() {
                   theme={theme}
                   particleCount={gpuConfig.particleCount}
                   reflectionSize={gpuConfig.waterReflectionSize}
+                  videoClips={gpuConfig.videoClips}
                 />
                 <ParticleBackground theme={theme} count={gpuConfig.particleCount} />
                 <Scroll html style={{ width: '100%' }}>

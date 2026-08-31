@@ -131,10 +131,10 @@ describe('Navigation', () => {
     if (intersectionCallback) {
       const mockEntries: IntersectionObserverEntry[] = [{
         isIntersecting: true,
-        intersectionRect: { height: 200 },
+        intersectionRatio: 0.2,
+        intersectionRect: { height: 200 } as DOMRectReadOnly,
         target: mockSection,
         boundingClientRect: {} as DOMRectReadOnly,
-        intersectionRect: {} as DOMRectReadOnly,
         rootBounds: null,
         time: 0
       }];
@@ -187,19 +187,19 @@ describe('Navigation', () => {
       const mockEntries: IntersectionObserverEntry[] = [
         {
           isIntersecting: true,
-          intersectionRect: { height: 90 },
+          intersectionRatio: 1,
+          intersectionRect: { height: 90 } as DOMRectReadOnly,
           target: mockSection1,
           boundingClientRect: {} as DOMRectReadOnly,
-          intersectionRect: {} as DOMRectReadOnly,
           rootBounds: null,
           time: 0
         },
         {
           isIntersecting: true,
-          intersectionRect: { height: 240 },
+          intersectionRatio: 1,
+          intersectionRect: { height: 240 } as DOMRectReadOnly,
           target: mockSection2,
           boundingClientRect: {} as DOMRectReadOnly,
-          intersectionRect: {} as DOMRectReadOnly,
           rootBounds: null,
           time: 0
         }

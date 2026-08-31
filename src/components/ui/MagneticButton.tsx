@@ -90,7 +90,7 @@ export function MagneticButton({
       whileTap={{ scale: 0.95 }}
       onClick={handleClick as never}
       className={cn(styles.magneticWrapper, className)}
-      {...(props as never)}
+      {...(props as Record<string, unknown>)}
     >
       <div className={cn(styles.cutoutFrame, getVariantClass())}>
         {/* Dynamic SVG Cyber Cutout Border */}

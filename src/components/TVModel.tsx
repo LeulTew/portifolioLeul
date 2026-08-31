@@ -5,7 +5,12 @@ import * as THREE from 'three';
 /** How long each clip holds the screen before the set changes. */
 const CLIP_DURATION_MS = 8000;
 
-export function TVModel(props: JSX.IntrinsicElements['group']) {
+type TVModelProps = JSX.IntrinsicElements['group'] & {
+  /** How many clips to cycle. One skips the second, heavier file entirely. */
+  clips?: number;
+};
+
+export function TVModel({ clips = 2, ...props }: TVModelProps) {
   const { scene } = useGLTF('/models/crt-lite.glb', false);
   const [videoIndex, setVideoIndex] = useState(0);
 
@@ -16,7 +21,8 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
   });
 
   const texture2 = useMemo(() => {
-    if (typeof document === 'undefined') return texture1;
+    if (clips < 2) return null;
+    if (typeof document === 'undefined') return null;
     const video = document.createElement('video');
     video.src = '/videos/Significant-opt.mp4';
     video.crossOrigin = 'Anonymous';
@@ -34,12 +40,16 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
     video.preload = 'metadata';
     const tex = new THREE.VideoTexture(video);
     return tex;
-  }, [texture1]);
+  }, [clips]);
 
-  const textures = useMemo(() => [texture1, texture2], [texture1, texture2]);
+  const textures = useMemo(
+    () => (texture2 ? [texture1, texture2] : [texture1]),
+    [texture1, texture2]
+  );
   const currentTexture = textures[videoIndex] || texture1;
 
   useEffect(() => {
+    if (textures.length < 2) return;
     const interval = setInterval(() => {
       setVideoIndex((prev: number) => (prev + 1) % textures.length);
     }, CLIP_DURATION_MS);
@@ -73,7 +83,7 @@ export function TVModel(props: JSX.IntrinsicElements['group']) {
 
   useEffect(() => {
     return () => {
-      if (texture2 && texture2 !== texture1) {
+      if (texture2 && (texture2 as THREE.Texture) !== (texture1 as THREE.Texture)) {
         if (typeof texture2.dispose === 'function') {
           texture2.dispose();
         }

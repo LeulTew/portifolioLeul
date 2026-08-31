@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { focusStrength, FULL_FOCUS_COVERAGE, useViewportCoverage, COVERAGE_STEPS } from './viewportCoverage';
 
@@ -54,7 +54,7 @@ describe('useViewportCoverage', () => {
 
   let capturedCallback: ObserverCallback | null = null;
   let observedTargets: Element[] = [];
-  let disconnectSpy: ReturnType<typeof vi.fn>;
+  let disconnectSpy: Mock<() => void>;
   const originalObserver = globalThis.IntersectionObserver;
 
   class FakeIntersectionObserver {

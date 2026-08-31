@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { useActiveSection } from './useActiveSection';
 
@@ -6,7 +6,7 @@ type ObserverCallback = (entries: unknown[]) => void;
 
 let capturedCallback: ObserverCallback | null = null;
 let observed: string[] = [];
-let disconnectSpy: ReturnType<typeof vi.fn>;
+let disconnectSpy: Mock<() => void>;
 const originalObserver = globalThis.IntersectionObserver;
 let observerOptions: IntersectionObserverInit | undefined;
 

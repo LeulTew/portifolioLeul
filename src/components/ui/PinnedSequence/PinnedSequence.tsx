@@ -82,9 +82,38 @@ export function PinnedSequence({
   useEffect(() => {
     if (!spacer) return;
 
+    /*
+     * Whether the spacer is anywhere near the screen.
+     *
+     * Reading a rect forces the browser to flush layout, and this runs on
+     * every frame the scroll store publishes -- for the whole page, not just
+     * for this stretch. The sequence can only be pinned while its spacer is on
+     * screen, so away from it the layout flush buys nothing at all.
+     */
+    let nearby = true;
+
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[entries.length - 1];
+          if (!entry) return;
+          nearby = entry.isIntersecting;
+          if (!nearby && overlayRef.current) {
+            // An overlay is fixed to the viewport, so one left switched on
+            // covers every section after it.
+            overlayRef.current.dataset.active = 'false';
+          }
+        },
+        { rootMargin: '100% 0px' }
+      );
+      observer.observe(spacer);
+    }
+
     const apply = () => {
       const overlay = overlayRef.current;
       if (!overlay) return;
+      if (!nearby) return;
 
       const rect = spacer.getBoundingClientRect();
       const rootHeight = window.innerHeight;
@@ -141,6 +170,7 @@ export function PinnedSequence({
 
     return () => {
       unsubscribe();
+      observer?.disconnect();
       window.removeEventListener('resize', apply);
     };
   }, [spacer, layers]);

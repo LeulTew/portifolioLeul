@@ -90,16 +90,16 @@ describe('About held sequence', () => {
 
   it('keeps the ground up for the whole stretch it is held for', () => {
     const ground = STATEMENT_LAYERS.find((l) => l.name === 'ground')!;
-    expect(windowPresence(0.5, ground.start, ground.end, ground.feather)).toBe(1);
+    expect(windowPresence(0.5, ground.start, ground.end, ground.feather!)).toBe(1);
     // Ramped at both ends, so the world is handed back rather than switched on.
-    expect(windowPresence(0.02, ground.start, ground.end, ground.feather)).toBeLessThan(1);
-    expect(windowPresence(0.98, ground.start, ground.end, ground.feather)).toBeLessThan(1);
+    expect(windowPresence(0.02, ground.start, ground.end, ground.feather!)).toBeLessThan(1);
+    expect(windowPresence(0.98, ground.start, ground.end, ground.feather!)).toBeLessThan(1);
   });
 
   it('clears the geometry before the stretch ends', () => {
     // Something still drifting at the handover reads as scenery left behind.
     const field = STATEMENT_LAYERS.find((l) => l.name === 'field')!;
-    expect(windowPresence(0.97, field.start, field.end, field.feather)).toBe(0);
+    expect(windowPresence(0.97, field.start, field.end, field.feather!)).toBe(0);
   });
 
   it('starts each statement from nothing, not from a blurred ghost', () => {
@@ -139,14 +139,14 @@ describe('About held heading', () => {
   it('keeps the heading up for the whole stretch', () => {
     const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
     for (const at of [0.15, 0.5, 0.85]) {
-      expect(windowPresence(at, head.start, head.end, head.feather)).toBe(1);
+      expect(windowPresence(at, head.start, head.end, head.feather!)).toBe(1);
     }
   });
 
   it('lets the heading go only at the very ends', () => {
     const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
-    expect(windowPresence(0.01, head.start, head.end, head.feather)).toBeLessThan(1);
-    expect(windowPresence(0.99, head.start, head.end, head.feather)).toBeLessThan(1);
+    expect(windowPresence(0.01, head.start, head.end, head.feather!)).toBeLessThan(1);
+    expect(windowPresence(0.99, head.start, head.end, head.feather!)).toBeLessThan(1);
   });
 
   it('still names the section exactly once', () => {

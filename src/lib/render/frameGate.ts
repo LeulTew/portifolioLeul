@@ -34,6 +34,20 @@ let lastDrawnAt = Number.NEGATIVE_INFINITY;
 let minInterval = 0;
 
 /**
+ * Slack on the interval, in seconds.
+ *
+ * Frames arrive on the display's grid, and a 30fps budget on a 60Hz display
+ * puts every eligible frame exactly on the boundary -- where a strict
+ * comparison decides on a floating-point last bit. Each frame refused that way
+ * pushes the next draw a whole frame later, and the cadence walks: measured
+ * over a second, a 30fps budget delivered 22.
+ *
+ * A millisecond is far below any real frame interval, so it cannot let an
+ * extra frame through, but it is comfortably above the rounding.
+ */
+const INTERVAL_SLACK = 0.001;
+
+/**
  * Sets the redraw budget. Called once from the render governor, which owns the
  * GPU tier reading.
  */
@@ -71,7 +85,7 @@ export function isFrameDrawn(time: number): boolean {
   // passed since the last draw" and refuses every frame from then on.
   if (time < lastDrawnAt) lastDrawnAt = Number.NEGATIVE_INFINITY;
 
-  if (time - lastDrawnAt < minInterval) {
+  if (time - lastDrawnAt < minInterval - INTERVAL_SLACK) {
     decision = false;
     return decision;
   }

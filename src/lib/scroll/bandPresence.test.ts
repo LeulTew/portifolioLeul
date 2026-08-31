@@ -36,7 +36,7 @@ describe('bandPresence', () => {
       [0.4, Number.NaN, 800],
       [0.4, 400, Number.NaN],
       [-1, 400, 800],
-    ] as const) {
+    ] as ReadonlyArray<readonly [number, number, number]>) {
       expect(bandPresence(...args)).toBe(0);
     }
   });
