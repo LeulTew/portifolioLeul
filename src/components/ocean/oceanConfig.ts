@@ -4,6 +4,14 @@ export type OceanTheme = 'light' | 'dark';
 
 export const OCEAN_SIZE = 1400;
 export const OCEAN_NORMALS_URL = '/images/waternormals.jpg';
+
+/**
+ * Distance to the island's coastline, baked from the terrain itself.
+ *
+ * See scripts/bake-shore-field.mjs. Regenerate it whenever the terrain mesh
+ * or its placement changes, or the surf will break on the old coast.
+ */
+export const SHORE_FIELD_URL = '/images/shore-field.png';
 export const OCEAN_TIME_SPEED = 0.29;
 
 const COMMON_WATER_COLOR = {

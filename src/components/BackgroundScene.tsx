@@ -11,7 +11,6 @@ import { Theme } from './sections/theme/ThemeContext';
 import { MeModel } from './MeModel';
 import { TVModel } from './TVModel';
 import { Ocean } from './Ocean';
-import { ShorelineBreak } from './ocean/ShorelineBreak';
 import { CinematicCameraController } from './3d/CinematicCameraController';
 import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { ChapterGrading } from './3d/ChapterGrading';
@@ -173,6 +172,9 @@ interface BackgroundSceneProps {
   reflectionSize?: number;
   /** How many clips the CRT cycles. See the GPU tier budget. */
   videoClips?: number;
+  /** Ocean surface resolution. See the GPU tier budget. */
+  oceanSegments?: number;
+  oceanRings?: number;
 }
 
 export function BackgroundScene({
@@ -180,6 +182,8 @@ export function BackgroundScene({
   particleCount = DEFAULT_PARTICLE_COUNT,
   reflectionSize = DEFAULT_REFLECTION_SIZE,
   videoClips = 2,
+  oceanSegments,
+  oceanRings,
 }: BackgroundSceneProps) {
   // A fraction of the starfield budget: motes are animated every frame, so they
   // cost far more per instance than the static point cloud.
@@ -251,11 +255,14 @@ export function BackgroundScene({
 
         {/* Realistic Ocean */}
         <Suspense fallback={null}>
-          <Ocean theme={theme} position={[0, -4, 0]} reflectionSize={reflectionSize} />
+          <Ocean
+            theme={theme}
+            position={[0, -4, 0]}
+            reflectionSize={reflectionSize}
+            segments={oceanSegments}
+            rings={oceanRings}
+          />
         </Suspense>
-
-        {/* Shore break crest lines where waves meet the island edge */}
-        <ShorelineBreak theme={theme} position={[0, -3.92, -20]} />
 
         <Suspense fallback={null}>
           <Terrain surfaceColor={palette.terrain} />

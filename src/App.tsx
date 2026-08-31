@@ -298,6 +298,8 @@ function App() {
                   particleCount={gpuConfig.particleCount}
                   reflectionSize={gpuConfig.waterReflectionSize}
                   videoClips={gpuConfig.videoClips}
+                  oceanSegments={gpuConfig.oceanSegments}
+                  oceanRings={gpuConfig.oceanRings}
                 />
                 <ParticleBackground theme={theme} count={gpuConfig.particleCount} />
                 <Scroll html style={{ width: '100%' }}>

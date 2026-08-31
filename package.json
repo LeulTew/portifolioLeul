@@ -12,6 +12,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "optimize:models": "bun scripts/optimize-models.mjs",
+    "bake:shore": "bun scripts/bake-shore-field.mjs",
+    "assets": "bun run optimize:models && bun run bake:shore",
     "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {

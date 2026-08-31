@@ -44,6 +44,16 @@ export interface GpuTierConfig {
    * it simply stops alternating.
    */
   videoClips: number;
+  /**
+   * Resolution of the ocean surface: segments around the island, and rings
+   * out from it.
+   *
+   * Waves need vertices, and these are the only vertices on the page that buy
+   * motion rather than shape. The grid is packed toward the coast, so most of
+   * them land in the surf zone whatever the count.
+   */
+  oceanSegments: number;
+  oceanRings: number;
 }
 
 export function detectGpuTier(): GpuTierConfig {
@@ -59,6 +69,8 @@ export function detectGpuTier(): GpuTierConfig {
       waterReflectionSize: 512,
       enableBackdropBlur: true,
       videoClips: 2,
+      oceanSegments: 128,
+      oceanRings: 72,
     };
   }
 
@@ -100,6 +112,8 @@ export function detectGpuTier(): GpuTierConfig {
       waterReflectionSize: 256,
       enableBackdropBlur: false,
       videoClips: 1,
+      oceanSegments: 96,
+      oceanRings: 56,
     };
   }
 
@@ -115,6 +129,8 @@ export function detectGpuTier(): GpuTierConfig {
       waterReflectionSize: 512,
       enableBackdropBlur: true,
       videoClips: 2,
+      oceanSegments: 160,
+      oceanRings: 88,
     };
   }
 
@@ -129,6 +145,8 @@ export function detectGpuTier(): GpuTierConfig {
     waterReflectionSize: 512,
     enableBackdropBlur: true,
     videoClips: 2,
+    oceanSegments: 128,
+    oceanRings: 72,
   };
 }
 
