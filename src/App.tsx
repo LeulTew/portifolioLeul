@@ -21,6 +21,7 @@ import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraHold } from './lib/camera/cameraHold';
 import { RenderGovernor } from './components/3d/RenderGovernor';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
+import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
 
 import './index.css';
 import styles from './App.module.css';
@@ -136,17 +137,30 @@ function App() {
   }, []);
 
   /*
-   * The prefetched model bytes have done their job by now.
+   * The prefetched model bytes have done their job -- but only once the scene
+   * says so.
    *
-   * They were held in three's cache so GLTFLoader would take them straight
-   * from memory instead of asking the network a second time. Once the page is
-   * open every model has been parsed into geometry and textures, and keeping
-   * the source buffers as well is several megabytes retained for nothing.
+   * They are held in three's cache so GLTFLoader takes them from memory rather
+   * than asking the network again, and dropping them is worth several
+   * megabytes. Dropping them too early is worth a second download of every
+   * model, which is exactly what the prefetch exists to avoid.
+   *
+   * This used to key off the loader closing, which is not the same event: the
+   * loader will open the page after a grace period even if the scene has not
+   * finished parsing, and any model that had not been asked for yet then went
+   * back to the network. Measured on the deployed site as two fetches of every
+   * model. The scene's own ready signal is the one that means every useGLTF
+   * has resolved; if it never comes, the buffers are simply kept.
    */
   useEffect(() => {
-    if (isLoading) return;
-    releaseCriticalAssets();
-  }, [isLoading]);
+    if (isSceneReady()) {
+      releaseCriticalAssets();
+      return;
+    }
+    return subscribeSceneReady(() => {
+      if (isSceneReady()) releaseCriticalAssets();
+    });
+  }, []);
 
   const updateScrollPages = useCallback(() => {
     const node = mainRef.current;
