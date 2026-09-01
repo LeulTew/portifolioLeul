@@ -14,8 +14,18 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
   const { scene } = useGLTF('/models/crt-lite.glb', false);
   const [videoIndex, setVideoIndex] = useState(0);
 
+  /*
+   * Not started here.
+   *
+   * drei would call play() itself and leave the promise unhandled, and a
+   * browser that pauses an offscreen video to save power -- which it does,
+   * this being a prop in the far background -- rejects that promise. It
+   * surfaced on the deployed site as an uncaught AbortError. Playback is owned
+   * by the effect below, which drives the visible clip and handles the
+   * rejection.
+   */
   const texture1 = useVideoTexture('/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4', {
-    start: true,
+    start: false,
     muted: true,
     loop: true
   });
