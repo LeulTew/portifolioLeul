@@ -87,6 +87,29 @@ export interface LoadCriticalAssetsOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
+/** 'glTF', the four bytes every binary glTF file starts with. */
+const GLB_MAGIC = 0x46546c67;
+
+/**
+ * Rejects a response that is not the asset it was asked for.
+ *
+ * This deployment rewrites every unmatched path to index.html, so a model that
+ * is missing or misnamed does not 404 -- it answers 200 with a page. Trusting
+ * `response.ok` would put that HTML into three's cache as a model, and
+ * GLTFLoader would fail on it with a parse error that says nothing about the
+ * real problem. Better to treat it as a failed prefetch, which the scene
+ * already knows how to recover from.
+ */
+function looksLikeHtml(contentType: string | null | undefined): boolean {
+  return typeof contentType === 'string' && contentType.includes('text/html');
+}
+
+/** True when `buffer` opens with the binary glTF magic number. */
+export function isBinaryGltf(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 4) return false;
+  return new DataView(buffer).getUint32(0, true) === GLB_MAGIC;
+}
+
 function emptyProgress(assets: readonly CriticalAsset[]): AssetProgress {
   return {
     loadedBytes: 0,
@@ -223,6 +246,10 @@ async function runLoad(
         const response = await request(asset.url, { signal });
         if (!response.ok) throw new Error(`${response.status} for ${asset.url}`);
 
+        if (looksLikeHtml(response.headers?.get?.('content-type'))) {
+          throw new Error(`${asset.url} answered with a page, not the asset`);
+        }
+
         const declared = Number(response.headers?.get?.('content-length') ?? 0);
         if (Number.isFinite(declared) && declared > 0) {
           expected[index] = declared;
@@ -251,6 +278,9 @@ async function runLoad(
               buffer.set(chunk, offset);
               offset += chunk.byteLength;
             }
+            if (!isBinaryGltf(buffer.buffer)) {
+              throw new Error(`${asset.url} is not a binary glTF`);
+            }
             THREE.Cache.add(asset.url, buffer.buffer);
           }
         } else {
@@ -258,7 +288,12 @@ async function runLoad(
           const buffer = await response.arrayBuffer();
           received[index] = buffer.byteLength;
           expected[index] = buffer.byteLength;
-          if (asset.kind === 'model') THREE.Cache.add(asset.url, buffer);
+          if (asset.kind === 'model') {
+            if (!isBinaryGltf(buffer)) {
+              throw new Error(`${asset.url} is not a binary glTF`);
+            }
+            THREE.Cache.add(asset.url, buffer);
+          }
         }
       } catch {
         // Counted as arrived so the fill completes; the scene's own loader

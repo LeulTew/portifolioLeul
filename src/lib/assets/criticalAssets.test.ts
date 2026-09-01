@@ -13,23 +13,38 @@ const assets: CriticalAsset[] = [
   { url: '/images/small.png', bytes: 200, kind: 'texture' },
 ];
 
+/** A chunk that opens with the binary glTF magic, as a real model does. */
+function glbChunk(size: number): Uint8Array {
+  const bytes = new Uint8Array(Math.max(size, 4));
+  // 'glTF', little endian.
+  bytes.set([0x67, 0x6c, 0x54, 0x46], 0);
+  return bytes;
+}
+
 /** A response whose body arrives in `chunks`, one read at a time. */
-function streamed(chunks: number[], contentLength?: number) {
+function streamed(chunks: number[], contentLength?: number, contentType = 'model/gltf-binary') {
   let index = 0;
   return {
     ok: true,
     headers: {
-      get: (name: string) =>
-        name.toLowerCase() === 'content-length' && contentLength !== undefined
+      get: (name: string) => {
+        const key = name.toLowerCase();
+        if (key === 'content-type') return contentType;
+        return key === 'content-length' && contentLength !== undefined
           ? String(contentLength)
-          : null,
+          : null;
+      },
     },
     body: {
       getReader: () => ({
-        read: async () =>
-          index < chunks.length
-            ? { done: false, value: new Uint8Array(chunks[index++]) }
-            : { done: true, value: undefined },
+        read: async () => {
+          if (index >= chunks.length) return { done: true, value: undefined };
+          const size = chunks[index];
+          // Only the first chunk carries the header, as on the wire.
+          const value = index === 0 ? glbChunk(size) : new Uint8Array(size);
+          index += 1;
+          return { done: false, value };
+        },
       }),
     },
   } as unknown as Response;
@@ -171,9 +186,9 @@ describe('loadCriticalAssets', () => {
   it('falls back to a whole-body read where streaming is unavailable', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
-      headers: { get: () => null },
+      headers: { get: (n: string) => (n.toLowerCase() === 'content-type' ? 'model/gltf-binary' : null) },
       body: null,
-      arrayBuffer: async () => new ArrayBuffer(512),
+      arrayBuffer: async () => glbChunk(512).buffer,
     })) as unknown as typeof fetch;
 
     const result = await loadCriticalAssets(() => {}, { assets, fetchImpl });
@@ -258,5 +273,49 @@ describe('the shared run', () => {
       globalThis.fetch = realFetch;
       for (const asset of CRITICAL_ASSETS) releaseCriticalAssets([asset]);
     }
+  });
+});
+
+describe('a host that rewrites missing paths to the app', () => {
+  it('refuses a page served in place of an asset', async () => {
+    /*
+     * vercel.json rewrites every unmatched path to index.html, so a model that
+     * is missing or misnamed answers 200 with a page rather than 404. Taking
+     * that at its word would put HTML into three's cache as a model, and
+     * GLTFLoader would fail on it with a parse error that names nothing
+     * useful.
+     */
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      headers: {
+        get: (n: string) =>
+          n.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null,
+      },
+      body: null,
+      arrayBuffer: async () => new TextEncoder().encode('<!doctype html>').buffer,
+    })) as unknown as typeof fetch;
+
+    const result = await loadCriticalAssets(() => {}, { assets, fetchImpl });
+
+    expect(result.failed).toBe(2);
+    expect(THREE.Cache.get('/models/big.glb')).toBeUndefined();
+    // Still completes, so nobody is stranded on the loader.
+    expect(result.ratio).toBe(1);
+  });
+
+  it('refuses a model whose bytes are not a binary glTF', async () => {
+    // Belt and braces: a host that serves the fallback without a telltale
+    // content-type still cannot poison the cache.
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      headers: { get: () => null },
+      body: null,
+      arrayBuffer: async () => new TextEncoder().encode('<!doctype html>').buffer,
+    })) as unknown as typeof fetch;
+
+    const result = await loadCriticalAssets(() => {}, { assets, fetchImpl });
+
+    expect(THREE.Cache.get('/models/big.glb')).toBeUndefined();
+    expect(result.failed).toBe(1);
   });
 });
