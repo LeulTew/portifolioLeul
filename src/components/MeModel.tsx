@@ -86,4 +86,12 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
 }
 
 // Preload the model
-useGLTF.preload(MODEL_PATH, NO_DRACO);
+/*
+ * Deliberately no useGLTF.preload here.
+ *
+ * It fires its own request the moment this module is imported, which raced the
+ * critical-asset manifest and fetched the model twice -- measured in the
+ * browser, and on a slow connection that is the whole download again. The
+ * manifest owns preloading now, and it hands the bytes to three's cache, so
+ * useGLTF resolves without going near the network. See lib/assets.
+ */

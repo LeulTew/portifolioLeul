@@ -63,6 +63,10 @@ vi.mock('@react-three/fiber', () => ({
 }));
 
 vi.mock('./Ocean', () => ({ Ocean: () => null }));
+
+// A unit of its own, with its own tests. Here it would only pull the whole
+// asset pipeline into a test about how the scene is composed.
+vi.mock('./3d/SceneReady', () => ({ SceneReady: () => null }));
 vi.mock('./ocean/ShorelineBreak', () => ({ ShorelineBreak: () => null }));
 vi.mock('./TVModel', () => ({ TVModel: () => null }));
 vi.mock('./MeModel', () => ({ MeModel: () => null }));

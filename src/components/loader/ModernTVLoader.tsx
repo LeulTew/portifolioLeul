@@ -11,6 +11,25 @@ export interface ModernTVLoaderProps {
   theme?: string;
 }
 
+/**
+ * How closely the drawn wave chases the fill, per frame at 60fps.
+ *
+ * The fill it is given is already eased. Easing it a second time here, as this
+ * did, stacks two lags: the water was still climbing the letters when the
+ * loader decided it was finished, so the exit began over a half-full LEUL and
+ * the fill was never actually seen to complete.
+ */
+const WAVE_TRACKING = 0.3;
+
+/**
+ * How long the full letters hold before the exit begins, in milliseconds.
+ *
+ * The fill is the whole animation, and an exit that starts the instant it
+ * lands throws it away at its resolution. A beat of stillness is what makes it
+ * read as arriving rather than as being cut off.
+ */
+const FULL_HOLD_MS = 320;
+
 export function ModernTVLoader({ onLoaded, minDurationMs = 1800, theme: propTheme }: ModernTVLoaderProps) {
   const context = useContext(ThemeContext);
   const resolvedTheme =
@@ -28,13 +47,22 @@ export function ModernTVLoader({ onLoaded, minDurationMs = 1800, theme: propThem
   const animFrameRef = useRef<number | null>(null);
   const phaseRef = useRef(0);
   const currentProgressRef = useRef(0);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { progress } = useAssetLoadingProgress({
     minDurationMs,
     onComplete: () => {
-      setIsExiting(true);
+      // Let the wave land, and let it be seen landing, before pulling away.
+      holdTimerRef.current = setTimeout(() => setIsExiting(true), FULL_HOLD_MS);
     },
   });
+
+  useEffect(
+    () => () => {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    },
+    []
+  );
 
   useEffect(() => {
     currentProgressRef.current = progress;
@@ -55,7 +83,10 @@ export function ModernTVLoader({ onLoaded, minDurationMs = 1800, theme: propThem
       if (!isRunning) return;
 
       const target = currentProgressRef.current;
-      animatedProgress += (target - animatedProgress) * 0.15;
+      animatedProgress += (target - animatedProgress) * WAVE_TRACKING;
+      // Otherwise the crest asymptotes just short of the top and the last
+      // sliver of the letters never fills.
+      if (target >= 100 && animatedProgress > 99.5) animatedProgress = 100;
 
       const width = canvas.offsetWidth || 960;
       const isLg = typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;

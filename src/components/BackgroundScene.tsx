@@ -15,6 +15,11 @@ import { CinematicCameraController } from './3d/CinematicCameraController';
 import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { ChapterGrading } from './3d/ChapterGrading';
 import { LocalEnvironment } from './3d/LocalEnvironment';
+import { SceneReady } from './3d/SceneReady';
+import {
+  CRITICAL_MODELS,
+  CRITICAL_SCENE_TEXTURES,
+} from '@/lib/assets/criticalAssets';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { isFrameDrawn } from '@/lib/render/frameGate';
 import { DEFAULT_REFLECTION_SIZE } from './ocean/oceanConfig';
@@ -39,7 +44,15 @@ const DEFAULT_PARTICLE_COUNT = 800;
 const DRIFT_BUDGET_SHARE = 0.3;
 
 
-useGLTF.preload(TERRAIN_URL, NO_DRACO);
+/*
+ * Deliberately no useGLTF.preload here.
+ *
+ * It fires its own request the moment this module is imported, which raced the
+ * critical-asset manifest and fetched the model twice -- measured in the
+ * browser, and on a slow connection that is the whole download again. The
+ * manifest owns preloading now, and it hands the bytes to three's cache, so
+ * useGLTF resolves without going near the network. See lib/assets.
+ */
 
 interface TerrainProps {
   surfaceColor: string;
@@ -251,6 +264,11 @@ export function BackgroundScene({
       <fog attach="fog" args={[palette.fog, 30, 70]} />
 
       <group>
+        {/* Holds the loader shut until the world is actually built. */}
+        <Suspense fallback={null}>
+          <SceneReady models={CRITICAL_MODELS} textures={CRITICAL_SCENE_TEXTURES} />
+        </Suspense>
+
         <LocalEnvironment />
 
         {/* Realistic Ocean */}

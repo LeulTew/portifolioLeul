@@ -20,6 +20,7 @@ import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScr
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraHold } from './lib/camera/cameraHold';
 import { RenderGovernor } from './components/3d/RenderGovernor';
+import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 
 import './index.css';
 import styles from './App.module.css';
@@ -40,6 +41,15 @@ const OPAQUE_SECTION_ID = 'about';
  * one track rebuild keeps the reader still instead of restoring repeatedly.
  */
 const CONTENT_SETTLE_MS = 120;
+
+/**
+ * How long the loader may run before the page opens regardless.
+ *
+ * Long enough that no genuine load reaches it -- the critical assets are under
+ * five megabytes, so this is roughly a 20kbit connection -- and short enough
+ * that a network black hole is not a dead end.
+ */
+const LOADER_FAILSAFE_MS = 45_000;
 
 
 function App() {
@@ -107,14 +117,36 @@ function App() {
     setScrollElement(element);
   }, []);
 
+  /*
+   * A last resort, and nothing more.
+   *
+   * This was eight seconds, which is not a failsafe -- it is a deadline. On a
+   * slow connection it fired while the island was still downloading, tore the
+   * loader away mid-fill and handed the visitor a finished-looking page with
+   * an empty world filling in behind it. That is the thing being reported.
+   *
+   * The loader now owns readiness: it opens the page when the assets are in.
+   * This only exists so that a network that never answers at all cannot leave
+   * someone staring at the letters forever, and it is set far beyond any real
+   * load.
+   */
   useEffect(() => {
-    // Safety fallback timeout to prevent infinite loading on network stall
-    const fallbackTimer = setTimeout(() => {
-      setIsLoading(false);
-    }, 8000);
-
-    return () => clearTimeout(fallbackTimer);
+    const stalled = setTimeout(() => setIsLoading(false), LOADER_FAILSAFE_MS);
+    return () => clearTimeout(stalled);
   }, []);
+
+  /*
+   * The prefetched model bytes have done their job by now.
+   *
+   * They were held in three's cache so GLTFLoader would take them straight
+   * from memory instead of asking the network a second time. Once the page is
+   * open every model has been parsed into geometry and textures, and keeping
+   * the source buffers as well is several megabytes retained for nothing.
+   */
+  useEffect(() => {
+    if (isLoading) return;
+    releaseCriticalAssets();
+  }, [isLoading]);
 
   const updateScrollPages = useCallback(() => {
     const node = mainRef.current;
