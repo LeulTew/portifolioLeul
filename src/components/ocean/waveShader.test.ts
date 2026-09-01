@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { SHORE_FIELD_LAYOUT, DEFAULT_WAVE_SETTINGS } from './waveShader';
+import { DEFAULT_OCEAN_GEOMETRY } from '@/lib/ocean/oceanGeometry';
 
 /**
  * The shader and the bake script have to agree about the shore field.
@@ -76,6 +77,22 @@ describe('wave settings', () => {
     // Beyond the field everything reads as deep water, so a surf zone wider
     // than the field would be cut off at its edge.
     expect(DEFAULT_WAVE_SETTINGS.surfWidth).toBeLessThan(SHORE_FIELD_LAYOUT.range);
+  });
+
+  it('stops the swell where the surface stops resolving it', () => {
+    /*
+     * Seen on the deployed site as dark shards lying flat on the water near
+     * the edges of frame.
+     *
+     * The reach was written as a share of the shore field, which put it at 86
+     * world units while the grid only packs its rings to 70. In the sixteen
+     * units between, a ring can be wider than a wavelength, and neighbouring
+     * vertices land on unrelated phases -- the surface tears rather than
+     * waving. Reach belongs to the geometry, not to the field.
+     */
+    expect(DEFAULT_WAVE_SETTINGS.waveReach).toBeLessThanOrEqual(
+      DEFAULT_OCEAN_GEOMETRY.detailRadius
+    );
   });
 
   it('leans the crests without inverting them', () => {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DEFAULT_OCEAN_GEOMETRY } from '@/lib/ocean/oceanGeometry';
 
 /**
  * Real swell on three's Water, with surf that breaks on the actual coastline.
@@ -68,6 +69,16 @@ export interface WaveSettings {
    * happens inside this band.
    */
   surfWidth: number;
+  /**
+   * How far from the island the swell survives, in world units.
+   *
+   * Must not exceed the radius out to which the surface actually packs its
+   * rings: past that a ring can be wider than a wavelength, and a wave sampled
+   * at less than a vertex per crest is not a smaller wave, it is noise. Tie
+   * this to the geometry's detail radius rather than picking a number, or a
+   * coarser grid on a weaker device pushes the ragged edge back into view.
+   */
+  waveReach: number;
 }
 
 export const DEFAULT_WAVE_SETTINGS: WaveSettings = {
@@ -75,6 +86,7 @@ export const DEFAULT_WAVE_SETTINGS: WaveSettings = {
   choppiness: 0.72,
   foam: 1,
   surfWidth: 30,
+  waveReach: DEFAULT_OCEAN_GEOMETRY.detailRadius,
 };
 
 /**
@@ -92,6 +104,7 @@ const VERTEX_HELPERS = /* glsl */ `
   uniform float waveAmplitude;
   uniform float waveChoppiness;
   uniform float surfWidth;
+  uniform float waveReach;
 
   varying vec3 vWaveNormal;
   varying float vFoam;
@@ -179,7 +192,7 @@ const VERTEX_BODY = /* glsl */ `
     vec2 fieldCentre = shoreOrigin + shoreExtent * 0.5;
     float fromIsland = length( wavePosition.xz - fieldCentre );
     float withinReach = 1.0 - smoothstep(
-      shoreExtent * 0.30, shoreExtent * 0.48, fromIsland
+      waveReach * 0.62, waveReach, fromIsland
     );
 
     float gain = unbroken * shoaling * withinReach;
@@ -335,6 +348,7 @@ export function applyWaveShader(
     shader.uniforms.waveAmplitude = { value: settings.amplitude };
     shader.uniforms.waveChoppiness = { value: settings.choppiness };
     shader.uniforms.surfWidth = { value: settings.surfWidth };
+    shader.uniforms.waveReach = { value: settings.waveReach };
     shader.uniforms.foamAmount = { value: settings.foam };
 
     shader.vertexShader = shader.vertexShader
