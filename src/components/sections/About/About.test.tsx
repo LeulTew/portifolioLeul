@@ -136,16 +136,27 @@ describe('About held heading', () => {
     );
   });
 
-  it('keeps the heading up for the whole stretch', () => {
+  it('keeps the heading up for the whole stretch once it has arrived', () => {
     const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
-    for (const at of [0.15, 0.5, 0.85]) {
+    for (const at of [0.25, 0.5, 0.85]) {
       expect(windowPresence(at, head.start, head.end, head.feather!)).toBe(1);
     }
   });
 
-  it('lets the heading go only at the very ends', () => {
+  it('lets the arrow finish leading before the heading arrives', () => {
+    /*
+     * The hero hands over by drawing an arrow downward and the reader follows
+     * it. A heading already in place at the top of that movement cuts the
+     * gesture off exactly as it is being completed.
+     */
     const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
-    expect(windowPresence(0.01, head.start, head.end, head.feather!)).toBeLessThan(1);
+    expect(head.start).toBeGreaterThan(0);
+    expect(windowPresence(0, head.start, head.end, head.feather!)).toBe(0);
+    expect(windowPresence(0.02, head.start, head.end, head.feather!)).toBeLessThan(1);
+  });
+
+  it('lets the heading go only at the very end', () => {
+    const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
     expect(windowPresence(0.99, head.start, head.end, head.feather!)).toBeLessThan(1);
   });
 

@@ -13,6 +13,7 @@ import {
   cueDelay,
   cueDuration,
   exitAmount,
+  exitCueAt,
   exitStyle,
   sequenceDuration,
 } from '@/lib/motion/sectionChoreography';
@@ -43,16 +44,36 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
     const content = contentRef.current;
     if (!content) return;
 
-    const hero = exitStyle(exit, reducedMotion);
     const isVisible = exit < 0.98;
 
-    if (content.style.opacity !== String(hero.opacity)) {
-      content.style.opacity = String(hero.opacity);
+    if (reducedMotion) {
+      /*
+       * One fade for the whole block.
+       *
+       * Staggering seven layers out is motion, and motion is the thing being
+       * opted out of. The block still has to leave -- a hero left printed over
+       * everything after it is worse than either -- so it leaves plainly.
+       */
+      const hero = exitStyle(exit, true);
+      if (content.style.opacity !== String(hero.opacity)) {
+        content.style.opacity = String(hero.opacity);
+      }
+    } else {
+      /*
+       * One number, and every layer reads its own departure out of it.
+       *
+       * The block used to carry the whole exit itself: opacity, a rise, a
+       * scale and a blur, all on the container. That empties the hero as a
+       * single sheet, and the blur re-rasterised the entire subtree on every
+       * frame of the scroll. Publishing progress and letting each layer take
+       * its own beat costs one custom property, and the layers leave in the
+       * reverse of the order they arrived in.
+       */
+      const value = exit.toFixed(4);
+      if (content.style.getPropertyValue('--exit') !== value) {
+        content.style.setProperty('--exit', value);
+      }
     }
-    if (content.style.transform !== hero.transform) {
-      content.style.transform = hero.transform;
-    }
-    if (content.style.filter !== hero.filter) content.style.filter = hero.filter;
 
     const pointerEvents = isVisible ? 'auto' : 'none';
     if (content.style.pointerEvents !== pointerEvents) {
@@ -83,8 +104,16 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
     return () => clearTimeout(settle);
   }, []);
 
-  /** Puts a layer on its beat, keeping the sequence in the cue list. */
-  const at = (id: string) => ({ ['--cue-at' as string]: `${cueDelay(HERO_SEQUENCE, id)}s` });
+  /**
+   * Puts a layer on its beats: when it arrives, and when it leaves.
+   *
+   * Both come from the cue list, so the order out is the order in, reversed,
+   * without either being restated in the stylesheet.
+   */
+  const at = (id: string) => ({
+    ['--cue-at' as string]: `${cueDelay(HERO_SEQUENCE, id)}s`,
+    ['--exit-at' as string]: `${exitCueAt(HERO_SEQUENCE, id)}`,
+  });
 
   const scrollToAbout = () => {
     if (onNavigate) {
@@ -125,13 +154,14 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
         ]
           .filter(Boolean)
           .join(' ')}
-        style={{ opacity: 1, transform: 'none', filter: 'none' }}
+        style={{ opacity: 1 }}
         data-testid="hero-content"
       >
         {/* First beat: the plate wipes in under the copy, before any of it
             arrives. It is a real element so it can be sequenced at all. */}
         <div
           className={`${styles.plate} ${hasEntered ? styles.plateDrawn : ''}`}
+          style={at('backdrop')}
           aria-hidden="true"
           data-cue-layer="backdrop"
         />
@@ -153,7 +183,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
             </div>
           </div>
 
-          <h1 className={styles.title} data-cue-layer="title">
+          <h1 className={styles.title} style={at('title')} data-cue-layer="title">
             <LiquidFillText
               text="Leul"
               filling={hasEntered}

@@ -402,6 +402,87 @@
   clip-path: none;
 }
 
+/* ==========================================================================
+   The exit, layer by layer
+   ==========================================================================
+
+   The hero used to leave as one sheet: opacity, a rise, a scale and a blur,
+   all on the container. That is a single movement, and a single movement of a
+   whole hero reads as a slide being swapped -- it also re-rasterised the
+   entire subtree on every frame of the scroll, because of the blur.
+
+   Home now publishes one number, `--exit`, and every layer takes its own
+   departure out of it. `--exit-at` is when a layer starts going, and it is the
+   reverse of the `--cue-at` that brought it in, so the hero empties in the
+   opposite order to the one it filled in.
+
+   Nothing here is a filter and nothing triggers layout: an opacity and a
+   translate per layer, which is what the compositor is for.
+   ========================================================================== */
+
+.content {
+  --exit: 0;
+  /* One layer's departure, as a share of the whole exit. Mirrors EXIT_SPAN. */
+  --exit-span: 0.34;
+}
+
+.settled .reveal,
+.settled .revealLine,
+.settled .revealPortrait,
+.settled .title,
+.settled .plate {
+  /* 0 until this layer's beat, then 0 to 1 across its span. */
+  --gone: clamp(
+    0,
+    calc((var(--exit, 0) - var(--exit-at, 0)) / var(--exit-span, 0.34)),
+    1
+  );
+}
+
+.settled .reveal,
+.settled .revealLine,
+.settled .revealPortrait {
+  opacity: calc(1 - var(--gone, 0));
+  /* Up and out, the way they came in reversed. */
+  transform: translate3d(0, calc(var(--gone, 0) * -4.5vh), 0);
+}
+
+.settled .title {
+  opacity: calc(1 - var(--gone, 0));
+  transform: translate3d(0, calc(var(--gone, 0) * -4.5vh), 0);
+  /*
+   * The title carries a hover transition on opacity and transform. Left in
+   * place it would restart on every frame of the scroll and the name would lag
+   * behind everything leaving with it.
+   */
+  transition: none;
+}
+
+/*
+ * The plate goes last and only fades.
+ *
+ * It is the ground the copy stood on, so it has to outlast the copy; moving it
+ * as well would pull the floor out from under layers that are still leaving.
+ */
+.settled .plate {
+  opacity: calc(1 - var(--gone, 0));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * The block fades as a whole instead, from Home. Seven staggered
+   * departures is motion, and motion is the thing being opted out of.
+   */
+  .settled .reveal,
+  .settled .revealLine,
+  .settled .revealPortrait,
+  .settled .title,
+  .settled .plate {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* One fade, no movement, and nothing left hidden. */
   .reveal {

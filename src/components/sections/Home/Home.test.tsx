@@ -212,16 +212,25 @@ describe('Home choreography', () => {
     expect(onNavigate).toHaveBeenCalledTimes(2);
   });
 
-  it('leaves the hero untransformed while it holds the screen', () => {
+  const exitOf = (content: HTMLElement) =>
+    Number(content.style.getPropertyValue('--exit'));
+
+  it('publishes no exit at all while the hero holds the screen', () => {
     const { container } = render(<Home />);
     enterHero();
 
     const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
-    expect(content.style.opacity).toBe('1');
-    expect(content.style.filter).toBe('none');
+    expect(exitOf(content)).toBe(0);
+    expect(content.style.visibility).toBe('visible');
   });
 
-  it('fades and defocuses the hero as it scrolls out of view', () => {
+  it('publishes one exit value for the layers to leave on', () => {
+    /*
+     * The hero used to carry its whole exit on the container -- opacity, a
+     * rise, a scale and a blur -- which empties it as a single sheet and
+     * re-rasterised the entire subtree on every frame of the scroll. It now
+     * publishes progress, and each layer takes its own departure out of it.
+     */
     const { container } = render(<Home />);
     enterHero();
 
@@ -236,14 +245,13 @@ describe('Home choreography', () => {
     });
 
     const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
-    expect(Number(content.style.opacity)).toBeLessThan(1);
-    expect(content.style.filter).toContain('blur');
-    expect(content.style.transform).toContain('translate3d');
+    expect(exitOf(content)).toBeGreaterThan(0.9);
+    // The container itself no longer animates; the layers do.
+    expect(content.style.filter).toBe('');
+    expect(content.style.transform).toBe('');
   });
 
-  it('fades the hero to nothing once it is entirely gone', () => {
-    // It used to hold at 0.15, which left it faintly printed over every
-    // section after it for the rest of the page.
+  it('reaches a complete exit once the hero is entirely gone', () => {
     const { container } = render(<Home />);
     enterHero();
 
@@ -252,12 +260,15 @@ describe('Home choreography', () => {
     });
 
     const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
-    expect(Number(content.style.opacity)).toBe(0);
+    expect(exitOf(content)).toBe(1);
+    // Gone means gone: it must not sit over the sections after it.
+    expect(content.style.visibility).toBe('hidden');
+    expect(content.style.pointerEvents).toBe('none');
   });
 
-  it('still holds the hero up while it is only part way out', () => {
-    // What the floor was for: the fade must be gradual, which is the curve's
-    // job rather than a clamp at the end of it.
+  it('scrubs the exit rather than switching it', () => {
+    // Part way out is part way out: the layers stagger off a continuous value,
+    // so it has to be continuous.
     const { container } = render(<Home />);
     enterHero();
 
@@ -266,8 +277,8 @@ describe('Home choreography', () => {
     });
 
     const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
-    expect(Number(content.style.opacity)).toBeGreaterThan(0.5);
-    expect(Number(content.style.opacity)).toBeLessThan(1);
+    expect(exitOf(content)).toBeGreaterThan(0);
+    expect(exitOf(content)).toBeLessThan(0.5);
   });
 
   it('settles the hero visible even if it never enters', () => {

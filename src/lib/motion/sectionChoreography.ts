@@ -103,6 +103,44 @@ export function exitAmount(coverage: number, threshold: number = EXIT_THRESHOLD)
   return 1 - clamp01(coverage / threshold);
 }
 
+/**
+ * How much of the exit a single layer's departure occupies.
+ *
+ * Wide enough that each one is a movement rather than a blink, and narrow
+ * enough that the last has somewhere to start: with seven layers and this
+ * span, the final one begins at two thirds and lands exactly as the hero does.
+ */
+export const EXIT_SPAN = 0.34;
+
+/**
+ * Where a layer starts leaving, in exit progress.
+ *
+ * The reverse of arrival: the last thing to appear is the first to go, so the
+ * hero empties in the opposite order to the one it filled in. That is what
+ * makes it read as being packed away rather than as being switched off -- and
+ * a single block fade, which is what this replaced, reads as neither.
+ *
+ * The scroll cue keeps its slot in the ordering even though it is not inside
+ * the block that leaves. It arrived last, so it holds the first departure
+ * slot, and nothing actually goes for the first tenth of the exit -- a beat of
+ * stillness before the hero starts emptying, which the sequence is better for.
+ */
+export function exitCueAt(
+  sequence: readonly SectionCue[],
+  id: string,
+  span: number = EXIT_SPAN
+): number {
+  if (sequence.length <= 1) return 0;
+
+  const arrival = [...sequence].sort((a, b) => a.at - b.at);
+  const index = arrival.findIndex((cue) => cue.id === id);
+  if (index < 0) return 0;
+
+  const reversed = arrival.length - 1 - index;
+  const room = Math.max(1 - clamp01(span), 0);
+  return (reversed / (arrival.length - 1)) * room;
+}
+
 export interface ExitStyle {
   opacity: number;
   transform: string;

@@ -133,7 +133,16 @@
  */
 .heldHeader {
   position: absolute;
-  top: clamp(6rem, 14vh, 11rem);
+  /*
+   * Lower than the top of the stretch, deliberately.
+   *
+   * The arrow the hero draws points down into this section, and the reader's
+   * eye travels with it. Setting the heading against the top edge meets that
+   * movement halfway and stops it short; dropping it leaves the arrow room to
+   * finish, and the heading then arrives below where the eye already is
+   * rather than above it.
+   */
+  top: clamp(8.5rem, 19vh, 15rem);
   left: 0;
   right: 0;
   padding-left: var(--about-start);

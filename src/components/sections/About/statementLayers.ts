@@ -25,10 +25,17 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    */
   { name: 'field', start: 0.01, end: 0.9, feather: 0.13 },
   /*
-   * The heading. Up almost immediately and held for the whole stretch: it
-   * names the section, so it has to be there for as long as the section is.
+   * The heading. Held for the whole stretch once it is up -- it names the
+   * section, so it has to be there for as long as the section is -- but it no
+   * longer arrives the instant the pin engages.
+   *
+   * The hero hands over by drawing an arrow downward, and the reader follows
+   * it. A heading already in place at the top of that movement cuts the
+   * gesture off at the moment it is being completed. Starting a little into
+   * the stretch, on a longer ramp, lets the arrow finish leading and gives the
+   * heading something to arrive out of.
    */
-  { name: 'head', start: 0, end: 1, feather: 0.04 },
+  { name: 'head', start: 0.055, end: 1, feather: 0.11 },
   { name: 'one', start: 0.03, end: 0.47 },
   { name: 'two', start: 0.53, end: 0.97 },
 ] as const;

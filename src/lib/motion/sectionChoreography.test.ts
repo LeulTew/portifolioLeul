@@ -7,6 +7,8 @@ import {
   cueDuration,
   exitAmount,
   exitStyle,
+  exitCueAt,
+  EXIT_SPAN,
   sequenceDuration,
   type SectionCue,
 } from './sectionChoreography';
@@ -212,5 +214,48 @@ describe('exitStyle', () => {
 describe('thresholds', () => {
   it('enters before it would begin exiting', () => {
     expect(ENTER_THRESHOLD).toBeLessThan(EXIT_THRESHOLD);
+  });
+});
+
+describe('exitCueAt', () => {
+  it('sends the last thing to arrive out first', () => {
+    /*
+     * The reverse of arrival, which is what makes the hero read as being
+     * packed away rather than switched off. A single block fade -- which is
+     * what this replaced -- reads as neither.
+     */
+    const affordance = exitCueAt(HERO_SEQUENCE, 'affordance');
+    const actions = exitCueAt(HERO_SEQUENCE, 'actions');
+    const title = exitCueAt(HERO_SEQUENCE, 'title');
+    const backdrop = exitCueAt(HERO_SEQUENCE, 'backdrop');
+
+    expect(affordance).toBeLessThan(actions);
+    expect(actions).toBeLessThan(title);
+    expect(title).toBeLessThan(backdrop);
+  });
+
+  it('leaves the plate until last, so the copy has ground to leave from', () => {
+    const beats = HERO_SEQUENCE.map((cue) => exitCueAt(HERO_SEQUENCE, cue.id));
+    expect(exitCueAt(HERO_SEQUENCE, 'backdrop')).toBe(Math.max(...beats));
+  });
+
+  it('gives the last layer room to finish inside the exit', () => {
+    // Its span has to fit, or the plate is still fading when the hero is gone.
+    const latest = exitCueAt(HERO_SEQUENCE, 'backdrop');
+    expect(latest + EXIT_SPAN).toBeCloseTo(1, 6);
+  });
+
+  it('mirrors the arrival order exactly', () => {
+    const arrival = [...HERO_SEQUENCE].sort((a, b) => a.at - b.at).map((c) => c.id);
+    const departure = [...HERO_SEQUENCE]
+      .sort((a, b) => exitCueAt(HERO_SEQUENCE, a.id) - exitCueAt(HERO_SEQUENCE, b.id))
+      .map((c) => c.id);
+
+    expect(departure).toEqual([...arrival].reverse());
+  });
+
+  it('is inert for a layer that is not in the sequence', () => {
+    expect(exitCueAt(HERO_SEQUENCE, 'nothing-by-that-name')).toBe(0);
+    expect(exitCueAt([], 'anything')).toBe(0);
   });
 });
