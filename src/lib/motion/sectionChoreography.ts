@@ -104,13 +104,43 @@ export function exitAmount(coverage: number, threshold: number = EXIT_THRESHOLD)
 }
 
 /**
+ * How much of the exit the hero has to be completely gone by.
+ *
+ * A half, so everything leaves while the hero is still on screen and being
+ * looked at. The whole sequence used to run to the end of the exit, which
+ * meant the name only began fading once it was already halfway up past the
+ * top edge -- things vanishing after they have left is not a departure, it is
+ * bookkeeping.
+ */
+export const EXIT_WINDOW = 0.5;
+
+/**
  * How much of the exit a single layer's departure occupies.
  *
- * Wide enough that each one is a movement rather than a blink, and narrow
- * enough that the last has somewhere to start: with seven layers and this
- * span, the final one begins at two thirds and lands exactly as the hero does.
+ * Narrow, because seven of them have to fit inside the window above and still
+ * read as individual movements rather than one blur.
  */
-export const EXIT_SPAN = 0.34;
+export const EXIT_SPAN = 0.16;
+
+/**
+ * Where the scroll cue is drawn, after the hero has finished leaving.
+ *
+ * The arrow is the handover, so it has nothing to say until there is something
+ * to hand over from. It starts once the plate has shut and draws over this
+ * much of what is left.
+ */
+export const CUE_DRAW_SPAN = 0.34;
+
+/**
+ * How far through its drawing the scroll cue is.
+ *
+ * Zero for the whole of the hero's exit, then traced across the stretch after
+ * it -- so the line is drawn by the movement it is inviting, and only once the
+ * thing it is leading away from has closed.
+ */
+export function cueTrailProgress(exit: number): number {
+  return clamp01((clamp01(exit) - EXIT_WINDOW) / CUE_DRAW_SPAN);
+}
 
 /**
  * Where a layer starts leaving, in exit progress.
@@ -137,7 +167,9 @@ export function exitCueAt(
   if (index < 0) return 0;
 
   const reversed = arrival.length - 1 - index;
-  const room = Math.max(1 - clamp01(span), 0);
+  // Everything has to be gone by the end of the window, so the last layer's
+  // beat is the window less its own span.
+  const room = Math.max(EXIT_WINDOW - clamp01(span), 0);
   return (reversed / (arrival.length - 1)) * room;
 }
 

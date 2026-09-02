@@ -15,6 +15,18 @@
   color: #ffffff;
 }
 
+/*
+ * Absent until it is being drawn.
+ *
+ * An offset dash still paints its round cap, so at zero progress the cue left
+ * a small bright dot sitting on the hero -- a mark inviting the reader onward
+ * before they had done anything. Hiding the whole thing is the only reliable
+ * fix: there is no length at which a rounded stroke draws nothing.
+ */
+.cue[data-drawing='false'] {
+  opacity: 0;
+}
+
 .stroke {
   fill: none;
   stroke: currentColor;

@@ -82,6 +82,7 @@ export function ScrollCue({
       aria-label={label}
       data-testid="scroll-cue"
       data-progress={drawn.toFixed(3)}
+      data-drawing={drawn > 0}
       onClick={onActivate}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {

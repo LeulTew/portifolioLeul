@@ -8,7 +8,10 @@ import {
   exitAmount,
   exitStyle,
   exitCueAt,
+  cueTrailProgress,
   EXIT_SPAN,
+  EXIT_WINDOW,
+  CUE_DRAW_SPAN,
   sequenceDuration,
   type SectionCue,
 } from './sectionChoreography';
@@ -239,10 +242,12 @@ describe('exitCueAt', () => {
     expect(exitCueAt(HERO_SEQUENCE, 'backdrop')).toBe(Math.max(...beats));
   });
 
-  it('gives the last layer room to finish inside the exit', () => {
-    // Its span has to fit, or the plate is still fading when the hero is gone.
+  it('gives the last layer room to finish inside the window', () => {
+    // Its span has to fit, or the plate is still shutting after the hero has
+    // gone -- and the arrow, which waits on the window, starts over a hero
+    // that has not finished leaving.
     const latest = exitCueAt(HERO_SEQUENCE, 'backdrop');
-    expect(latest + EXIT_SPAN).toBeCloseTo(1, 6);
+    expect(latest + EXIT_SPAN).toBeCloseTo(EXIT_WINDOW, 6);
   });
 
   it('mirrors the arrival order exactly', () => {
@@ -257,5 +262,52 @@ describe('exitCueAt', () => {
   it('is inert for a layer that is not in the sequence', () => {
     expect(exitCueAt(HERO_SEQUENCE, 'nothing-by-that-name')).toBe(0);
     expect(exitCueAt([], 'anything')).toBe(0);
+  });
+});
+
+describe('the hero leaves while it is still on screen', () => {
+  it('has everything gone by the halfway point of the exit', () => {
+    /*
+     * Reported: things were disappearing after they had already scrolled up
+     * past the top edge, which is not a departure. The whole sequence used to
+     * run to the end of the exit, so the name only began fading once it was
+     * half gone. It now finishes inside the window, while the hero is still
+     * being looked at.
+     */
+    const last = Math.max(
+      ...HERO_SEQUENCE.map((cue) => exitCueAt(HERO_SEQUENCE, cue.id))
+    );
+    expect(last + EXIT_SPAN).toBeLessThanOrEqual(EXIT_WINDOW + 1e-9);
+    expect(EXIT_WINDOW).toBeLessThanOrEqual(0.5);
+  });
+
+  it('still gives every layer its own turn inside that window', () => {
+    const beats = HERO_SEQUENCE.map((cue) => exitCueAt(HERO_SEQUENCE, cue.id));
+    expect(new Set(beats).size).toBe(HERO_SEQUENCE.length);
+  });
+});
+
+describe('cueTrailProgress', () => {
+  it('draws nothing at all until the hero has closed', () => {
+    // The arrow is the handover; it has nothing to hand over from while the
+    // copy is still leaving and the plate is still shutting.
+    expect(cueTrailProgress(0)).toBe(0);
+    expect(cueTrailProgress(0.25)).toBe(0);
+    expect(cueTrailProgress(EXIT_WINDOW)).toBe(0);
+  });
+
+  it('traces across the stretch after the close', () => {
+    expect(cueTrailProgress(EXIT_WINDOW + CUE_DRAW_SPAN / 2)).toBeCloseTo(0.5, 6);
+    expect(cueTrailProgress(EXIT_WINDOW + CUE_DRAW_SPAN)).toBe(1);
+    expect(cueTrailProgress(1)).toBe(1);
+  });
+
+  it('never runs backwards', () => {
+    let previous = -1;
+    for (let i = 0; i <= 20; i += 1) {
+      const drawn = cueTrailProgress(i / 20);
+      expect(drawn).toBeGreaterThanOrEqual(previous);
+      previous = drawn;
+    }
   });
 });

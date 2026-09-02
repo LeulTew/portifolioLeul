@@ -103,8 +103,17 @@
    * because this overlay is portalled to the body, so nothing inside it
    * inherits from the section at all.
    */
-  --about-start: clamp(3.5rem, 11.5vw, 20rem);
-  --about-end: clamp(2rem, 9vw, 16rem);
+  --about-gutter: clamp(2rem, 9vw, 16rem);
+  /*
+   * The start edge, and it has to carry the whole inset on its own.
+   *
+   * The heading and the statements are both absolutely positioned, and an
+   * absolutely positioned box resolves `left: 0` against its containing
+   * block's padding box -- so the overlay's own padding does not inset either
+   * of them by a single pixel. Anything that looks like a margin here is this
+   * property, which is exactly why they have to share it.
+   */
+  --about-indent: clamp(1.5rem, 11.5vw, 20rem);
 
   /*
    * The drop from the heading to the statement.
@@ -113,9 +122,9 @@
    * order reads at a glance: heading, a gap you notice, statement, a gap you
    * do not. Equal gaps would flatten the two into one block.
    */
-  --statement-drop: clamp(1.25rem, 3.4vh, 3rem);
+  --statement-drop: clamp(3rem, 15vh, 8rem);
 
-  padding: 0 var(--about-end);
+  padding: 0 var(--about-gutter);
   box-sizing: border-box;
 }
 
@@ -142,11 +151,11 @@
    * finish, and the heading then arrives below where the eye already is
    * rather than above it.
    */
-  top: clamp(8.5rem, 19vh, 15rem);
+  top: clamp(10.5rem, 24vh, 18rem);
   left: 0;
   right: 0;
-  padding-left: var(--about-start);
-  padding-right: var(--about-end);
+  padding-left: var(--about-indent);
+  padding-right: var(--about-gutter);
   box-sizing: border-box;
   text-align: left;
   pointer-events: none;
@@ -220,7 +229,7 @@
   display: grid;
   place-items: center;
   /* Starts on the heading's line, so the statement answers it. */
-  padding: 0 var(--about-end) 0 var(--about-start);
+  padding: 0 var(--about-gutter) 0 var(--about-indent);
   box-sizing: border-box;
   pointer-events: none;
 }
@@ -529,10 +538,17 @@
     padding-right: 1.5rem;
   }
 
-  .statements,
+  /*
+   * The narrow layout moves the shared edge, not the two elements.
+   *
+   * This used to set padding on `.statements` and the overlay directly and
+   * leave `.heldHeader` on its own clamp, so below this width the heading kept
+   * a large indent while the statement went flush -- and the two were only
+   * ever aligned on a wide screen. Overriding the property they both read
+   * keeps them on one line at every width.
+   */
   .aboutSequence {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    --about-gutter: 1.5rem;
   }
 
   .leftColumn,

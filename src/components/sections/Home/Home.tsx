@@ -12,6 +12,7 @@ import {
   SNOW_LEAD,
   cueDelay,
   cueDuration,
+  cueTrailProgress,
   exitAmount,
   exitCueAt,
   exitStyle,
@@ -141,9 +142,9 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
 
   return (
     <section ref={setSectionElement} className={styles.home} id="home">
-      {/* Opens the world from a slit on arrival, and shuts it on the way out.
-          Behind the copy, in front of the canvas. */}
-      <HeroAperture section={sectionElement} entered={hasEntered} />
+      {/* Opens the world from a slit on arrival. Behind the copy, in front of
+          the canvas. The exit belongs to the plate, not to this. */}
+      <HeroAperture />
 
       <div
         ref={contentRef}
@@ -285,11 +286,14 @@ function HeroScrollCue({
   useViewportShareEffect(section, (coverage) => {
     const exit = entered ? exitAmount(coverage) : 0;
     /*
-     * Complete within the first third of the hero leaving, so the line is
-     * drawn while the reader is still deciding rather than once they have
-     * gone.
+     * Drawn after the hero has closed, not during it.
+     *
+     * The arrow is the handover, and it has nothing to hand over from until
+     * the copy has left and the plate has shut. Tracing it through the exit
+     * put a line inviting the reader onward across a hero that was still
+     * leaving, so two things asked for attention at once.
      */
-    const next = Math.min(exit / 0.3, 1);
+    const next = cueTrailProgress(exit);
     // Finer than the stroke can show, and it drops the steps a slow scroll
     // spends re-reporting a value the line already sits at.
     setProgress((current) => (Math.abs(current - next) < 0.002 ? current : next));

@@ -459,13 +459,20 @@
 }
 
 /*
- * The plate goes last and only fades.
+ * The plate shuts, rather than fading.
  *
- * It is the ground the copy stood on, so it has to outlast the copy; moving it
- * as well would pull the floor out from under layers that are still leaving.
+ * It is the ground the copy stood on, so it outlasts the copy -- and once the
+ * copy has gone, closing it vertically is the exit. This is the thing that
+ * reads as the hero being put away: the inner background that carried the name
+ * draws shut around where the name was, like an eyelid. A fade would just have
+ * been one more thing dimming.
+ *
+ * The wipe that opened it is an animation with a forwards fill, which would
+ * otherwise keep hold of clip-path and ignore everything below.
  */
 .settled .plate {
-  opacity: calc(1 - var(--gone, 0));
+  animation: none;
+  clip-path: inset(calc(var(--gone, 0) * 50%) 0 calc(var(--gone, 0) * 50%) 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -480,6 +487,10 @@
   .settled .plate {
     opacity: 1;
     transform: none;
+  }
+
+  .settled .plate {
+    clip-path: inset(0 0 0 0);
   }
 }
 

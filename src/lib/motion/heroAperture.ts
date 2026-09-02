@@ -1,17 +1,19 @@
 /**
- * The hero's aperture: the world opens vertically from a slit, and shuts back
- * into one as the reader leaves.
+ * The hero's aperture: the world opens vertically from a slit.
  *
  * Two bands meet at the horizon of the hero, leaving a thin strip of the
  * island showing between them. They retract on arrival, so the first thing the
  * page does is widen -- the sea and the sky pushing apart from a single line
- * rather than fading up out of nothing. On the way out they close again.
+ * rather than fading up out of nothing.
  *
- * The geometry lives here, as pure functions, for two reasons. It is shared by
- * the entry animation and by the scroll that closes it, and those two must
- * agree exactly or the bands jump the moment the reader starts moving. And it
- * is the part worth pinning down: the numbers below are the difference between
- * a cinema shutter and a slide transition.
+ * The entrance only. The exit is the copy's own plate drawing shut around
+ * where the name was, which is a closer, more particular thing than the whole
+ * frame letterboxing; two vertical closes on one screen would simply have
+ * competed.
+ *
+ * The geometry lives here, as pure functions, because the numbers below are
+ * the difference between a cinema shutter and a slide transition and they are
+ * worth pinning down.
  */
 
 /**
@@ -24,18 +26,6 @@
  */
 export const SLIT_SHARE = 0.12;
 
-/**
- * Where in the hero's exit the aperture starts and finishes closing.
- *
- * Deliberately later than the copy, which is already leaving from the first
- * pixel of scroll. Shutting the aperture on top of the copy would put two
- * things in motion at once and read as a single crude wipe; letting the copy
- * clear first and then closing behind it is a sequence, and it is the reason
- * the exit reads as deliberate.
- */
-export const CLOSE_START = 0.34;
-export const CLOSE_END = 0.94;
-
 /** Hermite smoothstep between two edges. */
 function smoothstep(edge0: number, edge1: number, value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -47,28 +37,6 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return value < 0 ? 0 : value > 1 ? 1 : value;
-}
-
-/**
- * How far through its close the aperture is, given the hero's exit progress.
- *
- * Eased rather than linear, so the bands are already moving at speed by the
- * time they are noticed and settle rather than stop.
- */
-export function closeAmount(exit: number): number {
-  return smoothstep(CLOSE_START, CLOSE_END, clamp01(exit));
-}
-
-/**
- * The single value the bands are driven by: 0 is the slit, 1 is wide open.
- *
- * `opened` is the entry animation and `closed` is the scroll. Multiplying them
- * means the scroll can only ever take away what the entry has given, so a
- * reader who scrolls during the opening gets one continuous movement instead of
- * two animations fighting over the same element.
- */
-export function apertureOpenness(opened: number, closed: number): number {
-  return clamp01(opened) * (1 - clamp01(closed));
 }
 
 /**
