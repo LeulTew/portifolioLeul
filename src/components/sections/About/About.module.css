@@ -92,7 +92,30 @@
  * page, because the overlay is fixed: the reader is standing still inside it.
  */
 .aboutSequence {
-  padding: 0 clamp(2rem, 9vw, 16rem);
+  /*
+   * One source for where this section's columns begin and end.
+   *
+   * The heading and the statements are siblings inside this overlay, and they
+   * used to arrive at their left edge by two different routes -- the heading a
+   * clamp further in than the stages below it. That reads as a mistake rather
+   * than as a composition: the statement is the answer to the heading, so the
+   * two belong on one line. Held here rather than on the section itself
+   * because this overlay is portalled to the body, so nothing inside it
+   * inherits from the section at all.
+   */
+  --about-start: clamp(3.5rem, 11.5vw, 20rem);
+  --about-end: clamp(2rem, 9vw, 16rem);
+
+  /*
+   * The drop from the heading to the statement.
+   *
+   * One clear step above the 2rem the columns use internally, so the vertical
+   * order reads at a glance: heading, a gap you notice, statement, a gap you
+   * do not. Equal gaps would flatten the two into one block.
+   */
+  --statement-drop: clamp(1.25rem, 3.4vh, 3rem);
+
+  padding: 0 var(--about-end);
   box-sizing: border-box;
 }
 
@@ -113,8 +136,8 @@
   top: clamp(6rem, 14vh, 11rem);
   left: 0;
   right: 0;
-  padding-left: clamp(3.5rem, 11.5vw, 20rem);
-  padding-right: clamp(2rem, 9vw, 16rem);
+  padding-left: var(--about-start);
+  padding-right: var(--about-end);
   box-sizing: border-box;
   text-align: left;
   pointer-events: none;
@@ -187,7 +210,8 @@
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 0 clamp(2rem, 9vw, 16rem);
+  /* Starts on the heading's line, so the statement answers it. */
+  padding: 0 var(--about-end) 0 var(--about-start);
   box-sizing: border-box;
   pointer-events: none;
 }
@@ -228,7 +252,16 @@
 .layerOne,
 .layerTwo {
   opacity: var(--on);
-  transform: translate3d(0, calc((1 - var(--in)) * 2.5vh), 0);
+  /*
+   * The drop and the entry offset share one transform. Two transforms on one
+   * element means the last one wins, and the statement would either sit at the
+   * wrong height or arrive from the wrong place.
+   */
+  transform: translate3d(
+    0,
+    calc(var(--statement-drop, 0px) + (1 - var(--in)) * 2.5vh),
+    0
+  );
 }
 
 /*

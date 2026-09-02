@@ -42,6 +42,18 @@ export const HERO_SEQUENCE: readonly SectionCue[] = [
   { id: 'affordance', at: 3.05, duration: 1.4, engine: 'css' },
 ] as const;
 
+/**
+ * How long snow falls before the level inside the letters starts moving, in
+ * seconds.
+ *
+ * The lead is the whole reason the fill reads as accumulation: without it the
+ * letters begin filling the instant the first flake appears and nothing is
+ * ever seen landing. Shared, because the hero's aperture opens on the same
+ * beat -- the world widening and the name filling are one gesture, and two
+ * copies of this number would eventually stop agreeing.
+ */
+export const SNOW_LEAD = 0.55;
+
 /** Coverage at which a section counts as having arrived. */
 export const ENTER_THRESHOLD = 0.35;
 

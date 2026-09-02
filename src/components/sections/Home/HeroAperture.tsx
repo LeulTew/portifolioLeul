@@ -1,7 +1,12 @@
 import { useEffect } from 'react';
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
-import { exitAmount } from '@/lib/motion/sectionChoreography';
+import {
+  HERO_SEQUENCE,
+  SNOW_LEAD,
+  cueDuration,
+  exitAmount,
+} from '@/lib/motion/sectionChoreography';
 import {
   apertureOpenness,
   bandScale,
@@ -30,19 +35,29 @@ import styles from './HeroAperture.module.css';
  * re-rendered as it leaves.
  */
 
-/** Long enough to be a move, short enough not to hold up the copy. */
-const OPEN_DURATION_S = 1.15;
-
-/** A beat after mount, so the loader's own exit has finished clearing. */
-const OPEN_DELAY_S = 0.14;
+/*
+ * The open is the same beat as the snow filling the name.
+ *
+ * Both wait through the lead, then accumulate over the rest of the title's
+ * cue -- so the world widening and the letters filling are one gesture rather
+ * than two animations that happen to overlap. Derived from the cue list rather
+ * than tuned by hand, so they cannot drift apart.
+ */
+const OPEN_DELAY_S = SNOW_LEAD;
+const OPEN_DURATION_S = cueDuration(HERO_SEQUENCE, 'title') - SNOW_LEAD;
 
 /**
- * Almost all of the travel up front, then a long settle.
+ * Linear through the middle, settling at the end.
  *
- * The shape matters more than the duration here: a symmetric ease reads as a
- * panel being resized, and this reads as something being released.
+ * Snow piles at a constant rate, which is why the fill in the letters is
+ * literally `linear`; an aperture that matches it has to rise at a steady rate
+ * too. The first control point sits on the diagonal to hold that rate, and
+ * only the last pulls up, so it decelerates into the stop instead of hitting
+ * it. An expo-out -- which is what this had -- dumps nine tenths of the travel
+ * into the first quarter and reads as a panel being released, not as something
+ * accumulating.
  */
-const OPEN_EASE = [0.16, 1, 0.3, 1] as const;
+const OPEN_EASE = [0.25, 0.25, 0.35, 1] as const;
 
 export interface HeroApertureProps {
   /** The hero section, measured for the scroll-driven close. */

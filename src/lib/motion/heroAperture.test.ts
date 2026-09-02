@@ -9,6 +9,7 @@ import {
   seamPresence,
   seamSpread,
 } from './heroAperture';
+import { HERO_SEQUENCE, SNOW_LEAD, cueDuration } from './sectionChoreography';
 
 describe('bandScale', () => {
   it('leaves a live strip of the world showing at rest', () => {
@@ -103,6 +104,22 @@ describe('closeAmount', () => {
   it('treats nonsense as not closing', () => {
     expect(closeAmount(Number.NaN)).toBe(0);
     expect(closeAmount(-5)).toBe(0);
+  });
+});
+
+describe('the beat it shares with the name', () => {
+  it('opens over exactly the window the letters are filling', () => {
+    /*
+     * The world widening and the snow filling the name are meant to be one
+     * gesture. Both wait out the lead and then accumulate over the rest of the
+     * title's cue, and both take those numbers from the cue list -- so this
+     * fails the moment someone retunes one and not the other.
+     */
+    const titleBeat = cueDuration(HERO_SEQUENCE, 'title');
+    expect(SNOW_LEAD).toBeGreaterThan(0);
+    expect(SNOW_LEAD).toBeLessThan(titleBeat);
+    // What is left of the title's cue once the snow has had time to fall.
+    expect(titleBeat - SNOW_LEAD).toBeCloseTo(1.85, 6);
   });
 });
 

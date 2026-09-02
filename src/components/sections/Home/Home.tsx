@@ -9,6 +9,7 @@ import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
 import {
   HERO_SEQUENCE,
+  SNOW_LEAD,
   cueDelay,
   cueDuration,
   exitAmount,
@@ -159,6 +160,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
               settled={settled}
               delayMs={cueDelay(HERO_SEQUENCE, 'title') * 1000}
               durationMs={cueDuration(HERO_SEQUENCE, 'title') * 1000}
+              leadMs={SNOW_LEAD * 1000}
               className="mr-3"
             />
             <LiquidFillText
@@ -167,6 +169,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
               settled={settled}
               delayMs={cueDelay(HERO_SEQUENCE, 'title') * 1000}
               durationMs={cueDuration(HERO_SEQUENCE, 'title') * 1000}
+              leadMs={SNOW_LEAD * 1000}
               className={styles.lastname}
             />
           </h1>
