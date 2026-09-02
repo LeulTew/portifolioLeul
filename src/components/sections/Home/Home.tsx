@@ -16,6 +16,7 @@ import {
   sequenceDuration,
 } from '@/lib/motion/sectionChoreography';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { HeroAperture } from './HeroAperture';
 
 interface HomeProps {
   onNavigate?: (sectionId: string) => void;
@@ -110,6 +111,10 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
 
   return (
     <section ref={setSectionElement} className={styles.home} id="home">
+      {/* Opens the world from a slit on arrival, and shuts it on the way out.
+          Behind the copy, in front of the canvas. */}
+      <HeroAperture section={sectionElement} entered={hasEntered} />
+
       <div
         ref={contentRef}
         className={[
@@ -120,6 +125,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           .filter(Boolean)
           .join(' ')}
         style={{ opacity: 1, transform: 'none', filter: 'none' }}
+        data-testid="hero-content"
       >
         {/* First beat: the plate wipes in under the copy, before any of it
             arrives. It is a real element so it can be sequenced at all. */}

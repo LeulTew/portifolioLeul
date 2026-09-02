@@ -216,7 +216,7 @@ describe('Home choreography', () => {
     const { container } = render(<Home />);
     enterHero();
 
-    const content = container.querySelector('section > div') as HTMLElement;
+    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(content.style.opacity).toBe('1');
     expect(content.style.filter).toBe('none');
   });
@@ -235,7 +235,7 @@ describe('Home choreography', () => {
       ]);
     });
 
-    const content = container.querySelector('section > div') as HTMLElement;
+    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(Number(content.style.opacity)).toBeLessThan(1);
     expect(content.style.filter).toContain('blur');
     expect(content.style.transform).toContain('translate3d');
@@ -251,7 +251,7 @@ describe('Home choreography', () => {
       notify([{ isIntersecting: false, intersectionRect: { height: 0 }, rootBounds: { height: 1000 } }]);
     });
 
-    const content = container.querySelector('section > div') as HTMLElement;
+    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(Number(content.style.opacity)).toBe(0);
   });
 
@@ -265,7 +265,7 @@ describe('Home choreography', () => {
       notify([{ isIntersecting: true, intersectionRect: { height: 700 }, rootBounds: { height: 1000 } }]);
     });
 
-    const content = container.querySelector('section > div') as HTMLElement;
+    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(Number(content.style.opacity)).toBeGreaterThan(0.5);
     expect(Number(content.style.opacity)).toBeLessThan(1);
   });
@@ -278,7 +278,7 @@ describe('Home choreography', () => {
     vi.useFakeTimers();
     const { container } = render(<Home />);
 
-    const content = container.querySelector('section > div') as HTMLElement;
+    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(content.className).not.toMatch(/settled/);
 
     // Never entered: no observer callback is delivered at all.
