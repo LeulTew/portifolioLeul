@@ -1,6 +1,42 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Home } from './Home';
+import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
+import { resetHeroHold } from '@/lib/motion/heroHold';
+import { HERO_SCREENS, HOLD_CLOSE_END } from '@/lib/motion/heroPin';
+
+/**
+ * Scrolls the reader `share` of the way into the hero hold.
+ *
+ * The hold is measured from the section own top edge and advanced from the
+ * scroll store, which is published once a frame from inside the Canvas. That
+ * is what a pin reads, instead of moving the page.
+ */
+let holdTicks = 0;
+const scrollIntoHold = (share: number) => {
+  const section = document.getElementById('home');
+  if (!section) throw new Error('the hero section is not in the document');
+
+  const holdLength = window.innerHeight * (HERO_SCREENS - 1);
+  const top = -share * holdLength;
+
+  vi.spyOn(section, 'getBoundingClientRect').mockReturnValue({
+    top,
+    bottom: top + window.innerHeight * HERO_SCREENS,
+    left: 0,
+    right: window.innerWidth,
+    width: window.innerWidth,
+    height: window.innerHeight * HERO_SCREENS,
+    x: 0,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect);
+
+  act(() => {
+    holdTicks += 1;
+    setScrollProgress((holdTicks % 90) / 100);
+  });
+};
 
 // Mock framer-motion useScroll & useTransform
 vi.mock('framer-motion', async (importOriginal) => {
@@ -118,6 +154,8 @@ describe('Home choreography', () => {
 
   beforeEach(() => {
     observers = [];
+    resetScrollProgress();
+    resetHeroHold();
     (globalThis as unknown as Record<string, unknown>).IntersectionObserver =
       FakeIntersectionObserver;
   });
@@ -168,22 +206,26 @@ describe('Home choreography', () => {
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('traces the cue as the reader scrolls toward about', () => {
+  it('draws the cue only after the hero has closed, and then holds it', () => {
+    /*
+     * Reported twice. The cue was traced across a hero that was still leaving,
+     * and then carried off the top of the window as soon as it existed. It is
+     * the handover, so it comes last -- and it stays on screen pointing at
+     * what is next, because the hold has not ended.
+     */
     const { getByTestId } = render(<Home />);
     enterHero();
 
-    act(() => {
-      notify([
-        {
-          isIntersecting: true,
-          intersectionRect: { height: 200 },
-          rootBounds: { height: 1000 },
-        },
-      ]);
-    });
+    scrollIntoHold(HOLD_CLOSE_END * 0.5);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(0);
 
-    const progress = Number(getByTestId('scroll-cue').dataset.progress);
-    expect(progress).toBeGreaterThan(0);
+    scrollIntoHold(HOLD_CLOSE_END + (1 - HOLD_CLOSE_END) * 0.5);
+    const midway = Number(getByTestId('scroll-cue').dataset.progress);
+    expect(midway).toBeGreaterThan(0);
+    expect(midway).toBeLessThan(1);
+
+    scrollIntoHold(1);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(1);
   });
 
   it('fills the title rather than sliding it in', () => {
@@ -224,57 +266,71 @@ describe('Home choreography', () => {
     expect(content.style.visibility).toBe('visible');
   });
 
-  it('publishes one exit value for the layers to leave on', () => {
+  it('holds the hero still while the scroll spends itself on the handover', () => {
     /*
-     * The hero used to carry its whole exit on the container -- opacity, a
-     * rise, a scale and a blur -- which empties it as a single sheet and
-     * re-rasterised the entire subtree on every frame of the scroll. It now
-     * publishes progress, and each layer takes its own departure out of it.
+     * The point of the pin. The hero used to be one screen tall and simply
+     * leave with the scroll, so everything it did on the way out was a side
+     * effect of being carried off the top of the window. Now the scroll
+     * advances the handover, and the block is pushed down by exactly as much
+     * as has been scrolled -- which cancels out and reads as standing still.
      */
     const { container } = render(<Home />);
     enterHero();
 
-    act(() => {
-      notify([
-        {
-          isIntersecting: true,
-          intersectionRect: { height: 40 },
-          rootBounds: { height: 1000 },
-        },
-      ]);
-    });
+    const pinned = container.querySelector('[data-testid="hero-content"]')
+      ?.parentElement as HTMLElement;
 
-    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
-    expect(exitOf(content)).toBeGreaterThan(0.9);
-    // The container itself no longer animates; the layers do.
-    expect(content.style.filter).toBe('');
-    expect(content.style.transform).toBe('');
+    scrollIntoHold(0.5);
+
+    const holdLength = window.innerHeight * (HERO_SCREENS - 1);
+    expect(
+      Number.parseFloat(pinned.style.getPropertyValue('--pin'))
+    ).toBeCloseTo(holdLength * 0.5, 0);
   });
 
-  it('reaches a complete exit once the hero is entirely gone', () => {
+  it('stops holding once the hold is spent, and lets the page carry it away', () => {
     const { container } = render(<Home />);
     enterHero();
 
-    act(() => {
-      notify([{ isIntersecting: false, intersectionRect: { height: 0 }, rootBounds: { height: 1000 } }]);
-    });
+    const pinned = container.querySelector('[data-testid="hero-content"]')
+      ?.parentElement as HTMLElement;
+
+    scrollIntoHold(3);
+
+    const holdLength = window.innerHeight * (HERO_SCREENS - 1);
+    expect(
+      Number.parseFloat(pinned.style.getPropertyValue('--pin'))
+    ).toBeCloseTo(holdLength, 0);
+  });
+
+  it('finishes the exit inside the hold, not after it', () => {
+    /*
+     * Everything the hero does has to be done while it is still being held and
+     * looked at, which is the whole reason for holding it. And there has to be
+     * hold left afterwards, for the cue.
+     */
+    const { container } = render(<Home />);
+    enterHero();
+
+    scrollIntoHold(HOLD_CLOSE_END);
 
     const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(exitOf(content)).toBe(1);
-    // Gone means gone: it must not sit over the sections after it.
     expect(content.style.visibility).toBe('hidden');
     expect(content.style.pointerEvents).toBe('none');
+    // The container itself no longer animates; the layers do.
+    expect(content.style.filter).toBe('');
+    expect(content.style.transform).toBe('');
+    expect(HOLD_CLOSE_END).toBeLessThan(1);
   });
 
   it('scrubs the exit rather than switching it', () => {
-    // Part way out is part way out: the layers stagger off a continuous value,
-    // so it has to be continuous.
+    // Part way through the hold is part way out: the layers stagger off a
+    // continuous value, so it has to be continuous.
     const { container } = render(<Home />);
     enterHero();
 
-    act(() => {
-      notify([{ isIntersecting: true, intersectionRect: { height: 700 }, rootBounds: { height: 1000 } }]);
-    });
+    scrollIntoHold(0.2);
 
     const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(exitOf(content)).toBeGreaterThan(0);
