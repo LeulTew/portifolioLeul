@@ -6,20 +6,14 @@ import { ScrollCue } from '../../ui/ScrollCue';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
-import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
-import {
-  HERO_SCREENS,
-  holdCue,
-  holdExit,
-  holdProgress,
-  pinOffset,
-} from '@/lib/motion/heroPin';
-import { getHeroHold, setHeroHold, subscribeHeroHold } from '@/lib/motion/heroHold';
+import { useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
 import {
   HERO_SEQUENCE,
   SNOW_LEAD,
   cueDelay,
   cueDuration,
+  cueTrailProgress,
+  exitAmount,
   exitCueAt,
   exitStyle,
   sequenceDuration,
@@ -35,7 +29,6 @@ interface HomeProps {
 export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const pinRef = useRef<HTMLDivElement | null>(null);
 
   const reducedMotion = getPrefersReducedMotion();
 
@@ -48,91 +41,48 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
    * hero -- the filling headline, the word rotator, both magnetic buttons --
    * on each of a hundred coverage steps, to move one translate.
    */
-  // Only the arrival latch is needed from the observer now; the departure is
-  // driven by the hold below, which is measured per frame.
-  const hasEntered = useSectionFocusEffect(sectionElement, () => {});
+  const hasEntered = useSectionFocusEffect(sectionElement, ({ exit }) => {
+    const content = contentRef.current;
+    if (!content) return;
 
-  /**
-   * The hold.
-   *
-   * One bounding rect per frame -- what a pin costs -- turned into three
-   * things: how far to push the held block down so it appears to stand still,
-   * how far through its departure the copy is, and how far the cue has been
-   * drawn. All written straight to the DOM, so holding the hero still never
-   * re-renders it.
-   */
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const isVisible = exit < 0.98;
 
-    const apply = () => {
-      const section = sectionElement;
-      const pinned = pinRef.current;
-      const content = contentRef.current;
-      if (!section || !pinned) return;
-
-      const holdLength = reducedMotion
-        ? 0
-        : window.innerHeight * (HERO_SCREENS - 1);
-
-      const top = section.getBoundingClientRect().top;
-      const progress = holdProgress(top, holdLength);
-
-      const offset = `${Math.round(pinOffset(top, holdLength))}px`;
-      if (pinned.style.getPropertyValue('--pin') !== offset) {
-        pinned.style.setProperty('--pin', offset);
+    if (reducedMotion) {
+      /*
+       * One fade for the whole block.
+       *
+       * Staggering seven layers out is motion, and motion is the thing being
+       * opted out of. The block still has to leave -- a hero left printed over
+       * everything after it is worse than either -- so it leaves plainly.
+       */
+      const hero = exitStyle(exit, true);
+      if (content.style.opacity !== String(hero.opacity)) {
+        content.style.opacity = String(hero.opacity);
       }
-
-      setHeroHold(progress);
-
-      if (!content) return;
-
-      const exit = holdExit(progress);
-      const isVisible = exit < 0.995;
-
-      if (reducedMotion) {
-        /*
-         * One fade for the whole block.
-         *
-         * Staggering seven layers out is motion, and motion is the thing being
-         * opted out of. The block still has to leave -- a hero left printed
-         * over everything after it is worse than either -- so it leaves
-         * plainly, and without a hold to leave across.
-         */
-        const hero = exitStyle(exit, true);
-        if (content.style.opacity !== String(hero.opacity)) {
-          content.style.opacity = String(hero.opacity);
-        }
-      } else {
-        /*
-         * One number, and every layer reads its own departure out of it.
-         *
-         * The block used to carry the whole exit itself -- opacity, a rise, a
-         * scale and a blur on the container -- which empties the hero as a
-         * single sheet and re-rasterised the entire subtree every frame.
-         */
-        const value = exit.toFixed(4);
-        if (content.style.getPropertyValue('--exit') !== value) {
-          content.style.setProperty('--exit', value);
-        }
+    } else {
+      /*
+       * One number, and every layer reads its own departure out of it.
+       *
+       * The block used to carry the whole exit itself: opacity, a rise, a
+       * scale and a blur, all on the container. That empties the hero as a
+       * single sheet, and the blur re-rasterised the entire subtree on every
+       * frame of the scroll. Publishing progress and letting each layer take
+       * its own beat costs one custom property, and the layers leave in the
+       * reverse of the order they arrived in.
+       */
+      const value = exit.toFixed(4);
+      if (content.style.getPropertyValue('--exit') !== value) {
+        content.style.setProperty('--exit', value);
       }
+    }
 
-      const pointerEvents = isVisible ? 'auto' : 'none';
-      if (content.style.pointerEvents !== pointerEvents) {
-        content.style.pointerEvents = pointerEvents;
-      }
-      const visibility = isVisible ? 'visible' : 'hidden';
-      if (content.style.visibility !== visibility) content.style.visibility = visibility;
-    };
-
-    apply();
-    const unsubscribe = subscribeScrollProgress(apply);
-    window.addEventListener('resize', apply);
-
-    return () => {
-      unsubscribe();
-      window.removeEventListener('resize', apply);
-    };
-  }, [sectionElement, reducedMotion]);
+    const pointerEvents = isVisible ? 'auto' : 'none';
+    if (content.style.pointerEvents !== pointerEvents) {
+      content.style.pointerEvents = pointerEvents;
+    }
+    const visibility = isVisible ? 'visible' : 'hidden';
+    if (content.style.visibility !== visibility) content.style.visibility = visibility;
+  });
 
   const [settled, setSettled] = useState(false);
 
@@ -191,18 +141,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   };
 
   return (
-    <section
-      ref={setSectionElement}
-      className={styles.home}
-      id="home"
-      style={{ ['--hero-screens' as string]: `${HERO_SCREENS}` }}
-    >
-      {/*
-        Held at the first screen of the section while the scroll advances the
-        handover. One transform on one wrapper, so the aperture, the copy and
-        the cue pin as a single composited layer and cannot drift apart.
-      */}
-      <div ref={pinRef} className={styles.pinned}>
+    <section ref={setSectionElement} className={styles.home} id="home">
       {/* Opens the world from a slit on arrival. Behind the copy, in front of
           the canvas. The exit belongs to the plate, not to this. */}
       <HeroAperture />
@@ -317,8 +256,12 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           border-radius div could only ever have faded in. */}
       {/* Traced by the reader's own scroll toward About, rather than played at
           them on arrival: the mark is drawn by the movement it is inviting. */}
-      <HeroScrollCue onActivate={scrollToAbout} />
-      </div>
+      <HeroScrollCue
+        section={sectionElement}
+        entered={hasEntered}
+        onActivate={scrollToAbout}
+      />
+
     </section>
   );
 }
@@ -329,31 +272,32 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
  * the reader's own movement -- so it does need a render per step. Isolating it
  * here keeps that cost to three SVG paths instead of the entire hero.
  */
-function HeroScrollCue({ onActivate }: { onActivate: () => void }) {
+function HeroScrollCue({
+  section,
+  entered,
+  onActivate,
+}: {
+  section: HTMLElement | null;
+  entered: boolean;
+  onActivate: () => void;
+}) {
   const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
+  useViewportShareEffect(section, (coverage) => {
+    const exit = entered ? exitAmount(coverage) : 0;
     /*
-     * Drawn after the hero has closed, and then held.
+     * Drawn after the hero has closed, not during it.
      *
-     * The cue is the handover, and it has nothing to hand over from until the
-     * copy has left and the plate has shut. It used to be traced against the
-     * hero's own departure, which put a line inviting the reader onward across
-     * a hero that was still leaving -- and then carried it off the top of the
-     * window as soon as it was finished. Reading the hold instead means it is
-     * drawn last and stays on screen, pointing at what comes next, for as long
-     * as the hero is held.
+     * The arrow is the handover, and it has nothing to hand over from until
+     * the copy has left and the plate has shut. Tracing it through the exit
+     * put a line inviting the reader onward across a hero that was still
+     * leaving, so two things asked for attention at once.
      */
-    const publish = (hold: number) => {
-      const next = holdCue(hold);
-      // Finer than the stroke can show, and it drops the steps a slow scroll
-      // spends re-reporting a value the line already sits at.
-      setProgress((current) => (Math.abs(current - next) < 0.002 ? current : next));
-    };
-
-    publish(getHeroHold());
-    return subscribeHeroHold(publish);
-  }, []);
+    const next = cueTrailProgress(exit);
+    // Finer than the stroke can show, and it drops the steps a slow scroll
+    // spends re-reporting a value the line already sits at.
+    setProgress((current) => (Math.abs(current - next) < 0.002 ? current : next));
+  });
 
   return (
     <ScrollCue
