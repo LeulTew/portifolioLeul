@@ -34,8 +34,16 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 0 5px currentColor);
-  /* Smooths the scrub without decoupling it from the scroll. */
-  transition: stroke-dashoffset 180ms linear;
+  /*
+   * No transition on the dash.
+   *
+   * The offset is rewritten on every frame from the scroll, and a transition
+   * on a value that changes every frame never arrives: the browser restarts
+   * the interpolation each time, so the line lags the scroll and then catches
+   * up in jumps. It was here to smooth the scrub and did the opposite. The
+   * per-frame value is already continuous; drawing it directly is what makes
+   * the line follow the hand.
+   */
 }
 
 .trace,

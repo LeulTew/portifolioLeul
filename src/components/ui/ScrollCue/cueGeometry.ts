@@ -11,6 +11,24 @@
 export const CUE_VIEW_WIDTH = 67;
 export const CUE_BASE_HEIGHT = 334;
 
+/** Left edge of the viewBox, and the x the straight run falls down. */
+export const CUE_VIEW_X = -2;
+export const CUE_RUN_X = 52.3;
+
+/**
+ * How far the straight run sits from the left edge of the rendered box.
+ *
+ * The mark is drawn at a fixed aspect inside its box, so the line the reader
+ * actually sees is not at the box's centre -- it is most of the way to the
+ * right of it. Placing the box by its centre put the line some twenty pixels
+ * right of where it was meant to be, which is why it did not sit on the
+ * heading it points at.
+ */
+export function cueRunOffset(widthPx: number): number {
+  if (!Number.isFinite(widthPx) || widthPx <= 0) return 0;
+  return ((CUE_RUN_X - CUE_VIEW_X) / CUE_VIEW_WIDTH) * widthPx;
+}
+
 /**
  * Extra straight run, in viewBox units, that makes the mark a given height.
  *

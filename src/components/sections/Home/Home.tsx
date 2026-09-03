@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { KineticRotator } from '../../ui/KineticText';
-import { ScrollCue, cueRunForHeight } from '../../ui/ScrollCue';
+import { ScrollCue, cueRunForHeight, cueRunOffset } from '../../ui/ScrollCue';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
@@ -40,6 +40,15 @@ import { HeroAperture } from './HeroAperture';
  * measured against; stated here because the run has to be computed from both.
  */
 const CUE_WIDTH_PX = 60;
+
+/**
+ * How long to wait for an entrance that never starts.
+ *
+ * Every entrance layer begins hidden and the animations are CSS, so a tab that
+ * is served no frames gets no observer callback and would show an empty hero
+ * for ever. Long enough that it can never cut a real sequence short.
+ */
+const NEVER_ENTERED_MS = 15000;
 
 interface HomeProps {
   onNavigate?: (sectionId: string) => void;
@@ -159,6 +168,21 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
         if (root.getPropertyValue('--cue-presence') !== presence) {
           root.setProperty('--cue-presence', presence);
         }
+
+        /*
+         * How much of the line is down, so it can be faded rather than cut.
+         *
+         * The mark was hidden outright at zero progress, because an offset
+         * dash still paints its round cap and leaves a bright dot sitting on
+         * the hero. That is fine on the way in, where nothing has been drawn
+         * yet -- but on the way back up the line shrinks smoothly to nothing
+         * and then vanished on one frame, which reads as a glitch. Ramping it
+         * over the last of the drawing gets rid of the dot and the cut both.
+         */
+        const drawn = getHeroCue().toFixed(3);
+        if (root.getPropertyValue('--cue-drawn') !== drawn) {
+          root.setProperty('--cue-drawn', drawn);
+        }
       }
 
       if (!content) return;
@@ -202,6 +226,14 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
         if (content.style.getPropertyValue('--shut') !== shutValue) {
           content.style.setProperty('--shut', shutValue);
         }
+
+        /*
+         * Flags the departure so the stylesheet can take the portrait's
+         * backdrop-filter off for its duration. Written on the change, not
+         * every frame: it is a state, not a value.
+         */
+        const leaving = inner > 0 ? 'true' : 'false';
+        if (content.dataset.leaving !== leaving) content.dataset.leaving = leaving;
       }
 
       const pointerEvents = isVisible ? 'auto' : 'none';
@@ -275,8 +307,22 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
        * stretch -- and unlike a rect, it does not depend on where the scroll
        * happens to be when this runs.
        */
-      const headingTop = Number.parseFloat(window.getComputedStyle(heading).top);
+      const headingStyle = window.getComputedStyle(heading);
+      const headingTop = Number.parseFloat(headingStyle.top);
       if (!Number.isFinite(headingTop) || headingTop <= 0) return false;
+
+      /*
+       * The mark stands on the vertical the heading's words start from.
+       *
+       * The heading spans the window and insets its text with a padding that
+       * is a clamp against viewport width, so that vertical moves with the
+       * size of the display. The mark was placed at a flat `15rem`, which
+       * agreed with it at one window width and was visibly off at a 2K one.
+       * Reading the heading's own inset is the only thing that lines up
+       * everywhere -- and the line the reader sees is not at the centre of the
+       * mark's box, so the box is shifted by where the run actually falls.
+       */
+      const headingLeft = Number.parseFloat(headingStyle.paddingLeft) || 0;
 
       /*
        * Where the held stretch begins, not where About's section does.
@@ -316,11 +362,16 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
       railRef.current = rail;
       section.style.setProperty('--cue-top', `${Math.round(rail.top)}px`);
       section.style.setProperty('--cue-height', `${Math.round(rail.height)}px`);
-      // The portaled mark reads its height from the root, for the same reason.
-      document.documentElement.style.setProperty(
-        '--cue-height',
-        `${Math.round(rail.height)}px`
-      );
+
+      // The portaled mark reads its geometry from the root, for the same reason.
+      const root = document.documentElement.style;
+      root.setProperty('--cue-height', `${Math.round(rail.height)}px`);
+      if (headingLeft > 0) {
+        root.setProperty(
+          '--cue-x',
+          `${Math.round(headingLeft - cueRunOffset(CUE_WIDTH_PX))}px`
+        );
+      }
       setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
       return true;
     };
@@ -332,13 +383,18 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
      */
     let retry: ReturnType<typeof setInterval> | undefined;
     let giveUp: ReturnType<typeof setTimeout> | undefined;
+    const observerRef: { current: ResizeObserver | null } = { current: null };
 
     if (!measure()) {
       retry = setInterval(() => {
-        if (measure() && retry) {
-          clearInterval(retry);
-          retry = undefined;
-        }
+        if (!measure() || !retry) return;
+
+        clearInterval(retry);
+        retry = undefined;
+
+        // It exists now, and it is the thing whose geometry the rail aims at.
+        const heading = document.querySelector('[data-testid="about-held-header"]');
+        if (heading) observerRef.current?.observe(heading);
       }, 120);
       giveUp = setTimeout(() => {
         if (retry) clearInterval(retry);
@@ -349,13 +405,31 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
     window.addEventListener('resize', measure);
 
     /*
-     * A resize listener is not enough on its own: the heading's offset is a
-     * clamp against viewport height, and the boxes can settle without Home
-     * hearing a resize event. An observer on them cannot miss it.
+     * Observed, not just listened for.
+     *
+     * Both ends of the rail are clamps against viewport size -- the heading's
+     * offset down the window, its inset from the left -- so every one of them
+     * moves when the display does. A resize listener alone missed it: the mark
+     * kept the vertical it had been given at the width the page happened to
+     * load at, which is why it sat correctly on one monitor and visibly off on
+     * a wider one.
+     *
+     * Everything the measurement actually reads is observed: the hero for its
+     * own box, the root for the viewport, and the heading itself, which lives
+     * in a portal and lays out after the rest.
      */
     const observer =
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => measure());
-    observer?.observe(section);
+
+    observerRef.current = observer;
+
+    if (observer) {
+      observer.observe(section);
+      observer.observe(document.documentElement);
+
+      const heading = document.querySelector('[data-testid="about-held-header"]');
+      if (heading) observer.observe(heading);
+    }
 
     return () => {
       if (retry) clearInterval(retry);
@@ -368,23 +442,31 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
   const [settled, setSettled] = useState(false);
 
   /*
-   * Guarantees the hero ends up visible, and deliberately not gated on having
-   * entered. Every entrance layer starts hidden, and the entry is triggered by
-   * IntersectionObserver, whose callbacks are delivered as part of the
-   * rendering lifecycle -- so a tab served no frames gets no observer callback,
-   * never enters, and never animates. Timers do not depend on frames.
-   *
-   * The hero is the first thing on the page and always on screen at load, so
-   * settling on a timer from mount is safe. If the sequence played normally
-   * this changes nothing.
+   * Guarantees the hero ends up visible, however the entrance goes.
    */
   useEffect(() => {
+    /*
+     * Restarted when the entrance actually begins.
+     *
+     * This is the glitch on a hard refresh. The backstop was armed at mount,
+     * but the entrance starts when the IntersectionObserver reports -- and on
+     * a first load, with the loader just handed over and the scene coming up,
+     * that callback can arrive a second or more late. The backstop then fired
+     * while the sequence was still playing and `.settled` snapped every layer
+     * to its finished state, which is exactly "it glitches and disappears".
+     * On a later visit the class is already on, so there is nothing to snap
+     * and it looks fine -- which is why it only ever went wrong the first time.
+     *
+     * Still armed when nothing has entered, because the layers start hidden
+     * and CSS animations need frames: a tab served none would otherwise show
+     * an empty hero for ever. That path just waits a good deal longer.
+     */
     const settle = setTimeout(
       () => setSettled(true),
-      (sequenceDuration(HERO_SEQUENCE) + 0.8) * 1000
+      hasEntered ? (sequenceDuration(HERO_SEQUENCE) + 0.8) * 1000 : NEVER_ENTERED_MS
     );
     return () => clearTimeout(settle);
-  }, []);
+  }, [hasEntered]);
 
   /**
    * Puts a layer on its beats: when it arrives, and when it leaves.

@@ -4,6 +4,7 @@ import { Home } from './Home';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
 import { resetHeroCue } from '@/lib/motion/heroCue';
 import { HERO_SCREENS, HOLD_CLOSE_END, INNER_END } from '@/lib/motion/heroPin';
+import { HERO_SEQUENCE, sequenceDuration } from '@/lib/motion/sectionChoreography';
 
 /**
  * Scrolls the reader `share` of the way into the hero hold.
@@ -487,8 +488,45 @@ describe('Home choreography', () => {
     const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
     expect(content.className).not.toMatch(/settled/);
 
-    // Never entered: no observer callback is delivered at all.
+    /*
+     * And not before a real entrance could have finished.
+     *
+     * This backstop used to be armed at mount with the sequence's own
+     * duration, which is the first-load glitch: the entrance starts when the
+     * observer reports, and on a hard refresh that can be a second late, so
+     * the backstop fired mid-sequence and snapped every layer to its finished
+     * state. It waits far longer now, and restarts when the entrance actually
+     * begins.
+     */
     act(() => vi.advanceTimersByTime(8000));
+    expect(content.className).not.toMatch(/settled/);
+
+    // Never entered: no observer callback is delivered at all.
+    act(() => vi.advanceTimersByTime(9000));
+    expect(content.className).toMatch(/settled/);
+  });
+
+  it('gives a late entrance its full sequence before settling', () => {
+    /*
+     * The glitch itself. The entrance is triggered by the observer, which on a
+     * first load arrives well after mount -- so the settle has to be measured
+     * from the entrance, not from the mount, or it cuts the sequence short and
+     * the hero appears to flash and vanish.
+     */
+    vi.useFakeTimers();
+    const { container } = render(<Home />);
+    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
+
+    // A second and a half of heavy first-load work before the observer reports.
+    act(() => vi.advanceTimersByTime(1500));
+    enterHero();
+
+    // Most of the way through the sequence, and still playing.
+    act(() => vi.advanceTimersByTime(sequenceDuration(HERO_SEQUENCE) * 1000 * 0.8));
+    expect(content.className).not.toMatch(/settled/);
+
+    // Then finished, on its own terms.
+    act(() => vi.advanceTimersByTime(sequenceDuration(HERO_SEQUENCE) * 1000));
     expect(content.className).toMatch(/settled/);
   });
 });

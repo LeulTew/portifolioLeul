@@ -157,7 +157,15 @@
   color: rgba(var(--text-color), 0.8);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  transition: all 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+  /*
+   * Named properties, not `all`.
+   *
+   * `all` includes the backdrop-filter and the transform, both of which are
+   * written from elsewhere -- so a transition on them fights whatever is
+   * driving them and the element arrives late and in steps.
+   */
+  transition: border-color 0.5s cubic-bezier(0.76, 0, 0.24, 1),
+    background-color 0.5s cubic-bezier(0.76, 0, 0.24, 1);
   will-change: transform;
   overflow: hidden;
 }
@@ -340,22 +348,38 @@
   position: fixed;
   top: var(--cue-y, 100vh);
   bottom: auto;
-  left: 15rem;
-  transform: translateX(-50%);
+  /*
+   * Written from the heading's own inset, so the line stands on the same
+   * vertical the words start from at every display width. It was a flat
+   * `15rem`, which agreed with the heading at one window size only.
+   */
+  left: var(--cue-x, 12rem);
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
   width: 60px;
   height: var(--cue-height, 300px);
-  opacity: var(--cue-presence, 1);
+  /*
+   * Faded at both ends, never cut.
+   *
+   * `--cue-presence` eases it away once it has rested; the ramp on
+   * `--cue-drawn` covers the other end, where the line shrinks back to nothing
+   * as the reader scrolls up. It used to be hidden outright at zero, which is
+   * a one-frame disappearance -- and the ramp also takes care of what that
+   * rule existed for: an offset dash still paints its round cap, and a lone
+   * bright dot on the hero is worse than no mark at all.
+   */
+  opacity: calc(
+    var(--cue-presence, 1) * clamp(0, calc(var(--cue-drawn, 0) / 0.05), 1)
+  );
   /* Above About's held overlay, which is the whole point of the portal. */
   z-index: 60;
   pointer-events: auto;
 }
 
-@media (max-width: 1100px) {
-  .scrollCue {
-    left: 8rem;
-  }
-}
+/*
+ * No width override: the mark's vertical is written from the heading's own
+ * inset, which is itself a clamp against viewport width. A breakpoint here
+ * would only be a second, disagreeing opinion about where the words start.
+ */
 
 /*
  * Short viewports have no room for a 300px mark below the copy.
@@ -571,6 +595,24 @@
    * behind everything leaving with it.
    */
   transition: none;
+}
+
+/*
+ * The blur comes off while the hero is leaving.
+ *
+ * A backdrop-filter re-samples everything behind it, and this one sits inside
+ * the block that scales and fades on its way out -- so every frame of the
+ * departure re-rasterised a blurred sample of a live WebGL canvas underneath
+ * it. That is the most expensive thing on the page happening during the one
+ * stretch that has to stay smooth, and it is the stutter.
+ *
+ * Nothing is lost: the portrait is fading and shrinking while this is off, and
+ * a ten pixel blur behind something at a third of its opacity is not visible.
+ * At rest the blur is exactly as it was.
+ */
+[data-leaving='true'] .imagePlaceholder {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /*
