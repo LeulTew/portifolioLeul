@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -21,6 +21,7 @@ import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraFreezes, setWorldOcclusion } from './lib/camera/cameraHold';
 import { RenderGovernor } from './components/3d/RenderGovernor';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
+import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
 
 import './index.css';
@@ -79,6 +80,22 @@ function App() {
   // hook is the project's existing way of asserting the provider is there.
   const { theme, toggleTheme } = useTheme();
   const gpuConfig = useGpuTier();
+
+  /*
+   * Asked once, before anything tries to mount a canvas.
+   *
+   * Every section of this page is rendered inside drei's `Scroll html`, which
+   * lives inside the Canvas -- so a browser that will not give us a context
+   * did not lose the island, it lost the whole site. That is what the error
+   * boundary around the Canvas was catching: a blank page reading "something
+   * went wrong" for a reader whose browser is working exactly as configured.
+   *
+   * Firefox says "WebGL is currently disabled" for a handful of ordinary
+   * reasons -- acceleration off, `webgl.disabled` set, a hardened profile, a
+   * blocklisted driver -- none of which are faults to recover from. The page
+   * asks, and does without.
+   */
+  const canRender3D = useMemo(() => isWebGLAvailable(), []);
 
   /*
    * Publishes the tier to CSS.
@@ -347,6 +364,22 @@ function App() {
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [scrollElement]);
 
+  /*
+   * One definition, rendered either inside the canvas's scroll layer or
+   * straight into the document. Written once so the two paths cannot drift
+   * into being two different sites.
+   */
+  const sections = (
+    <main ref={attachMain} className={styles.main}>
+      <Home onNavigate={scrollToSection} flat={!canRender3D} />
+      <About />
+      <Skills />
+      <Projects theme={theme} />
+      <div className={styles.spacer} />
+      <Contact />
+    </main>
+  );
+
   return (
     <div className={styles.container}>
       <AnimatePresence>
@@ -359,6 +392,9 @@ function App() {
         <Navigation scrollToSection={scrollToSection} />
       )}
 
+      {!canRender3D && !isLoading && sections}
+
+      {canRender3D && (
       <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Canvas
             dpr={gpuConfig.dpr}
@@ -389,16 +425,7 @@ function App() {
                 />
                 <ParticleBackground theme={theme} count={gpuConfig.particleCount} />
                 <Scroll html style={{ width: '100%' }}>
-                  {!isLoading && (
-                    <main ref={attachMain} className={styles.main}>
-                      <Home onNavigate={scrollToSection} />
-                      <About />
-                      <Skills />
-                      <Projects theme={theme} />
-                      <div className={styles.spacer} />
-                      <Contact />
-                    </main>
-                  )}
+                  {!isLoading && sections}
                 </Scroll>
               </ScrollControls>
               <Preload all />
@@ -414,6 +441,7 @@ function App() {
 
 
       </ErrorBoundary>
+      )}
 
       {!isLoading && (
         <motion.div 

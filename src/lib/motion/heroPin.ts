@@ -24,15 +24,21 @@
 /**
  * Screens of scroll the hero holds for, beyond the one it occupies.
  *
- * Four fifths of a screen: enough for the copy to leave and the plate to close
- * without either being rushed, and no more. It was 1.35, which held the reader
- * still after the hero had finished saying anything -- and every pixel of that
- * hold is a pixel the mark which follows has to span, so a long hold made a
- * long arrow. Shortening it brings the section underneath up sooner and
- * shortens the mark, which were asked for together because they are the same
- * number.
+ * A third of a screen, down from 1.35.
+ *
+ * This one number decides three things at once, which is why it kept being
+ * the answer. The hero is `1 + hold` screens tall, so the section underneath
+ * cannot start climbing until the hold is spent: the hold IS how long the
+ * reader waits for it. The mark begins partway through the hold and ends above
+ * About's heading, so the hold is also most of the mark's length. Holding for
+ * 1.35 screens meant waiting most of a page for the panel and drawing the mark
+ * down an empty hero while waiting.
+ *
+ * Short enough that the panel is on its way up almost as soon as the mark
+ * starts, and still long enough for the copy to leave and the plate to close
+ * as two separate beats.
  */
-export const HERO_HOLD_SCREENS = 0.8;
+export const HERO_HOLD_SCREENS = 0.35;
 
 /** Total height of the hero, in screens, including the one it occupies. */
 export const HERO_SCREENS = 1 + HERO_HOLD_SCREENS;
@@ -178,30 +184,24 @@ export function cueRail(
       : viewportHeight * CUE_TIP_SCREEN_SHARE;
 
   /*
-   * The plate is pinned, so `plateBottom` is where it sits on the screen for
-   * the whole hold -- not where it sits in the page. By the time the mark
-   * starts being drawn the reader has already scrolled the length of the
-   * copy's departure, so the page position that lines up with the plate's
-   * bottom edge at that moment is that scroll plus that screen offset.
+   * The mark starts under the plate as the plate begins to shut.
    *
-   * Anchoring at the screen offset alone put the start of the line a whole
-   * departure's worth of scroll too high: it began drawing from somewhere off
-   * the top of the window instead of from just under the plate the reader was
-   * watching close.
+   * The plate is pinned, so `plateBottom` is where it sits on the screen for
+   * the whole hold rather than where it sits in the page; the page position
+   * that lines up with it is the scroll at which drawing begins plus that
+   * offset.
+   *
+   * It was moved to the end of the hold at one point to stop it being drawn
+   * down an empty hero. That was the wrong lever: the fix is for the section
+   * underneath to arrive sooner, which is the hold's length, not the mark's
+   * timing.
    */
-  const drawStarts = holdLength * INNER_END;
-  const top = drawStarts + plateBottom + CUE_START_GAP;
+  const top = holdLength * INNER_END + plateBottom + CUE_START_GAP;
 
   /*
-   * The head lands `CUE_TIP_GAP` above the heading at the moment the heading
-   * actually appears -- which is when the held stretch takes over the window,
-   * not when About's panel first reaches the top.
-   *
-   * Those are two different places, about a quarter of a screen apart, and
-   * aiming at the wrong one is why the mark was carried off the top before the
-   * words it was pointing at had faded in. The stretch's overlay is only drawn
-   * once it covers the window, so the heading cannot be shown any earlier; the
-   * mark has to reach that far to still be there when it is.
+   * The head lands `CUE_TIP_GAP` above the heading at the moment the held
+   * stretch takes over the window, which is the earliest the heading can be
+   * shown at all.
    */
   const bottom = heldTop + Math.max(heading - CUE_TIP_GAP, 0);
 
@@ -211,42 +211,91 @@ export function cueRail(
 /**
  * How far through its drawing the cue is.
  *
- * Three beats, in the order the reader sees them.
+ * Nothing while the copy is still leaving -- a line inviting the reader onward
+ * competes with the thing it leads them away from. Then it is drawn evenly,
+ * from the moment the plate starts to shut through to the moment the held
+ * stretch takes over the window, where its head comes to rest just above the
+ * heading.
  *
- * Nothing at all while the copy is leaving: a line inviting the reader onward
- * competes with the thing it is leading them away from.
- *
- * Then it draws alongside the plate shutting, and it is timed so that the head
- * arrives at the bottom edge of the window exactly as the plate finishes --
- * the hero closes and the line is already off the screen ahead of the reader.
- *
- * Then the head simply tracks the bottom edge, which means the reader is
- * always drawing the next bit of it as they travel, until the whole rail is
- * down. After that it is complete, and the page carries it up so the head
- * comes to rest above About's heading.
+ * One even span, not three phases. It was timed against the plate's close and
+ * then made to track the bottom edge of the window, which drew the whole line
+ * before the section it points at existed on screen.
  */
 export function cueDraw(
   sectionTop: number,
   holdLength: number,
-  rail: { top: number; height: number },
-  viewportHeight: number
+  heldTop: number
 ): number {
   if (!Number.isFinite(sectionTop) || !Number.isFinite(holdLength)) return 0;
-  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return 0;
-  if (holdLength <= 0 || rail.height <= 0) return 0;
+  if (!Number.isFinite(heldTop) || holdLength < 0) return 0;
+
+  const startsAt = holdLength * INNER_END;
+  const span = heldTop - startsAt;
+  if (span <= 0) return 0;
 
   const scrolled = Math.max(-sectionTop, 0);
-  const closeStart = holdLength * INNER_END;
-  const closeEnd = holdLength * HOLD_CLOSE_END;
+  return clamp01((scrolled - startsAt) / span);
+}
 
-  /** Drawn length that puts the head on the bottom edge of the window. */
-  const toBottomEdge = (at: number) =>
-    clamp01((viewportHeight + at - rail.top) / rail.height);
+/**
+ * Screens of scroll the finished mark keeps its place before it goes.
+ *
+ * Once the head is at rest above the heading, that composition is the point of
+ * the whole handover -- so it is held rather than scrolled away. The mark used
+ * to be carried off the top the moment About settled, which meant the one
+ * frame everything had been built for was the frame it disappeared on.
+ *
+ * Matched to when About's own copy arrives: the statements begin a fourteenth
+ * of the held stretch in, which at three screens is this much scroll.
+ */
+export const CUE_REST_SCREENS = 0.14;
 
-  if (scrolled <= closeStart) return 0;
-  if (scrolled >= closeEnd) return toBottomEdge(scrolled);
-  if (closeEnd <= closeStart) return toBottomEdge(scrolled);
+/** Screens of scroll the mark takes to leave, once the copy has its turn. */
+export const CUE_FADE_SCREENS = 0.09;
 
-  const throughClose = (scrolled - closeStart) / (closeEnd - closeStart);
-  return clamp01(throughClose * toBottomEdge(closeEnd));
+/**
+ * How far to push the finished mark down so it keeps its place on screen.
+ *
+ * Zero until the head is at rest, then exactly what has been scrolled since --
+ * which cancels out and reads as held -- and then no more, so it is released
+ * and carried away with the page as the copy takes over.
+ */
+export function cueRest(
+  sectionTop: number,
+  heldTop: number,
+  viewportHeight: number
+): number {
+  if (!Number.isFinite(sectionTop) || !Number.isFinite(heldTop)) return 0;
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return 0;
+
+  const past = Math.max(-sectionTop, 0) - heldTop;
+  if (past <= 0) return 0;
+
+  const limit = viewportHeight * (CUE_REST_SCREENS + CUE_FADE_SCREENS);
+  return Math.min(past, limit);
+}
+
+/**
+ * How present the mark is, 1 down to 0.
+ *
+ * Full while it is being drawn and while it rests, then eased away over the
+ * stretch where About's own copy arrives -- so the two exchange places instead
+ * of the mark simply vanishing.
+ */
+export function cuePresence(
+  sectionTop: number,
+  heldTop: number,
+  viewportHeight: number
+): number {
+  if (!Number.isFinite(sectionTop) || !Number.isFinite(heldTop)) return 1;
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return 1;
+
+  const past = Math.max(-sectionTop, 0) - heldTop;
+  const rest = viewportHeight * CUE_REST_SCREENS;
+  const fade = viewportHeight * CUE_FADE_SCREENS;
+  if (past <= rest || fade <= 0) return 1;
+
+  const through = clamp01((past - rest) / fade);
+  // Smoothstep: it eases out of rest rather than starting to go abruptly.
+  return 1 - through * through * (3 - 2 * through);
 }

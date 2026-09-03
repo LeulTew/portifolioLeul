@@ -159,13 +159,62 @@
   box-sizing: border-box;
   text-align: left;
   pointer-events: none;
-  opacity: var(--head-in, 0);
-  transform: translate3d(0, calc((1 - var(--head-in, 0)) * -7vh), 0);
-  will-change: opacity, transform;
+  /*
+   * The block itself neither fades nor slides.
+   *
+   * It used to do both, together, which is the one gesture every slide deck
+   * has: a whole heading arriving as a unit from somewhere off-position. The
+   * words are uncovered instead, below.
+   */
+  will-change: transform;
+
+  /*
+   * Two beats out of one number, so the name and the line under it are not one
+   * movement. The first uncovers over the opening two thirds; the second
+   * starts a third of the way in and runs to the end, so they overlap the way
+   * the hero's own layers do.
+   */
+  --title-in: clamp(0, calc(var(--head-in, 0) / 0.66), 1);
+  --sub-in: clamp(0, calc((var(--head-in, 0) - 0.34) / 0.66), 1);
+}
+
+/*
+ * Typeset rather than slid.
+ *
+ * The name is uncovered left to right by its own mask while it settles the
+ * last of a very slight overshoot in letter-fit -- a scale on the block, not
+ * letter-spacing, which would be layout on every frame. What reads is a
+ * heading being set, which is what a masked wipe does and what a translate can
+ * never do: the words do not come from anywhere, they are revealed in place.
+ */
+.heldHeader .title {
+  clip-path: inset(-0.18em calc((1 - var(--title-in)) * 100%) -0.18em 0);
+  transform: translate3d(0, 0, 0) scale(calc(0.988 + var(--title-in) * 0.012));
+  transform-origin: 0% 50%;
+  /* The hover transition would restart on every frame of the reveal. */
+  transition: none;
+  will-change: clip-path, transform;
+}
+
+/*
+ * The line under it is uncovered upward instead, so the two beats differ in
+ * direction as well as in time.
+ */
+.heldHeader .subtitle {
+  clip-path: inset(calc((1 - var(--sub-in)) * 100%) 0 -0.2em 0);
+  opacity: calc(0.2 + var(--sub-in) * 0.65);
+  will-change: clip-path, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Uncovered outright: the reveal is the motion being opted out of. */
   .heldHeader {
+    transform: none;
+  }
+
+  .heldHeader .title,
+  .heldHeader .subtitle {
+    clip-path: none;
     transform: none;
   }
 }

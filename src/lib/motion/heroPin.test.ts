@@ -7,6 +7,10 @@ import {
   CUE_TIP_GAP,
   INNER_END,
   cueRail,
+  cueRest,
+  cuePresence,
+  CUE_REST_SCREENS,
+  CUE_FADE_SCREENS,
   innerExit,
   plateShut,
   cueDraw,
@@ -150,35 +154,28 @@ describe('cueRail', () => {
   const HEADING = 160;
   const rail = cueRail(PLATE_BOTTOM, HELD_TOP, HEADING, HOLD, H);
 
-  it('starts just under the plate, as the reader sees it, not as the page holds it', () => {
+  it('starts under the plate as the plate begins to shut', () => {
     /*
-     * Reported: the line began drawing from off the top of the window. The
-     * plate is pinned, so its screen offset is the same for the whole hold --
-     * but drawing only starts once the copy has gone, by which time the reader
-     * has scrolled that far. Anchoring at the screen offset alone put the
-     * start of the line a whole departure's worth of scroll too high.
+     * The plate is pinned, so its offset is a screen position for the whole
+     * hold, and the page position that lines up with it is that scroll plus
+     * that offset. Drawing begins when the copy has gone, which is where the
+     * plate's own beat starts.
      */
     const drawStarts = HOLD * INNER_END;
     expect(rail.top).toBe(drawStarts + PLATE_BOTTOM + CUE_START_GAP);
-
     // On screen at that moment, it is exactly under the plate's bottom edge.
     expect(rail.top - drawStarts).toBe(PLATE_BOTTOM + CUE_START_GAP);
   });
 
-  it('runs down to About, so it is as long as the gap it spans', () => {
+  it('is shorter than the window it is drawn in', () => {
     /*
-     * About a screen and a bit: it reaches from under the plate to the heading
-     * below and no further. Both ends are fixed by what they point at, so the
-     * only way to shorten it is to shorten the hold it starts from -- which is
-     * why the hold came down from 1.35 to 0.8 at the same time.
-     *
-     * The length is a consequence, not a setting -- which is the point. It is
-     * exactly the distance between the plate's bottom edge and the words the
-     * head comes to rest above.
+     * Reported as too long. Its ends are fixed by what they point at, so its
+     * length is a consequence of the hold: the hero is `1 + hold` screens
+     * tall, and the mark spans most of that. Bringing the hold down from 1.35
+     * screens to a third is what shortened it.
      */
-    expect(rail.height).toBeGreaterThan(H * 0.7);
-    expect(rail.height).toBeLessThan(H * 1.2);
-    expect(rail.top + rail.height).toBe(HELD_TOP + HEADING - CUE_TIP_GAP);
+    expect(rail.height).toBeLessThan(H);
+    expect(rail.height).toBeGreaterThan(H * 0.2);
   });
 
   it('rests its head just above the heading as the held stretch takes over', () => {
@@ -190,7 +187,7 @@ describe('cueRail', () => {
 
   it('falls back to a sane aim before the heading has been measured', () => {
     const guessed = cueRail(PLATE_BOTTOM, HELD_TOP, 0, HOLD, H);
-    expect(guessed.height).toBeGreaterThan(H * 0.5);
+    expect(guessed.height).toBeGreaterThan(0);
     expect(guessed.top).toBe(rail.top);
   });
 
@@ -205,61 +202,124 @@ describe('cueRail', () => {
 describe('cueDraw', () => {
   const H = 1000;
   const hold = H * HERO_HOLD_SCREENS;
-  const ABOUT_TOP = H * HERO_SCREENS;
-  const rail = cueRail(700, ABOUT_TOP + 250, 160, hold, H);
-  const at = (scrolled: number) => cueDraw(-scrolled, hold, rail, H);
+  const HELD_TOP = H * HERO_SCREENS + 250;
+  const rail = cueRail(700, HELD_TOP, 160, hold, H);
+  const at = (scrolled: number) => cueDraw(-scrolled, hold, HELD_TOP);
 
   /** Where the drawn head sits in the window, for a given scroll. */
   const headOnScreen = (scrolled: number) =>
     rail.top + at(scrolled) * rail.height - scrolled;
 
   it('draws nothing while the copy is still leaving', () => {
-    // A line inviting the reader onward competes with what it leads away from.
+    // A line inviting the reader onward competes with what it leads them from.
     expect(at(0)).toBe(0);
     expect(at(hold * INNER_END * 0.5)).toBe(0);
     expect(at(hold * INNER_END)).toBe(0);
   });
 
-  it('puts the head on the bottom edge exactly as the plate finishes', () => {
+  it('starts as the plate begins to shut', () => {
+    expect(at(hold * INNER_END + 1)).toBeGreaterThan(0);
+    expect(at(hold * HOLD_CLOSE_END)).toBeGreaterThan(0);
+  });
+
+  it('has the panel already climbing for most of the drawing', () => {
     /*
-     * The requirement, stated precisely: the hero closes and the line has
-     * already run off the bottom of the screen ahead of the reader.
+     * Reported: the mark was drawn down an empty hero. The section underneath
+     * cannot start climbing until the hold is spent -- that is what the hold
+     * is -- so the fix is a shorter hold, not a later mark. Most of the
+     * drawing now happens with the panel on its way up.
      */
-    expect(headOnScreen(hold * HOLD_CLOSE_END)).toBeCloseTo(H, 0);
+    const drawSpan = HELD_TOP - hold * INNER_END;
+    const waitingForPanel = hold - hold * INNER_END;
+    expect(waitingForPanel / drawSpan).toBeLessThan(0.25);
   });
 
-  it('draws alongside the plate shutting, not before or after it', () => {
-    const mid = hold * ((INNER_END + HOLD_CLOSE_END) / 2);
-    expect(at(mid)).toBeGreaterThan(0);
-    expect(at(mid)).toBeLessThan(at(hold * HOLD_CLOSE_END));
+  it('grows downward from under the plate as the panel rises', () => {
+    const start = hold * INNER_END;
+    const early = headOnScreen(start + (HELD_TOP - start) * 0.25);
+    const later = headOnScreen(start + (HELD_TOP - start) * 0.6);
+
+    expect(headOnScreen(hold * INNER_END)).toBeCloseTo(700 + CUE_START_GAP, 6);
+    expect(later).toBeLessThan(early);
   });
 
-  it('keeps the head on the bottom edge as the reader travels', () => {
-    // Which means they are always drawing the next stretch of it.
-    for (const scrolled of [hold * 0.8, hold, hold * 1.15]) {
-      if (at(scrolled) >= 1) continue;
-      expect(headOnScreen(scrolled)).toBeCloseTo(H, 0);
-    }
+  it('is complete, head at rest, as the held stretch takes over', () => {
+    expect(at(HELD_TOP)).toBe(1);
+    expect(headOnScreen(HELD_TOP)).toBe(160 - CUE_TIP_GAP);
   });
 
-  it('is complete before About has finished arriving, then holds', () => {
-    expect(at(ABOUT_TOP)).toBe(1);
-    expect(at(ABOUT_TOP + H * 2)).toBe(1);
+  it('stays drawn once it is done', () => {
+    expect(at(HELD_TOP + H * 3)).toBe(1);
   });
 
   it('never runs backwards', () => {
     let previous = -1;
     for (let i = 0; i <= 60; i += 1) {
-      const drawn = at((i / 60) * ABOUT_TOP);
+      const drawn = at((i / 60) * HELD_TOP);
       expect(drawn).toBeGreaterThanOrEqual(previous);
       previous = drawn;
     }
   });
 
   it('draws nothing rather than dividing by a span that does not exist', () => {
-    expect(cueDraw(-500, 0, rail, H)).toBe(0);
-    expect(cueDraw(-500, hold, { top: 0, height: 0 }, H)).toBe(0);
-    expect(cueDraw(Number.NaN, hold, rail, H)).toBe(0);
-    expect(cueDraw(-500, hold, rail, 0)).toBe(0);
+    expect(cueDraw(-500, hold, hold * INNER_END)).toBe(0);
+    expect(cueDraw(Number.NaN, hold, HELD_TOP)).toBe(0);
+    expect(cueDraw(-500, hold, Number.NaN)).toBe(0);
+  });
+});
+
+describe('the mark keeping its place, and then leaving', () => {
+  const H = 1000;
+  const HELD_TOP = 2000;
+  const rest = (scrolled: number) => cueRest(-scrolled, HELD_TOP, H);
+  const presence = (scrolled: number) => cuePresence(-scrolled, HELD_TOP, H);
+
+  it('does not hold anything before the head is at rest', () => {
+    expect(rest(0)).toBe(0);
+    expect(rest(HELD_TOP)).toBe(0);
+    expect(presence(HELD_TOP)).toBe(1);
+  });
+
+  it('cancels the scroll while the head is meant to stay above the heading', () => {
+    /*
+     * Reported: the mark was carried off the top of the window the moment
+     * About settled -- so the one frame the whole handover had been building
+     * toward was the frame it disappeared on. It is held there instead.
+     */
+    for (const past of [40, 100, H * CUE_REST_SCREENS]) {
+      expect(rest(HELD_TOP + past)).toBe(past);
+      expect(presence(HELD_TOP + past)).toBe(1);
+    }
+  });
+
+  it('lets go once the copy has taken over, and no later', () => {
+    const limit = H * (CUE_REST_SCREENS + CUE_FADE_SCREENS);
+    expect(rest(HELD_TOP + limit)).toBeCloseTo(limit, 6);
+    expect(rest(HELD_TOP + limit + 4000)).toBeCloseTo(limit, 6);
+  });
+
+  it('eases away over the stretch where About\'s own copy arrives', () => {
+    const rested = H * CUE_REST_SCREENS;
+    const half = rested + (H * CUE_FADE_SCREENS) / 2;
+
+    expect(presence(HELD_TOP + half)).toBeGreaterThan(0);
+    expect(presence(HELD_TOP + half)).toBeLessThan(1);
+    expect(presence(HELD_TOP + rested + H * CUE_FADE_SCREENS)).toBe(0);
+  });
+
+  it('never brightens again once it has started going', () => {
+    let previous = 2;
+    for (let i = 0; i <= 40; i += 1) {
+      const value = presence(HELD_TOP + (i / 40) * H * 0.4);
+      expect(value).toBeLessThanOrEqual(previous);
+      previous = value;
+    }
+  });
+
+  it('stays put and present on a measurement it cannot use', () => {
+    expect(cueRest(Number.NaN, HELD_TOP, H)).toBe(0);
+    expect(cueRest(-500, HELD_TOP, 0)).toBe(0);
+    expect(cuePresence(Number.NaN, HELD_TOP, H)).toBe(1);
+    expect(cuePresence(-500, HELD_TOP, 0)).toBe(1);
   });
 });

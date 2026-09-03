@@ -168,10 +168,25 @@ export function PinnedSequence({
     const unsubscribe = subscribeScrollProgress(apply);
     window.addEventListener('resize', apply);
 
+    /*
+     * Native scroll as well as the canvas's.
+     *
+     * Scroll progress is published by the scroll controls inside the Canvas,
+     * and on a browser that will not give us a WebGL context there is no
+     * Canvas -- so nothing published, `apply` never ran, and the stretch's
+     * overlay stayed switched off. About rendered as a black screen, because
+     * everything it shows lives in that overlay.
+     *
+     * Passive, and in the 3D path the document itself never scrolls, so this
+     * costs a listener that is never called.
+     */
+    window.addEventListener('scroll', apply, { passive: true });
+
     return () => {
       unsubscribe();
       observer?.disconnect();
       window.removeEventListener('resize', apply);
+      window.removeEventListener('scroll', apply);
     };
   }, [spacer, layers]);
 

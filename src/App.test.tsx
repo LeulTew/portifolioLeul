@@ -5,6 +5,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
 
+/*
+ * These exercise the 3D path, so they say so.
+ *
+ * jsdom hands back no WebGL context, and App now asks before mounting a
+ * Canvas -- rightly, since every section lives inside it. Left unmocked every
+ * test here would silently be testing the flat fallback instead of the thing
+ * it names. The fallback has its own test at the bottom of the file.
+ */
+const webglAvailable = vi.fn(() => true);
+vi.mock("./lib/render/webglSupport", () => ({
+  isWebGLAvailable: () => webglAvailable(),
+  resetWebGLSupport: () => {},
+}));
+
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
@@ -200,6 +214,64 @@ describe("App Component", () => {
     expect(screen.getByTestId("r3f-canvas")).toBeInTheDocument();
     expect(screen.getByTestId("background-scene")).toBeInTheDocument();
   });
+});
+
+describe("App without a WebGL context", () => {
+  beforeEach(() => {
+    webglAvailable.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    webglAvailable.mockReturnValue(true);
+  });
+
+  const renderSettled = async () => {
+    // The Loader mock reports done during its own render, so the state change
+    // that reveals the sections has to be flushed before anything is asserted.
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+    await act(async () => {});
+  };
+
+  it("still renders the whole site", async () => {
+    /*
+     * Reported from Firefox: "Error creating WebGL context. WebGL is currently
+     * disabled." Every section is rendered inside drei's `Scroll html`, which
+     * lives inside the Canvas -- so a refused context did not cost the island,
+     * it cost the entire portfolio, and the reader got a blank page reading
+     * "something went wrong".
+     *
+     * Acceleration off, `webgl.disabled` set, a hardened profile, a
+     * blocklisted driver: none of those are faults to recover from. The page
+     * asks first and renders without.
+     */
+    await renderSettled();
+
+    expect(screen.queryByTestId("r3f-canvas")).toBeNull();
+
+    // The site itself, all of it, in ordinary document flow.
+    expect(screen.getByRole("navigation")).toBeInTheDocument();
+    // Every section, in ordinary document flow rather than inside a canvas.
+    for (const id of ["home", "about", "skills", "projects", "contact"]) {
+      expect(screen.getByTestId(`${id}-section`)).toBeInTheDocument();
+    }
+    expect(screen.getByRole("navigation")).toBeInTheDocument();
+  });
+
+  it("does not show the error screen", () => {
+    // The old failure mode, and the whole reason for asking up front.
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+
+    expect(screen.queryByText(/Something went wrong/i)).toBeNull();
+  });
+
 });
 
 describe("App scroll track sizing", () => {

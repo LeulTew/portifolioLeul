@@ -258,6 +258,28 @@ describe('Home choreography', () => {
     }
   });
 
+  it('gives the hero no hold at all when there is no world behind it', () => {
+    /*
+     * Reported from Firefox: "WebGL is currently disabled". With no context
+     * there is no scene to hand over from, and nothing publishing scroll
+     * progress either -- that comes from the canvas's scroll controls. A hero
+     * still two screens tall would be a screen of scroll spent going nowhere
+     * with the copy standing still at the top of it.
+     */
+    const { getByTestId } = render(<Home flat />);
+    enterHero();
+
+    expect(document.getElementById('home')?.style.getPropertyValue('--hero-screens')).toBe(
+      '1'
+    );
+
+    // And the copy stays put rather than leaving across a hold that is not there.
+    scrollIntoHold(1);
+    const content = getByTestId('hero-content');
+    expect(content.style.visibility).not.toBe('hidden');
+    expect(exitOf(content)).toBe(0);
+  });
+
   it('leaves the cue untraced while the hero holds the screen', () => {
     const { getByTestId } = render(<Home />);
     enterHero();
@@ -275,18 +297,24 @@ describe('Home choreography', () => {
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('runs the cue from under the plate all the way down to About', () => {
+  it('draws the cue while About climbs, not across an empty hero', () => {
     /*
-     * Reported four times. Traced across a hero that was still leaving; then
-     * carried off the top of the window; then drawn in full below the fold
-     * where nobody saw it; then held, which caps it at the height of the
-     * window. It is a rail down the page now: as long as the gap it spans,
-     * begun under the plate, and drawn alongside the plate shutting.
+     * Reported five times, and this is the shape that came out of it. The mark
+     * is drawn from under the plate, over the stretch where the section
+     * underneath is climbing into place, and is complete with its head at rest
+     * just above the heading.
+     *
+     * Every earlier attempt drew it somewhere the reader could not use it: on
+     * a hero that was still leaving; below the fold; carried off the top at
+     * the release; held, and so capped at the height of the window; and then
+     * drawn all the way down an empty hero before About had begun to appear,
+     * which read as a very long line pointing at nothing.
      */
     const { getByTestId } = render(<Home />);
     enterHero();
     const plateBottom = 700;
-    const aboutTop = 2350;
+    // Where About actually begins: the hero is `1 + hold` screens tall.
+    const aboutTop = window.innerHeight * HERO_SCREENS;
     layOutRail({ plateBottom, aboutTop });
 
     const cue = () => getByTestId('scroll-cue');
@@ -298,30 +326,28 @@ describe('Home choreography', () => {
     const top = Number.parseFloat(section.style.getPropertyValue('--cue-top'));
     const height = Number.parseFloat(section.style.getPropertyValue('--cue-height'));
 
-    // Long: more than a window's worth, which is more than any pin could hold.
-    expect(height).toBeGreaterThan(vh);
-    // And it starts below where the plate ended, not up among the copy.
-    expect(top).toBeGreaterThanOrEqual(plateBottom);
+    // Starts under the plate, as the reader saw it while the hero was held.
+    expect(top - hold * INNER_END).toBeGreaterThanOrEqual(plateBottom);
+    // Shorter than the window it is drawn in.
+    expect(height).toBeLessThan(vh);
+    expect(height).toBeGreaterThan(0);
 
-    // Nothing at all while the copy is still leaving.
+    // Nothing while the copy is still leaving.
     scrollIntoHold(INNER_END * 0.5);
     expect(drawn()).toBe(0);
     scrollIntoHold(INNER_END);
     expect(drawn()).toBe(0);
 
-    // Drawing by the time the plate is halfway shut.
-    scrollIntoHold((INNER_END + HOLD_CLOSE_END) / 2);
+    // Drawing from the moment the plate starts to shut.
+    scrollIntoHold(HOLD_CLOSE_END);
     expect(drawn()).toBeGreaterThan(0);
     expect(drawn()).toBeLessThan(1);
 
-    // Head exactly on the bottom edge as the plate finishes shutting.
-    scrollIntoHold(HOLD_CLOSE_END);
-    const head = top + drawn() * height - hold * HOLD_CLOSE_END;
-    // Within a pixel: the reported progress is rounded to three places, which
-    // over a rail this long is worth about one.
-    expect(Math.abs(head - vh)).toBeLessThan(2);
+    // And the panel is already climbing well before it is finished.
+    scrollIntoHold(1);
+    expect(drawn()).toBeLessThan(1);
 
-    // Complete by the time About's panel has arrived.
+    // Complete, head at rest above the heading, as the stretch takes over.
     scrollIntoHold(aboutTop / hold);
     expect(drawn()).toBe(1);
   });

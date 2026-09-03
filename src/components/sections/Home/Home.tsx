@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { KineticRotator } from '../../ui/KineticText';
@@ -10,7 +11,9 @@ import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import {
   HERO_SCREENS,
   cueDraw,
+  cuePresence,
   cueRail,
+  cueRest,
   holdExit,
   holdProgress,
   innerExit,
@@ -41,15 +44,35 @@ const CUE_WIDTH_PX = 60;
 interface HomeProps {
   onNavigate?: (sectionId: string) => void;
   theme?: string;
+  /**
+   * Renders the hero as an ordinary section, with no hold at all.
+   *
+   * There is nothing to hand over from when there is no world behind the copy
+   * -- and nothing driving scroll progress either, since that comes from the
+   * canvas's scroll controls. So the hero is one screen, the copy simply
+   * stays, and the handover is a link rather than a performance.
+   */
+  flat?: boolean;
 }
 
-export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
+export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
 
 
   const reducedMotion = getPrefersReducedMotion();
+
+  /*
+   * No hold means no extra height.
+   *
+   * Reduced motion already zeroed the hold but left the section two screens
+   * tall, which is a screen of scroll spent going nowhere with the hero
+   * standing still at the top of it -- the stuck page the hold was carefully
+   * sized to avoid, arrived at by the opposite route.
+   */
+  const held = !flat && !reducedMotion;
+  const screens = held ? HERO_SCREENS : 1;
 
   /*
    * Shared focus lifecycle: a timed entry that plays once, and an exit that is
@@ -82,9 +105,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       const content = contentRef.current;
       if (!section || !pinned) return;
 
-      const holdLength = reducedMotion
-        ? 0
-        : window.innerHeight * (HERO_SCREENS - 1);
+      const holdLength = held ? window.innerHeight * (HERO_SCREENS - 1) : 0;
 
       const top = section.getBoundingClientRect().top;
       const progress = holdProgress(top, holdLength);
@@ -106,8 +127,39 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       setHeroCue(
         reducedMotion
           ? 1
-          : cueDraw(top, holdLength, railRef.current, window.innerHeight)
+          : cueDraw(top, holdLength, heldTopRef.current)
       );
+
+      /*
+       * The finished mark keeps its place until About's own copy arrives, then
+       * leaves as the copy takes over. Written to the section so the cue's own
+       * rule can read them without Home re-rendering.
+       */
+      if (!reducedMotion) {
+        /*
+         * Written to the root, because the mark is rendered through a portal.
+         *
+         * About's held stretch is a fixed, body-level overlay at z-index 40, so
+         * nothing nested inside the scrolling layer can paint over it -- the
+         * mark was at full opacity, in the right place, and behind the panel.
+         * It lives at body level too now, which means its position has to be a
+         * viewport coordinate rather than an offset inside the hero.
+         */
+        const root = document.documentElement.style;
+        const held = heldTopRef.current;
+        const rail = railRef.current;
+        const scrolled = Math.max(-top, 0);
+
+        const y = `${Math.round(
+          rail.top - scrolled + cueRest(top, held, window.innerHeight)
+        )}px`;
+        if (root.getPropertyValue('--cue-y') !== y) root.setProperty('--cue-y', y);
+
+        const presence = cuePresence(top, held, window.innerHeight).toFixed(3);
+        if (root.getPropertyValue('--cue-presence') !== presence) {
+          root.setProperty('--cue-presence', presence);
+        }
+      }
 
       if (!content) return;
 
@@ -168,7 +220,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       unsubscribe();
       window.removeEventListener('resize', apply);
     };
-  }, [sectionElement, reducedMotion]);
+  }, [sectionElement, reducedMotion, held]);
 
   /**
    * The rail the cue runs along, measured rather than declared.
@@ -181,6 +233,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
    */
   const [cueRun, setCueRun] = useState(0);
   const railRef = useRef({ top: 0, height: 0 });
+  const heldTopRef = useRef(0);
 
   useEffect(() => {
     const section = sectionElement;
@@ -236,6 +289,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       const spacer = about.querySelector<HTMLElement>('[data-testid="about-sequence"]');
       const heldTop =
         (spacer ? spacer.offsetTop + about.offsetTop : about.offsetTop) - section.offsetTop;
+      heldTopRef.current = heldTop;
 
       /*
        * Measured against the pinned block, not via offsetTop.
@@ -249,7 +303,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       const plateBottom =
         plate.getBoundingClientRect().bottom - pinned.getBoundingClientRect().top;
 
-      const holdLength = reducedMotion ? 0 : window.innerHeight * (HERO_SCREENS - 1);
+      const holdLength = held ? window.innerHeight * (HERO_SCREENS - 1) : 0;
       const rail = cueRail(
         plateBottom,
         heldTop,
@@ -262,6 +316,11 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       railRef.current = rail;
       section.style.setProperty('--cue-top', `${Math.round(rail.top)}px`);
       section.style.setProperty('--cue-height', `${Math.round(rail.height)}px`);
+      // The portaled mark reads its height from the root, for the same reason.
+      document.documentElement.style.setProperty(
+        '--cue-height',
+        `${Math.round(rail.height)}px`
+      );
       setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
       return true;
     };
@@ -304,7 +363,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       window.removeEventListener('resize', measure);
       observer?.disconnect();
     };
-  }, [sectionElement, reducedMotion]);
+  }, [sectionElement, held]);
 
   const [settled, setSettled] = useState(false);
 
@@ -367,7 +426,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       ref={setSectionElement}
       className={styles.home}
       id="home"
-      style={{ ['--hero-screens' as string]: `${HERO_SCREENS}` }}
+      style={{ ['--hero-screens' as string]: `${screens}` }}
     >
       {/*
         Held at the first screen of the section while the scroll advances the
@@ -538,7 +597,7 @@ function HeroScrollCue({ onActivate, run }: { onActivate: () => void; run: numbe
     return subscribeHeroCue(publish);
   }, []);
 
-  return (
+  const cue = (
     <ScrollCue
       className={styles.scrollCue}
       progress={progress}
@@ -547,4 +606,16 @@ function HeroScrollCue({ onActivate, run }: { onActivate: () => void; run: numbe
       label="Scroll to about section"
     />
   );
+
+  /*
+   * Rendered at body level, above About's held overlay.
+   *
+   * That overlay is fixed and sits at z-index 40 in its own portal, so nothing
+   * inside the scrolling layer can paint over it however it is stacked -- the
+   * mark was being drawn correctly and hidden completely at exactly the moment
+   * it mattered. Its position is a viewport coordinate now, written per frame
+   * by the driver above.
+   */
+  if (typeof document === 'undefined') return cue;
+  return createPortal(cue, document.body);
 }

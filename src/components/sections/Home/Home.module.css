@@ -328,29 +328,26 @@
   position: absolute;
   left: 15rem;
   /*
-   * Anchored to the page, spanning the gap it bridges.
+   * A viewport coordinate, because the mark is rendered at body level.
    *
-   * Both numbers are written by Home from layout: the top is where the plate
-   * holding the copy ended, the height is the distance from there to just
-   * above About's heading. Not held -- a held mark can only ever be as long as
-   * the window, and this one is most of a thousand pixels, followed down
-   * rather than looked at.
+   * About's held stretch is a fixed overlay in its own portal at z-index 40,
+   * so nothing nested in the scrolling layer can paint over it -- the mark was
+   * in the right place at full opacity and completely hidden behind the panel.
+   * `--cue-y` is written per frame from the same measurements as before: where
+   * the rail starts, less the scroll, plus however long it is being held at
+   * its resting place above the heading.
    */
-  top: var(--cue-top, 60vh);
+  position: fixed;
+  top: var(--cue-y, 100vh);
   bottom: auto;
+  left: 15rem;
   transform: translateX(-50%);
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
   width: 60px;
   height: var(--cue-height, 300px);
-  /*
-   * Above About, not below it.
-   *
-   * The mark hangs past the hero's own bottom edge, which is exactly where
-   * About's panel begins -- so letting About paint over it hid the part of the
-   * line that does the bridging the moment the scroll started. It is drawn by
-   * the scroll, so it has to survive the scroll to be seen at all.
-   */
-  z-index: 20;
+  opacity: var(--cue-presence, 1);
+  /* Above About's held overlay, which is the whole point of the portal. */
+  z-index: 60;
   pointer-events: auto;
 }
 
