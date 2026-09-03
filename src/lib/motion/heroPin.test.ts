@@ -6,6 +6,7 @@ import {
   CUE_DRAW_SCREENS,
   CUE_LEAD,
   cueDraw,
+  cuePinOffset,
   holdExit,
   holdProgress,
   pinOffset,
@@ -90,6 +91,47 @@ describe('holdExit', () => {
       expect(exit).toBeGreaterThanOrEqual(previous);
       previous = exit;
     }
+  });
+});
+
+describe('cuePinOffset', () => {
+  const H = 1000;
+  const hold = H * HERO_HOLD_SCREENS;
+
+  it('holds the cue in step with the scroll, like the hero', () => {
+    expect(cuePinOffset(0, hold, H)).toBe(0);
+    expect(cuePinOffset(-300, hold, H)).toBe(300);
+    expect(cuePinOffset(-hold, hold, H)).toBe(hold);
+  });
+
+  it('keeps holding after the hero has let go', () => {
+    /*
+     * The whole reason it is a separate pin. The copy is finished at the
+     * release; the cue is only then being drawn, with About rising to meet it.
+     * Riding the hero's pin carried it off the top of the window at exactly
+     * that moment.
+     */
+    const past = hold + H * 0.3;
+    expect(cuePinOffset(-past, hold, H)).toBe(past);
+    expect(cuePinOffset(-past, hold, H)).toBeGreaterThan(hold);
+  });
+
+  it('lets go once the mark has finished drawing', () => {
+    const limit = hold + H * CUE_DRAW_SCREENS;
+    expect(cuePinOffset(-limit, hold, H)).toBeCloseTo(limit, 6);
+    expect(cuePinOffset(-(limit + 2000), hold, H)).toBeCloseTo(limit, 6);
+  });
+
+  it('outlasts the hero pin by exactly the cue own draw', () => {
+    const heroLimit = pinOffset(-99999, hold);
+    const cueLimit = cuePinOffset(-99999, hold, H);
+    expect(cueLimit - heroLimit).toBeCloseTo(H * CUE_DRAW_SCREENS, 6);
+  });
+
+  it('holds nothing rather than dividing by a hold that does not exist', () => {
+    expect(cuePinOffset(-500, 0, 0)).toBe(0);
+    expect(cuePinOffset(Number.NaN, hold, H)).toBe(0);
+    expect(cuePinOffset(-500, hold, Number.NaN)).toBe(0);
   });
 });
 

@@ -10,6 +10,7 @@ import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import {
   HERO_SCREENS,
   cueDraw,
+  cuePinOffset,
   holdExit,
   holdProgress,
   pinOffset,
@@ -36,6 +37,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
+  const cueHoldRef = useRef<HTMLDivElement | null>(null);
 
   const reducedMotion = getPrefersReducedMotion();
 
@@ -92,6 +94,18 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
        * able to infer it from the motion that is no longer there.
        */
       setHeroCue(reducedMotion ? 1 : cueDraw(top, holdLength, window.innerHeight));
+
+      /*
+       * The cue holds its own screen position for longer than the copy does,
+       * so it is still there, pointing, while About rises to meet it.
+       */
+      const cueHold = cueHoldRef.current;
+      if (cueHold) {
+        const cueOffset = `${Math.round(cuePinOffset(top, holdLength, window.innerHeight))}px`;
+        if (cueHold.style.getPropertyValue('--cue-pin') !== cueOffset) {
+          cueHold.style.setProperty('--cue-pin', cueOffset);
+        }
+      }
 
       if (!content) return;
 
@@ -326,18 +340,23 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
           border-radius div could only ever have faded in. */}
       {/* Traced by the reader's own scroll toward About, rather than played at
           them on arrival: the mark is drawn by the movement it is inviting. */}
+      {/*
+        On its own hold, and long.
+
+        Two wrong turns before this. Anchored across the section's bottom edge
+        it was drawn a screen and a third below the fold, where nobody could
+        see it, and read as simply missing. Held with the copy instead, it was
+        carried off the top of the window at the release -- which is the exact
+        moment it is drawn and the exact moment it has something to point at.
+        So it holds on its own, longer than the copy does: on the screen the
+        reader is looking at, long enough to read as a reach rather than a
+        tick, and still there while About comes up under it.
+      */}
       </div>
 
-      {/*
-        Outside the pin on purpose.
-        
-        Anchored across the hero's bottom edge -- which is exactly where About
-        begins -- so the line is not held with the copy but carried by the page
-        into the next section, arriving as the hold releases and pointing at
-        the heading that rises to meet it. Held inside the pin it could only
-        ever have been a mark on the hero's own screen.
-      */}
-      <HeroScrollCue onActivate={scrollToAbout} />
+      <div ref={cueHoldRef} className={styles.cueHold}>
+        <HeroScrollCue onActivate={scrollToAbout} />
+      </div>
     </section>
   );
 }

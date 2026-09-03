@@ -5,6 +5,7 @@ import { DEFAULT_DRIFT_BOUNDS, createDriftSeeds, type DriftBounds } from '@/lib/
 import { writeDriftInstances } from '@/lib/atmosphere/writeDriftInstances';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { isFrameDrawn } from '@/lib/render/frameGate';
+import { ambientTime } from '@/lib/render/ambientClock';
 
 /**
  * Slow motes drifting through the island's air, on a single instanced draw
@@ -57,11 +58,15 @@ export function AtmosphericDrift({
 
     // The camera orbits through this field, so motes approaching the lens are
     // scaled away rather than rendering as large bright shapes.
+    /*
+     * Ambient time, so the motes hold their positions while the camera is
+     * frozen instead of drifting across a world that is meant to be still.
+     */
     writeDriftInstances(
       mesh,
       seeds,
       count,
-      state.clock.getElapsedTime(),
+      ambientTime(state.clock.getElapsedTime()),
       bounds,
       state.camera?.position
     );

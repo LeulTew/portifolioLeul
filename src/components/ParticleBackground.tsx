@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Theme } from './sections/theme/ThemeContext';
 import { isFrameDrawn } from '@/lib/render/frameGate';
+import { ambientTime } from '@/lib/render/ambientClock';
 
 interface ParticleBackgroundProps {
   theme: Theme;
@@ -84,8 +85,15 @@ const ParticleBackground = ({ theme, count = DEFAULT_COUNT }: ParticleBackground
     const points = particlesRef.current;
     if (!points) return;
 
-    const time = state.clock.elapsedTime;
-    if (!isFrameDrawn(time)) return;
+    const elapsed = state.clock.elapsedTime;
+    if (!isFrameDrawn(elapsed)) return;
+
+    /*
+     * Ambient time, not elapsed time: the sky stops turning while the world is
+     * held still. Across a hold this was the only thing moving, which reads as
+     * the background being rotated rather than as a held beat.
+     */
+    const time = ambientTime(elapsed);
 
     // Slow rotation
     points.rotation.y = time * 0.05;

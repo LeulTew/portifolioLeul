@@ -24,6 +24,12 @@
    * nothing to hold across.
    */
   min-height: calc(var(--hero-screens, 2.35) * 100vh);
+
+  /*
+   * How long the handover mark is. Declared here so the cue rule and the
+   * short-viewport override below read one value rather than two.
+   */
+  --cue-height: clamp(300px, 58vh, 520px);
 }
 
 /*
@@ -319,6 +325,26 @@
  * never runs off the bottom on a short screen.
  */
 /*
+ * The cue's own hold.
+ *
+ * A second pinned layer, because the cue's turn starts where the copy's ends:
+ * it is drawn across the release, so it has to keep its place for longer than
+ * the block it used to ride. One transform, same as the hero's pin.
+ */
+.cueHold {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  pointer-events: none;
+  transform: translate3d(0, var(--cue-pin, 0px), 0);
+  will-change: transform;
+  /* Above About, which rises underneath the mark while it is still pointing. */
+  z-index: 20;
+}
+
+/*
  * Absolute within the hero, not fixed. The html layer sits inside a transformed
  * ancestor, which makes position:fixed resolve against that ancestor anyway --
  * so `fixed` bought nothing and only made the placement hard to reason about.
@@ -327,21 +353,21 @@
   position: absolute;
   left: 15rem;
   /*
-   * Straddling the hero's bottom edge, which is where About begins.
+   * Low on the held screen, and long.
    *
-   * Half the mark hangs into the next section, so the line genuinely bridges
-   * the two rather than stopping at the seam: at the moment the hold releases
-   * this edge is the bottom of the window, and the scroll that follows carries
-   * the whole thing up into About with the heading rising to meet it. It sat
-   * wholly inside the held screen before, which kept it tidy and left it
-   * pointing at nothing.
+   * Long is the point: this is the reach from a hero that has just emptied
+   * itself down to the section arriving underneath, and a 300px tick did not
+   * read as one. The head sits just above the bottom edge so it points at
+   * where About appears, and the line runs up from it far enough to be a
+   * gesture. Nothing above it competes -- the copy has left by the time this
+   * is drawn.
    */
   top: auto;
-  bottom: calc(var(--cue-height, 300px) / -2);
+  bottom: clamp(1.25rem, 4vh, 3rem);
   transform: translateX(-50%);
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
   width: 60px;
-  height: var(--cue-height, 300px);
+  height: var(--cue-height);
   /*
    * Above About, not below it.
    *
@@ -367,9 +393,13 @@
  * screen the cue is the only thing being looked at, so a tail cut off by the
  * window is the whole gesture ending mid-stroke.
  */
+/*
+ * A short viewport cannot give the full reach the room, but it must still read
+ * as a reach: shortened, not reduced to a tick.
+ */
 @media (max-height: 760px) {
-  .scrollCue {
-    --cue-height: 170px;
+  .home.home {
+    --cue-height: clamp(260px, 56vh, 380px);
   }
 }
 

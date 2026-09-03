@@ -108,6 +108,29 @@ export const CUE_LEAD = 0.12;
 export const CUE_DRAW_SCREENS = 0.55;
 
 /**
+ * How far to push the cue down so it keeps its place on screen.
+ *
+ * A longer pin than the hero's own, deliberately. The copy is finished at the
+ * release, but the cue is only then starting to matter -- it is drawn as About
+ * comes up to meet it -- and a mark inviting the reader onward that is carried
+ * off the top of the window at exactly that moment is worse than no mark. So
+ * it holds until it has finished drawing, and leaves after.
+ */
+export function cuePinOffset(
+  sectionTop: number,
+  holdLength: number,
+  viewportHeight: number
+): number {
+  if (!Number.isFinite(sectionTop) || !Number.isFinite(holdLength)) return 0;
+  if (!Number.isFinite(viewportHeight)) return 0;
+
+  const limit = Math.max(holdLength, 0) + Math.max(viewportHeight, 0) * CUE_DRAW_SCREENS;
+  if (limit <= 0) return 0;
+
+  return Math.min(Math.max(-sectionTop, 0), limit);
+}
+
+/**
  * How far through its drawing the cue is.
  *
  * Measured from the raw scrolled distance rather than from hold progress,
