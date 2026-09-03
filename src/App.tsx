@@ -211,7 +211,24 @@ function App() {
 
     const occluded = rangeOf(OPAQUE_SECTION_ID);
     setWorldOcclusion(occluded);
-    setCameraFreezes([rangeOf(HELD_SECTION_ID), occluded]);
+
+    /*
+     * The hero's freeze runs right up to where About's begins, so the two are
+     * contiguous and the camera does not move once between them.
+     *
+     * The hero's own box ends a screen before About starts, and that gap is
+     * precisely where the handover happens: the plate shuts, the cue is drawn,
+     * and About's panel climbs to the top. Freezing only the hero's box left
+     * the camera free for exactly that stretch -- so the one part of the page
+     * whose whole point is that the world waits was the part where it moved.
+     */
+    const held = rangeOf(HELD_SECTION_ID);
+    const heroFreeze =
+      held !== NO_HOLD && occluded !== NO_HOLD && occluded.start > held.start
+        ? { start: held.start, end: occluded.start }
+        : held;
+
+    setCameraFreezes([heroFreeze, occluded]);
 
     const previousPages = scrollPagesRef.current;
 

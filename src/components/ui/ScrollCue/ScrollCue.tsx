@@ -1,4 +1,5 @@
 import styles from './ScrollCue.module.css';
+import { CUE_BASE_HEIGHT, CUE_VIEW_WIDTH } from './cueGeometry';
 
 /**
  * The mark between the hero and About: a bracket that draws itself as the
@@ -31,9 +32,17 @@ const PATH_LENGTH = 100;
  * left of the tangent -- which is the unique arc leaving (34.7, 265.3) at 45
  * degrees and arriving at (52.3, 307.7) pointing straight down.
  */
-const TRACE =
+const CURVE =
   'M 53.2 53.2 A 181.6 181.6 0 0 0 0 181.6 A 118.4 118.4 0 0 0 34.7 265.3 ' +
-  'A 60 60 0 0 1 52.3 307.7 L 52.3 380';
+  'A 60 60 0 0 1 52.3 307.7';
+
+/** Where the straight run ends when nothing is added to it. */
+const BASE_END = 380;
+
+/** The line, with `run` units of extra straight travel before the head. */
+function traceFor(run: number): string {
+  return `${CURVE} L 52.3 ${BASE_END + run}`;
+}
 
 /**
  * Chevron at the end of the line, aligned to the tangent there.
@@ -42,7 +51,10 @@ const TRACE =
  * and its tip sits on the trace's last point. Barbs are 19 long at 34 degrees
  * either side of the run.
  */
-const HEAD = 'M 41.7 364.3 L 52.3 380 L 62.9 364.3';
+function headFor(run: number): string {
+  const end = BASE_END + run;
+  return `M 41.7 ${end - 15.7} L 52.3 ${end} L 62.9 ${end - 15.7}`;
+}
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;
@@ -56,6 +68,14 @@ export interface ScrollCueProps {
    * rather than played at the reader on arrival.
    */
   progress?: number;
+  /**
+   * Extra straight run, in viewBox units, appended before the head.
+   *
+   * The mark spans the gap between the hero and About, and that gap is a
+   * measured number of pixels rather than a shape -- so how long the line runs
+   * is the caller's to decide. Use `cueRunForHeight` to turn a height into it.
+   */
+  run?: number;
   onActivate?: () => void;
   className?: string;
   label?: string;
@@ -63,11 +83,14 @@ export interface ScrollCueProps {
 
 export function ScrollCue({
   progress = 0,
+  run = 0,
   onActivate,
   className,
   label = 'Scroll to the next section',
 }: ScrollCueProps) {
   const drawn = clamp01(progress);
+  const runUnits = Number.isFinite(run) && run > 0 ? run : 0;
+  const trace = traceFor(runUnits);
 
   // The head lands only once the line reaches it.
   const headDrawn = clamp01((drawn - 0.75) / 0.25);
@@ -75,7 +98,7 @@ export function ScrollCue({
   return (
     <svg
       className={[styles.cue, className].filter(Boolean).join(' ')}
-      viewBox="-2 50 67 334"
+      viewBox={`-2 50 ${CUE_VIEW_WIDTH} ${CUE_BASE_HEIGHT + runUnits}`}
       preserveAspectRatio="xMinYMin meet"
       role="button"
       tabIndex={0}
@@ -93,14 +116,14 @@ export function ScrollCue({
     >
       <path
         className={`${styles.stroke} ${styles.trace}`}
-        d={TRACE}
+        d={trace}
         pathLength={PATH_LENGTH}
         strokeDashoffset={PATH_LENGTH * (1 - drawn)}
         data-testid="scroll-cue-trace"
       />
       <path
         className={`${styles.stroke} ${styles.head}`}
-        d={HEAD}
+        d={headFor(runUnits)}
         pathLength={PATH_LENGTH}
         strokeDashoffset={PATH_LENGTH * (1 - headDrawn)}
         data-testid="scroll-cue-head"
@@ -108,7 +131,7 @@ export function ScrollCue({
       {/* Rides the same geometry, so the current runs down the line it drew. */}
       <path
         className={styles.current}
-        d={TRACE}
+        d={trace}
         pathLength={PATH_LENGTH}
         data-testid="scroll-cue-current"
         data-flowing={drawn > 0.99}

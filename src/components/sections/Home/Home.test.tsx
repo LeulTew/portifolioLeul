@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Home } from './Home';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
 import { resetHeroCue } from '@/lib/motion/heroCue';
-import { HERO_SCREENS, HOLD_CLOSE_END } from '@/lib/motion/heroPin';
+import { HERO_SCREENS, HOLD_CLOSE_END, INNER_END } from '@/lib/motion/heroPin';
 
 /**
  * Scrolls the reader `share` of the way into the hero hold.
@@ -20,6 +20,53 @@ vi.mock('@/lib/gateways/animationGateway', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/gateways/animationGateway')>()),
   getPrefersReducedMotion: () => reducedMotion(),
 }));
+
+/**
+ * jsdom has no layout, so the cue's rail measures zero and the mark stays
+ * undrawn. These are the numbers `measure()` reads -- where the plate ends,
+ * where About begins, and where About's heading is pinned -- supplied directly
+ * so the drawing can be exercised.
+ */
+const layOutRail = ({
+  plateBottom = 700,
+  aboutTop = 2350,
+  headingTop = 160,
+} = {}) => {
+  const section = document.getElementById('home');
+  if (!section) throw new Error('the hero section is not in the document');
+
+  document.getElementById('about')?.remove();
+  const about = document.createElement('div');
+  about.id = 'about';
+  const heading = document.createElement('div');
+  heading.setAttribute('data-testid', 'about-held-header');
+  about.appendChild(heading);
+  document.body.appendChild(about);
+
+  const rect = (el: Element, box: { top: number; bottom: number }) => {
+    Object.defineProperty(el, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ ...box, left: 0, right: 0, width: 0, height: box.bottom - box.top, x: 0, y: box.top, toJSON: () => ({}) }),
+    });
+  };
+
+  Object.defineProperty(section, 'offsetTop', { configurable: true, value: 0 });
+  Object.defineProperty(about, 'offsetTop', { configurable: true, value: aboutTop });
+  // The rail reads the heading's resolved `top`, not its rect: inline style is
+  // the only thing jsdom will resolve for it.
+  heading.style.position = 'absolute';
+  heading.style.top = `${headingTop}px`;
+
+  // The plate is measured against the pinned block, so both need a box.
+  const plate = section.querySelector('[data-cue-layer="backdrop"]');
+  const pinned = section.querySelector('[class*="pinned"]');
+  if (pinned) rect(pinned, { top: 0, bottom: window.innerHeight });
+  if (plate) rect(plate, { top: plateBottom - 400, bottom: plateBottom });
+
+  act(() => {
+    window.dispatchEvent(new Event('resize'));
+  });
+};
 
 const scrollIntoHold = (share: number) => {
   const section = document.getElementById('home');
@@ -165,6 +212,8 @@ describe('Home choreography', () => {
     resetScrollProgress();
     resetHeroCue();
     reducedMotion.mockReturnValue(false);
+    // The rail stub is a real node on the body; testing-library does not own it.
+    document.getElementById('about')?.remove();
     (globalThis as unknown as Record<string, unknown>).IntersectionObserver =
       FakeIntersectionObserver;
   });
@@ -212,32 +261,68 @@ describe('Home choreography', () => {
   it('leaves the cue untraced while the hero holds the screen', () => {
     const { getByTestId } = render(<Home />);
     enterHero();
+    layOutRail();
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('draws the cue across the boundary, not inside the hold', () => {
+  it('draws nothing at all until the rail has been measured', () => {
+    // About's offset is a measurement, and it is zero before the first one
+    // lands. That has to read as "not known yet", not as a finished line.
+    const { getByTestId } = render(<Home />);
+    enterHero();
+    scrollIntoHold(1);
+
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+  });
+
+  it('runs the cue from under the plate all the way down to About', () => {
     /*
-     * Reported three times. The cue was traced across a hero that was still
-     * leaving; then carried off the top of the window; then drawn in full
-     * while it was still below the fold, so nothing happened at the seam it
-     * exists to bridge. It now begins as the page comes unstuck and finishes
-     * over the screen that carries it up into About.
+     * Reported four times. Traced across a hero that was still leaving; then
+     * carried off the top of the window; then drawn in full below the fold
+     * where nobody saw it; then held, which caps it at the height of the
+     * window. It is a rail down the page now: as long as the gap it spans,
+     * begun under the plate, and drawn alongside the plate shutting.
      */
     const { getByTestId } = render(<Home />);
     enterHero();
-    const drawn = () => Number(getByTestId('scroll-cue').dataset.progress);
+    const plateBottom = 700;
+    const aboutTop = 2350;
+    layOutRail({ plateBottom, aboutTop });
 
-    scrollIntoHold(HOLD_CLOSE_END * 0.5);
+    const cue = () => getByTestId('scroll-cue');
+    const drawn = () => Number(cue().dataset.progress);
+    const section = document.getElementById('home')!;
+    const vh = window.innerHeight;
+    const hold = vh * (HERO_SCREENS - 1);
+
+    const top = Number.parseFloat(section.style.getPropertyValue('--cue-top'));
+    const height = Number.parseFloat(section.style.getPropertyValue('--cue-height'));
+
+    // Long: more than a window's worth, which is more than any pin could hold.
+    expect(height).toBeGreaterThan(vh);
+    // And it starts below where the plate ended, not up among the copy.
+    expect(top).toBeGreaterThanOrEqual(plateBottom);
+
+    // Nothing at all while the copy is still leaving.
+    scrollIntoHold(INNER_END * 0.5);
+    expect(drawn()).toBe(0);
+    scrollIntoHold(INNER_END);
     expect(drawn()).toBe(0);
 
-    // At the release: started, and no more than started.
-    scrollIntoHold(1);
-    const atRelease = drawn();
-    expect(atRelease).toBeGreaterThan(0);
-    expect(atRelease).toBeLessThan(0.35);
+    // Drawing by the time the plate is halfway shut.
+    scrollIntoHold((INNER_END + HOLD_CLOSE_END) / 2);
+    expect(drawn()).toBeGreaterThan(0);
+    expect(drawn()).toBeLessThan(1);
 
-    // A screen past it, the line is complete and pointing into About.
-    scrollIntoHold(1 + 1 / (HERO_SCREENS - 1));
+    // Head exactly on the bottom edge as the plate finishes shutting.
+    scrollIntoHold(HOLD_CLOSE_END);
+    const head = top + drawn() * height - hold * HOLD_CLOSE_END;
+    // Within a pixel: the reported progress is rounded to three places, which
+    // over a rail this long is worth about one.
+    expect(Math.abs(head - vh)).toBeLessThan(2);
+
+    // Complete by the time About's panel has arrived.
+    scrollIntoHold(aboutTop / hold);
     expect(drawn()).toBe(1);
   });
 

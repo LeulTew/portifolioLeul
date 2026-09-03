@@ -23,13 +23,8 @@
    * losing, and the hero stayed exactly one screen tall with the pin having
    * nothing to hold across.
    */
-  min-height: calc(var(--hero-screens, 2.35) * 100vh);
+  min-height: calc(var(--hero-screens, 2) * 100vh);
 
-  /*
-   * How long the handover mark is. Declared here so the cue rule and the
-   * short-viewport override below read one value rather than two.
-   */
-  --cue-height: clamp(300px, 58vh, 520px);
 }
 
 /*
@@ -325,26 +320,6 @@
  * never runs off the bottom on a short screen.
  */
 /*
- * The cue's own hold.
- *
- * A second pinned layer, because the cue's turn starts where the copy's ends:
- * it is drawn across the release, so it has to keep its place for longer than
- * the block it used to ride. One transform, same as the hero's pin.
- */
-.cueHold {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100vh;
-  pointer-events: none;
-  transform: translate3d(0, var(--cue-pin, 0px), 0);
-  will-change: transform;
-  /* Above About, which rises underneath the mark while it is still pointing. */
-  z-index: 20;
-}
-
-/*
  * Absolute within the hero, not fixed. The html layer sits inside a transformed
  * ancestor, which makes position:fixed resolve against that ancestor anyway --
  * so `fixed` bought nothing and only made the placement hard to reason about.
@@ -353,21 +328,20 @@
   position: absolute;
   left: 15rem;
   /*
-   * Low on the held screen, and long.
+   * Anchored to the page, spanning the gap it bridges.
    *
-   * Long is the point: this is the reach from a hero that has just emptied
-   * itself down to the section arriving underneath, and a 300px tick did not
-   * read as one. The head sits just above the bottom edge so it points at
-   * where About appears, and the line runs up from it far enough to be a
-   * gesture. Nothing above it competes -- the copy has left by the time this
-   * is drawn.
+   * Both numbers are written by Home from layout: the top is where the plate
+   * holding the copy ended, the height is the distance from there to just
+   * above About's heading. Not held -- a held mark can only ever be as long as
+   * the window, and this one is most of a thousand pixels, followed down
+   * rather than looked at.
    */
-  top: auto;
-  bottom: clamp(1.25rem, 4vh, 3rem);
+  top: var(--cue-top, 60vh);
+  bottom: auto;
   transform: translateX(-50%);
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
   width: 60px;
-  height: var(--cue-height);
+  height: var(--cue-height, 300px);
   /*
    * Above About, not below it.
    *
@@ -393,15 +367,6 @@
  * screen the cue is the only thing being looked at, so a tail cut off by the
  * window is the whole gesture ending mid-stroke.
  */
-/*
- * A short viewport cannot give the full reach the room, but it must still read
- * as a reach: shortened, not reduced to a tick.
- */
-@media (max-height: 760px) {
-  .home.home {
-    --cue-height: clamp(260px, 56vh, 380px);
-  }
-}
 
 /*
  * Hero entrance.
@@ -417,6 +382,34 @@
  */
 .reveal {
   opacity: 0;
+}
+
+/*
+ * Promoted before the sequence starts, not on its first frame.
+ *
+ * This is the stutter on first load. Home mounts the instant the loader hands
+ * over, which is also the instant the scene starts rendering at full rate and
+ * the name's two canvases start filling -- and seven layers each asked the
+ * compositor for a new layer on their own first frame, mid-sequence, on a
+ * thread that was already busy. Declaring it up front means the promotion has
+ * happened by the time anything moves.
+ *
+ * Dropped again at `settled`, below: `will-change` left in place holds a
+ * layer per element for the life of the page, which is exactly the kind of
+ * memory this scene cannot spare.
+ */
+.entered .reveal,
+.entered .revealLine,
+.entered .revealPortrait,
+.entered .title {
+  will-change: transform, opacity;
+}
+
+.settled .reveal,
+.settled .revealLine,
+.settled .revealPortrait,
+.settled .title {
+  will-change: auto;
 }
 
 .entered .reveal {
@@ -513,27 +506,68 @@
 .settled .reveal,
 .settled .revealLine,
 .settled .revealPortrait,
-.settled .title,
-.settled .plate {
+.settled .title {
   /* 0 until this layer's beat, then 0 to 1 across its span. */
   --gone: clamp(
     0,
     calc((var(--exit, 0) - var(--exit-at, 0)) / var(--exit-span, 0.34)),
     1
   );
+
+  /*
+   * Smoothstep, so a layer eases out of rest and into gone.
+   *
+   * The raw ramp is linear, and a linear departure of seven layers reads as a
+   * mechanism rather than a movement -- everything starts and stops dead. This
+   * is 3t^2 - 2t^3, which is the cheapest curve with zero slope at both ends,
+   * and it is the difference between the hero being packed away and the hero
+   * being switched off. The eases on the way in are cubic-beziers; this is the
+   * only shape available to a value used in calc, and it is the right one.
+   */
+  --eased: calc(
+    var(--gone) * var(--gone) * (3 - 2 * var(--gone))
+  );
 }
 
-.settled .reveal,
-.settled .revealLine,
+/*
+ * Each layer leaves the way it arrived, reversed.
+ *
+ * They used to share one generic fade-and-rise, which threw away the thing
+ * that made the entrance read as a sequence: the portrait settles, the lines
+ * are uncovered, the name accumulates. A departure that ignores all of that is
+ * seven copies of the same movement at seven different times, which is a
+ * stagger but not a choreography.
+ */
+.settled .reveal {
+  opacity: calc(1 - var(--eased, 0));
+  /* Up and out, against the 22px it rose in on. */
+  transform: translate3d(0, calc(var(--eased, 0) * -1.75rem), 0);
+}
+
+/*
+ * Lines are covered again rather than faded: the clip closes up from the
+ * bottom, which is the wipe that uncovered them running backwards.
+ */
+.settled .revealLine {
+  opacity: calc(1 - var(--eased, 0));
+  transform: translate3d(0, calc(var(--eased, 0) * -1.5rem), 0);
+  clip-path: inset(0 0 calc(var(--eased, 0) * 100%) 0);
+}
+
+/* The portrait draws back down into itself, against the scale it settled from. */
 .settled .revealPortrait {
-  opacity: calc(1 - var(--gone, 0));
-  /* Up and out, the way they came in reversed. */
-  transform: translate3d(0, calc(var(--gone, 0) * -4.5vh), 0);
+  opacity: calc(1 - var(--eased, 0));
+  transform: scale(calc(1 - var(--eased, 0) * 0.14));
 }
 
 .settled .title {
-  opacity: calc(1 - var(--gone, 0));
-  transform: translate3d(0, calc(var(--gone, 0) * -4.5vh), 0);
+  opacity: calc(1 - var(--eased, 0));
+  transform: translate3d(0, calc(var(--eased, 0) * -2rem), 0);
+  /*
+   * The fill drains the way the snow gathered: the name is covered from the
+   * bottom up, so the letters empty rather than dimming.
+   */
+  clip-path: inset(0 0 calc(var(--eased, 0) * 100%) 0);
   /*
    * The title carries a hover transition on opacity and transform. Left in
    * place it would restart on every frame of the scroll and the name would lag
@@ -556,7 +590,12 @@
  */
 .settled .plate {
   animation: none;
-  clip-path: inset(calc(var(--gone, 0) * 50%) 0 calc(var(--gone, 0) * 50%) 0);
+  /*
+   * Its own number, not the layers'. `--shut` does not begin until every layer
+   * inside the plate has gone, so the close is a beat of its own rather than
+   * the tail of theirs.
+   */
+  clip-path: inset(calc(var(--shut, 0) * 50%) 0 calc(var(--shut, 0) * 50%) 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -567,10 +606,10 @@
   .settled .reveal,
   .settled .revealLine,
   .settled .revealPortrait,
-  .settled .title,
-  .settled .plate {
+  .settled .title {
     opacity: 1;
     transform: none;
+    clip-path: none;
   }
 
   .settled .plate {

@@ -143,16 +143,35 @@ describe('About held heading', () => {
     }
   });
 
-  it('lets the arrow finish leading before the heading arrives', () => {
+  it('has the heading up while the arrow is still pointing at it', () => {
     /*
-     * The hero hands over by drawing an arrow downward and the reader follows
-     * it. A heading already in place at the top of that movement cuts the
-     * gesture off exactly as it is being completed.
+     * The composition the whole handover exists to produce: the head of the
+     * line the hero draws comes to rest just above this heading as the panel
+     * reaches the top of the window, and that only exists if the heading is
+     * there while the mark still is.
+     *
+     * This used to assert the opposite -- that the heading waited until the
+     * arrow had finished leading -- which put it at full strength some four
+     * hundred pixels of scroll later, by which point the mark had been carried
+     * off the top and the heading arrived into an empty screen, pointed at by
+     * nothing.
      */
     const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
-    expect(head.start).toBeGreaterThan(0);
-    expect(windowPresence(0, head.start, head.end, head.feather!)).toBe(0);
-    expect(windowPresence(0.02, head.start, head.end, head.feather!)).toBeLessThan(1);
+    expect(head.start).toBe(0);
+
+    // Up, or well on its way, within a fraction of the stretch.
+    expect(windowPresence(0.02, head.start, head.end, head.feather!)).toBeGreaterThan(0);
+    expect(windowPresence(0.05, head.start, head.end, head.feather!)).toBe(1);
+  });
+
+  it('brings the copy in after the heading, not under it', () => {
+    // The reader is handed from the mark to the heading to the copy, in that
+    // order. The first statement used to start before the heading had arrived.
+    const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
+    const one = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
+
+    expect(one.start).toBeGreaterThan(head.start + head.feather!);
+    expect(windowPresence(one.start, head.start, head.end, head.feather!)).toBe(1);
   });
 
   it('lets the heading go only at the very end', () => {
@@ -170,10 +189,15 @@ describe('About sequence pacing', () => {
   const layer = (name: string) =>
     STATEMENT_LAYERS.find((l) => l.name === name)!;
 
-  it('starts the first statement almost as soon as the reader is held', () => {
-    // Scroll spent on an empty held screen reads as the section failing to
-    // begin.
-    expect(layer('one').start).toBeLessThan(0.06);
+  it('starts the first statement as the arrow leaves, not before', () => {
+    /*
+     * Scroll spent on an empty held screen reads as the section failing to
+     * begin, so this stays early -- but not so early that the copy arrives
+     * under a heading that has not landed and a mark still pointing at it. The
+     * reader is handed from the mark to the heading to the copy.
+     */
+    expect(layer('one').start).toBeGreaterThan(layer('head').feather!);
+    expect(layer('one').start).toBeLessThan(0.12);
   });
 
   it('leaves no dead scroll at the end', () => {

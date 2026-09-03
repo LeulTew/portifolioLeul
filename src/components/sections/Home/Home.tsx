@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { KineticRotator } from '../../ui/KineticText';
-import { ScrollCue } from '../../ui/ScrollCue';
+import { ScrollCue, cueRunForHeight } from '../../ui/ScrollCue';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
@@ -10,10 +10,12 @@ import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import {
   HERO_SCREENS,
   cueDraw,
-  cuePinOffset,
+  cueRail,
   holdExit,
   holdProgress,
+  innerExit,
   pinOffset,
+  plateShut,
 } from '@/lib/motion/heroPin';
 import { getHeroCue, setHeroCue, subscribeHeroCue } from '@/lib/motion/heroCue';
 import {
@@ -21,12 +23,20 @@ import {
   SNOW_LEAD,
   cueDelay,
   cueDuration,
-  exitCueAt,
+  innerExitCueAt,
   exitStyle,
   sequenceDuration,
 } from '@/lib/motion/sectionChoreography';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { HeroAperture } from './HeroAperture';
+
+/**
+ * Rendered width of the cue, matching the stylesheet.
+ *
+ * The mark is drawn at a fixed aspect, so its width is what its length is
+ * measured against; stated here because the run has to be computed from both.
+ */
+const CUE_WIDTH_PX = 60;
 
 interface HomeProps {
   onNavigate?: (sectionId: string) => void;
@@ -37,7 +47,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
-  const cueHoldRef = useRef<HTMLDivElement | null>(null);
+
 
   const reducedMotion = getPrefersReducedMotion();
 
@@ -93,24 +103,23 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
        * zero forever -- the affordance vanishing for exactly the readers least
        * able to infer it from the motion that is no longer there.
        */
-      setHeroCue(reducedMotion ? 1 : cueDraw(top, holdLength, window.innerHeight));
-
-      /*
-       * The cue holds its own screen position for longer than the copy does,
-       * so it is still there, pointing, while About rises to meet it.
-       */
-      const cueHold = cueHoldRef.current;
-      if (cueHold) {
-        const cueOffset = `${Math.round(cuePinOffset(top, holdLength, window.innerHeight))}px`;
-        if (cueHold.style.getPropertyValue('--cue-pin') !== cueOffset) {
-          cueHold.style.setProperty('--cue-pin', cueOffset);
-        }
-      }
+      setHeroCue(
+        reducedMotion
+          ? 1
+          : cueDraw(top, holdLength, railRef.current, window.innerHeight)
+      );
 
       if (!content) return;
 
-      const exit = holdExit(progress);
-      const isVisible = exit < 0.995;
+      /*
+       * Two phases, in order: the copy leaves, and then the plate shuts around
+       * where it was. Published separately because they must not overlap --
+       * shutting the plate under copy that is still on it pulls the floor out
+       * from under it.
+       */
+      const inner = innerExit(progress);
+      const shut = plateShut(progress);
+      const isVisible = shut < 0.995;
 
       if (reducedMotion) {
         /*
@@ -121,7 +130,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
          * over everything after it is worse than either -- so it leaves
          * plainly, and without a hold to leave across.
          */
-        const hero = exitStyle(exit, true);
+        const hero = exitStyle(holdExit(progress), true);
         if (content.style.opacity !== String(hero.opacity)) {
           content.style.opacity = String(hero.opacity);
         }
@@ -133,9 +142,13 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
          * scale and a blur on the container -- which empties the hero as a
          * single sheet and re-rasterised the entire subtree every frame.
          */
-        const value = exit.toFixed(4);
+        const value = inner.toFixed(4);
         if (content.style.getPropertyValue('--exit') !== value) {
           content.style.setProperty('--exit', value);
+        }
+        const shutValue = shut.toFixed(4);
+        if (content.style.getPropertyValue('--shut') !== shutValue) {
+          content.style.setProperty('--shut', shutValue);
         }
       }
 
@@ -154,6 +167,142 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
     return () => {
       unsubscribe();
       window.removeEventListener('resize', apply);
+    };
+  }, [sectionElement, reducedMotion]);
+
+  /**
+   * The rail the cue runs along, measured rather than declared.
+   *
+   * Its top is where the plate holding the copy ends and its bottom is just
+   * above where About's heading will sit, so the mark is exactly as long as
+   * the gap it bridges. Both are read from layout, because both move with the
+   * window: a length written into the stylesheet would be wrong at every size
+   * but one.
+   */
+  const [cueRun, setCueRun] = useState(0);
+  const railRef = useRef({ top: 0, height: 0 });
+
+  useEffect(() => {
+    const section = sectionElement;
+    if (!section || typeof window === 'undefined') return;
+
+    /*
+     * Returns false while the numbers are not trustworthy yet.
+     *
+     * About's heading is inside a pinned overlay that lays out after this
+     * effect first runs, so its offset reads as `auto` on the first pass. That
+     * used to fall through to a guess -- a share of the viewport -- and the
+     * guess was never revisited, because nothing afterwards resized: the mark
+     * ended up aimed eighty-five pixels above the words for the life of the
+     * page. Better to have no rail for a few frames than a wrong one for good.
+     */
+    const measure = (): boolean => {
+      const about = document.getElementById('about');
+      const plate = section.querySelector<HTMLElement>('[data-cue-layer="backdrop"]');
+      const pinned = pinRef.current;
+      if (!about || !plate || !pinned) return false;
+
+      /*
+       * Looked up on the document, not inside About.
+       *
+       * The held stretch is pinned through a portal -- the same reason About's
+       * overlay can hold still inside a transformed scrollport -- so the
+       * heading is not a descendant of the section it names. Scoping the query
+       * to About found nothing, so the rail was never measured at all.
+       */
+      const heading = document.querySelector<HTMLElement>(
+        '[data-testid="about-held-header"]'
+      );
+      if (!heading) return false;
+
+      /*
+       * Taken from the heading's resolved `top` rather than from a rect.
+       *
+       * It is pinned, so `top` IS its screen offset for the whole held
+       * stretch -- and unlike a rect, it does not depend on where the scroll
+       * happens to be when this runs.
+       */
+      const headingTop = Number.parseFloat(window.getComputedStyle(heading).top);
+      if (!Number.isFinite(headingTop) || headingTop <= 0) return false;
+
+      /*
+       * Where the held stretch begins, not where About's section does.
+       *
+       * About's heading lives in an overlay that is only drawn once the
+       * stretch covers the window, and the stretch starts a quarter of a
+       * screen inside the section. Aiming the mark at the section's own top
+       * put its head off the window before the heading had appeared.
+       */
+      const spacer = about.querySelector<HTMLElement>('[data-testid="about-sequence"]');
+      const heldTop =
+        (spacer ? spacer.offsetTop + about.offsetTop : about.offsetTop) - section.offsetTop;
+
+      /*
+       * Measured against the pinned block, not via offsetTop.
+       *
+       * The plate's offsetParent is the copy it backs, so its offsetTop is an
+       * offset within that -- it read -48 where the plate's bottom is actually
+       * most of a screen down. Taking both rects and subtracting cancels the
+       * pin as well, since the plate rides it: the answer is the same whether
+       * the hold has pushed the block down or not.
+       */
+      const plateBottom =
+        plate.getBoundingClientRect().bottom - pinned.getBoundingClientRect().top;
+
+      const holdLength = reducedMotion ? 0 : window.innerHeight * (HERO_SCREENS - 1);
+      const rail = cueRail(
+        plateBottom,
+        heldTop,
+        headingTop,
+        holdLength,
+        window.innerHeight
+      );
+      if (rail.height <= 0) return false;
+
+      railRef.current = rail;
+      section.style.setProperty('--cue-top', `${Math.round(rail.top)}px`);
+      section.style.setProperty('--cue-height', `${Math.round(rail.height)}px`);
+      setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
+      return true;
+    };
+
+    /*
+     * Retried until the overlay has laid out, then left alone. Bounded, so a
+     * page whose heading never appears stops asking rather than polling for
+     * the life of the session.
+     */
+    let retry: ReturnType<typeof setInterval> | undefined;
+    let giveUp: ReturnType<typeof setTimeout> | undefined;
+
+    if (!measure()) {
+      retry = setInterval(() => {
+        if (measure() && retry) {
+          clearInterval(retry);
+          retry = undefined;
+        }
+      }, 120);
+      giveUp = setTimeout(() => {
+        if (retry) clearInterval(retry);
+        retry = undefined;
+      }, 4000);
+    }
+
+    window.addEventListener('resize', measure);
+
+    /*
+     * A resize listener is not enough on its own: the heading's offset is a
+     * clamp against viewport height, and the boxes can settle without Home
+     * hearing a resize event. An observer on them cannot miss it.
+     */
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => measure());
+    observer?.observe(section);
+
+    return () => {
+      if (retry) clearInterval(retry);
+      if (giveUp) clearTimeout(giveUp);
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
     };
   }, [sectionElement, reducedMotion]);
 
@@ -186,7 +335,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
    */
   const at = (id: string) => ({
     ['--cue-at' as string]: `${cueDelay(HERO_SEQUENCE, id)}s`,
-    ['--exit-at' as string]: `${exitCueAt(HERO_SEQUENCE, id)}`,
+    ['--exit-at' as string]: `${innerExitCueAt(HERO_SEQUENCE, id)}`,
   });
 
   const scrollToAbout = () => {
@@ -341,22 +490,19 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
       {/* Traced by the reader's own scroll toward About, rather than played at
           them on arrival: the mark is drawn by the movement it is inviting. */}
       {/*
-        On its own hold, and long.
+        A rail down the page, not a mark on a screen.
 
-        Two wrong turns before this. Anchored across the section's bottom edge
-        it was drawn a screen and a third below the fold, where nobody could
-        see it, and read as simply missing. Held with the copy instead, it was
-        carried off the top of the window at the release -- which is the exact
-        moment it is drawn and the exact moment it has something to point at.
-        So it holds on its own, longer than the copy does: on the screen the
-        reader is looking at, long enough to read as a reach rather than a
-        tick, and still there while About comes up under it.
+        Three wrong turns before this, all of them variations on holding it.
+        Anything held can only be as long as the window, so it was either a
+        short tick or a line drawn below the fold where nobody saw it. This
+        starts just under where the plate ended and runs all the way down to
+        About's heading -- most of a thousand pixels at a laptop window -- and
+        the reader travels along it rather than looking at it. It is finished,
+        pointing, exactly as About's panel reaches the top.
       */}
       </div>
 
-      <div ref={cueHoldRef} className={styles.cueHold}>
-        <HeroScrollCue onActivate={scrollToAbout} />
-      </div>
+      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} />
     </section>
   );
 }
@@ -367,7 +513,7 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
  * the reader's own movement -- so it does need a render per step. Isolating it
  * here keeps that cost to three SVG paths instead of the entire hero.
  */
-function HeroScrollCue({ onActivate }: { onActivate: () => void }) {
+function HeroScrollCue({ onActivate, run }: { onActivate: () => void; run: number }) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -396,6 +542,7 @@ function HeroScrollCue({ onActivate }: { onActivate: () => void }) {
     <ScrollCue
       className={styles.scrollCue}
       progress={progress}
+      run={run}
       onActivate={onActivate}
       label="Scroll to about section"
     />

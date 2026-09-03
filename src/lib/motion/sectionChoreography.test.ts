@@ -7,11 +7,8 @@ import {
   cueDuration,
   exitAmount,
   exitStyle,
-  exitCueAt,
-  cueTrailProgress,
-  EXIT_SPAN,
-  EXIT_WINDOW,
-  CUE_DRAW_SPAN,
+  INNER_EXIT_SPAN,
+  innerExitCueAt,
   sequenceDuration,
   type SectionCue,
 } from './sectionChoreography';
@@ -220,94 +217,68 @@ describe('thresholds', () => {
   });
 });
 
-describe('exitCueAt', () => {
+describe('innerExitCueAt', () => {
   it('sends the last thing to arrive out first', () => {
     /*
      * The reverse of arrival, which is what makes the hero read as being
      * packed away rather than switched off. A single block fade -- which is
      * what this replaced -- reads as neither.
      */
-    const affordance = exitCueAt(HERO_SEQUENCE, 'affordance');
-    const actions = exitCueAt(HERO_SEQUENCE, 'actions');
-    const title = exitCueAt(HERO_SEQUENCE, 'title');
-    const backdrop = exitCueAt(HERO_SEQUENCE, 'backdrop');
+    const actions = innerExitCueAt(HERO_SEQUENCE, 'actions');
+    const description = innerExitCueAt(HERO_SEQUENCE, 'description');
+    const title = innerExitCueAt(HERO_SEQUENCE, 'title');
+    const portrait = innerExitCueAt(HERO_SEQUENCE, 'portrait');
 
-    expect(affordance).toBeLessThan(actions);
-    expect(actions).toBeLessThan(title);
-    expect(title).toBeLessThan(backdrop);
+    expect(actions).toBeLessThan(description);
+    expect(description).toBeLessThan(title);
+    expect(title).toBeLessThan(portrait);
   });
 
-  it('leaves the plate until last, so the copy has ground to leave from', () => {
-    const beats = HERO_SEQUENCE.map((cue) => exitCueAt(HERO_SEQUENCE, cue.id));
-    expect(exitCueAt(HERO_SEQUENCE, 'backdrop')).toBe(Math.max(...beats));
+  it('leaves both the plate and the cue out of the copy stagger', () => {
+    /*
+     * Neither belongs in it. The plate is the ground the copy stood on and
+     * shuts on a beat of its own afterwards; the cue is not inside the block
+     * at all. Leaving their slots in the stagger left the copy finished two
+     * thirds of the way through its own window, with nothing happening for the
+     * rest of it -- a stall the reader reads as the page having got stuck.
+     */
+    expect(innerExitCueAt(HERO_SEQUENCE, 'backdrop')).toBe(0);
+    expect(innerExitCueAt(HERO_SEQUENCE, 'affordance')).toBe(0);
   });
 
-  it('gives the last layer room to finish inside the window', () => {
-    // Its span has to fit, or the plate is still shutting after the hero has
-    // gone -- and the arrow, which waits on the window, starts over a hero
-    // that has not finished leaving.
-    const latest = exitCueAt(HERO_SEQUENCE, 'backdrop');
-    expect(latest + EXIT_SPAN).toBeCloseTo(EXIT_WINDOW, 6);
+  it('fills the window exactly, so the plate follows without a gap', () => {
+    const inner = HERO_SEQUENCE.filter(
+      (cue) => cue.id !== 'backdrop' && cue.id !== 'affordance'
+    );
+    const beats = inner.map((cue) => innerExitCueAt(HERO_SEQUENCE, cue.id));
+
+    expect(Math.min(...beats)).toBe(0);
+    expect(Math.max(...beats) + INNER_EXIT_SPAN).toBeCloseTo(1, 6);
   });
 
-  it('mirrors the arrival order exactly', () => {
-    const arrival = [...HERO_SEQUENCE].sort((a, b) => a.at - b.at).map((c) => c.id);
-    const departure = [...HERO_SEQUENCE]
-      .sort((a, b) => exitCueAt(HERO_SEQUENCE, a.id) - exitCueAt(HERO_SEQUENCE, b.id))
+  it('mirrors the arrival order of the copy exactly', () => {
+    const inner = [...HERO_SEQUENCE]
+      .filter((cue) => cue.id !== 'backdrop' && cue.id !== 'affordance')
+      .sort((a, b) => a.at - b.at)
       .map((c) => c.id);
 
-    expect(departure).toEqual([...arrival].reverse());
+    const departure = [...inner].sort(
+      (a, b) => innerExitCueAt(HERO_SEQUENCE, a) - innerExitCueAt(HERO_SEQUENCE, b)
+    );
+
+    expect(departure).toEqual([...inner].reverse());
+  });
+
+  it('gives every layer of the copy its own turn', () => {
+    const inner = HERO_SEQUENCE.filter(
+      (cue) => cue.id !== 'backdrop' && cue.id !== 'affordance'
+    );
+    const beats = inner.map((cue) => innerExitCueAt(HERO_SEQUENCE, cue.id));
+    expect(new Set(beats).size).toBe(inner.length);
   });
 
   it('is inert for a layer that is not in the sequence', () => {
-    expect(exitCueAt(HERO_SEQUENCE, 'nothing-by-that-name')).toBe(0);
-    expect(exitCueAt([], 'anything')).toBe(0);
-  });
-});
-
-describe('the hero leaves while it is still on screen', () => {
-  it('has everything gone by the halfway point of the exit', () => {
-    /*
-     * Reported: things were disappearing after they had already scrolled up
-     * past the top edge, which is not a departure. The whole sequence used to
-     * run to the end of the exit, so the name only began fading once it was
-     * half gone. It now finishes inside the window, while the hero is still
-     * being looked at.
-     */
-    const last = Math.max(
-      ...HERO_SEQUENCE.map((cue) => exitCueAt(HERO_SEQUENCE, cue.id))
-    );
-    expect(last + EXIT_SPAN).toBeLessThanOrEqual(EXIT_WINDOW + 1e-9);
-    expect(EXIT_WINDOW).toBeLessThanOrEqual(0.5);
-  });
-
-  it('still gives every layer its own turn inside that window', () => {
-    const beats = HERO_SEQUENCE.map((cue) => exitCueAt(HERO_SEQUENCE, cue.id));
-    expect(new Set(beats).size).toBe(HERO_SEQUENCE.length);
-  });
-});
-
-describe('cueTrailProgress', () => {
-  it('draws nothing at all until the hero has closed', () => {
-    // The arrow is the handover; it has nothing to hand over from while the
-    // copy is still leaving and the plate is still shutting.
-    expect(cueTrailProgress(0)).toBe(0);
-    expect(cueTrailProgress(0.25)).toBe(0);
-    expect(cueTrailProgress(EXIT_WINDOW)).toBe(0);
-  });
-
-  it('traces across the stretch after the close', () => {
-    expect(cueTrailProgress(EXIT_WINDOW + CUE_DRAW_SPAN / 2)).toBeCloseTo(0.5, 6);
-    expect(cueTrailProgress(EXIT_WINDOW + CUE_DRAW_SPAN)).toBe(1);
-    expect(cueTrailProgress(1)).toBe(1);
-  });
-
-  it('never runs backwards', () => {
-    let previous = -1;
-    for (let i = 0; i <= 20; i += 1) {
-      const drawn = cueTrailProgress(i / 20);
-      expect(drawn).toBeGreaterThanOrEqual(previous);
-      previous = drawn;
-    }
+    expect(innerExitCueAt(HERO_SEQUENCE, 'nothing-by-that-name')).toBe(0);
+    expect(innerExitCueAt([], 'anything')).toBe(0);
   });
 });

@@ -3,10 +3,13 @@ import {
   HERO_HOLD_SCREENS,
   HERO_SCREENS,
   HOLD_CLOSE_END,
-  CUE_DRAW_SCREENS,
-  CUE_LEAD,
+  CUE_START_GAP,
+  CUE_TIP_GAP,
+  INNER_END,
+  cueRail,
+  innerExit,
+  plateShut,
   cueDraw,
-  cuePinOffset,
   holdExit,
   holdProgress,
   pinOffset,
@@ -94,99 +97,169 @@ describe('holdExit', () => {
   });
 });
 
-describe('cuePinOffset', () => {
-  const H = 1000;
-  const hold = H * HERO_HOLD_SCREENS;
-
-  it('holds the cue in step with the scroll, like the hero', () => {
-    expect(cuePinOffset(0, hold, H)).toBe(0);
-    expect(cuePinOffset(-300, hold, H)).toBe(300);
-    expect(cuePinOffset(-hold, hold, H)).toBe(hold);
-  });
-
-  it('keeps holding after the hero has let go', () => {
+describe('the two beats of the exit', () => {
+  it('empties the hero of its copy before the plate is touched', () => {
     /*
-     * The whole reason it is a separate pin. The copy is finished at the
-     * release; the cue is only then being drawn, with About rising to meet it.
-     * Riding the hero's pin carried it off the top of the window at exactly
-     * that moment.
+     * Reported. They used to overlap -- the plate began shutting while the
+     * portrait was still on its way out -- which reads as the floor being
+     * pulled from under something that has not left yet. The reader is being
+     * held still precisely so there is time to do one and then the other.
      */
-    const past = hold + H * 0.3;
-    expect(cuePinOffset(-past, hold, H)).toBe(past);
-    expect(cuePinOffset(-past, hold, H)).toBeGreaterThan(hold);
+    expect(innerExit(INNER_END)).toBe(1);
+    expect(plateShut(INNER_END)).toBe(0);
   });
 
-  it('lets go once the mark has finished drawing', () => {
-    const limit = hold + H * CUE_DRAW_SCREENS;
-    expect(cuePinOffset(-limit, hold, H)).toBeCloseTo(limit, 6);
-    expect(cuePinOffset(-(limit + 2000), hold, H)).toBeCloseTo(limit, 6);
+  it('finishes the copy at exactly the moment the plate starts', () => {
+    // No gap either: a pause between the two reads as a stall, not a beat.
+    const justBefore = INNER_END - 1e-6;
+    expect(innerExit(justBefore)).toBeLessThan(1);
+    expect(plateShut(justBefore)).toBe(0);
   });
 
-  it('outlasts the hero pin by exactly the cue own draw', () => {
-    const heroLimit = pinOffset(-99999, hold);
-    const cueLimit = cuePinOffset(-99999, hold, H);
-    expect(cueLimit - heroLimit).toBeCloseTo(H * CUE_DRAW_SCREENS, 6);
+  it('shuts the plate across the rest of the close, and no further', () => {
+    expect(plateShut(HOLD_CLOSE_END)).toBe(1);
+    expect(plateShut(1)).toBe(1);
+    expect(plateShut((INNER_END + HOLD_CLOSE_END) / 2)).toBeCloseTo(0.5, 6);
   });
 
-  it('holds nothing rather than dividing by a hold that does not exist', () => {
-    expect(cuePinOffset(-500, 0, 0)).toBe(0);
-    expect(cuePinOffset(Number.NaN, hold, H)).toBe(0);
-    expect(cuePinOffset(-500, hold, Number.NaN)).toBe(0);
+  it('neither beat runs backwards', () => {
+    let inner = -1;
+    let shut = -1;
+    for (let i = 0; i <= 40; i += 1) {
+      const p = i / 40;
+      expect(innerExit(p)).toBeGreaterThanOrEqual(inner);
+      expect(plateShut(p)).toBeGreaterThanOrEqual(shut);
+      inner = innerExit(p);
+      shut = plateShut(p);
+    }
+  });
+
+  it('clamps rather than inverting on out-of-range progress', () => {
+    expect(innerExit(-1)).toBe(0);
+    expect(innerExit(2)).toBe(1);
+    expect(plateShut(-1)).toBe(0);
+    expect(plateShut(Number.NaN)).toBe(0);
+  });
+});
+
+describe('cueRail', () => {
+  const H = 1000;
+  const HOLD = H * HERO_HOLD_SCREENS;
+  const PLATE_BOTTOM = 700;
+  const HELD_TOP = H * HERO_SCREENS + 250;
+  const HEADING = 160;
+  const rail = cueRail(PLATE_BOTTOM, HELD_TOP, HEADING, HOLD, H);
+
+  it('starts just under the plate, as the reader sees it, not as the page holds it', () => {
+    /*
+     * Reported: the line began drawing from off the top of the window. The
+     * plate is pinned, so its screen offset is the same for the whole hold --
+     * but drawing only starts once the copy has gone, by which time the reader
+     * has scrolled that far. Anchoring at the screen offset alone put the
+     * start of the line a whole departure's worth of scroll too high.
+     */
+    const drawStarts = HOLD * INNER_END;
+    expect(rail.top).toBe(drawStarts + PLATE_BOTTOM + CUE_START_GAP);
+
+    // On screen at that moment, it is exactly under the plate's bottom edge.
+    expect(rail.top - drawStarts).toBe(PLATE_BOTTOM + CUE_START_GAP);
+  });
+
+  it('runs down to About, so it is as long as the gap it spans', () => {
+    /*
+     * About a screen and a bit: it reaches from under the plate to the heading
+     * below and no further. Both ends are fixed by what they point at, so the
+     * only way to shorten it is to shorten the hold it starts from -- which is
+     * why the hold came down from 1.35 to 0.8 at the same time.
+     *
+     * The length is a consequence, not a setting -- which is the point. It is
+     * exactly the distance between the plate's bottom edge and the words the
+     * head comes to rest above.
+     */
+    expect(rail.height).toBeGreaterThan(H * 0.7);
+    expect(rail.height).toBeLessThan(H * 1.2);
+    expect(rail.top + rail.height).toBe(HELD_TOP + HEADING - CUE_TIP_GAP);
+  });
+
+  it('rests its head just above the heading as the held stretch takes over', () => {
+    const headOnScreen = rail.top + rail.height - HELD_TOP;
+
+    expect(headOnScreen).toBe(HEADING - CUE_TIP_GAP);
+    expect(headOnScreen).toBeGreaterThan(0);
+  });
+
+  it('falls back to a sane aim before the heading has been measured', () => {
+    const guessed = cueRail(PLATE_BOTTOM, HELD_TOP, 0, HOLD, H);
+    expect(guessed.height).toBeGreaterThan(H * 0.5);
+    expect(guessed.top).toBe(rail.top);
+  });
+
+  it('collapses rather than inverting when there is no gap to span', () => {
+    expect(cueRail(3000, 1000, HEADING, HOLD, H)).toEqual({ top: 0, height: 0 });
+    expect(cueRail(Number.NaN, HELD_TOP, HEADING, HOLD, H)).toEqual({ top: 0, height: 0 });
+    expect(cueRail(PLATE_BOTTOM, HELD_TOP, HEADING, HOLD, 0)).toEqual({ top: 0, height: 0 });
+    expect(cueRail(PLATE_BOTTOM, HELD_TOP, HEADING, Number.NaN, H)).toEqual({ top: 0, height: 0 });
   });
 });
 
 describe('cueDraw', () => {
-  /*
-   * A thousand-pixel window, so the hold is 1350px and the numbers below are
-   * readable: the cue starts at 1188px scrolled and is finished at 1900px --
-   * 550px PAST the release, which is the point of it.
-   */
   const H = 1000;
   const hold = H * HERO_HOLD_SCREENS;
-  const at = (scrolled: number) => cueDraw(-scrolled, hold, H);
+  const ABOUT_TOP = H * HERO_SCREENS;
+  const rail = cueRail(700, ABOUT_TOP + 250, 160, hold, H);
+  const at = (scrolled: number) => cueDraw(-scrolled, hold, rail, H);
 
-  it('draws nothing for most of the hold', () => {
-    // The copy is leaving and the plate is shutting; a line inviting the
-    // reader onward while that happens competes with it.
+  /** Where the drawn head sits in the window, for a given scroll. */
+  const headOnScreen = (scrolled: number) =>
+    rail.top + at(scrolled) * rail.height - scrolled;
+
+  it('draws nothing while the copy is still leaving', () => {
+    // A line inviting the reader onward competes with what it leads away from.
     expect(at(0)).toBe(0);
-    expect(at(hold * 0.5)).toBe(0);
-    expect(at(hold * (1 - CUE_LEAD))).toBe(0);
+    expect(at(hold * INNER_END * 0.5)).toBe(0);
+    expect(at(hold * INNER_END)).toBe(0);
   });
 
-  it('has started, but only just, by the time the page comes unstuck', () => {
+  it('puts the head on the bottom edge exactly as the plate finishes', () => {
     /*
-     * The requirement, exactly: it begins animating as the page is about to
-     * start scrolling again -- not completed while it was still below the
-     * window, which is what tying it to the hold alone did.
+     * The requirement, stated precisely: the hero closes and the line has
+     * already run off the bottom of the screen ahead of the reader.
      */
-    const atRelease = at(hold);
-    expect(atRelease).toBeGreaterThan(0);
-    expect(atRelease).toBeLessThan(0.35);
+    expect(headOnScreen(hold * HOLD_CLOSE_END)).toBeCloseTo(H, 0);
   });
 
-  it('finishes over the screen after the hold, not inside it', () => {
-    // This is what makes it a line reaching into the next section: most of
-    // the stroke is spent on scroll that is moving About up to meet it.
-    expect(at(hold + H * CUE_DRAW_SCREENS)).toBe(1);
-    expect(at(hold + H * CUE_DRAW_SCREENS * 0.5)).toBeLessThan(1);
+  it('draws alongside the plate shutting, not before or after it', () => {
+    const mid = hold * ((INNER_END + HOLD_CLOSE_END) / 2);
+    expect(at(mid)).toBeGreaterThan(0);
+    expect(at(mid)).toBeLessThan(at(hold * HOLD_CLOSE_END));
   });
 
-  it('stays drawn once it is done', () => {
-    expect(at(hold + H * 3)).toBe(1);
+  it('keeps the head on the bottom edge as the reader travels', () => {
+    // Which means they are always drawing the next stretch of it.
+    for (const scrolled of [hold * 0.8, hold, hold * 1.15]) {
+      if (at(scrolled) >= 1) continue;
+      expect(headOnScreen(scrolled)).toBeCloseTo(H, 0);
+    }
+  });
+
+  it('is complete before About has finished arriving, then holds', () => {
+    expect(at(ABOUT_TOP)).toBe(1);
+    expect(at(ABOUT_TOP + H * 2)).toBe(1);
   });
 
   it('never runs backwards', () => {
     let previous = -1;
-    for (let i = 0; i <= 40; i += 1) {
-      const drawn = at((i / 40) * (hold + H));
+    for (let i = 0; i <= 60; i += 1) {
+      const drawn = at((i / 60) * ABOUT_TOP);
       expect(drawn).toBeGreaterThanOrEqual(previous);
       previous = drawn;
     }
   });
 
-  it('draws nothing rather than dividing by a hold that does not exist', () => {
-    expect(cueDraw(-500, 0, H)).toBe(0);
-    expect(cueDraw(-500, hold, 0)).toBe(0);
-    expect(cueDraw(Number.NaN, hold, H)).toBe(0);
+  it('draws nothing rather than dividing by a span that does not exist', () => {
+    expect(cueDraw(-500, 0, rail, H)).toBe(0);
+    expect(cueDraw(-500, hold, { top: 0, height: 0 }, H)).toBe(0);
+    expect(cueDraw(Number.NaN, hold, rail, H)).toBe(0);
+    expect(cueDraw(-500, hold, rail, 0)).toBe(0);
   });
 });

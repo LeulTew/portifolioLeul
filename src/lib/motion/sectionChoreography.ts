@@ -103,74 +103,48 @@ export function exitAmount(coverage: number, threshold: number = EXIT_THRESHOLD)
   return 1 - clamp01(coverage / threshold);
 }
 
-/**
- * How much of the exit the hero has to be completely gone by.
- *
- * A half, so everything leaves while the hero is still on screen and being
- * looked at. The whole sequence used to run to the end of the exit, which
- * meant the name only began fading once it was already halfway up past the
- * top edge -- things vanishing after they have left is not a departure, it is
- * bookkeeping.
- */
-export const EXIT_WINDOW = 0.5;
 
 /**
- * How much of the exit a single layer's departure occupies.
+ * Layers that are not part of the block that leaves.
  *
- * Narrow, because seven of them have to fit inside the window above and still
- * read as individual movements rather than one blur.
+ * The plate is the ground the copy stood on and shuts on a beat of its own
+ * afterwards; the cue is not inside the block at all. Neither belongs in the
+ * stagger, and leaving their slots in it left the copy finished two thirds of
+ * the way through its own window with nothing happening for the rest.
  */
-export const EXIT_SPAN = 0.16;
+const NOT_INNER = new Set(['backdrop', 'affordance']);
+
+/** One layer's departure, as a share of the copy's window. Mirrors the CSS. */
+export const INNER_EXIT_SPAN = 0.34;
 
 /**
- * Where the scroll cue is drawn, after the hero has finished leaving.
- *
- * The arrow is the handover, so it has nothing to say until there is something
- * to hand over from. It starts once the plate has shut and draws over this
- * much of what is left.
- */
-export const CUE_DRAW_SPAN = 0.34;
-
-/**
- * How far through its drawing the scroll cue is.
- *
- * Zero for the whole of the hero's exit, then traced across the stretch after
- * it -- so the line is drawn by the movement it is inviting, and only once the
- * thing it is leading away from has closed.
- */
-export function cueTrailProgress(exit: number): number {
-  return clamp01((clamp01(exit) - EXIT_WINDOW) / CUE_DRAW_SPAN);
-}
-
-/**
- * Where a layer starts leaving, in exit progress.
+ * Where a layer starts leaving, as a share of the copy's window.
  *
  * The reverse of arrival: the last thing to appear is the first to go, so the
  * hero empties in the opposite order to the one it filled in. That is what
- * makes it read as being packed away rather than as being switched off -- and
- * a single block fade, which is what this replaced, reads as neither.
+ * makes it read as being packed away rather than switched off -- and a single
+ * block fade, which is what this replaced, reads as neither.
  *
- * The scroll cue keeps its slot in the ordering even though it is not inside
- * the block that leaves. It arrived last, so it holds the first departure
- * slot, and nothing actually goes for the first tenth of the exit -- a beat of
- * stillness before the hero starts emptying, which the sequence is better for.
+ * The beats fill the window exactly: the last layer's departure ends as the
+ * window does, so the plate's own beat begins the instant the copy is gone.
  */
-export function exitCueAt(
+export function innerExitCueAt(
   sequence: readonly SectionCue[],
   id: string,
-  span: number = EXIT_SPAN
+  span: number = INNER_EXIT_SPAN
 ): number {
-  if (sequence.length <= 1) return 0;
+  const inner = [...sequence]
+    .filter((cue) => !NOT_INNER.has(cue.id))
+    .sort((a, b) => a.at - b.at);
 
-  const arrival = [...sequence].sort((a, b) => a.at - b.at);
-  const index = arrival.findIndex((cue) => cue.id === id);
+  if (inner.length <= 1) return 0;
+
+  const index = inner.findIndex((cue) => cue.id === id);
   if (index < 0) return 0;
 
-  const reversed = arrival.length - 1 - index;
-  // Everything has to be gone by the end of the window, so the last layer's
-  // beat is the window less its own span.
-  const room = Math.max(EXIT_WINDOW - clamp01(span), 0);
-  return (reversed / (arrival.length - 1)) * room;
+  const reversed = inner.length - 1 - index;
+  const room = Math.max(1 - clamp01(span), 0);
+  return (reversed / (inner.length - 1)) * room;
 }
 
 export interface ExitStyle {
