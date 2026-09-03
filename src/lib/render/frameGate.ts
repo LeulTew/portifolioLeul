@@ -1,4 +1,4 @@
-import { getCameraHold } from '@/lib/camera/cameraHold';
+import { getWorldOcclusion } from '@/lib/camera/cameraHold';
 import { isWithinHold } from '@/lib/camera/holdRange';
 import { getScrollProgress } from '@/lib/scroll/scrollProgress';
 
@@ -59,7 +59,7 @@ export function setFrameBudget(secondsBetweenDraws: number): void {
 
 /** True while an opaque section covers the world completely. */
 export function isWorldOccluded(): boolean {
-  return isWithinHold(getScrollProgress(), getCameraHold());
+  return isWithinHold(getScrollProgress(), getWorldOcclusion());
 }
 
 /**

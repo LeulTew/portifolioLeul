@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { isFrameDrawn, isWorldOccluded, resetFrameGate, setFrameBudget } from './frameGate';
-import { setCameraHold, resetCameraHold } from '@/lib/camera/cameraHold';
+import { setWorldOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
 
 describe('frameGate', () => {
@@ -87,7 +87,7 @@ describe('frameGate', () => {
 
   describe('behind an opaque section', () => {
     it('reports the world occluded only inside the hold', () => {
-      setCameraHold({ start: 0.2, end: 0.5 });
+      setWorldOcclusion({ start: 0.2, end: 0.5 });
 
       setScrollProgress(0.1);
       expect(isWorldOccluded()).toBe(false);
@@ -101,7 +101,7 @@ describe('frameGate', () => {
 
     it('skips the frame outright, whatever the budget allows', () => {
       setFrameBudget(0);
-      setCameraHold({ start: 0.2, end: 0.5 });
+      setWorldOcclusion({ start: 0.2, end: 0.5 });
       setScrollProgress(0.35);
 
       expect(isFrameDrawn(1)).toBe(false);
@@ -109,7 +109,7 @@ describe('frameGate', () => {
     });
 
     it('resumes drawing immediately on the far side of the hold', () => {
-      setCameraHold({ start: 0.2, end: 0.5 });
+      setWorldOcclusion({ start: 0.2, end: 0.5 });
 
       setScrollProgress(0.35);
       expect(isFrameDrawn(1)).toBe(false);
@@ -122,7 +122,7 @@ describe('frameGate', () => {
       // A skipped frame must not count as a draw, or leaving the hold would
       // wait out an interval that was never spent on anything.
       setFrameBudget(1 / 30);
-      setCameraHold({ start: 0.2, end: 0.5 });
+      setWorldOcclusion({ start: 0.2, end: 0.5 });
 
       setScrollProgress(0.35);
       expect(isFrameDrawn(5)).toBe(false);

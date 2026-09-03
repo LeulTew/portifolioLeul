@@ -13,18 +13,60 @@
  */
 .home.home {
   z-index: 6;
+
+  /*
+   * The hold's length, and it has to be stated at this specificity.
+   *
+   * `.main > *` in App.module.css puts min-height: 100vh on every section,
+   * which outranks a single class -- the spacer carries the same workaround
+   * for the same reason. Declared on the plain `.home` below it was silently
+   * losing, and the hero stayed exactly one screen tall with the pin having
+   * nothing to hold across.
+   */
+  min-height: calc(var(--hero-screens, 2.35) * 100vh);
 }
 
+/*
+ * The hero is taller than the window it shows in.
+ *
+ * The extra height is the hold: scroll spent on the handover rather than on
+ * moving the page. `--hero-screens` is written by Home from HERO_SCREENS, so
+ * the length of the hold lives in one place and the stylesheet does not need
+ * to know what it is.
+ */
 .home {
   position: relative;
-  min-height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+  margin-bottom: 0;
+}
+
+/*
+ * Everything the hero shows, held at the first screen of the section.
+ *
+ * Pushed down by exactly what has been scrolled, which cancels out and reads
+ * as fixed -- `position: sticky` is unavailable here, because the page scrolls
+ * inside a transformed element and sticky has no scrollport to stick to.
+ *
+ * One transform on one wrapper, so the whole hero pins as a single composited
+ * layer. The aperture, the copy and the cue all ride it, which is what keeps
+ * them from drifting against each other while it holds.
+ */
+.pinned {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 10rem max(2rem, 5vw) 4rem;
+  box-sizing: border-box;
   overflow: visible;
   pointer-events: none;
-  margin-bottom: 0;
+  transform: translate3d(0, var(--pin, 0px), 0);
+  will-change: transform;
 }
 
 /*
@@ -214,10 +256,14 @@
   .title {
     font-size: 2.5rem;
   }
-  .home {
+  /*
+   * The padding belongs to the held block, not to the section: the section is
+   * the length of the hold, and padding it would push the block off the first
+   * screen and stop the pin engaging at the top of the page.
+   */
+  .pinned {
     padding-top: 6rem;
     padding-bottom: 2rem;
-    min-height: 100vh;
   }
   .header {
     margin-bottom: 0.5rem;
@@ -241,9 +287,8 @@
   .title {
     font-size: 4.5rem;
   }
-  .home {
+  .pinned {
     padding-top: 8rem;
-    min-height: 100vh;
   }
   .description {
     font-size: 1rem;
@@ -282,17 +327,21 @@
   position: absolute;
   left: 15rem;
   /*
-   * Below the copy and running past the hero's own edge, so the mark spans the
-   * gap between the two sections instead of floating beside the text. About is
-   * opaque and paints over the tail, which is what gives the line something to
-   * arrive at.
+   * Straddling the hero's bottom edge, which is where About begins.
+   *
+   * Half the mark hangs into the next section, so the line genuinely bridges
+   * the two rather than stopping at the seam: at the moment the hold releases
+   * this edge is the bottom of the window, and the scroll that follows carries
+   * the whole thing up into About with the heading rising to meet it. It sat
+   * wholly inside the held screen before, which kept it tidy and left it
+   * pointing at nothing.
    */
   top: auto;
-  bottom: -6rem;
+  bottom: calc(var(--cue-height, 300px) / -2);
   transform: translateX(-50%);
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
   width: 60px;
-  height: 300px;
+  height: var(--cue-height, 300px);
   /*
    * Above About, not below it.
    *
@@ -311,11 +360,16 @@
   }
 }
 
-/* Short viewports have no room to hang a 300px mark below the copy. */
+/*
+ * Short viewports have no room for a 300px mark below the copy.
+ *
+ * The mark is shortened rather than pushed off the bottom edge: on the held
+ * screen the cue is the only thing being looked at, so a tail cut off by the
+ * window is the whole gesture ending mid-stroke.
+ */
 @media (max-height: 760px) {
   .scrollCue {
-    height: 210px;
-    bottom: -4rem;
+    --cue-height: 170px;
   }
 }
 

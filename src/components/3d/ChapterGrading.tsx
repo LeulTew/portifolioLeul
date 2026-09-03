@@ -9,7 +9,7 @@ import {
   createGradeTarget,
   sampleGrade,
 } from '@/lib/atmosphere/chapterGrade';
-import { getCameraHold } from '@/lib/camera/cameraHold';
+import { getCameraFreezes } from '@/lib/camera/cameraHold';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { isFrameDrawn } from '@/lib/render/frameGate';
 
@@ -52,7 +52,7 @@ export function ChapterGrading({
     // them -- it simply is not computed for images that are never shown.
     if (!isFrameDrawn(state.clock.getElapsedTime())) return;
 
-    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold()), target);
+    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraFreezes()), target);
 
     // Reduced motion still gets the grade, just without the easing: the point
     // is the depth and colour of the shot, not the transition.

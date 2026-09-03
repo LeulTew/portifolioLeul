@@ -18,7 +18,7 @@ import { useGpuTier } from './lib/gateways/gpuTier';
 import { setScrollProgress } from './lib/scroll/scrollProgress';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
-import { setCameraHold } from './lib/camera/cameraHold';
+import { setCameraFreezes, setWorldOcclusion } from './lib/camera/cameraHold';
 import { RenderGovernor } from './components/3d/RenderGovernor';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
@@ -36,6 +36,14 @@ const SCROLL_PAGE_EPSILON = 0.15;
 
 /** The section that covers the world outright, and freezes it while it does. */
 const OPAQUE_SECTION_ID = 'about';
+
+/**
+ * The section that holds the reader still with the world still in view.
+ *
+ * It freezes the camera without hiding anything, which is the distinction the
+ * two lists below exist for.
+ */
+const HELD_SECTION_ID = 'home';
 
 /**
  * Content settles in bursts as images and fonts land. Collapsing a burst into
@@ -174,21 +182,36 @@ function App() {
     // the track ends exactly where the content does, with no dead scroll.
     const calculatedPages = Math.max(contentHeight / viewportHeight, 1);
 
-    // The opaque section covers the world completely, so the world holds still
-    // for exactly as long as it does. Measured from layout rather than assumed,
-    // because the same section owns a very different share of the scroll on a
-    // tablet and on a 4K display.
-    const opaque = document.getElementById(OPAQUE_SECTION_ID);
-    setCameraHold(
-      opaque
-        ? computeHoldRange(
-            opaque.offsetTop - (node.offsetTop || 0),
-            opaque.offsetHeight,
-            contentHeight,
-            viewportHeight
-          )
-        : NO_HOLD
-    );
+    /*
+     * Where the camera stands still, and where nothing is drawn at all.
+     *
+     * Both measured from layout rather than assumed, because the same section
+     * owns a very different share of the scroll on a tablet and on a 4K
+     * display. Both live here because this is the only place that knows the
+     * content's height, which is what turns a section's pixels into a share of
+     * the page's scroll.
+     *
+     * They are not the same list. The opaque section covers the world outright,
+     * so it both freezes the viewpoint and makes drawing pointless. The hero
+     * holds the reader still with the world in full view: the camera has to
+     * stop -- otherwise the scroll spent on the handover flies the viewpoint
+     * across the island, which is exactly what it did -- but the world must go
+     * on being drawn.
+     */
+    const rangeOf = (id: string) => {
+      const section = document.getElementById(id);
+      if (!section) return NO_HOLD;
+      return computeHoldRange(
+        section.offsetTop - (node.offsetTop || 0),
+        section.offsetHeight,
+        contentHeight,
+        viewportHeight
+      );
+    };
+
+    const occluded = rangeOf(OPAQUE_SECTION_ID);
+    setWorldOcclusion(occluded);
+    setCameraFreezes([rangeOf(HELD_SECTION_ID), occluded]);
 
     const previousPages = scrollPagesRef.current;
 

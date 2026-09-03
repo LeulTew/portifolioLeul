@@ -10,7 +10,8 @@ import {
   sampleCameraPose,
   sampleChapterPose,
 } from '@/lib/camera/cinematicSpline';
-import { getCameraHold } from '@/lib/camera/cameraHold';
+import { getCameraFreezes } from '@/lib/camera/cameraHold';
+import { isCameraFrozen } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { isFrameDrawn } from '@/lib/render/frameGate';
 
@@ -58,7 +59,9 @@ export function CinematicCameraController({
     if (!isFrameDrawn(state.clock.getElapsedTime())) return;
 
     const reducedMotion = getPrefersReducedMotion();
-    const arc = mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraHold());
+    const offset = scroll?.offset ?? 0;
+    const freezes = getCameraFreezes();
+    const arc = mapScrollToArc(offset, arcEnd, freezes);
 
     if (reducedMotion) {
       // Discrete cuts between authored shots: no scrubbing, no pointer drift.
@@ -72,10 +75,21 @@ export function CinematicCameraController({
 
     sampleCameraPose(spline, arc, desiredPosition, desiredTarget);
 
+    /*
+     * The pointer moves the viewpoint everywhere except across a held section.
+     *
+     * A hold exists so the reader can be shown one thing while the scroll is
+     * spent on something else, and the whole premise is that the world behind
+     * it is still. Leaving the parallax live meant the island drifted a world
+     * unit and a half under a hero that was supposed to be pinned, which reads
+     * as the background being scrolled -- the exact thing the hold is for
+     * preventing. So the sway is part of what a freeze freezes.
+     */
+    const sway = isCameraFrozen(offset, freezes) ? 0 : mouseSway;
     const pointerX = state.mouse?.x ?? 0;
     const pointerY = state.mouse?.y ?? 0;
-    desiredPosition.x += pointerX * mouseSway;
-    desiredPosition.y += pointerY * mouseSway * 0.5;
+    desiredPosition.x += pointerX * sway;
+    desiredPosition.y += pointerY * sway * 0.5;
 
     if (!hasSettled.current) {
       // First frame: take the shot as authored rather than easing in from the

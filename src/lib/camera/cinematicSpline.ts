@@ -1,5 +1,10 @@
 import * as THREE from 'three';
-import { NO_HOLD, holdSpan, type ArcHold } from './holdRange';
+import {
+  NO_HOLDS,
+  frozenBefore,
+  totalHeldSpan,
+  type ArcHolds,
+} from './holdRange';
 
 /**
  * Camera choreography for the scroll-driven 3D chapters.
@@ -105,22 +110,26 @@ export function createCameraSpline(
 export function mapScrollToArc(
   scrollProgress: number,
   arcEnd: number = CAMERA_ARC_END,
-  hold: ArcHold = NO_HOLD
+  holds: ArcHolds = NO_HOLDS
 ): number {
   if (!Number.isFinite(scrollProgress) || scrollProgress <= 0) return 0;
   if (arcEnd <= 0) return 1;
 
-  const frozen = holdSpan(hold);
-  // Scroll that actually moves the camera, once the hold is taken out.
+  /*
+   * Every hold is taken out, not just one.
+   *
+   * The arc is mapped onto a fixed fraction of total page scroll, so any held
+   * scroll that is not subtracted here is scroll that moves the viewpoint.
+   * This took a single hold while only About held the reader still; giving the
+   * hero a hold as well sent the camera flying through it, because the hero's
+   * scroll still counted as travel.
+   */
+  const frozen = totalHeldSpan(holds);
+  // Scroll that actually moves the camera, once the holds are taken out.
   const travelled = arcEnd - frozen;
   if (travelled <= 0) return scrollProgress >= arcEnd ? 1 : 0;
 
-  let effective = scrollProgress;
-  if (scrollProgress > hold.end) {
-    effective = scrollProgress - frozen;
-  } else if (scrollProgress > hold.start) {
-    effective = hold.start;
-  }
+  const effective = scrollProgress - frozenBefore(scrollProgress, holds);
 
   const arc = effective / travelled;
   return arc >= 1 ? 1 : arc;

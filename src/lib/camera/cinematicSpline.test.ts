@@ -118,30 +118,30 @@ describe('mapScrollToArc with a hold', () => {
   const hold = { start: 0.2, end: 0.4 };
 
   it('freezes the camera for the whole hold', () => {
-    const atStart = mapScrollToArc(0.2, 0.8, hold);
-    expect(mapScrollToArc(0.3, 0.8, hold)).toBeCloseTo(atStart, 6);
-    expect(mapScrollToArc(0.4, 0.8, hold)).toBeCloseTo(atStart, 6);
+    const atStart = mapScrollToArc(0.2, 0.8, [hold]);
+    expect(mapScrollToArc(0.3, 0.8, [hold])).toBeCloseTo(atStart, 6);
+    expect(mapScrollToArc(0.4, 0.8, [hold])).toBeCloseTo(atStart, 6);
   });
 
   it('resumes exactly where it left off, with no jump', () => {
-    const atEnd = mapScrollToArc(0.4, 0.8, hold);
-    const justAfter = mapScrollToArc(0.4001, 0.8, hold);
+    const atEnd = mapScrollToArc(0.4, 0.8, [hold]);
+    const justAfter = mapScrollToArc(0.4001, 0.8, [hold]);
     expect(justAfter - atEnd).toBeLessThan(0.001);
     expect(justAfter).toBeGreaterThanOrEqual(atEnd);
   });
 
   it('still completes the arc by the time the arc ends', () => {
-    expect(mapScrollToArc(0.8, 0.8, hold)).toBe(1);
+    expect(mapScrollToArc(0.8, 0.8, [hold])).toBe(1);
   });
 
   it('is unchanged before the hold begins', () => {
-    expect(mapScrollToArc(0.1, 0.8, hold)).toBeCloseTo(mapScrollToArc(0.1, 0.6), 6);
+    expect(mapScrollToArc(0.1, 0.8, [hold])).toBeCloseTo(mapScrollToArc(0.1, 0.6), 6);
   });
 
   it('advances monotonically across the whole range', () => {
     let previous = -Infinity;
     for (let s = 0; s <= 1; s += 0.01) {
-      const arc = mapScrollToArc(s, 0.8, hold);
+      const arc = mapScrollToArc(s, 0.8, [hold]);
       expect(arc).toBeGreaterThanOrEqual(previous - 1e-9);
       previous = arc;
     }
@@ -149,14 +149,14 @@ describe('mapScrollToArc with a hold', () => {
 
   it('behaves exactly as before when there is no hold', () => {
     for (const s of [0, 0.1, 0.3, 0.62, 1]) {
-      expect(mapScrollToArc(s, 0.62, NO_HOLD)).toBeCloseTo(mapScrollToArc(s, 0.62), 9);
+      expect(mapScrollToArc(s, 0.62, [NO_HOLD])).toBeCloseTo(mapScrollToArc(s, 0.62), 9);
     }
   });
 
   it('degenerates safely when the hold swallows the entire arc', () => {
     const whole = { start: 0, end: 0.9 };
-    expect(mapScrollToArc(0.5, 0.8, whole)).toBe(0);
-    expect(mapScrollToArc(0.95, 0.8, whole)).toBe(1);
+    expect(mapScrollToArc(0.5, 0.8, [whole])).toBe(0);
+    expect(mapScrollToArc(0.95, 0.8, [whole])).toBe(1);
   });
 });
 
@@ -271,5 +271,67 @@ describe('sampleChapterPose', () => {
     sampleChapterPose(99, position, target);
     const last = CAMERA_CHAPTERS[CAMERA_CHAPTERS.length - 1];
     expect(position.toArray()).toEqual([...last.position]);
+  });
+});
+
+describe('the camera across a held section', () => {
+  /*
+   * The check that was missing, and the reason the hero pin had to be reverted.
+   *
+   * The arc is mapped onto a fixed fraction of total page scroll, so scroll
+   * that is not subtracted is scroll that moves the viewpoint. Giving the hero
+   * a hold without registering it flew the camera across the island while the
+   * hero was supposed to be standing still -- reported as the background
+   * scrolling.
+   */
+  const hero = { start: 0.02, end: 0.18 };
+  const about = { start: 0.35, end: 0.55 };
+
+  it('does not move at all while the hero holds', () => {
+    const at = (s: number) => mapScrollToArc(s, 0.62, [hero, about]);
+    const entering = at(hero.start);
+
+    for (const s of [0.05, 0.09, 0.13, 0.17, hero.end]) {
+      expect(at(s)).toBeCloseTo(entering, 9);
+    }
+  });
+
+  it('does not move at all while About holds either', () => {
+    const at = (s: number) => mapScrollToArc(s, 0.62, [hero, about]);
+    const entering = at(about.start);
+
+    for (const s of [0.4, 0.47, 0.54, about.end]) {
+      expect(at(s)).toBeCloseTo(entering, 9);
+    }
+  });
+
+  it('picks up again on the far side of each hold', () => {
+    const at = (s: number) => mapScrollToArc(s, 0.62, [hero, about]);
+
+    expect(at(0.25)).toBeGreaterThan(at(hero.end));
+    expect(at(0.6)).toBeGreaterThan(at(about.end));
+  });
+
+  it('still reaches the end of the arc, holds and all', () => {
+    expect(mapScrollToArc(0.62, 0.62, [hero, about])).toBe(1);
+    expect(mapScrollToArc(1, 0.62, [hero, about])).toBe(1);
+  });
+
+  it('never runs backwards across the whole page', () => {
+    let previous = -1;
+    for (let i = 0; i <= 100; i += 1) {
+      const arc = mapScrollToArc(i / 100, 0.62, [hero, about]);
+      expect(arc).toBeGreaterThanOrEqual(previous - 1e-9);
+      previous = arc;
+    }
+  });
+
+  it('spends the same arc on travel whether one section holds or two', () => {
+    // Adding a hold must not compress the journey into less of the page; it
+    // takes its span out of the scroll, not out of the arc.
+    const oneHold = mapScrollToArc(0.62, 0.62, [about]);
+    const twoHolds = mapScrollToArc(0.62, 0.62, [hero, about]);
+    expect(oneHold).toBe(1);
+    expect(twoHolds).toBe(1);
   });
 });

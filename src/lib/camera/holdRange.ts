@@ -67,3 +67,75 @@ export function computeHoldRange(
 
   return end > start ? { start, end } : NO_HOLD;
 }
+
+/**
+ * The scroll spans during which the camera does not advance.
+ *
+ * More than one, because more than one section holds the reader still: the
+ * hero holds while it hands over, and About holds while it is read. A single
+ * slot was enough while only About did it, and the moment the hero was given a
+ * hold as well the camera flew through it -- the arc is mapped onto a fixed
+ * fraction of total page scroll, so scroll that was not subtracted was scroll
+ * that moved the viewpoint.
+ */
+export type ArcHolds = readonly ArcHold[];
+
+export const NO_HOLDS: ArcHolds = [];
+
+/** True while the scroll sits inside any of `holds`. */
+export function isWithinAnyHold(scrollProgress: number, holds: ArcHolds): boolean {
+  for (const hold of holds) {
+    if (isWithinHold(scrollProgress, hold)) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether the camera is being held still at `scrollProgress`.
+ *
+ * Inclusive of a hold's start, which is why this is not `isWithinAnyHold`: the
+ * hero's hold begins at zero, so a test that excluded its start would leave
+ * the viewpoint free at the top of the page and then snap it the moment the
+ * first wheel tick landed. Everything a freeze suppresses -- the arc, the
+ * pointer drift -- has to be suppressed from the first frame.
+ */
+export function isCameraFrozen(scrollProgress: number, holds: ArcHolds): boolean {
+  if (!Number.isFinite(scrollProgress)) return false;
+
+  for (const hold of holds) {
+    if (holdSpan(hold) <= 0) continue;
+    if (scrollProgress >= hold.start && scrollProgress < hold.end) return true;
+  }
+  return false;
+}
+
+/**
+ * Total held scroll strictly before `scrollProgress`.
+ *
+ * A hold the reader has passed contributes its whole span; the one they are
+ * inside contributes only the part already spent, which is what keeps the
+ * camera still rather than letting it creep across the hold.
+ */
+export function frozenBefore(scrollProgress: number, holds: ArcHolds): number {
+  if (!Number.isFinite(scrollProgress) || scrollProgress <= 0) return 0;
+
+  let frozen = 0;
+  for (const hold of holds) {
+    const span = holdSpan(hold);
+    if (span <= 0) continue;
+
+    if (scrollProgress >= hold.end) {
+      frozen += span;
+    } else if (scrollProgress > hold.start) {
+      frozen += scrollProgress - hold.start;
+    }
+  }
+  return frozen;
+}
+
+/** Total scroll the holds account for, however they are ordered. */
+export function totalHeldSpan(holds: ArcHolds): number {
+  let total = 0;
+  for (const hold of holds) total += holdSpan(hold);
+  return total;
+}
