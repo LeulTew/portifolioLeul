@@ -82,9 +82,16 @@ export function Home({ onNavigate, theme = 'dark' }: HomeProps) {
         pinned.style.setProperty('--pin', offset);
       }
 
-      // The cue is measured from the raw offset, not from `progress`: it keeps
-      // drawing after the release, across the boundary it exists to bridge.
-      setHeroCue(cueDraw(top, holdLength, window.innerHeight));
+      /*
+       * The cue is measured from the raw offset, not from `progress`: it keeps
+       * drawing after the release, across the boundary it exists to bridge.
+       *
+       * Reduced motion has no hold to draw across, so the mark is simply
+       * present rather than traced. Left to the measurement it would sit at
+       * zero forever -- the affordance vanishing for exactly the readers least
+       * able to infer it from the motion that is no longer there.
+       */
+      setHeroCue(reducedMotion ? 1 : cueDraw(top, holdLength, window.innerHeight));
 
       if (!content) return;
 

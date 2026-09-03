@@ -13,6 +13,14 @@ import { HERO_SCREENS, HOLD_CLOSE_END } from '@/lib/motion/heroPin';
  * is what a pin reads, instead of moving the page.
  */
 let holdTicks = 0;
+const reducedMotion = vi.fn(() => false);
+vi.mock('@/lib/gateways/animationGateway', async (importOriginal) => ({
+  // Only the preference is faked; the rest of the gateway -- Springs, Easings,
+  // the scroll helpers -- is used for real by the tree under test.
+  ...(await importOriginal<typeof import('@/lib/gateways/animationGateway')>()),
+  getPrefersReducedMotion: () => reducedMotion(),
+}));
+
 const scrollIntoHold = (share: number) => {
   const section = document.getElementById('home');
   if (!section) throw new Error('the hero section is not in the document');
@@ -156,6 +164,7 @@ describe('Home choreography', () => {
     observers = [];
     resetScrollProgress();
     resetHeroCue();
+    reducedMotion.mockReturnValue(false);
     (globalThis as unknown as Record<string, unknown>).IntersectionObserver =
       FakeIntersectionObserver;
   });
@@ -230,6 +239,21 @@ describe('Home choreography', () => {
     // A screen past it, the line is complete and pointing into About.
     scrollIntoHold(1 + 1 / (HERO_SCREENS - 1));
     expect(drawn()).toBe(1);
+  });
+
+  it('shows the cue outright under reduced motion, rather than never', () => {
+    /*
+     * There is no hold to trace the mark across when motion is opted out of,
+     * and a cue measured from a hold of zero length stays at zero forever. The
+     * handover still has to be signposted -- more so, not less, for a reader
+     * who is not being shown the movement that would otherwise imply it.
+     */
+    reducedMotion.mockReturnValue(true);
+
+    const { getByTestId } = render(<Home />);
+    enterHero();
+
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
   });
 
   it('fills the title rather than sliding it in', () => {
