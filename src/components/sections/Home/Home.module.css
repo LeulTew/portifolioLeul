@@ -84,28 +84,63 @@
   z-index: -1;
   pointer-events: none;
   clip-path: inset(0 100% 0 0);
-  background: radial-gradient(
-    ellipse 85% 95% at 28% 48%,
-    rgba(0, 14, 18, 0.78) 0%,
-    rgba(0, 14, 18, 0.52) 50%,
-    rgba(0, 14, 18, 0.18) 80%,
-    rgba(0, 14, 18, 0) 100%
-  );
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border-radius: 28px;
+
+  /*
+   * A flat tint, not a gradient.
+   *
+   * The shape of this plate lives entirely in `--plate-shape` below. Two
+   * falloffs -- one in the background, one in the mask -- interfere with each
+   * other and the composite develops a shoulder neither curve has on its own.
+   * One curve, applied once, is the only way the edge is provably clean.
+   */
+  background: rgba(0, 14, 18, 0.72);
+
+  -webkit-backdrop-filter: blur(20px) saturate(158%);
+  backdrop-filter: blur(20px) saturate(158%);
+
+  /*
+   * The mask is what stops the frost, and it is not optional.
+   *
+   * A backdrop-filter is clipped to the element's border box no matter how
+   * transparent the background over it is, so a background that fades to zero
+   * still leaves the blur terminating on a hard straight line. Masking the
+   * element feathers the filtered backdrop along with the tint, so both reach
+   * nothing at the same place.
+   *
+   * Radii are chosen so the mask closes inside every visible edge:
+   *   right  40% + 58% = 98%  <  100%
+   *   top    46% - 44% =  2%  >  0%
+   *   bottom 46% + 44% = 90%  < 100%
+   * The left edge sits 8rem outside the content box and off-screen, which is
+   * why it is the one direction allowed to overrun.
+   */
+  -webkit-mask-image: var(--plate-shape);
+  mask-image: var(--plate-shape);
 }
 
-:global([data-theme='light']) .plate {
-  background: radial-gradient(
-    ellipse 85% 95% at 28% 48%,
-    rgba(255, 255, 255, 0.94) 0%,
-    rgba(248, 250, 255, 0.82) 48%,
-    rgba(240, 244, 252, 0.40) 78%,
-    rgba(240, 244, 252, 0) 100%
+.plate {
+  --plate-shape: radial-gradient(
+    ellipse 58% 44% at 40% 46%,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 36%,
+    rgba(0, 0, 0, 0.62) 64%,
+    rgba(0, 0, 0, 0.22) 85%,
+    rgba(0, 0, 0, 0) 100%
   );
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  backdrop-filter: blur(24px) saturate(140%);
+}
+
+/*
+ * Light theme has to earn its keep.
+ *
+ * The page is pure white, so a white plate over a pale scene separates from
+ * nothing and pays for the privilege in blur artefacts. A faint cool cast
+ * gives it an actual tonal job: it reads as the page surface continuing out
+ * over the water rather than as a panel laid on top of it.
+ */
+:global([data-theme='light']) .plate {
+  background: rgba(238, 243, 250, 0.86);
+  -webkit-backdrop-filter: blur(26px) saturate(126%) brightness(1.04);
+  backdrop-filter: blur(26px) saturate(126%) brightness(1.04);
 }
 
 .plateDrawn {
@@ -229,6 +264,20 @@
 
 :global([data-theme='light']) .info {
   color: #1f2937;
+}
+
+/*
+ * The one accent in the hero, and in light theme it was failing outright.
+ *
+ * emerald-400 (#34d399) against the plate's light face computes to 1.92:1 --
+ * far under the 4.5:1 this size of text needs, and it is mono, bold and
+ * tracked out, which is exactly the shape that suffers most. emerald-700
+ * (#047857) is the same hue family at 6.0:1, so the identity survives and
+ * the text becomes readable. Scoped to the hero deliberately: the other
+ * emerald-400 usages sit on dark or coloured grounds and are not this bug.
+ */
+:global([data-theme='light']) .info :global(.text-emerald-400) {
+  color: #047857;
 }
 
 .divider {
