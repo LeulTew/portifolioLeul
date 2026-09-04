@@ -11,6 +11,50 @@ import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
+import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+
+function TransitionMaskedOverlay() {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const update = () => {
+      const overlay = el.closest<HTMLElement>('[data-active]');
+      const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
+      const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+      // Masked cutout overlay is ONLY active while background pixels rise (0.78 <= seq < 0.86)
+      const isVisible = seq >= 0.78 && seq < 0.86;
+      el.style.display = isVisible ? 'block' : 'none';
+    };
+
+    update();
+    const unsub = subscribeScrollProgress(update);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, { passive: true });
+    return () => {
+      unsub();
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className={styles.transitionMaskedOverlay} aria-hidden="true">
+      <div className={styles.transitionGreenFill} />
+      <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
+        <div className={styles.titleBox}>
+          <div className={`${styles.title} ${styles.titleWhite}`} data-text="About Me" />
+        </div>
+        <div
+          className={`${styles.subtitle} ${styles.subtitleWhite}`}
+          data-text={cvData.about.subtitle}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
@@ -91,18 +135,7 @@ export function About() {
           </div>
 
           {/* Masked transition overlay: pure white text cutout over rising green transition background */}
-          <div className={styles.transitionMaskedOverlay} aria-hidden="true">
-            <div className={styles.transitionGreenFill} />
-            <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
-              <div className={styles.titleBox}>
-                <div className={`${styles.title} ${styles.titleWhite}`} data-text="About Me" />
-              </div>
-              <div
-                className={`${styles.subtitle} ${styles.subtitleWhite}`}
-                data-text={cvData.about.subtitle}
-              />
-            </div>
-          </div>
+          <TransitionMaskedOverlay />
 
           {/* Held for the whole stretch: the one thing that does not come and
               go, so the statements read as arriving on it. */}

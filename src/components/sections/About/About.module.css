@@ -890,22 +890,32 @@
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .title,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .heldHeader,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .title,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .heldHeader,
 :global([data-theme='light']) #about[data-bg-transition='true'] .title,
 :global([data-theme='light']) #about[data-bg-transition='true'] .heldHeader {
   color: #ffffff;
 }
 
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .subtitle,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .subtitle,
 :global([data-theme='light']) #about[data-bg-transition='true'] .subtitle {
   color: rgba(255, 255, 255, 0.9);
 }
 
+:global(body:has(#about[data-bg-transition='true'])) .heldHeader,
+:global(html[data-navbar-contrary='true']) .heldHeader,
 #about[data-bg-transition='true'] .heldHeader {
   opacity: 1 !important;
   transform: none !important;
 }
 
+:global(body:has(#about[data-bg-transition='true'])) .transitionMaskedOverlay,
+:global(html[data-navbar-contrary='true']) .transitionMaskedOverlay,
 #about[data-bg-transition='true'] .transitionMaskedOverlay {
-  display: none;
+  display: none !important;
 }
 
 :global([data-theme='light']) .statementText,
