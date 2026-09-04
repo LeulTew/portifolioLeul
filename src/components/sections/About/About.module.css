@@ -171,7 +171,7 @@
   box-sizing: border-box;
   text-align: left;
   pointer-events: none;
-  z-index: 30;
+  z-index: 10;
   /*
    * The block itself neither fades nor slides.
    *
@@ -270,7 +270,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 15;
+  z-index: 20;
   -webkit-mask: url(#bg-pixel-transition-mask);
   mask: url(#bg-pixel-transition-mask);
   opacity: var(--ground-in, 0);
@@ -286,6 +286,56 @@
 
 :global([data-theme='light']) .transitionGreenFill {
   background-color: #0a5c40;
+}
+
+.heldHeaderWhite .titleBox {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+  min-width: 9.8ch;
+}
+
+.heldHeaderWhite .titleWhite {
+  font-size: clamp(3.5rem, 7.5vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  margin: 0;
+  white-space: nowrap;
+  display: block;
+}
+
+.heldHeaderWhite .titleWhite::before {
+  content: attr(data-text);
+  display: block;
+  color: #ffffff !important;
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
+  mix-blend-mode: normal;
+}
+
+.heldHeaderWhite .subtitleWhite {
+  font-size: clamp(1.05rem, 1.3vw, 1.35rem);
+  line-height: 1.45;
+  margin: 1.25rem 0 0;
+  max-width: 720px;
+}
+
+.heldHeaderWhite .subtitleWhite::before {
+  content: attr(data-text);
+  display: block;
+  color: #ffffff !important;
+  opacity: 0.95;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  mix-blend-mode: normal;
+}
+
+:global([data-theme='light']) .heldHeaderWhite .titleWhite::before {
+  color: #ffffff !important;
+}
+
+:global([data-theme='light']) .heldHeaderWhite .subtitleWhite::before {
+  color: #ffffff !important;
+  opacity: 0.95;
 }
 
 /*

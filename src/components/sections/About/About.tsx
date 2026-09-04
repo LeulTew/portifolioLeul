@@ -90,6 +90,20 @@ export function About() {
             />
           </div>
 
+          {/* Masked transition overlay: pure white text cutout over rising green transition background */}
+          <div className={styles.transitionMaskedOverlay} aria-hidden="true">
+            <div className={styles.transitionGreenFill} />
+            <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
+              <div className={styles.titleBox}>
+                <div className={`${styles.title} ${styles.titleWhite}`} data-text="About Me" />
+              </div>
+              <div
+                className={`${styles.subtitle} ${styles.subtitleWhite}`}
+                data-text={cvData.about.subtitle}
+              />
+            </div>
+          </div>
+
           {/* Held for the whole stretch: the one thing that does not come and
               go, so the statements read as arriving on it. */}
           <div className={styles.heldField} aria-hidden="true">
