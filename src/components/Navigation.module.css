@@ -182,3 +182,42 @@
     font-size: 0.75rem;
   }
 }
+
+/*
+ * High-contrast white navigation bar over green transition background (#0a5c40).
+ * Matches user intent for all non-card texts to be white in light mode when the new background is active.
+ */
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .logo,
+:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .logo {
+  color: #ffffff;
+}
+
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .logoImage,
+:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .logoImage {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItems,
+:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItems {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem,
+:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItem {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem:hover,
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem.active,
+:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItem:hover,
+:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItem.active {
+  color: #ffffff;
+}
+
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .themeToggle,
+:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .themeToggle {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}

@@ -78,9 +78,12 @@ export function BackgroundPixelTransition({
 }: BackgroundPixelTransitionProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const backdropRef = useRef<HTMLDivElement | null>(null);
+  const maskBackdropRef = useRef<SVGRectElement | null>(null);
   const cellElementsRef = useRef<(HTMLSpanElement | null)[]>([]);
+  const maskCellElementsRef = useRef<(SVGRectElement | null)[]>([]);
   const [cells, setCells] = useState<PixelCellData[]>([]);
   const [cols, setCols] = useState(10);
+  const [rows, setRows] = useState(6);
   const reducedMotion = getPrefersReducedMotion();
 
   const themeContext = useContext(ThemeContext);
@@ -98,6 +101,7 @@ export function BackgroundPixelTransition({
     if (typeof window === 'undefined') return;
     const { cols: c, rows: r } = getGridConfig(window.innerWidth, window.innerHeight);
     setCols(c);
+    setRows(r);
     setCells(generateCells(c, r));
   }, []);
 
@@ -124,6 +128,7 @@ export function BackgroundPixelTransition({
 
     if (p <= 0.005) {
       if (backdropRef.current) backdropRef.current.dataset.active = 'false';
+      if (maskBackdropRef.current) maskBackdropRef.current.setAttribute('opacity', '0');
       if (aboutSection && aboutSection.getAttribute('data-bg-transition') === 'true') {
         aboutSection.removeAttribute('data-bg-transition');
       }
@@ -132,12 +137,18 @@ export function BackgroundPixelTransition({
           el.dataset.active = 'false';
         }
       });
+      maskCellElementsRef.current.forEach((el) => {
+        if (el) el.setAttribute('opacity', '0');
+      });
       return;
     }
 
     if (reducedMotion) {
       if (backdropRef.current) {
         backdropRef.current.dataset.active = String(p > 0.1);
+      }
+      if (maskBackdropRef.current) {
+        maskBackdropRef.current.setAttribute('opacity', p > 0.1 ? '1' : '0');
       }
       if (aboutSection) {
         if (p > 0.1) aboutSection.setAttribute('data-bg-transition', 'true');
@@ -147,11 +158,15 @@ export function BackgroundPixelTransition({
     }
 
     // Once pixels have largely climbed, engage solid backdrop and section background
+    const isBackdropActive = p >= 0.85;
     if (backdropRef.current) {
-      backdropRef.current.dataset.active = String(p >= 0.85);
+      backdropRef.current.dataset.active = String(isBackdropActive);
+    }
+    if (maskBackdropRef.current) {
+      maskBackdropRef.current.setAttribute('opacity', isBackdropActive ? '1' : '0');
     }
     if (aboutSection) {
-      if (p >= 0.85 && aboutSection.getAttribute('data-bg-transition') !== 'true') {
+      if (isBackdropActive && aboutSection.getAttribute('data-bg-transition') !== 'true') {
         aboutSection.setAttribute('data-bg-transition', 'true');
       } else if (p < 0.70 && aboutSection.getAttribute('data-bg-transition') === 'true') {
         aboutSection.removeAttribute('data-bg-transition');
@@ -162,16 +177,21 @@ export function BackgroundPixelTransition({
     const total = cells.length;
     for (let i = 0; i < total; i++) {
       const el = cellElementsRef.current[i];
-      if (!el) continue;
-
+      const maskEl = maskCellElementsRef.current[i];
       const cell = cells[i];
       const threshold = cell ? cell.threshold : 1;
       const isActive = p >= threshold;
 
-      if (isActive && el.dataset.active !== 'true') {
-        el.dataset.active = 'true';
-      } else if (!isActive && el.dataset.active !== 'false') {
-        el.dataset.active = 'false';
+      if (el) {
+        if (isActive && el.dataset.active !== 'true') {
+          el.dataset.active = 'true';
+        } else if (!isActive && el.dataset.active !== 'false') {
+          el.dataset.active = 'false';
+        }
+      }
+
+      if (maskEl) {
+        maskEl.setAttribute('opacity', isActive ? '1' : '0');
       }
     }
   }, [start, end, cells, reducedMotion]);
@@ -198,11 +218,44 @@ export function BackgroundPixelTransition({
         {
           ['--bg-transition-color' as string]: resolvedColor,
           ['--bg-cols' as string]: cols,
+          ['--bg-rows' as string]: rows,
         } as React.CSSProperties
       }
       data-testid={testId}
       aria-hidden="true"
     >
+      {/* SVG Mask Definition for razor-sharp pure white text cutout */}
+      <svg className={styles.svgDef} aria-hidden="true" width="0" height="0">
+        <defs>
+          <mask id="bg-pixel-transition-mask" maskContentUnits="objectBoundingBox">
+            <rect x="0" y="0" width="1" height="1" fill="black" />
+            <rect
+              ref={maskBackdropRef}
+              x="0"
+              y="0"
+              width="1"
+              height="1"
+              fill="white"
+              opacity="0"
+            />
+            {cells.map((cell, idx) => (
+              <rect
+                key={cell.id}
+                ref={(el) => {
+                  maskCellElementsRef.current[idx] = el;
+                }}
+                x={cell.col / cols}
+                y={cell.row / rows}
+                width={1 / cols + 0.002}
+                height={1 / rows + 0.002}
+                fill="white"
+                opacity="0"
+              />
+            ))}
+          </mask>
+        </defs>
+      </svg>
+
       <div
         ref={backdropRef}
         className={styles.backdrop}

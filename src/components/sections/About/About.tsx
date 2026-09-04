@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PinnedSequence } from '../../ui/PinnedSequence';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
@@ -13,7 +13,28 @@ import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
+  const educationRef = useRef<HTMLDivElement>(null);
   const reducedMotion = getPrefersReducedMotion();
+
+  useEffect(() => {
+    const el = educationRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        const aboutEl = document.getElementById('about');
+        if (!aboutEl) return;
+        if (entry.isIntersecting) {
+          aboutEl.setAttribute('data-bg-transition', 'true');
+        }
+      },
+      { rootMargin: '-5% 0px -10% 0px' }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   /**
    * Symmetric, and driven by the scroll rather than played once on arrival.
@@ -129,10 +150,22 @@ export function About() {
               </div>
             </div>
           </div>
+
+          {/* Masked transition overlay: pure white text cutout over rising green transition background */}
+          <div className={styles.transitionMaskedOverlay} aria-hidden="true">
+            <div className={styles.transitionGreenFill} />
+            <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
+              <div className={`${styles.title} ${styles.titleWhite}`} data-text="About Me" />
+              <div
+                className={`${styles.subtitle} ${styles.subtitleWhite}`}
+                data-text={cvData.about.subtitle}
+              />
+            </div>
+          </div>
         </PinnedSequence>
 
         {/* Education Section */}
-        <div className={styles.educationWrapper}>
+        <div ref={educationRef} className={styles.educationWrapper}>
           <div className={styles.sectionTitle}>Education</div>
           <div className={styles.educationGrid}>
             {cvData.education.map((edu, index) => (

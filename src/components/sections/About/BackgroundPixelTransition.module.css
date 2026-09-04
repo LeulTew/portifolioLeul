@@ -18,6 +18,14 @@
   --bg-transition-color: #0a5c40;
 }
 
+.svgDef {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .backdrop {
   position: absolute;
   inset: 0;
@@ -36,7 +44,7 @@
   inset: 0;
   display: grid;
   grid-template-columns: repeat(var(--bg-cols, 10), 1fr);
-  grid-auto-rows: calc(100vw / var(--bg-cols, 10));
+  grid-template-rows: repeat(var(--bg-rows, 6), 1fr);
   align-content: start;
   pointer-events: none;
   overflow: hidden;

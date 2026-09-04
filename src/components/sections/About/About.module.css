@@ -259,6 +259,50 @@
 }
 
 /*
+ * Masked transition overlay: pure white text cutout over rising green transition background.
+ * Uses SVG #bg-pixel-transition-mask so where the pixels rise, the background is green
+ * and the text is pure white (#ffffff), with razor-sharp pixel edges and zero blend distortion.
+ */
+.transitionMaskedOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  -webkit-mask: url(#bg-pixel-transition-mask);
+  mask: url(#bg-pixel-transition-mask);
+  opacity: var(--ground-in, 0);
+  will-change: mask, -webkit-mask;
+}
+
+.transitionGreenFill {
+  position: absolute;
+  inset: 0;
+  background-color: #001a1a;
+  pointer-events: none;
+}
+
+:global([data-theme='light']) .transitionGreenFill {
+  background-color: #0a5c40;
+}
+
+.heldHeaderWhite .titleWhite::before {
+  content: attr(data-text);
+  display: block;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
+  mix-blend-mode: normal;
+}
+
+.heldHeaderWhite .subtitleWhite::before {
+  content: attr(data-text);
+  display: block;
+  color: #ffffff;
+  opacity: 0.95;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  mix-blend-mode: normal;
+}
+
+/*
  * The one thing that does not come and go. It carries the whole stretch, so it
  * moves continuously with `--seq` rather than appearing and disappearing with
  * the statements standing on it.
@@ -747,6 +791,15 @@
   color: #ffffff;
   mix-blend-mode: normal;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+:global([data-theme="light"]) .heldHeaderWhite .titleWhite::before {
+  color: #ffffff !important;
+}
+
+:global([data-theme="light"]) .heldHeaderWhite .subtitleWhite::before {
+  color: #ffffff !important;
+  opacity: 0.95;
 }
 
 :global([data-theme="light"]) #about[data-bg-transition='true'] .title {
