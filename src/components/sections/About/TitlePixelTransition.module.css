@@ -1,22 +1,22 @@
-.flipWrapper {
+.titleWrapper {
   position: relative;
   display: block;
   width: 100%;
+}
+
+.titleBox {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
   clip-path: inset(-0.18em calc((1 - var(--title-in, 1)) * 100%) -0.18em 0);
   transform: translate3d(0, 0, 0) scale(calc(0.988 + var(--title-in, 1) * 0.012));
   transform-origin: 0% 50%;
   will-change: clip-path, transform;
 }
 
-:global(#about[data-bg-transition='true']) .flipWrapper {
+:global(#about[data-bg-transition='true']) .titleBox {
   clip-path: none !important;
   transform: none !important;
-}
-
-.titleContainer {
-  position: relative;
-  display: inline-block;
-  vertical-align: top;
 }
 
 .title {
@@ -28,6 +28,9 @@
   margin: 0;
   white-space: nowrap;
   display: block;
+  position: relative;
+  z-index: 2;
+  transition: opacity 0.1s linear;
 }
 
 .subtitle {
@@ -37,46 +40,44 @@
   opacity: 0.9;
   margin: 1.25rem 0 0;
   max-width: 720px;
-  transition: opacity 0.15s ease-out;
+  position: relative;
+  z-index: 2;
   clip-path: inset(calc((1 - var(--sub-in, 1)) * 100%) 0 -0.2em 0);
+  transition: opacity 0.15s ease-out;
 }
 
 :global(#about[data-bg-transition='true']) .subtitle {
   clip-path: none !important;
 }
 
-/* Horizontal Left-to-Right Pixel Grid covering strictly the title text box */
+/* Contrasting Pixel-Dot Grid covering strictly the title text box */
 .pixelGrid {
   position: absolute;
-  inset: -2px;
+  inset: -4px -8px;
   display: grid;
   pointer-events: none;
-  z-index: 5;
-  perspective: 400px;
+  z-index: 10;
 }
 
-.pixelCell {
-  background-color: var(--pixel-flip-bg, #001a1a);
+.pixelDot {
+  background-color: var(--pixel-dot-color, #ffffff);
   opacity: 0;
-  transform: rotateY(90deg);
-  transform-origin: center center;
-  width: calc(100% + 0.6px);
-  height: calc(100% + 0.6px);
-  transition: opacity 0.04s linear, transform 0.06s ease-out;
+  transform: scale(0);
+  width: calc(100% + 0.5px);
+  height: calc(100% + 0.5px);
+  margin: 0;
+  border-radius: 0;
+  transition: opacity 0.05s linear, transform 0.06s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
 }
 
-:global([data-theme='light']) .pixelCell {
-  background-color: var(--pixel-flip-bg, #0a5c40);
-}
-
-.pixelCell[data-active='true'] {
+.pixelDot[data-active='true'] {
   opacity: 1;
-  transform: rotateY(0deg);
+  transform: scale(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flipWrapper,
+  .titleWrapper,
   .subtitle {
     clip-path: none !important;
     transform: none !important;
@@ -86,7 +87,7 @@
     display: none !important;
   }
 
-  .pixelCell {
+  .pixelDot {
     transition: none !important;
     transform: none !important;
   }

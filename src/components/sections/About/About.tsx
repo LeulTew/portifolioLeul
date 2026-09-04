@@ -10,7 +10,7 @@ import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
-import { TitlePixelFlip } from './TitlePixelFlip';
+import { TitlePixelTransition } from './TitlePixelTransition';
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
@@ -80,7 +80,7 @@ export function About() {
             background transition finishes fully.
           */}
           <div className={styles.heldHeader} data-testid="about-held-header">
-            <TitlePixelFlip
+            <TitlePixelTransition
               start={0.88}
               end={1.0}
               initialTitle="About Me"

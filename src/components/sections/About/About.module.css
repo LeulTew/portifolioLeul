@@ -823,6 +823,11 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+#about[data-bg-transition='true'] .heldHeader {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 #about[data-bg-transition='true'] .transitionMaskedOverlay {
   display: none;
 }
