@@ -30,6 +30,8 @@ describe('Navigation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    document.body.innerHTML = '';
+    document.documentElement.removeAttribute('data-navbar-contrary');
   });
 
   it('renders navigation with logo and menu items', () => {
@@ -361,5 +363,86 @@ describe('Navigation', () => {
     expect(screen.getByText('Home').closest('button')).toHaveClass(/active/);
 
     document.body.removeChild(section);
+  });
+
+  describe('contrary navigation in light mode', () => {
+    it('applies contrary styles in light mode when about section has transitioned', () => {
+      const aboutEl = document.createElement('section');
+      aboutEl.id = 'about';
+      aboutEl.setAttribute('data-bg-transition', 'true');
+      vi.spyOn(aboutEl, 'getBoundingClientRect').mockReturnValue({
+        top: 0,
+        bottom: 500,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 500,
+      } as DOMRect);
+      document.body.appendChild(aboutEl);
+
+      render(
+        <ThemeContext.Provider value={{ theme: 'light', toggleTheme: mockToggleTheme }}>
+          <Navigation scrollToSection={mockScrollToSection} />
+        </ThemeContext.Provider>
+      );
+
+      const header = document.querySelector('header');
+      expect(header).toHaveAttribute('data-contrary', 'true');
+
+      document.body.removeChild(aboutEl);
+    });
+
+    it('does not apply contrary styles in dark mode even if about has transitioned', () => {
+      const aboutEl = document.createElement('section');
+      aboutEl.id = 'about';
+      aboutEl.setAttribute('data-bg-transition', 'true');
+      vi.spyOn(aboutEl, 'getBoundingClientRect').mockReturnValue({
+        top: 0,
+        bottom: 500,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 500,
+      } as DOMRect);
+      document.body.appendChild(aboutEl);
+
+      render(
+        <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
+          <Navigation scrollToSection={mockScrollToSection} />
+        </ThemeContext.Provider>
+      );
+
+      const header = document.querySelector('header');
+      expect(header).not.toHaveAttribute('data-contrary');
+
+      document.body.removeChild(aboutEl);
+    });
+
+    it('reverts to normal when about section scrolls past the navbar', () => {
+      const aboutEl = document.createElement('section');
+      aboutEl.id = 'about';
+      aboutEl.setAttribute('data-bg-transition', 'true');
+      // Positioned above the viewport (scrolled past)
+      vi.spyOn(aboutEl, 'getBoundingClientRect').mockReturnValue({
+        top: -1000,
+        bottom: -200,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 800,
+      } as DOMRect);
+      document.body.appendChild(aboutEl);
+
+      render(
+        <ThemeContext.Provider value={{ theme: 'light', toggleTheme: mockToggleTheme }}>
+          <Navigation scrollToSection={mockScrollToSection} />
+        </ThemeContext.Provider>
+      );
+
+      const header = document.querySelector('header');
+      expect(header).not.toHaveAttribute('data-contrary');
+
+      document.body.removeChild(aboutEl);
+    });
   });
 });

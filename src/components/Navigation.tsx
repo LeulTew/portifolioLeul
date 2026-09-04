@@ -5,6 +5,7 @@ import styles from './Navigation.module.css';
 import { ThemeContext } from './sections/theme/ThemeContext';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { useActiveSection } from '@/lib/scroll/useActiveSection';
+import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 
 const SECTION_IDS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
@@ -18,6 +19,35 @@ const menuItems = [
 
 interface NavigationProps {
   scrollToSection: (id: string) => void;
+}
+
+function checkIsContrary(theme: string): boolean {
+  if (theme !== 'light' || typeof document === 'undefined') {
+    return false;
+  }
+
+  const aboutEl = document.getElementById('about');
+  if (!aboutEl) {
+    return false;
+  }
+
+  const aboutRect = aboutEl.getBoundingClientRect();
+  const isOverAbout = aboutRect.top <= 80 && aboutRect.bottom >= 20;
+
+  if (isOverAbout) {
+    const isTransitioned =
+      aboutEl.getAttribute('data-bg-transition') === 'true' ||
+      document.documentElement.getAttribute('data-navbar-contrary') === 'true';
+    const eduEl = aboutEl.querySelector('[data-green-bg="true"]');
+    const eduRect = eduEl?.getBoundingClientRect();
+    const inEdu = eduRect ? eduRect.top <= 80 && eduRect.bottom >= 20 : false;
+
+    if (isTransitioned || inEdu) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function Navigation({ scrollToSection }: NavigationProps) {
@@ -47,6 +77,8 @@ export function Navigation({ scrollToSection }: NavigationProps) {
     setPinnedSection(id);
   };
 
+  const [isContrary, setIsContrary] = useState(() => checkIsContrary(theme));
+
   useEffect(() => {
     if (pinnedSection === null) return;
     if (trackedSection === pinnedSection) {
@@ -57,13 +89,50 @@ export function Navigation({ scrollToSection }: NavigationProps) {
     return () => clearTimeout(release);
   }, [pinnedSection, trackedSection]);
 
+  useEffect(() => {
+    const updateContrary = () => {
+      setIsContrary(checkIsContrary(theme));
+    };
+
+    updateContrary();
+    const unsubscribeScroll = subscribeScrollProgress(updateContrary);
+    window.addEventListener('scroll', updateContrary, { passive: true });
+    window.addEventListener('resize', updateContrary);
+
+    const aboutEl = document.getElementById('about');
+    let observer: MutationObserver | null = null;
+    if (typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(updateContrary);
+      if (aboutEl) {
+        observer.observe(aboutEl, {
+          attributes: true,
+          attributeFilter: ['data-bg-transition'],
+        });
+      }
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-navbar-contrary', 'data-theme'],
+      });
+    }
+
+    return () => {
+      unsubscribeScroll();
+      window.removeEventListener('scroll', updateContrary);
+      window.removeEventListener('resize', updateContrary);
+      observer?.disconnect();
+    };
+  }, [theme, activeSection]);
+
   const handleThemeToggle = () => {
     soundFx.playLaserClick(700);
     toggleTheme();
   };
 
   return (
-    <header className={styles.header}>
+    <header
+      className={`${styles.header} ${isContrary ? styles.contraryHeader : ''}`}
+      data-contrary={isContrary ? 'true' : undefined}
+    >
       <nav className={styles.nav}>
         <div 
           className={styles.logo}

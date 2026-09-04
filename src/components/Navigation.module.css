@@ -187,37 +187,85 @@
  * High-contrast white navigation bar over green transition background (#0a5c40).
  * Matches user intent for all non-card texts to be white in light mode when the new background is active.
  */
+.contraryHeader .logo,
+:global([data-theme="light"]) .contraryHeader .logo,
+:global([data-theme="light"][data-navbar-contrary="true"]) .logo,
 :global([data-theme="light"]:has(#about[data-bg-transition="true"])) .logo,
-:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .logo {
-  color: #ffffff;
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .logo {
+  color: #ffffff !important;
 }
 
+.contraryHeader .logoImage,
+:global([data-theme="light"]) .contraryHeader .logoImage,
+:global([data-theme="light"][data-navbar-contrary="true"]) .logoImage,
 :global([data-theme="light"]:has(#about[data-bg-transition="true"])) .logoImage,
-:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .logoImage {
-  border-color: rgba(255, 255, 255, 0.4);
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .logoImage {
+  border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
+.contraryHeader .navItems,
+:global([data-theme="light"]) .contraryHeader .navItems,
+:global([data-theme="light"][data-navbar-contrary="true"]) .navItems,
 :global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItems,
-:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItems {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navItems {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(12px);
 }
 
+.contraryHeader .navItem,
+:global([data-theme="light"]) .contraryHeader .navItem,
+:global([data-theme="light"][data-navbar-contrary="true"]) .navItem,
 :global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem,
-:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItem {
-  color: rgba(255, 255, 255, 0.8);
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navItem {
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 
+.contraryHeader .navItem:hover,
+.contraryHeader .navItem.active,
+:global([data-theme="light"]) .contraryHeader .navItem:hover,
+:global([data-theme="light"]) .contraryHeader .navItem.active,
+:global([data-theme="light"][data-navbar-contrary="true"]) .navItem:hover,
+:global([data-theme="light"][data-navbar-contrary="true"]) .navItem.active,
 :global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem:hover,
 :global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem.active,
-:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItem:hover,
-:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .navItem.active {
-  color: #ffffff;
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navItem:hover,
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navItem.active {
+  color: #ffffff !important;
 }
 
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .themeToggle,
-:global([data-theme="light"]) body:has(#about[data-bg-transition="true"]) .themeToggle {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+.contraryHeader .activeIndicator,
+:global([data-theme="light"]) .contraryHeader .activeIndicator,
+:global([data-theme="light"][data-navbar-contrary="true"]) .activeIndicator,
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .activeIndicator,
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .activeIndicator {
+  background: #00ffc8 !important;
+  box-shadow: 0 0 10px #00ffc8 !important;
 }
+
+.contraryHeader .themeToggle,
+:global([data-theme="light"]) .contraryHeader .themeToggle,
+:global([data-theme="light"][data-navbar-contrary="true"]) .themeToggle,
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .themeToggle,
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .themeToggle {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+.contraryHeader .themeToggle:hover,
+:global([data-theme="light"]) .contraryHeader .themeToggle:hover,
+:global([data-theme="light"][data-navbar-contrary="true"]) .themeToggle:hover,
+:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .themeToggle:hover,
+:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .themeToggle:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  color: #ffffff !important;
+}
+
+.contraryHeader .themeToggle :global(.text-emerald-400),
+:global([data-theme="light"]) .contraryHeader .themeToggle :global(.text-emerald-400),
+:global([data-theme="light"][data-navbar-contrary="true"]) .themeToggle :global(.text-emerald-400) {
+  color: #00ffc8 !important;
+}
+

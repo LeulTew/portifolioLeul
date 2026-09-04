@@ -132,6 +132,9 @@ export function BackgroundPixelTransition({
       if (aboutSection && aboutSection.getAttribute('data-bg-transition') === 'true') {
         aboutSection.removeAttribute('data-bg-transition');
       }
+      if (typeof document !== 'undefined') {
+        document.documentElement.removeAttribute('data-navbar-contrary');
+      }
       cellElementsRef.current.forEach((el) => {
         if (el && el.dataset.active !== 'false') {
           el.dataset.active = 'false';
@@ -151,8 +154,13 @@ export function BackgroundPixelTransition({
         maskBackdropRef.current.setAttribute('opacity', p > 0.1 ? '1' : '0');
       }
       if (aboutSection) {
-        if (p > 0.1) aboutSection.setAttribute('data-bg-transition', 'true');
-        else aboutSection.removeAttribute('data-bg-transition');
+        if (p > 0.1) {
+          aboutSection.setAttribute('data-bg-transition', 'true');
+          document.documentElement.setAttribute('data-navbar-contrary', 'true');
+        } else {
+          aboutSection.removeAttribute('data-bg-transition');
+          document.documentElement.removeAttribute('data-navbar-contrary');
+        }
       }
       return;
     }
@@ -168,8 +176,10 @@ export function BackgroundPixelTransition({
     if (aboutSection) {
       if (isBackdropActive && aboutSection.getAttribute('data-bg-transition') !== 'true') {
         aboutSection.setAttribute('data-bg-transition', 'true');
+        document.documentElement.setAttribute('data-navbar-contrary', 'true');
       } else if (p < 0.70 && aboutSection.getAttribute('data-bg-transition') === 'true') {
         aboutSection.removeAttribute('data-bg-transition');
+        document.documentElement.removeAttribute('data-navbar-contrary');
       }
     }
 
@@ -206,6 +216,7 @@ export function BackgroundPixelTransition({
       window.removeEventListener('resize', update);
       if (typeof document !== 'undefined') {
         document.getElementById('about')?.removeAttribute('data-bg-transition');
+        document.documentElement.removeAttribute('data-navbar-contrary');
       }
     };
   }, [update]);

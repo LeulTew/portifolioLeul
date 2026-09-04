@@ -27,13 +27,22 @@ export function About() {
         if (!aboutEl) return;
         if (entry.isIntersecting) {
           aboutEl.setAttribute('data-bg-transition', 'true');
+          document.documentElement.setAttribute('data-navbar-contrary', 'true');
+        } else {
+          const rect = aboutEl.getBoundingClientRect();
+          if (rect.bottom < 80 || rect.top > 80) {
+            document.documentElement.removeAttribute('data-navbar-contrary');
+          }
         }
       },
       { rootMargin: '-5% 0px -10% 0px' }
     );
 
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      document.documentElement.removeAttribute('data-navbar-contrary');
+    };
   }, []);
 
   /**
@@ -165,7 +174,7 @@ export function About() {
         </PinnedSequence>
 
         {/* Education Section */}
-        <div ref={educationRef} className={styles.educationWrapper}>
+        <div ref={educationRef} className={styles.educationWrapper} data-green-bg="true">
           <div className={styles.sectionTitle}>Education</div>
           <div className={styles.educationGrid}>
             {cvData.education.map((edu, index) => (
