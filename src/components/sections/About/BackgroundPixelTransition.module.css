@@ -1,0 +1,81 @@
+/* ==========================================================================
+   Background Pixel Transition (Run Rob Run inspired bottom-up pixel growth)
+   Runs purely in the background (heldGround) behind all statements and copy.
+   Zero foreground obstruction, zero HUD crosshairs or dots.
+   ========================================================================== */
+
+.pixelContainer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  --bg-transition-color: #001a1a;
+}
+
+:global([data-theme='light']) .pixelContainer {
+  --bg-transition-color: #f4f7ff;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg-transition-color, #001a1a);
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  pointer-events: none;
+}
+
+.backdrop[data-active='true'] {
+  opacity: 1;
+}
+
+.pixelGrid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--bg-cols, 10), 1fr);
+  grid-auto-rows: calc(100vw / var(--bg-cols, 10));
+  align-content: start;
+  pointer-events: none;
+  overflow: hidden;
+  gap: 0;
+}
+
+/*
+ * Hard solid pixel cells:
+ * Pure flat blocks with zero borders, zero margins, zero gaps, zero 3D transforms.
+ * Slight 0.5px expansion eliminates subpixel hairline seams between adjacent grid cells.
+ */
+.pixelCell {
+  width: calc(100% + 0.5px);
+  height: calc(100% + 0.5px);
+  background-color: var(--bg-transition-color, #001a1a);
+  opacity: 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  display: block;
+  pointer-events: none;
+  will-change: opacity;
+  transition: opacity 35ms linear;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.pixelCell[data-active='true'] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixelGrid {
+    display: none;
+  }
+
+  .backdrop[data-active='true'] {
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+}

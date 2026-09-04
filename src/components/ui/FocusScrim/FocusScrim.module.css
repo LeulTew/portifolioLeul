@@ -76,6 +76,7 @@
  */
 .scrim.solid {
   background: rgb(0, 12, 16);
+  transition: background-color 0.4s ease;
 
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -93,6 +94,14 @@
 
 :global([data-theme='light']) .scrim.solid {
   background: rgb(246, 248, 255);
+}
+
+:global(#about[data-bg-transition='true']) .scrim.solid {
+  background: #001a1a;
+}
+
+:global([data-theme='light'] #about[data-bg-transition='true']) .scrim.solid {
+  background: #f4f7ff;
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {

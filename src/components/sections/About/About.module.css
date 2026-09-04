@@ -24,6 +24,16 @@
   overflow: visible;
   pointer-events: none;
   z-index: 1;
+  background-color: transparent;
+  transition: background-color 0.4s ease;
+}
+
+.about[data-bg-transition='true'] {
+  background-color: #001a1a;
+}
+
+:global([data-theme='light']) .about[data-bg-transition='true'] {
+  background-color: #f4f7ff;
 }
 
 .content {
@@ -232,10 +242,20 @@
   pointer-events: none;
   background: #000c10;
   opacity: var(--ground-in, 0);
+  overflow: hidden;
+  transition: background-color 0.4s ease;
 }
 
 :global([data-theme='light']) .heldGround {
   background: #f4f7fb;
+}
+
+.about[data-bg-transition='true'] .heldGround {
+  background: #001a1a;
+}
+
+:global([data-theme='light']) .about[data-bg-transition='true'] .heldGround {
+  background: #f4f7ff;
 }
 
 /*
@@ -616,8 +636,8 @@
 
 
   .educationWrapper {
-    padding: 0 1.5rem;
-    margin-top: 4rem;
+    padding: 3rem 1.5rem 4rem;
+    margin-top: 0;
   }
 }
 
@@ -627,10 +647,18 @@
 
 .educationWrapper {
   width: 100%;
-  padding: 0 clamp(2rem, 9vw, 16rem);
-  margin-top: 10vh;
-  margin-bottom: 8vh;
+  padding: clamp(3.5rem, 8vh, 6rem) clamp(2rem, 9vw, 16rem) clamp(4rem, 10vh, 8rem);
+  margin-top: 0;
+  margin-bottom: 0;
   box-sizing: border-box;
+  background-color: #001a1a;
+  position: relative;
+  z-index: 2;
+  transition: background-color 0.4s ease;
+}
+
+:global([data-theme='light']) .educationWrapper {
+  background-color: #f4f7ff;
 }
 
 .educationSection {
@@ -698,13 +726,48 @@
   mix-blend-mode: normal;
 }
 
+:global([data-theme="light"]) .title,
 :global([data-theme="light"]) .about .title {
   color: #111827;
   text-shadow: none;
 }
 
-:global([data-theme="light"]) .about .subtitle,
+:global([data-theme="light"]) .subtitle,
+:global([data-theme="light"]) .about .subtitle {
+  color: #1f2937;
+  text-shadow: none;
+  opacity: 0.9;
+}
+
+:global([data-theme="light"]) .sectionTitle,
+:global([data-theme="light"]) .educationTitle,
 :global([data-theme="light"]) .about .sectionTitle {
   color: #111827;
+  mix-blend-mode: normal;
   text-shadow: none;
+}
+
+:global([data-theme="light"]) .statementText,
+:global([data-theme="light"]) .statementLine {
+  color: #111827;
+}
+
+:global([data-theme="light"]) .statementHighlight {
+  color: #111827;
+  opacity: 0.95;
+}
+
+:global([data-theme="light"]) .subStatement,
+:global([data-theme="light"]) .subStatementText {
+  color: #374151;
+}
+
+:global([data-theme="light"]) .metricLabel {
+  color: #374151;
+}
+
+:global([data-theme="light"]) .editorialPill {
+  background: rgba(17, 24, 39, 0.06);
+  border-color: rgba(17, 24, 39, 0.16);
+  color: #111827;
 }

@@ -13,11 +13,11 @@ import type { SequenceLayer } from '../../ui/PinnedSequence';
  */
 export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
   /*
-   * The ground. Covers the whole stretch and ramps at both ends, so the world
-   * is shut out for exactly as long as the reader is held and is given back on
-   * the way out instead of being switched off.
+   * The ground. Covers the whole stretch and ramps in at the start.
+   * End is set to 2 so ground-in stays at full 1.0 strength through the end of the
+   * sequence and seamlessly hands over to the Education section without disappearing.
    */
-  { name: 'ground', start: 0, end: 1, feather: 0.09 },
+  { name: 'ground', start: 0, end: 2, feather: 0.09 },
   /*
    * The geometry leaves before the stretch does. Something still drifting as
    * the section hands over reads as scenery that was forgotten rather than
@@ -48,8 +48,15 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * animating in underneath a heading that had not arrived yet and a mark that
    * was still pointing at it.
    */
-  { name: 'one', start: 0.07, end: 0.47 },
-  { name: 'two', start: 0.53, end: 0.97 },
+  { name: 'one', start: 0.07, end: 0.44 },
+  { name: 'two', start: 0.50, end: 0.78 },
+  /*
+   * Background pixel transition (runrobrun stepped bottom-up pixel growth).
+   * Takes over AFTER statement two has completely disappeared (progress > 0.78),
+   * climbing from the bottom up in castellated columns to transition the background
+   * into dark greenish (#001a1a) or whitish (#f4f7ff).
+   */
+  { name: 'bgTransition', start: 0.78, end: 1.0, feather: 0.04 },
 ] as const;
 
 /**

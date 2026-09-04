@@ -9,14 +9,7 @@ import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
-
-
-
-
-
-
-
-
+import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
@@ -42,8 +35,10 @@ export function About() {
           testId="about-sequence"
         >
           {/* Shuts the world out for exactly as long as the reader is held,
-              and gives it back on the way out. */}
-          <div className={styles.heldGround} aria-hidden="true" />
+              and gives it back on the way out. Hosts the bottom-up background pixel transition. */}
+          <div className={styles.heldGround} aria-hidden="true">
+            <BackgroundPixelTransition start={0.78} end={1.0} />
+          </div>
 
           {/*
             Held with everything else rather than left in the flow. A heading

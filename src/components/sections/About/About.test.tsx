@@ -91,9 +91,9 @@ describe('About held sequence', () => {
   it('keeps the ground up for the whole stretch it is held for', () => {
     const ground = STATEMENT_LAYERS.find((l) => l.name === 'ground')!;
     expect(windowPresence(0.5, ground.start, ground.end, ground.feather!)).toBe(1);
-    // Ramped at both ends, so the world is handed back rather than switched on.
+    // Ramped in at the start, and stays fully opaque at the end to hand over to Education
     expect(windowPresence(0.02, ground.start, ground.end, ground.feather!)).toBeLessThan(1);
-    expect(windowPresence(0.98, ground.start, ground.end, ground.feather!)).toBeLessThan(1);
+    expect(windowPresence(0.98, ground.start, ground.end, ground.feather!)).toBe(1);
   });
 
   it('clears the geometry before the stretch ends', () => {
@@ -200,10 +200,19 @@ describe('About sequence pacing', () => {
     expect(layer('one').start).toBeLessThan(0.12);
   });
 
-  it('leaves no dead scroll at the end', () => {
-    // Nothing to look at while still being held is the same fault at the
-    // other end.
-    expect(layer('two').end).toBeGreaterThan(0.95);
+  it('leaves no dead scroll at the end and triggers background transition after statement two', () => {
+    // Statement two finishes and disappears before the background transition begins,
+    // which then carries the sequence to 1.0 with no dead scroll.
+    expect(layer('two').end).toBeLessThanOrEqual(layer('bgTransition').start);
+    expect(layer('bgTransition').end).toBe(1.0);
+  });
+
+  it('renders the background pixel transition inside the held ground', () => {
+    render(<About />);
+    const bgTransition = screen.getByTestId('bg-pixel-transition');
+    expect(bgTransition).toBeInTheDocument();
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    expect(overlay).toContainElement(bgTransition);
   });
 
   it('spends no more scroll than the two statements need', () => {
