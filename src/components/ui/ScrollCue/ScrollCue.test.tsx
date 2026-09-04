@@ -78,14 +78,31 @@ describe('ScrollCue', () => {
     expect(cue()).toHaveAttribute('data-progress', '1.000');
   });
 
-  it('follows the arcs the original mark was drawn with', () => {
-    // Recovered from its border-radius: two arcs bulging left, radii 181.6
-    // and 118.4, with the head where `.point` sat.
+  it('keeps the bulge the original mark was drawn with', () => {
+    /*
+     * Recovered from its border-radius: two arcs bulging left, radii 181.6 and
+     * 118.4. The sweep has since been drawn further down by scaling it
+     * vertically, which turns those circles into ellipses -- so the horizontal
+     * radii are the part that must not have moved. Checking those rather than
+     * the literal string is the difference between pinning the shape and
+     * pinning the last edit.
+     */
     render(<ScrollCue />);
     const d = screen.getByTestId('scroll-cue-trace').getAttribute('d') ?? '';
-    expect(d).toContain('181.6 181.6');
-    expect(d).toContain('118.4 118.4');
-    expect(d).toContain('34.7 265.3');
+
+    const radii = [...d.matchAll(/A\s+(-?[\d.]+)\s+(-?[\d.]+)/g)].map((m) => ({
+      rx: Number(m[1]),
+      ry: Number(m[2]),
+    }));
+
+    expect(radii.map((r) => r.rx)).toEqual([181.6, 118.4, 60]);
+    // Stretched down, never squashed, and all by the same amount.
+    const stretch = radii.map((r) => r.ry / r.rx);
+    for (const factor of stretch) expect(factor).toBeCloseTo(stretch[0], 2);
+    expect(stretch[0]).toBeGreaterThan(1);
+    // Still bulges to the same place across.
+    expect(d).toContain(' 0 213.7');
+    expect(d).toContain('34.7 318.3');
   });
 
   it('lands the head on the end of the line, pointing along it', () => {
@@ -116,8 +133,23 @@ describe('ScrollCue', () => {
     const run = /L\s+(-?[\d.]+)\s+(-?[\d.]+)\s*$/.exec(trace.trim());
 
     expect(run).not.toBeNull();
-    // The straight run shares its x with the arc that fed it: it is vertical.
-    expect(trace).toContain(`A 60 60 0 0 1 ${run![1]} `);
+
+    /*
+     * The straight run shares its x with the arc that fed it, so the join is
+     * vertical. Read off the path rather than matched as a string: the arc is
+     * an ellipse now that the sweep has been drawn downwards, and this has to
+     * keep holding whatever the radii become. It is the invariant that stops
+     * the curve and the run kinking where they meet.
+     */
+    const arcs = [...trace.matchAll(
+      /A\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[01]\s+[01]\s+(-?[\d.]+)\s+(-?[\d.]+)/g
+    )];
+    const lastArcEnd = arcs.at(-1);
+
+    expect(lastArcEnd).toBeDefined();
+    expect(Number(lastArcEnd![1])).toBeCloseTo(Number(run![1]), 6);
+    // And it genuinely travels afterwards, rather than ending where it arrived.
+    expect(Number(run![2])).toBeGreaterThan(Number(lastArcEnd![2]));
   });
 
   it('normalises path length, so the dash maths is independent of geometry', () => {
