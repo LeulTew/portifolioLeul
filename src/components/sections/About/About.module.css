@@ -24,6 +24,16 @@
   overflow: visible;
   pointer-events: none;
   z-index: 1;
+  background-color: transparent;
+  transition: background-color 0.4s ease;
+}
+
+.about[data-bg-transition='true'] {
+  background-color: #001a1a;
+}
+
+:global([data-theme='light']) .about[data-bg-transition='true'] {
+  background-color: #0a5c40;
 }
 
 .content {
@@ -92,7 +102,39 @@
  * page, because the overlay is fixed: the reader is standing still inside it.
  */
 .aboutSequence {
-  padding: 0 clamp(2rem, 9vw, 16rem);
+  /*
+   * One source for where this section's columns begin and end.
+   *
+   * The heading and the statements are siblings inside this overlay, and they
+   * used to arrive at their left edge by two different routes -- the heading a
+   * clamp further in than the stages below it. That reads as a mistake rather
+   * than as a composition: the statement is the answer to the heading, so the
+   * two belong on one line. Held here rather than on the section itself
+   * because this overlay is portalled to the body, so nothing inside it
+   * inherits from the section at all.
+   */
+  --about-gutter: clamp(2rem, 9vw, 16rem);
+  /*
+   * The start edge, and it has to carry the whole inset on its own.
+   *
+   * The heading and the statements are both absolutely positioned, and an
+   * absolutely positioned box resolves `left: 0` against its containing
+   * block's padding box -- so the overlay's own padding does not inset either
+   * of them by a single pixel. Anything that looks like a margin here is this
+   * property, which is exactly why they have to share it.
+   */
+  --about-indent: clamp(1.5rem, 11.5vw, 20rem);
+
+  /*
+   * The drop from the heading to the statement.
+   *
+   * One clear step above the 2rem the columns use internally, so the vertical
+   * order reads at a glance: heading, a gap you notice, statement, a gap you
+   * do not. Equal gaps would flatten the two into one block.
+   */
+  --statement-drop: clamp(3rem, 15vh, 8rem);
+
+  padding: 0 var(--about-gutter);
   box-sizing: border-box;
 }
 
@@ -110,23 +152,138 @@
  */
 .heldHeader {
   position: absolute;
-  top: clamp(6rem, 14vh, 11rem);
+  /*
+   * Lower than the top of the stretch, deliberately.
+   *
+   * The arrow the hero draws points down into this section, and the reader's
+   * eye travels with it. Setting the heading against the top edge meets that
+   * movement halfway and stops it short; dropping it leaves the arrow room to
+   * finish, and the heading then arrives below where the eye already is
+   * rather than above it.
+   */
+  top: clamp(10.5rem, 24vh, 18rem);
   left: 0;
   right: 0;
-  padding-left: clamp(3.5rem, 11.5vw, 20rem);
-  padding-right: clamp(2rem, 9vw, 16rem);
+  padding-left: var(--about-indent);
+  padding-right: var(--about-gutter);
   box-sizing: border-box;
   text-align: left;
   pointer-events: none;
-  opacity: var(--head-in, 0);
-  transform: translate3d(0, calc((1 - var(--head-in, 0)) * -7vh), 0);
-  will-change: opacity, transform;
+  z-index: 30;
+  /*
+   * The block itself neither fades nor slides.
+   *
+   * It used to do both, together, which is the one gesture every slide deck
+   * has: a whole heading arriving as a unit from somewhere off-position. The
+   * words are uncovered instead, below.
+   */
+  will-change: transform;
+
+  /*
+   * Two beats out of one number, so the name and the line under it are not one
+   * movement. The first uncovers over the opening two thirds; the second
+   * starts a third of the way in and runs to the end, so they overlap the way
+   * the hero's own layers do.
+   */
+  --title-in: clamp(0, calc(var(--head-in, 0) / 0.66), 1);
+  --sub-in: clamp(0, calc((var(--head-in, 0) - 0.34) / 0.66), 1);
+}
+
+/*
+ * Typeset rather than slid.
+ *
+ * The name is uncovered left to right by its own mask while it settles the
+ * last of a very slight overshoot in letter-fit -- a scale on the block, not
+ * letter-spacing, which would be layout on every frame. What reads is a
+ * heading being set, which is what a masked wipe does and what a translate can
+ * never do: the words do not come from anywhere, they are revealed in place.
+ */
+.heldHeader .title {
+  clip-path: inset(-0.18em calc((1 - var(--title-in)) * 100%) -0.18em 0);
+  transform: translate3d(0, 0, 0) scale(calc(0.988 + var(--title-in) * 0.012));
+  transform-origin: 0% 50%;
+  /* The hover transition would restart on every frame of the reveal. */
+  transition: none;
+  will-change: clip-path, transform;
+}
+
+/*
+ * The line under it is uncovered upward instead, so the two beats differ in
+ * direction as well as in time.
+ */
+.heldHeader .subtitle {
+  clip-path: inset(calc((1 - var(--sub-in)) * 100%) 0 -0.2em 0);
+  opacity: calc(0.2 + var(--sub-in) * 0.65);
+  will-change: clip-path, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Uncovered outright: the reveal is the motion being opted out of. */
   .heldHeader {
     transform: none;
   }
+
+  .heldHeader .title,
+  .heldHeader .subtitle {
+    clip-path: none;
+    transform: none;
+  }
+}
+
+/*
+ * The ground the stretch stands on.
+ *
+ * Opaque, and ramped at both ends by its own layer rather than switched: the
+ * world is shut out for exactly as long as the reader is held, and is handed
+ * back as they leave instead of reappearing.
+ */
+.heldGround {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #000c10;
+  opacity: var(--ground-in, 0);
+  overflow: hidden;
+  transition: background-color 0.4s ease;
+}
+
+:global([data-theme='light']) .heldGround {
+  background: #e8edf2;
+}
+
+.about[data-bg-transition='true'] .heldGround {
+  background: #001a1a;
+}
+
+:global([data-theme='light']) .about[data-bg-transition='true'] .heldGround {
+  background: #0a5c40;
+}
+
+/*
+ * Masked transition overlay: pure white text cutout over rising green transition background.
+ * Uses SVG #bg-pixel-transition-mask so where the pixels rise, the background is green
+ * and the text is pure white (#ffffff), with razor-sharp pixel edges and zero blend distortion.
+ */
+.transitionMaskedOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  -webkit-mask: url(#bg-pixel-transition-mask);
+  mask: url(#bg-pixel-transition-mask);
+  opacity: var(--ground-in, 0);
+  will-change: mask, -webkit-mask;
+}
+
+.transitionGreenFill {
+  position: absolute;
+  inset: 0;
+  background-color: #001a1a;
+  pointer-events: none;
+}
+
+:global([data-theme='light']) .transitionGreenFill {
+  background-color: #0a5c40;
 }
 
 /*
@@ -168,7 +325,8 @@
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 0 clamp(2rem, 9vw, 16rem);
+  /* Starts on the heading's line, so the statement answers it. */
+  padding: 0 var(--about-gutter) 0 var(--about-indent);
   box-sizing: border-box;
   pointer-events: none;
 }
@@ -209,7 +367,16 @@
 .layerOne,
 .layerTwo {
   opacity: var(--on);
-  transform: translate3d(0, calc((1 - var(--in)) * 2.5vh), 0);
+  /*
+   * The drop and the entry offset share one transform. Two transforms on one
+   * element means the last one wins, and the statement would either sit at the
+   * wrong height or arrive from the wrong place.
+   */
+  transform: translate3d(
+    0,
+    calc(var(--statement-drop, 0px) + (1 - var(--in)) * 2.5vh),
+    0
+  );
 }
 
 /*
@@ -387,11 +554,11 @@
 .subStatementBar {
   width: 28px;
   height: 2px;
-  background-color: var(--accent-ink);
+  background-color: var(--accent, #00ff9d);
   flex-shrink: 0;
 }
 
-:global([data-theme="light"]) .subStatementBar {
+:global([data-theme='light']) .subStatementBar {
   background-color: #059669;
 }
 
@@ -409,7 +576,7 @@
   padding-left: 1rem;
 }
 
-:global([data-theme="light"]) .metricItem {
+:global([data-theme='light']) .metricItem {
   border-left-color: rgba(17, 24, 39, 0.15);
 }
 
@@ -417,11 +584,11 @@
   font-family: monospace;
   font-size: clamp(1.15rem, 1.4vw, 1.4rem);
   font-weight: 800;
-  color: var(--accent-ink);
+  color: var(--accent, #00ff9d);
   min-width: 42px;
 }
 
-:global([data-theme="light"]) .metricValue {
+:global([data-theme='light']) .metricValue {
   color: #059669;
 }
 
@@ -452,7 +619,7 @@
   -webkit-backdrop-filter: blur(8px);
 }
 
-:global([data-theme="light"]) .editorialPill {
+:global([data-theme='light']) .editorialPill {
   background: rgba(17, 24, 39, 0.04);
   border-color: rgba(17, 24, 39, 0.12);
   color: var(--strong-text);
@@ -468,10 +635,17 @@
     padding-right: 1.5rem;
   }
 
-  .statements,
+  /*
+   * The narrow layout moves the shared edge, not the two elements.
+   *
+   * This used to set padding on `.statements` and the overlay directly and
+   * leave `.heldHeader` on its own clamp, so below this width the heading kept
+   * a large indent while the statement went flush -- and the two were only
+   * ever aligned on a wide screen. Overriding the property they both read
+   * keeps them on one line at every width.
+   */
   .aboutSequence {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    --about-gutter: 1.5rem;
   }
 
   .leftColumn,
@@ -490,8 +664,8 @@
 
 
   .educationWrapper {
-    padding: 0 1.5rem;
-    margin-top: 4rem;
+    padding: 3rem 1.5rem 4rem;
+    margin-top: 0;
   }
 }
 
@@ -501,24 +675,52 @@
 
 .educationWrapper {
   width: 100%;
-  padding: 0 clamp(2rem, 9vw, 16rem);
-  margin-top: 10vh;
-  margin-bottom: 8vh;
+  padding: clamp(3.5rem, 8vh, 6rem) clamp(2rem, 9vw, 16rem) clamp(4rem, 10vh, 8rem);
+  margin-top: 0;
+  margin-bottom: 0;
   box-sizing: border-box;
+  background-color: #001a1a;
+  position: relative;
+  z-index: 2;
+  transition: background-color 0.4s ease;
+}
+
+:global([data-theme='light']) .educationWrapper {
+  background-color: #0a5c40;
 }
 
 .educationSection {
   width: 100%;
 }
 
-.educationTitle,
+.educationTitle {
+  font-size: clamp(3.5rem, 7.5vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  margin: 0 0 clamp(2.5rem, 5vh, 4rem);
+  text-align: left;
+}
+
 .sectionTitle {
   font-size: clamp(1.75rem, 3vw, 3rem);
   font-weight: 600;
-  color: var(--strong-text);
+  color: #ffffff;
   margin: 0 0 2rem;
   letter-spacing: -0.02em;
-  mix-blend-mode: difference;
+}
+
+.visuallyHiddenEducation {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .educationGrid {
@@ -568,179 +770,72 @@
   }
 }
 
-:global([data-theme="light"]) .about {
+:global([data-theme='light']) .about {
   mix-blend-mode: normal;
 }
 
-:global([data-theme="light"]) .about .title {
+:global([data-theme='light']) .title,
+:global([data-theme='light']) .about .title {
   color: #111827;
   text-shadow: none;
 }
 
-:global([data-theme="light"]) .about .subtitle,
-:global([data-theme="light"]) .about .sectionTitle {
-  color: #111827;
+:global([data-theme='light']) .subtitle,
+:global([data-theme='light']) .about .subtitle {
+  color: #1f2937;
   text-shadow: none;
+  opacity: 0.9;
 }
 
-/* ==========================================================================
-   The opening beat: the window, and the line typed beside it
-   ========================================================================== */
-
-.introBeat {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(2rem, 5vw, 5.5rem);
-  width: 100%;
-  max-width: 1100px;
-  /*
-   * Driven by the cubed value, so the beat is at nothing until it is most of
-   * the way in and does not sit as a ghost through its own approach.
-   */
-  opacity: var(--intro-on, 0);
+:global([data-theme='light']) .sectionTitle,
+:global([data-theme='light']) .educationTitle,
+:global([data-theme='light']) .about .sectionTitle,
+:global([data-theme='light']) .educationWrapper .sectionTitle,
+:global([data-theme='light']) .educationWrapper .educationTitle {
+  color: #ffffff;
+  mix-blend-mode: normal;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
-/*
- * The window opens by being uncovered, not by being stretched.
- *
- * Scaling the frame means the picture inside is scaled with it, so it has to
- * be counter-scaled to keep its proportions -- and at the start of the open
- * that counter-scale is fiftyfold, which asks the browser to rasterise the
- * portrait at forty-five thousand pixels tall behind a two-percent-tall
- * window. Correct arithmetic, ruinous to draw.
- *
- * Clipping distorts nothing, so nothing has to be undone. Three nested
- * elements, each clipping its own subtree: the mask opens, the frame carries
- * the page's chamfer, and the inner carries it again a pixel smaller so the
- * gradient between them reads as a border. A clipped box cannot have one --
- * the border follows the box, and the clip removes the corners it was drawn
- * on.
- */
-.windowMask {
-  clip-path: inset(
-    calc((1 - var(--intro-in, 0)) * 50%) 0
-      calc((1 - var(--intro-in, 0)) * 50%) 0
-  );
-  /*
-   * Leaves to the right as it closes, while the first statement is already
-   * arriving underneath it. Driven by its own rising value rather than by the
-   * beat's falling one, so the window does not also arrive sliding.
-   */
-  transform: translate3d(calc(var(--introOut-in, 0) * 46%), 0, 0);
-  will-change: clip-path, transform;
+:global([data-theme='light']) #about[data-bg-transition='true'] .title,
+:global([data-theme='light']) #about[data-bg-transition='true'] .heldHeader {
+  color: #ffffff;
 }
 
-/*
- * The page's own chamfer: cards are cut 18px at the top-left and bottom-right,
- * so a portrait framed any other way reads as imported from somewhere else.
- */
-.window {
-  position: relative;
-  margin: 0;
-  padding: 1px;
-  background: linear-gradient(
-    150deg,
-    rgba(0, 255, 194, 0.55),
-    rgba(0, 255, 194, 0.08) 45%,
-    rgba(120, 190, 210, 0.28)
-  );
-  clip-path: polygon(
-    18px 0%,
-    100% 0%,
-    100% calc(100% - 18px),
-    calc(100% - 18px) 100%,
-    0% 100%,
-    0% 18px
-  );
+:global([data-theme='light']) #about[data-bg-transition='true'] .subtitle {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.windowInner {
-  position: relative;
-  overflow: hidden;
-  background: #01161c;
-  aspect-ratio: 4 / 5;
-  clip-path: polygon(
-    17px 0%,
-    100% 0%,
-    100% calc(100% - 17px),
-    calc(100% - 17px) 100%,
-    0% 100%,
-    0% 17px
-  );
+#about[data-bg-transition='true'] .heldHeader {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
-:global([data-theme='light']) .windowInner {
-  background: #dde8ec;
+#about[data-bg-transition='true'] .transitionMaskedOverlay {
+  display: none;
 }
 
-/*
- * Settles as the window opens. Bounded, unlike a counter-scale: it is a sixth
- * of a percent of extra size, not a multiple of the whole picture.
- */
-.portrait {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 22%;
-  transform: scale(calc(1.06 - var(--intro-in, 0) * 0.06));
-  will-change: transform;
+:global([data-theme='light']) .statementText,
+:global([data-theme='light']) .statementLine {
+  color: #111827;
 }
 
-.introCopy {
-  min-width: 0;
+:global([data-theme='light']) .statementHighlight {
+  color: #111827;
+  opacity: 0.95;
 }
 
-@media (max-width: 900px) {
-  .introBeat {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2rem;
-    max-width: 34rem;
-  }
-
-  .window {
-    max-width: 18rem;
-  }
+:global([data-theme='light']) .subStatement,
+:global([data-theme='light']) .subStatementText {
+  color: #374151;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  /* The window is simply open, and stays where it is. */
-  .windowMask {
-    clip-path: none;
-    transform: none;
-  }
-
-  .portrait {
-    transform: none;
-  }
-}
-
-/* ==========================================================================
-   Light
-   ==========================================================================
-   The section stands on a near-white ground in this theme, so anything set in
-   white here was being painted onto it. The tokens above already follow the
-   theme; these are the values that were written literally. */
-
-:global([data-theme='light']) .title {
-  color: #0a1420;
-}
-
-:global([data-theme='light']) .heldField {
-  color: rgba(24, 44, 60, 0.26);
+:global([data-theme='light']) .metricLabel {
+  color: #374151;
 }
 
 :global([data-theme='light']) .editorialPill {
-  background: rgba(17, 24, 39, 0.05);
-  border-color: rgba(17, 24, 39, 0.14);
-}
-
-:global([data-theme='light']) .window {
-  background: linear-gradient(
-    150deg,
-    rgba(6, 122, 85, 0.5),
-    rgba(6, 122, 85, 0.1) 45%,
-    rgba(40, 90, 110, 0.24)
-  );
+  background: rgba(17, 24, 39, 0.06);
+  border-color: rgba(17, 24, 39, 0.16);
+  color: #111827;
 }

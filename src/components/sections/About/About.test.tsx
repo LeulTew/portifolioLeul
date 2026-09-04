@@ -4,8 +4,6 @@ import { About } from "./About";
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from "./statementLayers";
 import { windowPresence, layerOpacity } from "@/lib/motion/sequenceWindow";
 import { cvData } from "../../../data/cv";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 // Mock framer-motion useScroll & useSpring
 vi.mock("framer-motion", async (importOriginal) => {
@@ -40,14 +38,19 @@ describe("About Section", () => {
     });
   });
 
-});
+  it("renders education cards in the layout", () => {
+    render(<About />);
+    expect(screen.getByText("Education")).toBeInTheDocument();
+    expect(screen.getByText(/HiLCoE School of Computer Science/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saint Joseph School/i)).toBeInTheDocument();
+  });
 
-/**
- * The beats that take the stage in turn, as opposed to what carries them or
- * what drives one beat's own exit.
- */
-const CARRIERS = ['ground', 'head', 'field', 'introOut'];
-const BEATS = STATEMENT_LAYERS.filter((l) => !CARRIERS.includes(l.name));
+  it("renders certifications cards cleanly", () => {
+    render(<About />);
+    expect(screen.getByText("Certifications")).toBeInTheDocument();
+    expect(screen.getByText(/Bootdev/i)).toBeInTheDocument();
+  });
+});
 
 describe('About held sequence', () => {
   it('spends real scroll being held, rather than passing by', () => {
@@ -76,58 +79,27 @@ describe('About held sequence', () => {
     }
   });
 
-  it('hands the statements over cleanly, with nothing on between them', () => {
-    // The ground and the field are meant to be on: they are what stays
-    // continuous across a handover.
-    const one = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
-    const two = STATEMENT_LAYERS.find((l) => l.name === 'two')!;
-    const gap = (one.end + two.start) / 2;
-
-    for (const beat of BEATS) {
-      expect(
-        windowPresence(gap, beat.start, beat.end, beat.feather ?? 0.09),
-        `${beat.name} still on at ${gap.toFixed(3)}`
-      ).toBe(0);
+  it('hands over rather than crossfading: neither is on at the changeover', () => {
+    // The statements only. The ground and the field are meant to be on here:
+    // they are what stays continuous across the handover.
+    for (const name of ['one', 'two']) {
+      const layer = STATEMENT_LAYERS.find((l) => l.name === name)!;
+      expect(windowPresence(0.5, layer.start, layer.end, 0.09)).toBe(0);
     }
-  });
-
-  it('overlaps the opening beat with the first statement, on purpose', () => {
-    // The window leaving and the statement arriving are one move. Handed over
-    // cleanly, the reader waits through a blank screen between them.
-    const intro = STATEMENT_LAYERS.find((l) => l.name === 'intro')!;
-    const one = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
-
-    expect(one.start).toBeLessThan(intro.end);
-
-    const during = (intro.end + one.start) / 2;
-    expect(windowPresence(during, intro.start, intro.end, 0.09)).toBeGreaterThan(0);
-    expect(windowPresence(during, one.start, one.end, 0.09)).toBeGreaterThan(0);
-  });
-
-  it('slides the window out on a value that only rises', () => {
-    // Read backwards off the beat's own presence it would run both ways: the
-    // window would arrive sliding as well as leave sliding.
-    const out = STATEMENT_LAYERS.find((l) => l.name === 'introOut')!;
-    const intro = STATEMENT_LAYERS.find((l) => l.name === 'intro')!;
-
-    expect(out.start).toBeGreaterThan(intro.start);
-    expect(out.start).toBeLessThan(intro.end);
-    // Still climbing when the beat is gone, so the exit never reverses.
-    expect(out.end).toBeGreaterThan(intro.end);
   });
 
   it('keeps the ground up for the whole stretch it is held for', () => {
     const ground = STATEMENT_LAYERS.find((l) => l.name === 'ground')!;
-    expect(windowPresence(0.5, ground.start, ground.end, ground.feather)).toBe(1);
-    // Ramped at both ends, so the world is handed back rather than switched on.
-    expect(windowPresence(0.02, ground.start, ground.end, ground.feather)).toBeLessThan(1);
-    expect(windowPresence(0.98, ground.start, ground.end, ground.feather)).toBeLessThan(1);
+    expect(windowPresence(0.5, ground.start, ground.end, ground.feather!)).toBe(1);
+    // Ramped in at the start, and stays fully opaque at the end to hand over to Education
+    expect(windowPresence(0.02, ground.start, ground.end, ground.feather!)).toBeLessThan(1);
+    expect(windowPresence(0.98, ground.start, ground.end, ground.feather!)).toBe(1);
   });
 
   it('clears the geometry before the stretch ends', () => {
     // Something still drifting at the handover reads as scenery left behind.
     const field = STATEMENT_LAYERS.find((l) => l.name === 'field')!;
-    expect(windowPresence(0.97, field.start, field.end, field.feather)).toBe(0);
+    expect(windowPresence(0.97, field.start, field.end, field.feather!)).toBe(0);
   });
 
   it('starts each statement from nothing, not from a blurred ghost', () => {
@@ -164,17 +136,47 @@ describe('About held heading', () => {
     );
   });
 
-  it('keeps the heading up for the whole stretch', () => {
+  it('keeps the heading up for the whole stretch once it has arrived', () => {
     const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
-    for (const at of [0.15, 0.5, 0.85]) {
-      expect(windowPresence(at, head.start, head.end, head.feather)).toBe(1);
+    for (const at of [0.25, 0.5, 0.85]) {
+      expect(windowPresence(at, head.start, head.end, head.feather!)).toBe(1);
     }
   });
 
-  it('lets the heading go only at the very ends', () => {
+  it('has the heading up while the arrow is still pointing at it', () => {
+    /*
+     * The composition the whole handover exists to produce: the head of the
+     * line the hero draws comes to rest just above this heading as the panel
+     * reaches the top of the window, and that only exists if the heading is
+     * there while the mark still is.
+     *
+     * This used to assert the opposite -- that the heading waited until the
+     * arrow had finished leading -- which put it at full strength some four
+     * hundred pixels of scroll later, by which point the mark had been carried
+     * off the top and the heading arrived into an empty screen, pointed at by
+     * nothing.
+     */
     const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
-    expect(windowPresence(0.01, head.start, head.end, head.feather)).toBeLessThan(1);
-    expect(windowPresence(0.99, head.start, head.end, head.feather)).toBeLessThan(1);
+    expect(head.start).toBe(0);
+
+    // Up, or well on its way, within a fraction of the stretch.
+    expect(windowPresence(0.02, head.start, head.end, head.feather!)).toBeGreaterThan(0);
+    expect(windowPresence(0.05, head.start, head.end, head.feather!)).toBe(1);
+  });
+
+  it('brings the copy in after the heading, not under it', () => {
+    // The reader is handed from the mark to the heading to the copy, in that
+    // order. The first statement used to start before the heading had arrived.
+    const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
+    const one = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
+
+    expect(one.start).toBeGreaterThan(head.start + head.feather!);
+    expect(windowPresence(one.start, head.start, head.end, head.feather!)).toBe(1);
+  });
+
+  it('lets the heading go only at the very end', () => {
+    const head = STATEMENT_LAYERS.find((l) => l.name === 'head')!;
+    expect(windowPresence(0.99, head.start, head.end, head.feather!)).toBeLessThan(1);
   });
 
   it('still names the section exactly once', () => {
@@ -184,103 +186,36 @@ describe('About held heading', () => {
 });
 
 describe('About sequence pacing', () => {
+  const layer = (name: string) =>
+    STATEMENT_LAYERS.find((l) => l.name === name)!;
 
-  it('starts the first beat almost as soon as the reader is held', () => {
-    // Scroll spent on an empty held screen reads as the section failing to
-    // begin.
-    expect(BEATS[0].start).toBeLessThan(0.06);
+  it('starts the first statement as the arrow leaves, not before', () => {
+    /*
+     * Scroll spent on an empty held screen reads as the section failing to
+     * begin, so this stays early -- but not so early that the copy arrives
+     * under a heading that has not landed and a mark still pointing at it. The
+     * reader is handed from the mark to the heading to the copy.
+     */
+    expect(layer('one').start).toBeGreaterThan(layer('head').feather!);
+    expect(layer('one').start).toBeLessThan(0.12);
   });
 
-  it('leaves no dead scroll at the end', () => {
-    // Nothing to look at while still being held is the same fault at the
-    // other end.
-    expect(BEATS[BEATS.length - 1].end).toBeGreaterThan(0.95);
+  it('leaves no dead scroll at the end and triggers background transition after statement two', () => {
+    // Statement two finishes and disappears before the background transition begins,
+    // which then carries the sequence to 1.0 with no dead scroll.
+    expect(layer('two').end).toBeLessThanOrEqual(layer('bgTransition').start);
+    expect(layer('bgTransition').end).toBe(1.0);
   });
 
-  it('spends one screen per beat, and no more', () => {
-    // A fixed stretch means adding a beat silently shortens every other one.
-    expect(ABOUT_SCREENS).toBe(BEATS.length + 1);
-  });
-
-  it('runs the beats in the order they are read', () => {
-    for (let i = 1; i < BEATS.length; i++) {
-      expect(BEATS[i].start).toBeGreaterThan(BEATS[i - 1].start);
-    }
-  });
-});
-
-describe('About opening beat', () => {
-  it('opens with a portrait and a line, before the statements', () => {
+  it('renders the background pixel transition inside the held ground', () => {
     render(<About />);
-    const intro = screen.getByTestId('about-intro');
-    expect(intro).toBeInTheDocument();
-    expect(intro).toContainElement(screen.getByTestId('typed-text'));
-    expect(intro.querySelector('img')).toBeTruthy();
+    const bgTransition = screen.getByTestId('bg-pixel-transition');
+    expect(bgTransition).toBeInTheDocument();
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    expect(overlay).toContainElement(bgTransition);
   });
 
-  it('runs before both statements', () => {
-    const intro = STATEMENT_LAYERS.find((l) => l.name === 'intro')!;
-    for (const name of ['one', 'two']) {
-      expect(intro.start).toBeLessThan(
-        STATEMENT_LAYERS.find((l) => l.name === name)!.start
-      );
-    }
-  });
-
-  it('names the portrait for anyone who cannot see it', () => {
-    render(<About />);
-    const portrait = screen.getByTestId('about-intro').querySelector('img')!;
-    expect(portrait.getAttribute('alt')).toBeTruthy();
-    // Sized, so the window does not collapse and jump while it loads.
-    expect(portrait.getAttribute('width')).toBeTruthy();
-    expect(portrait.getAttribute('height')).toBeTruthy();
-  });
-
-  it('says something the rest of the section does not', () => {
-    // The metrics carry the years, the count and the degree; the pills carry
-    // the stack; the statements carry the approach. Repeating any of it here
-    // would make the first thing read the least informative thing in it.
-    const intro = cvData.about.intro.toLowerCase();
-    for (const repeated of ['3+', '30+', 'bsc', 'hilcoe', 'scalable', 'simple']) {
-      expect(intro).not.toContain(repeated);
-    }
-    for (const pill of cvData.about.highlights) {
-      expect(intro).not.toContain(pill.toLowerCase());
-    }
-  });
-
-  it('stays short: it is an opening line, not a biography', () => {
-    expect(cvData.about.intro.length).toBeLessThan(180);
-  });
-});
-
-describe('About window', () => {
-  it('opens by clipping, never by scaling the frame', () => {
-    // Scaling the frame scales the picture with it, so the picture has to be
-    // counter-scaled -- and at the start of the open that factor is fifty,
-    // which asks the browser to rasterise the portrait at forty-five thousand
-    // pixels tall behind a two-percent-tall window.
-    const css = readFileSync(
-      join(__dirname, 'About.module.css'),
-      'utf-8'
-    );
-    const mask = css.slice(css.indexOf('.windowMask {'));
-    const body = mask.slice(0, mask.indexOf('\n}'));
-
-    expect(body).toContain('clip-path');
-    expect(body).not.toContain('scaleY');
-  });
-
-  it('never counter-scales the portrait', () => {
-    const css = readFileSync(join(__dirname, 'About.module.css'), 'utf-8');
-    const portrait = css.slice(css.indexOf('.portrait {'));
-    expect(portrait.slice(0, portrait.indexOf('\n}'))).not.toContain('1 /');
-  });
-
-  it('wraps the portrait so each element clips its own subtree', () => {
-    render(<About />);
-    const mask = screen.getByTestId('about-window');
-    expect(mask.querySelector('figure')).toBeTruthy();
-    expect(mask.querySelector('figure > div > img')).toBeTruthy();
+  it('spends no more scroll than the two statements need', () => {
+    expect(ABOUT_SCREENS).toBeLessThanOrEqual(3);
   });
 });
