@@ -55,7 +55,7 @@ describe('FormField', () => {
   });
 
   it('calls onChange when input value changes', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const handleChange = vi.fn();
     render(
       <FormField

@@ -605,6 +605,39 @@ describe('Home choreography', () => {
     }
   });
 
+  it('hands over to the exit even if the reader scrolls before it has settled', () => {
+    /*
+     * The first-load bug, and it was a wide window: measured against the real
+     * app, the hero is up and scrolling is unlocked about 170ms later, but the
+     * settle backstop does not fire for another five and a third seconds.
+     *
+     * Every rule that reads `--exit` and `--shut` is scoped to `.settled`, so
+     * a reader who scrolled inside that window drove both numbers into a
+     * stylesheet nothing was listening to. The hero rode the pin, and then
+     * snapped to wherever the numbers had already got to when the timer
+     * finally landed. It could only ever happen once, because on any later
+     * visit the class is already on -- which is exactly how it was reported.
+     */
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<Home />);
+      enterHero();
+
+      const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
+      expect(content.className).not.toMatch(/settled/);
+
+      scrollIntoHold(0.2);
+      playBeats(300);
+
+      // Well inside the backstop, so this can only be the handover itself.
+      expect((sequenceDuration(HERO_SEQUENCE) + 0.8) * 1000).toBeGreaterThan(300);
+      expect(content.className).toMatch(/settled/);
+      expect(exitOf(content)).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('settles the hero visible even if it never enters', () => {
     // The entry is triggered by IntersectionObserver, whose callbacks come with
     // the rendering lifecycle: a tab served no frames never gets one, so the

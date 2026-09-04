@@ -58,7 +58,7 @@ describe('ThemeProvider', () => {
   });
 
   it('toggles theme correctly', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
     render(
       <ThemeProvider>
@@ -82,7 +82,7 @@ describe('ThemeProvider', () => {
   });
 
   it('persists theme in localStorage', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
     render(
       <ThemeProvider>

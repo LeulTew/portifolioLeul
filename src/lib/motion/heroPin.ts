@@ -155,6 +155,12 @@ export function holdExit(progress: number): number {
  *
  * Reaches one at `INNER_END`, so every layer inside the plate is gone before
  * the plate itself is touched.
+ *
+ * No longer what drives the exit for most readers. Scroll triggers the beat
+ * and a clock positions it -- see `INNER_EXIT_MS` above and `triggeredPhase`.
+ * This is the reduced-motion path, where a self-running movement is the thing
+ * being opted out of and tracking the scroll is correct; and it is what the
+ * tests pin the hold's *shape* against, independently of its timing.
  */
 export function innerExit(progress: number): number {
   if (INNER_END <= 0) return 1;
@@ -165,8 +171,13 @@ export function innerExit(progress: number): number {
  * How far shut the plate is, from hold progress.
  *
  * Nothing until the copy has gone, then closed across the stretch that
- * follows. This is the beat that reads as the hero being put away: the inner
- * background that carried the name draws shut around where the name was.
+ * follows. This is the beat that reads as the hero being put away.
+ *
+ * Same split as `innerExit`: the reduced-motion path and the shape the tests
+ * check, not the timing most readers get. And "shut" is now a name from the
+ * past -- the plate disperses rather than closing, because a feathered ellipse
+ * has no edge to draw together. The number is unchanged; only what the
+ * stylesheet does with it is.
  */
 export function plateShut(progress: number): number {
   const room = HOLD_CLOSE_END - INNER_END;

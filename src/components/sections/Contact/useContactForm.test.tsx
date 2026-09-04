@@ -58,7 +58,7 @@ describe('useContactForm', () => {
   });
 
   it('updates form data on change', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<TestComponent />);
 
     const nameInput = screen.getByTestId('name-input');
@@ -75,7 +75,7 @@ describe('useContactForm', () => {
   });
 
   it('validates required fields', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<TestComponent />);
 
     await user.click(screen.getByTestId('submit-button'));
@@ -86,7 +86,7 @@ describe('useContactForm', () => {
   });
 
   it('validates email format', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<TestComponent />);
 
     await user.type(screen.getByTestId('name-input'), 'John');
@@ -99,7 +99,7 @@ describe('useContactForm', () => {
   });
 
   it('clears errors when user starts typing', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<TestComponent />);
 
     // Submit empty form to show errors
@@ -112,7 +112,7 @@ describe('useContactForm', () => {
   });
 
   it('handles submission error', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const mockSubmit = vi.fn().mockRejectedValue(new Error('Submit failed'));
     render(<TestComponent submitFn={mockSubmit} />);
 
@@ -127,7 +127,7 @@ describe('useContactForm', () => {
   });
 
   it('handles successful submission with custom submit function', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const mockSubmit = vi.fn().mockResolvedValue(undefined);
     render(<TestComponent submitFn={mockSubmit} />);
 
@@ -142,7 +142,7 @@ describe('useContactForm', () => {
   });
 
   it('handles default submission behavior', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<TestComponent />);
 
     await user.type(screen.getByTestId('name-input'), 'John');

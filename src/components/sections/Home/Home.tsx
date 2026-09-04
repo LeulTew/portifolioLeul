@@ -124,6 +124,7 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
   const plateActiveRef = useRef(false);
   const frameRef = useRef(0);
   const lastFrameRef = useRef(0);
+  const settledRef = useRef(false);
 
   /**
    * The hold.
@@ -325,6 +326,32 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
 
         inner = innerPhaseRef.current.t;
         shut = easeInOutCubic(platePhaseRef.current.t);
+      }
+
+      /*
+       * The exit cannot render until the entrance has handed over.
+       *
+       * Every rule that reads `--exit` and `--shut` is scoped to `.settled`,
+       * because entrance keyframes and exit transforms cannot both own a
+       * layer at once. That class is set by a timer running from the moment
+       * the IntersectionObserver reports -- which on a first load, with the
+       * loader just released and the scene still coming up, is seconds away.
+       *
+       * A reader who starts scrolling before then was writing both numbers
+       * into a stylesheet that nothing was listening to: the hero simply rode
+       * the pin, and then snapped to wherever the numbers had already reached
+       * the instant the timer finally fired. That is the first-load glitch,
+       * and it could only ever happen once, because on any later visit the
+       * class is already on.
+       *
+       * Scrolling into the hold is the reader saying they are done with the
+       * entrance, so it hands over there and then. Layers mid-entrance land on
+       * their rest state, which is where they were heading anyway, and the
+       * exit takes them from there.
+       */
+      if (!settledRef.current && (inner > 0 || shut > 0)) {
+        settledRef.current = true;
+        setSettled(true);
       }
 
       const isVisible = shut < 0.995;

@@ -13,7 +13,7 @@ describe('ContactForm', () => {
   });
 
   it('updates form data on input change', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<ContactForm />);
 
     const nameInput = screen.getByLabelText(/name/i);
@@ -30,7 +30,7 @@ describe('ContactForm', () => {
   });
 
   it('shows loading state during submission', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<ContactForm />);
 
     const nameInput = screen.getByLabelText(/name/i);
@@ -49,7 +49,7 @@ describe('ContactForm', () => {
   });
 
   it('shows success message on successful submission', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<ContactForm />);
 
     const nameInput = screen.getByLabelText(/name/i);
@@ -74,7 +74,7 @@ describe('ContactForm', () => {
   });
 
   it('prevents form submission with empty required fields', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<ContactForm />);
 
     const submitButton = screen.getByRole('button', { name: /send message/i });
