@@ -165,8 +165,8 @@ export function BackgroundPixelTransition({
       return;
     }
 
-    // Once pixels have largely climbed, engage solid backdrop and section background
-    const isBackdropActive = p >= 0.85;
+    // Once pixels have fully climbed, engage solid backdrop and section background
+    const isBackdropActive = p >= 0.95;
     if (backdropRef.current) {
       backdropRef.current.dataset.active = String(isBackdropActive);
     }
@@ -177,7 +177,7 @@ export function BackgroundPixelTransition({
       if (isBackdropActive && aboutSection.getAttribute('data-bg-transition') !== 'true') {
         aboutSection.setAttribute('data-bg-transition', 'true');
         document.documentElement.setAttribute('data-navbar-contrary', 'true');
-      } else if (p < 0.70 && aboutSection.getAttribute('data-bg-transition') === 'true') {
+      } else if (p < 0.80 && aboutSection.getAttribute('data-bg-transition') === 'true') {
         aboutSection.removeAttribute('data-bg-transition');
         document.documentElement.removeAttribute('data-navbar-contrary');
       }

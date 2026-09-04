@@ -719,6 +719,18 @@
   mix-blend-mode: difference;
 }
 
+.visuallyHiddenEducation {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .educationGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
@@ -802,12 +814,17 @@
   opacity: 0.95;
 }
 
-:global([data-theme="light"]) #about[data-bg-transition='true'] .title {
+:global([data-theme="light"]) #about[data-bg-transition='true'] .title,
+:global([data-theme="light"]) #about[data-bg-transition='true'] .heldHeader {
   color: #ffffff;
 }
 
 :global([data-theme="light"]) #about[data-bg-transition='true'] .subtitle {
   color: rgba(255, 255, 255, 0.9);
+}
+
+#about[data-bg-transition='true'] .transitionMaskedOverlay {
+  display: none;
 }
 
 :global([data-theme="light"]) .statementText,

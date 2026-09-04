@@ -1,0 +1,93 @@
+.flipWrapper {
+  position: relative;
+  display: block;
+  width: 100%;
+  clip-path: inset(-0.18em calc((1 - var(--title-in, 1)) * 100%) -0.18em 0);
+  transform: translate3d(0, 0, 0) scale(calc(0.988 + var(--title-in, 1) * 0.012));
+  transform-origin: 0% 50%;
+  will-change: clip-path, transform;
+}
+
+:global(#about[data-bg-transition='true']) .flipWrapper {
+  clip-path: none !important;
+  transform: none !important;
+}
+
+.titleContainer {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.title {
+  font-size: clamp(3.5rem, 7.5vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: inherit;
+  margin: 0;
+  white-space: nowrap;
+  display: block;
+}
+
+.subtitle {
+  font-size: clamp(1.05rem, 1.3vw, 1.35rem);
+  line-height: 1.45;
+  color: inherit;
+  opacity: 0.9;
+  margin: 1.25rem 0 0;
+  max-width: 720px;
+  transition: opacity 0.15s ease-out;
+  clip-path: inset(calc((1 - var(--sub-in, 1)) * 100%) 0 -0.2em 0);
+}
+
+:global(#about[data-bg-transition='true']) .subtitle {
+  clip-path: none !important;
+}
+
+/* Horizontal Left-to-Right Pixel Grid covering strictly the title text box */
+.pixelGrid {
+  position: absolute;
+  inset: -2px;
+  display: grid;
+  pointer-events: none;
+  z-index: 5;
+  perspective: 400px;
+}
+
+.pixelCell {
+  background-color: var(--pixel-flip-bg, #001a1a);
+  opacity: 0;
+  transform: rotateY(90deg);
+  transform-origin: center center;
+  width: calc(100% + 0.6px);
+  height: calc(100% + 0.6px);
+  transition: opacity 0.04s linear, transform 0.06s ease-out;
+  will-change: transform, opacity;
+}
+
+:global([data-theme='light']) .pixelCell {
+  background-color: var(--pixel-flip-bg, #0a5c40);
+}
+
+.pixelCell[data-active='true'] {
+  opacity: 1;
+  transform: rotateY(0deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flipWrapper,
+  .subtitle {
+    clip-path: none !important;
+    transform: none !important;
+  }
+
+  .pixelGrid {
+    display: none !important;
+  }
+
+  .pixelCell {
+    transition: none !important;
+    transform: none !important;
+  }
+}

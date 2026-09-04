@@ -10,6 +10,7 @@ import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
+import { TitlePixelFlip } from './TitlePixelFlip';
 
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
@@ -67,7 +68,7 @@ export function About() {
           {/* Shuts the world out for exactly as long as the reader is held,
               and gives it back on the way out. Hosts the bottom-up background pixel transition. */}
           <div className={styles.heldGround} aria-hidden="true">
-            <BackgroundPixelTransition start={0.78} end={1.0} />
+            <BackgroundPixelTransition start={0.78} end={0.88} />
           </div>
 
           {/*
@@ -75,12 +76,18 @@ export function About() {
             above the pin travels with the page, so it climbs away while the
             reader is being held still underneath it -- the one thing naming
             the section leaves as the section begins. It stays for the whole
-            stretch and lifts out at the end, once there is nothing left to
-            name.
+            stretch and flips horizontally left-to-right into Education once the
+            background transition finishes fully.
           */}
           <div className={styles.heldHeader} data-testid="about-held-header">
-            <h2 className={styles.title}>About Me</h2>
-            <p className={styles.subtitle}>{cvData.about.subtitle}</p>
+            <TitlePixelFlip
+              start={0.88}
+              end={1.0}
+              initialTitle="About Me"
+              initialSubtitle={cvData.about.subtitle}
+              flippedTitle="Education"
+              flippedSubtitle="Academic Foundations & Industry Certifications"
+            />
           </div>
 
           {/* Held for the whole stretch: the one thing that does not come and
@@ -175,7 +182,7 @@ export function About() {
 
         {/* Education Section */}
         <div ref={educationRef} className={styles.educationWrapper} data-green-bg="true">
-          <div className={styles.sectionTitle}>Education</div>
+          <div className={styles.visuallyHiddenEducation}>Education</div>
           <div className={styles.educationGrid}>
             {cvData.education.map((edu, index) => (
               <motion.div
