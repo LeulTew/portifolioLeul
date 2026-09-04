@@ -699,13 +699,69 @@
  * otherwise keep hold of clip-path and ignore everything below.
  */
 .settled .plate {
-  animation: none;
   /*
-   * Its own number, not the layers'. `--shut` does not begin until every layer
-   * inside the plate has gone, so the close is a beat of its own rather than
-   * the tail of theirs.
+   * The wipe that opened it has a forwards fill, which would otherwise keep
+   * hold of clip-path and ignore everything here.
    */
-  clip-path: inset(calc(var(--shut, 0) * 50%) 0 calc(var(--shut, 0) * 50%) 0);
+  animation: none;
+  clip-path: none;
+
+  /*
+   * It disperses, rather than being cut shut.
+   *
+   * This used to close as `inset(shut*50% 0 shut*50% 0)` -- two straight
+   * horizontal lines meeting in the middle. That is an eyelid, and an eyelid
+   * is a rectangle: it worked when the plate was a hard-edged panel, but the
+   * plate is now a feathered ellipse with no straight edge anywhere on it, so
+   * a rectangular close read as a guillotine coming down through a cloud. The
+   * exit has to be made of the same stuff the shape is.
+   *
+   * So it puffs. The mask is left exactly as it is and the whole soft form is
+   * pushed outwards and up while it thins -- which is what vapour does, and
+   * what a shape with no edges can do that a panel cannot. Transform and
+   * opacity only: both are compositor properties, so a beat that runs on its
+   * own clock is not paying for a repaint on every frame of it. Nothing here
+   * touches the backdrop-filter, deliberately -- re-rasterising a blurred
+   * sample of a live WebGL canvas per frame is the exact cost that made the
+   * portrait's exit stutter.
+   *
+   * Its own number, not the layers'. `--shut` does not begin until every layer
+   * inside the plate has gone, so the dispersal is a beat of its own rather
+   * than the tail of theirs.
+   */
+  transform-origin: 40% 46%;
+  transform: translate3d(0, calc(var(--shut, 0) * -1.75rem), 0)
+    scale3d(
+      calc(1 + var(--shut, 0) * 0.20),
+      calc(1 + var(--shut, 0) * 0.11),
+      1
+    );
+
+  /*
+   * Holds its form, then goes before the spread has finished.
+   *
+   * Full opacity until a fifth of the way through, so the cloud is seen to
+   * start moving as a body rather than beginning to fade the instant it is
+   * touched; then down to nothing by 0.82, which leaves the last visible
+   * frames still opening outwards. A shape that reaches zero opacity and zero
+   * movement on the same frame reads as having been switched off. One that is
+   * still spreading as it goes reads as having dispersed.
+   */
+  opacity: clamp(0, calc((0.82 - var(--shut, 0)) / 0.62), 1);
+
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * No dispersal, no drift: it simply stops being there. The hero still has to
+   * leave -- one printed over everything after it is worse than either -- so
+   * the fade stays and the movement goes.
+   */
+  .settled .plate {
+    transform: none;
+    opacity: calc(1 - var(--shut, 0));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

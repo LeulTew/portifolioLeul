@@ -443,38 +443,166 @@ describe('Home choreography', () => {
     ).toBeCloseTo(holdLength, 0);
   });
 
+  /*
+   * Lets the handover's beats run for a stretch of wall-clock.
+   *
+   * They are no longer scrubbed from the scroll offset: scroll flips a trigger
+   * and the beat plays on its own clock, so a test that scrolls and reads the
+   * value on the next line is asking before anything has had time to happen.
+   */
+  const playBeats = (ms: number) => {
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+  };
+
+  const HANDOVER_MS = 2200;
+
   it('finishes the exit inside the hold, not after it', () => {
     /*
      * Everything the hero does has to be done while it is still being held and
      * looked at, which is the whole reason for holding it. And there has to be
      * hold left afterwards, for the cue.
      */
-    const { container } = render(<Home />);
-    enterHero();
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<Home />);
+      enterHero();
 
-    scrollIntoHold(HOLD_CLOSE_END);
+      scrollIntoHold(HOLD_CLOSE_END);
+      playBeats(HANDOVER_MS);
 
-    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
-    expect(exitOf(content)).toBe(1);
-    expect(content.style.visibility).toBe('hidden');
-    expect(content.style.pointerEvents).toBe('none');
-    // The container itself no longer animates; the layers do.
-    expect(content.style.filter).toBe('');
-    expect(content.style.transform).toBe('');
-    expect(HOLD_CLOSE_END).toBeLessThan(1);
+      const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
+      expect(exitOf(content)).toBe(1);
+      expect(content.style.visibility).toBe('hidden');
+      expect(content.style.pointerEvents).toBe('none');
+      // The container itself no longer animates; the layers do.
+      expect(content.style.filter).toBe('');
+      expect(content.style.transform).toBe('');
+      expect(HOLD_CLOSE_END).toBeLessThan(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('scrubs the exit rather than switching it', () => {
-    // Part way through the hold is part way out: the layers stagger off a
-    // continuous value, so it has to be continuous.
-    const { container } = render(<Home />);
-    enterHero();
+  it('plays the exit on a continuous value rather than switching it', () => {
+    // Part way through is part way out: the layers stagger off a continuous
+    // value, so it has to be continuous -- it is simply continuous in time now
+    // rather than in scroll.
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<Home />);
+      enterHero();
 
-    scrollIntoHold(0.2);
+      scrollIntoHold(0.2);
+      playBeats(250);
 
-    const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
-    expect(exitOf(content)).toBeGreaterThan(0);
-    expect(exitOf(content)).toBeLessThan(0.5);
+      const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
+      expect(exitOf(content)).toBeGreaterThan(0);
+      expect(exitOf(content)).toBeLessThan(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('carries on leaving while the reader holds perfectly still', () => {
+    /*
+     * The point of the change. A scrubbed exit stops dead the instant the
+     * wheel does, so the hero sat frozen half-gone; and because a wheel notch
+     * is a discrete hundred-pixel jump, the part that did move arrived in
+     * lumps. Time drives it now, so one notch past the trigger buys the whole
+     * movement.
+     */
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<Home />);
+      enterHero();
+
+      scrollIntoHold(0.2);
+      playBeats(200);
+
+      const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
+      const early = exitOf(content);
+
+      // Not one further pixel of scroll from here.
+      playBeats(300);
+      expect(exitOf(content)).toBeGreaterThan(early);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not let a harder scroll hurry the exit along', () => {
+    /*
+     * Scroll says whether, not how far. Two readers who cross the trigger at
+     * wildly different speeds must see the same movement take the same time --
+     * which is exactly what a scrub cannot promise.
+     */
+    vi.useFakeTimers();
+    try {
+      const gentle = render(<Home />);
+      enterHero();
+      scrollIntoHold(0.15);
+      playBeats(300);
+      const gentleExit = exitOf(
+        gentle.container.querySelector('[data-testid="hero-content"]') as HTMLElement
+      );
+      gentle.unmount();
+
+      const hurried = render(<Home />);
+      enterHero();
+      scrollIntoHold(0.38);
+      playBeats(300);
+      const hurriedExit = exitOf(
+        hurried.container.querySelector('[data-testid="hero-content"]') as HTMLElement
+      );
+
+      /*
+       * Within a frame of each other. The tolerance is one rAF step of the
+       * beat (16.7 of 900, so about 0.019) and not tighter, because which side
+       * of a frame boundary each render lands on is not part of the contract.
+       */
+      expect(gentleExit).toBeGreaterThan(0);
+      expect(Math.abs(hurriedExit - gentleExit)).toBeLessThan(0.02);
+
+      /*
+       * And nowhere near what a scrub would have given. The hurried reader
+       * crossed 2.5x as much hold, so the old `progress / INNER_END` would
+       * have put them 2.5x further out -- which is the difference this whole
+       * change is about.
+       */
+      expect(hurriedExit / gentleExit).toBeLessThan(1.2);
+      expect(0.38 / 0.15).toBeGreaterThan(2.5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('disperses the plate only once the copy has finished leaving', () => {
+    /*
+     * The order the whole handover is built on: the copy goes, and only then
+     * does the ground it stood on disperse. Shutting the plate under standing
+     * copy pulls the floor out from under it.
+     */
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<Home />);
+      enterHero();
+
+      const content = container.querySelector('[data-testid="hero-content"]') as HTMLElement;
+
+      scrollIntoHold(HOLD_CLOSE_END);
+      playBeats(120);
+
+      expect(exitOf(content)).toBeLessThan(1);
+      expect(Number(content.style.getPropertyValue('--shut'))).toBe(0);
+
+      playBeats(HANDOVER_MS);
+      expect(exitOf(content)).toBe(1);
+      expect(Number(content.style.getPropertyValue('--shut'))).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('settles the hero visible even if it never enters', () => {

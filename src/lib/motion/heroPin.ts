@@ -62,6 +62,49 @@ export const INNER_END = 0.42;
  */
 export const HOLD_CLOSE_END = 0.72;
 
+/* ---------------------------------------------------------------------------
+   The handover's two beats, as triggers and durations rather than as a scrub.
+
+   `INNER_END` and `HOLD_CLOSE_END` above still describe the *shape* of the
+   hold -- how much of it belongs to each beat, and where the cue has room to
+   draw -- and the scrub functions below are still the reduced-motion path and
+   the thing the tests pin the shape against. What changed is who reads the
+   clock. Scroll now names the moment a beat should start; the beat's own
+   duration decides how it gets there.
+
+   Durations were picked to land on the same wall-clock feel the scrub had at
+   an ordinary reading pace, so the sequence keeps its timing: the copy is a
+   beat longer than the plate, because five staggered departures need room the
+   single eyelid does not.
+   ------------------------------------------------------------------------- */
+
+/** How long the copy takes to leave, once scroll has started it. */
+export const INNER_EXIT_MS = 900;
+
+/** How long the plate takes to shut, once the copy has gone. */
+export const PLATE_CLOSE_MS = 620;
+
+/**
+ * Hold progress that starts the copy leaving, and the lower point that lets it
+ * come back. Barely off zero: the copy should commit the moment the reader
+ * moves, exactly as it did when it was scrubbed.
+ */
+export const INNER_ENTER = 0.02;
+export const INNER_RELEASE = 0.005;
+
+/**
+ * Hold progress that commits the plate to shutting, and the lower point that
+ * reopens it.
+ *
+ * `INNER_ENTER`'s twin sits at `INNER_END`, so the reader reaches the close at
+ * the same place in the scroll as before. The copy being gone is enforced
+ * separately, by requiring its beat to have actually finished -- a scroll
+ * threshold alone would shut the plate under copy that a slow frame had left
+ * still standing on it.
+ */
+export const PLATE_ENTER = INNER_END;
+export const PLATE_RELEASE = 0.36;
+
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return value < 0 ? 0 : value > 1 ? 1 : value;

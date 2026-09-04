@@ -19,7 +19,21 @@ import {
   innerExit,
   pinOffset,
   plateShut,
+  INNER_EXIT_MS,
+  PLATE_CLOSE_MS,
+  INNER_ENTER,
+  INNER_RELEASE,
+  PLATE_ENTER,
+  PLATE_RELEASE,
 } from '@/lib/motion/heroPin';
+import {
+  advancePhase,
+  easeInOutCubic,
+  isPhaseAtTarget,
+  phaseGate,
+  PHASE_AT_REST,
+  type PhaseState,
+} from '@/lib/motion/triggeredPhase';
 import { getHeroCue, setHeroCue, subscribeHeroCue } from '@/lib/motion/heroCue';
 import {
   HERO_SEQUENCE,
@@ -96,6 +110,21 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
   // driven by the hold below, which is measured per frame.
   const hasEntered = useSectionFocusEffect(sectionElement, () => {});
 
+  /*
+   * The handover's two beats, and the frame loop that runs them.
+   *
+   * Refs rather than state: these change every frame while a beat is running,
+   * and re-rendering the hero -- the filling headline, the rotator, both
+   * magnetic buttons -- to move one clip-path is the thing this whole file is
+   * built to avoid.
+   */
+  const innerPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const platePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const innerActiveRef = useRef(false);
+  const plateActiveRef = useRef(false);
+  const frameRef = useRef(0);
+  const lastFrameRef = useRef(0);
+
   /**
    * The hold.
    *
@@ -107,6 +136,60 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    /*
+     * One frame of both beats.
+     *
+     * The first frame after an idle stretch has no previous timestamp to
+     * measure from, and a stale one would hand the beat a delta of however
+     * long the reader sat still -- landing it instantly. `lastFrameRef` is
+     * cleared whenever the loop stops, and a missing mark is treated as a
+     * single ordinary frame.
+     */
+    const stepPhases = (now: number) => {
+      const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7;
+      lastFrameRef.current = now;
+      innerPhaseRef.current = advancePhase(
+        innerPhaseRef.current,
+        innerActiveRef.current,
+        dt,
+        INNER_EXIT_MS
+      );
+      platePhaseRef.current = advancePhase(
+        platePhaseRef.current,
+        plateActiveRef.current,
+        dt,
+        PLATE_CLOSE_MS
+      );
+    };
+
+    const frame = (now: number) => {
+      frameRef.current = 0;
+      stepPhases(now);
+      /*
+       * Republishing through `apply` is deliberate: it is the one place that
+       * knows how to write every number, so a beat advancing by time and a
+       * reader advancing by scroll go down exactly the same path.
+       */
+      apply();
+    };
+
+    /*
+     * Runs the loop only while a beat still has somewhere to be, and stops it
+     * the moment both have arrived. `apply` calls this on every scroll, so a
+     * beat that is already finished costs one comparison rather than a frame.
+     */
+    const startPhaseLoop = () => {
+      if (frameRef.current !== 0) return;
+      if (
+        isPhaseAtTarget(innerPhaseRef.current, innerActiveRef.current) &&
+        isPhaseAtTarget(platePhaseRef.current, plateActiveRef.current)
+      ) {
+        lastFrameRef.current = 0;
+        return;
+      }
+      frameRef.current = requestAnimationFrame(frame);
+    };
 
     const apply = () => {
       const section = sectionElement;
@@ -193,8 +276,57 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
        * shutting the plate under copy that is still on it pulls the floor out
        * from under it.
        */
-      const inner = innerExit(progress);
-      const shut = plateShut(progress);
+      /*
+       * Scroll says *whether*, not *how far*.
+       *
+       * Both numbers used to be read straight out of `progress`, which glued
+       * them to the wheel: a notch is a discrete hundred-pixel jump, so the
+       * copy left and the plate shut in the same lumps the input arrived in.
+       * Now scroll only flips two triggers and the beats run on their own
+       * clock. The custom properties are unchanged, so every layer's stagger
+       * and the eyelid itself carry on reading exactly what they always read.
+       *
+       * Reduced motion keeps the scrub. There is no hold to play across and no
+       * self-running movement wanted, so the block simply tracks the scroll to
+       * its single fade -- and, importantly, still reaches a shut plate, which
+       * is what takes the hero out of the way of everything after it.
+       */
+      let inner: number;
+      let shut: number;
+
+      if (reducedMotion) {
+        inner = innerExit(progress);
+        shut = plateShut(progress);
+      } else {
+        innerActiveRef.current = phaseGate(
+          progress,
+          innerActiveRef.current,
+          INNER_ENTER,
+          INNER_RELEASE
+        );
+
+        /*
+         * The plate waits for the copy's beat to have *finished*, not merely
+         * for the scroll to have passed a mark. On a slow frame the reader can
+         * cross the threshold while a layer is still on its way out, and
+         * shutting the plate under standing copy pulls the floor from under it
+         * -- the exact thing the two-phase split exists to prevent.
+         */
+        plateActiveRef.current =
+          innerPhaseRef.current.t >= 1 &&
+          phaseGate(
+            progress,
+            plateActiveRef.current,
+            PLATE_ENTER,
+            PLATE_RELEASE
+          );
+
+        startPhaseLoop();
+
+        inner = innerPhaseRef.current.t;
+        shut = easeInOutCubic(platePhaseRef.current.t);
+      }
+
       const isVisible = shut < 0.995;
 
       if (reducedMotion) {
@@ -251,6 +383,9 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
     return () => {
       unsubscribe();
       window.removeEventListener('resize', apply);
+      if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
+      lastFrameRef.current = 0;
     };
   }, [sectionElement, reducedMotion, held]);
 
