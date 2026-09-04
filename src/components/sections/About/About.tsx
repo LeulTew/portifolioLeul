@@ -68,7 +68,7 @@ export function About() {
           {/* Shuts the world out for exactly as long as the reader is held,
               and gives it back on the way out. Hosts the bottom-up background pixel transition. */}
           <div className={styles.heldGround} aria-hidden="true">
-            <BackgroundPixelTransition start={0.78} end={0.88} />
+            <BackgroundPixelTransition start={0.78} end={0.86} />
           </div>
 
           {/*
@@ -81,8 +81,8 @@ export function About() {
           */}
           <div className={styles.heldHeader} data-testid="about-held-header">
             <TitlePixelTransition
-              start={0.88}
-              end={1.0}
+              start={0.86}
+              end={0.94}
               initialTitle="About Me"
               initialSubtitle={cvData.about.subtitle}
               flippedTitle="Education"
@@ -172,7 +172,14 @@ export function About() {
 
         {/* Education Section */}
         <div ref={educationRef} className={styles.educationWrapper} data-green-bg="true">
-          <h2 className={styles.educationTitle}>Education</h2>
+          <div className={styles.educationStickyHeader} data-testid="education-sticky-header">
+            <div className={styles.educationTitleBox}>
+              <h2 className={styles.educationTitle}>Education</h2>
+              <p className={styles.educationSubtitle}>
+                Academic Foundations &amp; Industry Certifications
+              </p>
+            </div>
+          </div>
           <div className={styles.educationGrid}>
             {cvData.education.map((edu, index) => (
               <motion.div

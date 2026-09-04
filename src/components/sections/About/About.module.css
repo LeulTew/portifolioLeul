@@ -12,6 +12,8 @@
 }
 
 .about {
+  --about-gutter: clamp(2rem, 9vw, 16rem);
+  --about-indent: clamp(1.5rem, 11.5vw, 20rem);
   position: relative;
   min-height: 120vh;
   width: 100%;
@@ -644,8 +646,14 @@
    * ever aligned on a wide screen. Overriding the property they both read
    * keeps them on one line at every width.
    */
+  .about {
+    --about-gutter: 1.5rem;
+    --about-indent: 1.5rem;
+  }
+
   .aboutSequence {
     --about-gutter: 1.5rem;
+    --about-indent: 1.5rem;
   }
 
   .leftColumn,
@@ -661,11 +669,9 @@
     white-space: normal;
   }
 
-
-
   .educationWrapper {
-    padding: 3rem 1.5rem 4rem;
-    margin-top: 0;
+    padding: 0 1.5rem 4rem;
+    margin-top: -100vh;
   }
 }
 
@@ -675,8 +681,8 @@
 
 .educationWrapper {
   width: 100%;
-  padding: clamp(3.5rem, 8vh, 6rem) clamp(2rem, 9vw, 16rem) clamp(4rem, 10vh, 8rem);
-  margin-top: 0;
+  padding: 0 var(--about-gutter) clamp(4rem, 10vh, 8rem);
+  margin-top: -100vh;
   margin-bottom: 0;
   box-sizing: border-box;
   background-color: #001a1a;
@@ -689,6 +695,33 @@
   background-color: #0a5c40;
 }
 
+.educationStickyHeader {
+  position: sticky;
+  top: clamp(2.5rem, 5vh, 4rem);
+  padding-top: clamp(10.5rem, 24vh, 18rem);
+  padding-bottom: clamp(2rem, 4vh, 3.5rem);
+  padding-left: var(--about-indent);
+  padding-right: var(--about-gutter);
+  margin-left: calc(-1 * var(--about-gutter));
+  margin-right: calc(-1 * var(--about-gutter));
+  z-index: 25;
+  background-color: #001a1a;
+  transition: background-color 0.4s ease;
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--about-gutter));
+}
+
+:global([data-theme='light']) .educationStickyHeader {
+  background-color: #0a5c40;
+}
+
+.educationTitleBox {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+  min-width: 9.8ch;
+}
+
 .educationSection {
   width: 100%;
 }
@@ -699,8 +732,18 @@
   line-height: 0.92;
   letter-spacing: -0.04em;
   color: #ffffff;
-  margin: 0 0 clamp(2.5rem, 5vh, 4rem);
+  margin: 0;
+  white-space: nowrap;
+  display: block;
   text-align: left;
+}
+
+.educationSubtitle {
+  font-size: clamp(1.05rem, 1.3vw, 1.35rem);
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 1.25rem 0 0;
+  max-width: 720px;
 }
 
 .sectionTitle {

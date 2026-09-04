@@ -18,15 +18,15 @@ describe('TitlePixelTransition Component', () => {
   it('contains expected number of pixel dots for title text box', () => {
     render(<TitlePixelTransition />);
     const dots = screen.getAllByTestId('title-pixel-transition-dot');
-    expect(dots.length).toBe(20 * 4); // 20 cols * 4 rows
+    expect(dots.length).toBe(12 * 3); // 12 cols * 3 rows (chunky square tiles)
   });
 
   it('progressively writes and reveals "Education" when progress advances', () => {
-    render(<TitlePixelTransition start={0.88} end={1.0} />);
+    render(<TitlePixelTransition start={0.86} end={0.94} />);
     const container = screen.getByTestId('title-pixel-transition');
 
-    // Simulate progress past midpoint (e.g. 0.98)
-    container.style.setProperty('--seq', '0.99');
+    // Simulate progress at end of typing (e.g. 0.94)
+    container.style.setProperty('--seq', '0.94');
     window.dispatchEvent(new Event('resize'));
 
     const heading = screen.getByTestId('title-pixel-transition-heading');
@@ -44,11 +44,11 @@ describe('TitlePixelTransition Component', () => {
   });
 
   it('Phase 1: white pixel dots activate and cover/dissolve About Me', () => {
-    render(<TitlePixelTransition start={0.88} end={1.0} />);
+    render(<TitlePixelTransition start={0.86} end={0.94} />);
     const container = screen.getByTestId('title-pixel-transition');
 
-    // seq = 0.91 is p ~ 0.25 (Phase 1)
-    container.style.setProperty('--seq', '0.91');
+    // seq = 0.88 is p ~ 0.25 (Phase 1)
+    container.style.setProperty('--seq', '0.88');
     window.dispatchEvent(new Event('resize'));
 
     const dots = screen.getAllByTestId('title-pixel-transition-dot');
@@ -57,11 +57,11 @@ describe('TitlePixelTransition Component', () => {
   });
 
   it('Phase 2: Education begins emerging within active pixel field', () => {
-    render(<TitlePixelTransition start={0.88} end={1.0} />);
+    render(<TitlePixelTransition start={0.86} end={0.94} />);
     const container = screen.getByTestId('title-pixel-transition');
 
-    // seq = 0.95 is p ~ 0.58 (Phase 2 writing phase)
-    container.style.setProperty('--seq', '0.95');
+    // seq = 0.91 is p ~ 0.625 (Phase 2 writing phase)
+    container.style.setProperty('--seq', '0.91');
     window.dispatchEvent(new Event('resize'));
 
     const heading = screen.getByTestId('title-pixel-transition-heading');
@@ -69,11 +69,11 @@ describe('TitlePixelTransition Component', () => {
   });
 
   it('Phase 3: pixel dots clear away leaving clean Education title', () => {
-    render(<TitlePixelTransition start={0.88} end={1.0} />);
+    render(<TitlePixelTransition start={0.86} end={0.94} />);
     const container = screen.getByTestId('title-pixel-transition');
 
-    // seq = 1.0 (Phase 3 complete)
-    container.style.setProperty('--seq', '1.0');
+    // seq = 0.94 (Phase 3 complete)
+    container.style.setProperty('--seq', '0.94');
     window.dispatchEvent(new Event('resize'));
 
     const heading = screen.getByTestId('title-pixel-transition-heading');

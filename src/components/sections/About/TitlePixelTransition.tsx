@@ -3,9 +3,9 @@ import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import styles from './TitlePixelTransition.module.css';
 
 export interface TitlePixelTransitionProps {
-  /** Sequence progress where title pixel dissolve begins (AFTER background pixel transition completes). Default: 0.88 */
+  /** Sequence progress where title pixel dissolve begins (AFTER background pixel transition completes). Default: 0.86 */
   start?: number;
-  /** Sequence progress where "Education" is fully written and locked in place. Default: 1.0 */
+  /** Sequence progress where "Education" is fully written and locked in place. Default: 0.94 */
   end?: number;
   initialTitle?: string;
   initialSubtitle?: string;
@@ -47,12 +47,12 @@ function generateDots(cols: number, rows: number): PixelDotData[] {
   return dots;
 }
 
-const DEFAULT_COLS = 20;
-const DEFAULT_ROWS = 4;
+const DEFAULT_COLS = 12;
+const DEFAULT_ROWS = 3;
 
 export function TitlePixelTransition({
-  start = 0.88,
-  end = 1.0,
+  start = 0.86,
+  end = 0.94,
   initialTitle = 'About Me',
   initialSubtitle = 'Architecting resilient full-stack systems, 3D graphics engines, and intelligent web agents.',
   flippedTitle = 'Education',
