@@ -80,25 +80,32 @@
  */
 .plate {
   position: absolute;
-  inset: -3rem -6rem -3rem -8rem;
+  inset: -4rem -8rem -4rem -8rem;
   z-index: -1;
   pointer-events: none;
   clip-path: inset(0 100% 0 0);
   background: radial-gradient(
-    ellipse 75% 90% at 30% 50%,
-    rgba(0, 14, 16, 0.72) 0%,
-    rgba(0, 14, 16, 0.45) 55%,
-    rgba(0, 14, 16, 0) 100%
+    ellipse 85% 95% at 28% 48%,
+    rgba(0, 14, 18, 0.78) 0%,
+    rgba(0, 14, 18, 0.52) 50%,
+    rgba(0, 14, 18, 0.18) 80%,
+    rgba(0, 14, 18, 0) 100%
   );
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 28px;
 }
 
 :global([data-theme='light']) .plate {
   background: radial-gradient(
-    ellipse 75% 90% at 30% 50%,
-    rgba(248, 250, 255, 0.88) 0%,
-    rgba(248, 250, 255, 0.6) 55%,
-    rgba(248, 250, 255, 0) 100%
+    ellipse 85% 95% at 28% 48%,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(248, 250, 255, 0.82) 48%,
+    rgba(240, 244, 252, 0.40) 78%,
+    rgba(240, 244, 252, 0) 100%
   );
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
 }
 
 .plateDrawn {
@@ -199,8 +206,14 @@
 }
 
 .lastname {
-  opacity: 0.4;
+  opacity: 0.65;
   margin-left: 0.1em;
+  transition: opacity 0.3s ease;
+}
+
+:global([data-theme='light']) .lastname {
+  opacity: 0.82;
+  color: #111827;
 }
 
 .info {
@@ -208,10 +221,14 @@
   gap: 0.75rem;
   font-size: clamp(0.875rem, 1vw, 1rem);
   color: var(--muted-text);
-  font-weight: 400;
+  font-weight: 500;
   mix-blend-mode: difference;
   flex-wrap: wrap;
   align-items: center;
+}
+
+:global([data-theme='light']) .info {
+  color: #1f2937;
 }
 
 .divider {
@@ -221,13 +238,18 @@
 .description {
   max-width: 480px;
   font-size: clamp(1rem, 1.25vw, 1.25rem);
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--muted-text);
   font-weight: 400;
   margin: 0;
   text-align: left;
   mix-blend-mode: difference;
   will-change: transform;
+}
+
+:global([data-theme='light']) .description {
+  color: #374151;
+  font-weight: 450;
 }
 
 :global([data-theme="light"]) .home,
