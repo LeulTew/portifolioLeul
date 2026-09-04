@@ -33,7 +33,7 @@
 }
 
 :global([data-theme='light']) .about[data-bg-transition='true'] {
-  background-color: #f4f7ff;
+  background-color: #dcf5e8;
 }
 
 .content {
@@ -247,7 +247,7 @@
 }
 
 :global([data-theme='light']) .heldGround {
-  background: #f4f7fb;
+  background: #e8edf2;
 }
 
 .about[data-bg-transition='true'] .heldGround {
@@ -255,7 +255,7 @@
 }
 
 :global([data-theme='light']) .about[data-bg-transition='true'] .heldGround {
-  background: #f4f7ff;
+  background: #dcf5e8;
 }
 
 /*
@@ -658,7 +658,7 @@
 }
 
 :global([data-theme='light']) .educationWrapper {
-  background-color: #f4f7ff;
+  background-color: #dcf5e8;
 }
 
 .educationSection {

@@ -101,7 +101,7 @@
 }
 
 :global([data-theme='light'] #about[data-bg-transition='true']) .scrim.solid {
-  background: #f4f7ff;
+  background: #dcf5e8;
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {

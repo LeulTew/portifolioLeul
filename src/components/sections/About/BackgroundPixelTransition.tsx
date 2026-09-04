@@ -92,7 +92,7 @@ export function BackgroundPixelTransition({
       : 'dark');
 
   const resolvedColor =
-    color ?? (currentTheme === 'light' ? '#f4f7ff' : '#001a1a');
+    color ?? (currentTheme === 'light' ? '#dcf5e8' : '#001a1a');
 
   const updateGrid = useCallback(() => {
     if (typeof window === 'undefined') return;
