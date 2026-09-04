@@ -38,6 +38,11 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * had been carried off the top and the heading arrived into an empty screen,
    * pointed at by nothing.
    */
+  /*
+   * The heading, and it arrives while the arrow is still pointing at it.
+   * End is set to 2 so head-in stays at full 1.0 strength through the title
+   * pixel transition and seamlessly hands over to Education without clipping.
+   */
   { name: 'head', start: 0, end: 1, feather: 0.04 },
   /*
    * The statements follow the mark out rather than competing with it.

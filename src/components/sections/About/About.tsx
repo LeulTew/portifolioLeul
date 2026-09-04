@@ -167,22 +167,12 @@ export function About() {
             </div>
           </div>
 
-          {/* Masked transition overlay: pure white text cutout over rising green transition background */}
-          <div className={styles.transitionMaskedOverlay} aria-hidden="true">
-            <div className={styles.transitionGreenFill} />
-            <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
-              <div className={`${styles.title} ${styles.titleWhite}`} data-text="About Me" />
-              <div
-                className={`${styles.subtitle} ${styles.subtitleWhite}`}
-                data-text={cvData.about.subtitle}
-              />
-            </div>
-          </div>
+
         </PinnedSequence>
 
         {/* Education Section */}
         <div ref={educationRef} className={styles.educationWrapper} data-green-bg="true">
-          <div className={styles.visuallyHiddenEducation}>Education</div>
+          <h2 className={styles.educationTitle}>Education</h2>
           <div className={styles.educationGrid}>
             {cvData.education.map((edu, index) => (
               <motion.div
