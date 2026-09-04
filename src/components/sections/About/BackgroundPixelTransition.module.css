@@ -15,7 +15,7 @@
 }
 
 :global([data-theme='light']) .pixelContainer {
-  --bg-transition-color: #dcf5e8;
+  --bg-transition-color: #0a5c40;
 }
 
 .backdrop {

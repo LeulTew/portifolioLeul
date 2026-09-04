@@ -32,14 +32,14 @@ describe('BackgroundPixelTransition', () => {
     expect(container.style.getPropertyValue('--bg-transition-color')).toBe('#001a1a');
   });
 
-  it('transitions to mint whitish (#dcf5e8) in light mode', () => {
+  it('transitions to emerald green (#0a5c40) in light mode', () => {
     render(
       <ThemeContext.Provider value={{ theme: 'light', toggleTheme: () => {} }}>
         <BackgroundPixelTransition start={0.78} end={1.0} />
       </ThemeContext.Provider>
     );
     const container = screen.getByTestId('bg-pixel-transition');
-    expect(container.style.getPropertyValue('--bg-transition-color')).toBe('#dcf5e8');
+    expect(container.style.getPropertyValue('--bg-transition-color')).toBe('#0a5c40');
   });
 
   it('supports reduced motion mode cleanly', () => {

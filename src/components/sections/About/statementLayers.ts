@@ -54,7 +54,7 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * Background pixel transition (runrobrun stepped bottom-up pixel growth).
    * Takes over AFTER statement two has completely disappeared (progress > 0.78),
    * climbing from the bottom up in castellated columns to transition the background
-   * into dark greenish (#001a1a) or mint whitish (#dcf5e8).
+   * into dark greenish (#001a1a) or emerald green (#0a5c40).
    */
   { name: 'bgTransition', start: 0.78, end: 1.0, feather: 0.04 },
 ] as const;

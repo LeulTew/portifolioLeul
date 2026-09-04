@@ -33,7 +33,7 @@
 }
 
 :global([data-theme='light']) .about[data-bg-transition='true'] {
-  background-color: #dcf5e8;
+  background-color: #0a5c40;
 }
 
 .content {
@@ -255,7 +255,7 @@
 }
 
 :global([data-theme='light']) .about[data-bg-transition='true'] .heldGround {
-  background: #dcf5e8;
+  background: #0a5c40;
 }
 
 /*
@@ -658,7 +658,7 @@
 }
 
 :global([data-theme='light']) .educationWrapper {
-  background-color: #dcf5e8;
+  background-color: #0a5c40;
 }
 
 .educationSection {
@@ -741,10 +741,20 @@
 
 :global([data-theme="light"]) .sectionTitle,
 :global([data-theme="light"]) .educationTitle,
-:global([data-theme="light"]) .about .sectionTitle {
-  color: #111827;
+:global([data-theme="light"]) .about .sectionTitle,
+:global([data-theme="light"]) .educationWrapper .sectionTitle,
+:global([data-theme="light"]) .educationWrapper .educationTitle {
+  color: #ffffff;
   mix-blend-mode: normal;
-  text-shadow: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+:global([data-theme="light"]) #about[data-bg-transition='true'] .title {
+  color: #ffffff;
+}
+
+:global([data-theme="light"]) #about[data-bg-transition='true'] .subtitle {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 :global([data-theme="light"]) .statementText,
