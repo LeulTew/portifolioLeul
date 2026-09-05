@@ -81,6 +81,7 @@ export function TitlePixelTransition({
 
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
+  const lastSeqRef = useRef(0);
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
   const reducedMotion = getPrefersReducedMotion();
@@ -91,6 +92,15 @@ export function TitlePixelTransition({
 
   // Contrasting text color (pure white on contrary emerald green in both light and dark modes)
   const resolvedDotColor = '#ffffff';
+
+  const checkIsGreenBg = useCallback((seq: number): boolean => {
+    if (typeof document === 'undefined') return false;
+    const aboutSection = document.getElementById('about');
+    if (aboutSection?.getAttribute('data-bg-transition') === 'true') return true;
+    if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
+    // Background pixel transition starts at 0.78 and completes at 0.86; covers title zone by ~0.82
+    return seq >= 0.82;
+  }, []);
 
   const renderPhase = useCallback(
     (p: number, isLightMode: boolean, isGreenBg: boolean) => {
@@ -241,7 +251,10 @@ export function TitlePixelTransition({
       const isLightMode =
         typeof document !== 'undefined' &&
         document.documentElement.dataset.theme === 'light';
-      const isGreenBg = wasActiveRef.current || phaseRef.current.t > 0;
+      const isGreenBg =
+        checkIsGreenBg(lastSeqRef.current) ||
+        wasActiveRef.current ||
+        phaseRef.current.t > 0;
 
       renderPhase(phaseRef.current.t, isLightMode, isGreenBg);
 
@@ -251,7 +264,7 @@ export function TitlePixelTransition({
         lastFrameRef.current = 0;
       }
     },
-    [durationMs, renderPhase]
+    [checkIsGreenBg, durationMs, renderPhase]
   );
 
   const update = useCallback(() => {
@@ -275,11 +288,12 @@ export function TitlePixelTransition({
       rawSeq = computed.getPropertyValue('--seq').trim();
     }
     const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+    lastSeqRef.current = seq;
 
     const isLightMode =
       typeof document !== 'undefined' &&
       document.documentElement.dataset.theme === 'light';
-    const isGreenBg = seq >= 0.85;
+    const isGreenBg = checkIsGreenBg(seq);
 
     // 1. Explicit test override prop
     if (explicitProgress !== undefined) {
@@ -340,8 +354,11 @@ export function TitlePixelTransition({
     if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
       animFrameRef.current = requestAnimationFrame(step);
+    } else if (animFrameRef.current === 0) {
+      // Synchronize text colors/state with current theme and background state even when at rest
+      renderPhase(phaseRef.current.t, isLightMode, isGreenBg);
     }
-  }, [durationMs, end, explicitProgress, reducedMotion, renderPhase, start, step]);
+  }, [checkIsGreenBg, durationMs, end, explicitProgress, reducedMotion, renderPhase, start, step]);
 
   useEffect(() => {
     update();

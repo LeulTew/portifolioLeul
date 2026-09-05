@@ -896,13 +896,13 @@
 :global([data-theme='light'] html[data-navbar-contrary='true']) .heldHeader,
 :global([data-theme='light']) #about[data-bg-transition='true'] .title,
 :global([data-theme='light']) #about[data-bg-transition='true'] .heldHeader {
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 :global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .subtitle,
 :global([data-theme='light'] html[data-navbar-contrary='true']) .subtitle,
 :global([data-theme='light']) #about[data-bg-transition='true'] .subtitle {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 :global(body:has(#about[data-bg-transition='true'])) .heldHeader,

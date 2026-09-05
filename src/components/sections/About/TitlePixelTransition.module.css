@@ -42,6 +42,18 @@
   clip-path: none !important;
 }
 
+:global([data-theme='light'] #about[data-bg-transition='true']) .title,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .title,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .title {
+  color: #ffffff !important;
+}
+
+:global([data-theme='light'] #about[data-bg-transition='true']) .subtitle,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .subtitle,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .subtitle {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
 /* Contrasting Pixel Grid covering strictly the title text box */
 .pixelGrid {
   position: absolute;

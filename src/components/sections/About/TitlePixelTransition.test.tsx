@@ -112,4 +112,43 @@ describe('TitlePixelTransition Component', () => {
 
     expect(screen.getByTestId('title-pixel-transition-heading').textContent).toBe('About Me');
   });
+
+  it('keeps title color pure white (#ffffff) in light mode when on green background (data-bg-transition or seq >= 0.82)', () => {
+    document.documentElement.dataset.theme = 'light';
+    const aboutSection = document.createElement('div');
+    aboutSection.id = 'about';
+    document.body.appendChild(aboutSection);
+
+    try {
+      render(<TitlePixelTransition start={0.86} end={0.94} />);
+      const container = screen.getByTestId('title-pixel-transition');
+      const heading = screen.getByTestId('title-pixel-transition-heading');
+
+      // Before green background (seq = 0.50): heading should be dark (#111827)
+      container.style.setProperty('--seq', '0.50');
+      window.dispatchEvent(new Event('resize'));
+      expect(heading.style.color).toBe('rgb(17, 24, 39)');
+
+      // Once background pixel transition reaches heading zone (seq = 0.83): heading MUST be white (#ffffff)
+      container.style.setProperty('--seq', '0.83');
+      window.dispatchEvent(new Event('resize'));
+      expect(heading.style.color).toBe('rgb(255, 255, 255)');
+
+      // When section sets data-bg-transition="true" at completion (seq = 0.856): heading MUST stay white (#ffffff)
+      aboutSection.setAttribute('data-bg-transition', 'true');
+      container.style.setProperty('--seq', '0.856');
+      window.dispatchEvent(new Event('resize'));
+      expect(heading.style.color).toBe('rgb(255, 255, 255)');
+      expect(heading.textContent).toBe('About Me');
+
+      // When animating to Education at seq = 0.94: heading MUST remain white
+      container.style.setProperty('--seq', '0.94');
+      window.dispatchEvent(new Event('resize'));
+      expect(heading.style.color).toBe('rgb(255, 255, 255)');
+      expect(heading.textContent).toBe('Education');
+    } finally {
+      document.documentElement.removeAttribute('data-theme');
+      aboutSection.remove();
+    }
+  });
 });
