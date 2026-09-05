@@ -29,9 +29,9 @@ describe("themeUtils - getInitialTheme", () => {
     localStorageMock.clear();
   });
 
-  it("returns dark when window is undefined (SSR fallback)", () => {
+  it("returns light when window is undefined (SSR fallback)", () => {
     vi.stubGlobal("window", undefined);
-    expect(getInitialTheme()).toBe("dark");
+    expect(getInitialTheme()).toBe("light");
   });
 
   it("returns saved theme from localStorage when valid value exists", () => {
@@ -42,7 +42,7 @@ describe("themeUtils - getInitialTheme", () => {
     expect(getInitialTheme()).toBe("dark");
   });
 
-  it("defaults to dark when localStorage contains no saved theme", () => {
-    expect(getInitialTheme()).toBe("dark");
+  it("defaults to light when localStorage contains no saved theme", () => {
+    expect(getInitialTheme()).toBe("light");
   });
 });
