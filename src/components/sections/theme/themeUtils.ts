@@ -3,11 +3,11 @@ import { Theme } from './ThemeContext';
 export function getInitialTheme(): Theme {
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage) {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      return savedTheme as Theme;
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
     }
-    // Default to dark mode for all supported devices (Desktop and Tablet)
-    return 'dark';
+    // Default to light mode on initial visit
+    return 'light';
   }
-  return 'dark';
+  return 'light';
 }

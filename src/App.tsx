@@ -394,7 +394,7 @@ function App() {
    */
   const sections = (
     <main ref={attachMain} className={styles.main}>
-      <Home onNavigate={scrollToSection} flat={!canRender3D} />
+      <Home onNavigate={scrollToSection} theme={theme} flat={!canRender3D} />
       <About />
       <Skills />
       <Projects theme={theme} />

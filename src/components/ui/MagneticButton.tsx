@@ -23,7 +23,7 @@ export function MagneticButton({
   href,
   target,
   className,
-  theme = 'dark',
+  theme = 'light',
   onClick,
   ...props
 }: MagneticButtonProps) {

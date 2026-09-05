@@ -86,7 +86,7 @@ interface HomeProps {
   flat?: boolean;
 }
 
-export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
+export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);

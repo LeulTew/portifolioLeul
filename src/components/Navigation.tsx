@@ -72,7 +72,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => soundFx.getSoundEnabled());
 
   const themeContext = useContext(ThemeContext);
-  const theme = themeContext?.theme || 'dark';
+  const theme = themeContext?.theme || 'light';
   const toggleTheme = themeContext?.toggleTheme || (() => {});
 
   const handleToggleSound = () => {

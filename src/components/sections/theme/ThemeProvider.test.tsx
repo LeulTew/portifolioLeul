@@ -47,14 +47,14 @@ describe('ThemeProvider', () => {
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('provides default dark theme', () => {
+  it('provides default light theme', () => {
     render(
       <ThemeProvider>
         <TestConsumer />
       </ThemeProvider>
     );
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('dark');
+    expect(screen.getByTestId('theme')).toHaveTextContent('light');
   });
 
   it('toggles theme correctly', async () => {
@@ -66,19 +66,19 @@ describe('ThemeProvider', () => {
       </ThemeProvider>
     );
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('dark');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(screen.getByTestId('theme')).toHaveTextContent('light');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
 
     const button = screen.getByRole('button', { name: 'Toggle Theme' });
     await user.click(button);
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('light');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+    expect(screen.getByTestId('theme')).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
 
     await user.click(button);
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('dark');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(screen.getByTestId('theme')).toHaveTextContent('light');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
   });
 
   it('persists theme in localStorage', async () => {
@@ -93,11 +93,11 @@ describe('ThemeProvider', () => {
     const button = screen.getByRole('button', { name: 'Toggle Theme' });
     await user.click(button);
 
-    expect(localStorageMock.getItem('theme')).toBe('light');
+    expect(localStorageMock.getItem('theme')).toBe('dark');
   });
 
   it('loads saved theme from localStorage', () => {
-    localStorageMock.setItem('theme', 'light');
+    localStorageMock.setItem('theme', 'dark');
 
     render(
       <ThemeProvider>
@@ -105,8 +105,8 @@ describe('ThemeProvider', () => {
       </ThemeProvider>
     );
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('light');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+    expect(screen.getByTestId('theme')).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
   });
 });
 
@@ -139,27 +139,27 @@ describe('getInitialTheme', () => {
     localStorageMock.clear();
   });
 
-  it('returns "dark" when window is undefined (SSR)', () => {
+  it('returns "light" when window is undefined (SSR)', () => {
     vi.stubGlobal('window', undefined);
-    expect(getInitialTheme()).toBe('dark');
-  });
-
-  it('returns saved theme from localStorage', () => {
-    localStorageMock.setItem('theme', 'light');
     expect(getInitialTheme()).toBe('light');
   });
 
-  it('returns "dark" for mobile devices when no theme is saved (since they are redirected)', () => {
-    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
-      'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
-    );
+  it('returns saved theme from localStorage', () => {
+    localStorageMock.setItem('theme', 'dark');
     expect(getInitialTheme()).toBe('dark');
   });
 
-  it('returns "dark" for desktop devices when no theme is saved', () => {
+  it('returns "light" for mobile devices when no theme is saved', () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
+    );
+    expect(getInitialTheme()).toBe('light');
+  });
+
+  it('returns "light" for desktop devices when no theme is saved', () => {
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
     );
-    expect(getInitialTheme()).toBe('dark');
+    expect(getInitialTheme()).toBe('light');
   });
 });
