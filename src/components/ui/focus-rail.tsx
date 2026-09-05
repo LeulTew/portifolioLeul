@@ -263,6 +263,7 @@ export function FocusRail({
                 }}
                 transition={(val: string) => {
                   if (val === "scale") return TAP_SPRING;
+                  if (val === "filter") return { duration: 0.35, ease: "easeOut" };
                   return BASE_SPRING;
                 }}
                 style={{

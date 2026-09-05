@@ -119,6 +119,8 @@
 }
 
 .borderPath {
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
   fill: none;
   stroke: rgba(0, 255, 157, 0.4);
   stroke-width: 1.5;
@@ -132,6 +134,8 @@
 
 /* Animated Neon Tracer Beam */
 .tracerBeam {
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
   fill: none;
   stroke: #00ff9d;
   stroke-width: 2.5;

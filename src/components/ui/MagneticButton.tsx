@@ -98,15 +98,11 @@ export function MagneticButton({
           <rect
             x="1"
             y="1"
-            width="calc(100% - 2px)"
-            height="calc(100% - 2px)"
             className={styles.borderPath}
           />
           <rect
             x="1"
             y="1"
-            width="calc(100% - 2px)"
-            height="calc(100% - 2px)"
             className={styles.tracerBeam}
           />
         </svg>
