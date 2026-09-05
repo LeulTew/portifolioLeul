@@ -34,7 +34,6 @@
   --flake: color-mix(in srgb, currentColor 58%, white);
   /* Dimmer, because it is further away. */
   --flake-far: color-mix(in srgb, currentColor 84%, white);
-  --body-fill: currentColor;
 }
 
 /*
@@ -165,11 +164,10 @@
   display: inline-block;
 
   /*
-   * `color: transparent` prevents the raw font glyph from flashing solid
-   * on cold cache / font layout before text clipping rasterizes.
-   * `--body-fill` on `.word` supplies the resolved colour to the background.
+   * `-webkit-text-fill-color`, not `color`. Setting `color` would make
+   * `currentColor` transparent for every layer below as well, and the word
+   * would render as nothing at all.
    */
-  color: transparent;
   -webkit-text-fill-color: transparent;
   -webkit-background-clip: text;
   background-clip: text;
@@ -205,7 +203,7 @@
       var(--crest-far) 0 99%,
       transparent 100%
     ),
-    linear-gradient(var(--body-fill, currentColor), var(--body-fill, currentColor));
+    linear-gradient(currentColor, currentColor);
 
   background-size:
     16px calc(0% + 6px),
@@ -345,7 +343,6 @@
 @supports not ((background-clip: text) or (-webkit-background-clip: text)) {
   /* Without the clip there is no vessel to fill; show the text painted. */
   .char {
-    color: inherit;
     -webkit-text-fill-color: currentColor;
     background-image: none;
   }
@@ -363,7 +360,6 @@
    * of the design, it is missing.
    */
   .char {
-    color: inherit;
     -webkit-text-fill-color: currentColor;
     background-image: none;
     transition: none;
