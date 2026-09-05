@@ -107,11 +107,18 @@ const runFrames = (count = 1, delta = 0.016) => {
   }
 };
 
-/** Stands in for the renderer the governor drives. */
+/**
+ * Stands in for the renderer the governor drives -- and, through its canvas
+ * and context, for the one the context-loss guard listens to.
+ */
 const threeState = {
   camera: { fov: 50, position: { set: vi.fn() }, updateProjectionMatrix: vi.fn() },
   size: { width: 1920, height: 1080 },
-  gl: { render: vi.fn() },
+  gl: {
+    render: vi.fn(),
+    domElement: document.createElement("canvas"),
+    getContext: () => ({ isContextLost: () => false }),
+  },
   scene: {},
 };
 

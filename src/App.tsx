@@ -20,6 +20,7 @@ import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScr
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraFreezes, setWorldOcclusion } from './lib/camera/cameraHold';
 import { RenderGovernor } from './components/3d/RenderGovernor';
+import { ContextLossGuard } from './components/3d/ContextLossGuard';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
@@ -105,6 +106,16 @@ function App() {
   const canRender3D = useMemo(() => isWebGLAvailable(), []);
   const [webglRuntimeError, setWebglRuntimeError] = useState(false);
   const show3D = canRender3D && !webglRuntimeError;
+
+  /*
+   * The context went away and did not come back. Take the 3D layer down and
+   * render the sections flat -- the same page a browser without WebGL gets,
+   * rather than a backdrop that is permanently blank.
+   */
+  const handleContextUnrecoverable = useCallback(() => {
+    console.warn('WebGL context was not restored; falling back to the flat page.');
+    setWebglRuntimeError(true);
+  }, []);
 
   /*
    * Publishes the tier to CSS.
@@ -478,6 +489,12 @@ function App() {
                 Mounted last so it sits above every other frame subscriber.
               */}
               <RenderGovernor maxFps={gpuConfig.maxFps} />
+              {/*
+                A lost context throws nothing, so the error boundary above
+                cannot see it. Without this the backdrop simply stops drawing
+                and the reader is left with a site whose world is missing.
+              */}
+              <ContextLossGuard onUnrecoverable={handleContextUnrecoverable} />
             </ThemeContext.Provider>
           </Canvas>
         

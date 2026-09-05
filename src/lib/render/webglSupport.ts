@@ -18,37 +18,21 @@
  * asked per component would allocate several and leak them.
  */
 
+import { acquireProbeContext, releaseContext } from './webglContext';
+
 let answer: boolean | null = null;
 
 function probe(): boolean {
-  if (typeof document === 'undefined') return false;
+  const context = acquireProbeContext();
 
-  try {
-    const canvas = document.createElement('canvas');
-    const context =
-      canvas.getContext('webgl2') ??
-      canvas.getContext('webgl') ??
-      // Old Safari and some embedded browsers only answer to this name.
-      canvas.getContext('experimental-webgl');
+  /*
+   * Handed back deliberately. A browser gives a document only a handful of
+   * contexts -- eight per principal in Firefox -- and the Canvas we are about
+   * to mount needs one of them.
+   */
+  releaseContext(context);
 
-    if (!context) return false;
-
-    /*
-     * Handed back deliberately. A probe that keeps its context holds one of
-     * the handful the browser will give a document, and the Canvas we are
-     * about to mount needs one of them.
-     */
-    const lose =
-      'getExtension' in context
-        ? (context as WebGLRenderingContext).getExtension('WEBGL_lose_context')
-        : null;
-    lose?.loseContext();
-
-    return true;
-  } catch {
-    // Creation itself can throw rather than return null.
-    return false;
-  }
+  return context !== null;
 }
 
 /** True when a WebGL context can be created. Probed once, then remembered. */

@@ -9,12 +9,22 @@ describe('webglSupport', () => {
     resetWebGLSupport();
   });
 
-  const withContext = (
-    getContext: (name: string) => unknown
-  ) =>
-    vi
-      .spyOn(document, 'createElement')
-      .mockReturnValue({ getContext } as unknown as HTMLCanvasElement);
+  /**
+   * A canvas per call, as the browser gives one: `getContext` answers only for
+   * the type the canvas was first set to.
+   */
+  const withContext = (offers: (name: string) => unknown) =>
+    vi.spyOn(document, 'createElement').mockImplementation(() => {
+      let claimed: string | null = null;
+      return {
+        getContext(name: string) {
+          if (claimed !== null && claimed !== name) return null;
+          const context = offers(name);
+          if (context) claimed = name;
+          return context;
+        },
+      } as unknown as HTMLCanvasElement;
+    });
 
   it('reports available when the browser hands back a context', () => {
     withContext((name) => (name === 'webgl2' ? { getExtension: () => null } : null));
@@ -26,6 +36,18 @@ describe('webglSupport', () => {
     withContext((name) =>
       name === 'experimental-webgl' ? { getExtension: () => null } : null
     );
+    expect(isWebGLAvailable()).toBe(true);
+  });
+
+  it('finds WebGL 1 on a browser that refuses WebGL 2', () => {
+    /*
+     * The state this page kept mistaking for "no WebGL at all". A blocklisted
+     * driver, or a profile with `webgl.enable-webgl2` off, has WebGL 1 and
+     * nothing more -- and a canvas that has already been asked for `webgl2`
+     * answers null to every later name, so the fallback has to start from a
+     * fresh one.
+     */
+    withContext((name) => (name === 'webgl' ? { getExtension: () => null } : null));
     expect(isWebGLAvailable()).toBe(true);
   });
 
@@ -47,8 +69,8 @@ describe('webglSupport', () => {
   });
 
   it('hands the probe context back rather than holding it', () => {
-    // A browser gives a document only a handful of contexts, and the Canvas
-    // this runs before needs one of them.
+    // Firefox allows a principal eight live contexts and, past that, loses the
+    // least recently used one -- which on this page is the backdrop.
     const loseContext = vi.fn();
     withContext((name) =>
       name === 'webgl2'
@@ -60,9 +82,13 @@ describe('webglSupport', () => {
     expect(loseContext).toHaveBeenCalled();
   });
 
+  it('survives a browser with no lose-context extension', () => {
+    withContext((name) => (name === 'webgl2' ? { getExtension: () => null } : null));
+    expect(isWebGLAvailable()).toBe(true);
+  });
+
   it('probes once and remembers, however often it is asked', () => {
-    const getContext = vi.fn(() => ({ getExtension: () => null }));
-    const create = withContext(getContext as unknown as (n: string) => unknown);
+    const create = withContext(() => ({ getExtension: () => null }));
 
     isWebGLAvailable();
     isWebGLAvailable();

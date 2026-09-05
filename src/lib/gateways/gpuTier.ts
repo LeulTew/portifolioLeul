@@ -1,3 +1,5 @@
+import { acquireProbeContext, releaseContext } from '../render/webglContext';
+
 /**
  * Hardware Capability & GPU Tier Detector
  * Automatically tunes WebGL fidelity, particle counts, and shader quality for 60fps.
@@ -79,22 +81,33 @@ export function detectGpuTier(): GpuTierConfig {
   const cores = navigator.hardwareConcurrency ?? 8;
   const isMobileOrTablet = /Mobi|Tablet|iPad/i.test(navigator.userAgent);
 
-  // WebGL Renderer check
+  /*
+   * WebGL renderer check.
+   *
+   * The context is handed straight back. Reading the renderer string costs a
+   * real context, and this one used to be kept for the life of the document --
+   * one of the eight Firefox allows a principal, spent on a question that was
+   * answered in the same breath. Past that ceiling Firefox loses the least
+   * recently used context, which on this page is the backdrop itself.
+   */
   let isLowPowerGpu = false;
+  const gl = acquireProbeContext();
   try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     if (gl) {
-      const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info');
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
         if (/intel|mali|adreno(?!.*(660|730|740))|powervr/i.test(renderer)) {
           isLowPowerGpu = true;
         }
       }
     }
   } catch {
-    // Canvas context probe fallback
+    // No renderer string on offer -- Firefox masks it unless
+    // `webgl.enable-debug-renderer-info` is set, and a resisted-fingerprinting
+    // profile never reports one. Fall through on the memory and core counts.
+  } finally {
+    releaseContext(gl);
   }
 
   if (isMobileOrTablet || memory < 4 || cores <= 4 || isLowPowerGpu) {
