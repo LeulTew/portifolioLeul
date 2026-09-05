@@ -27,11 +27,13 @@
   /* Hairline overlap at the meeting edge, so no sliver of world leaks between
      the two bands from a fractional device pixel. */
   backface-visibility: hidden;
+  transform: scaleY(0.88);
 }
 
 .top {
   top: 0;
   transform-origin: top center;
+  transform: scaleY(0.88);
   /* The band is drawn from the outside in, so its inner edge is the one that
      moves and the outer edge stays welded to the frame. */
   bottom: auto;
@@ -40,6 +42,7 @@
 .bottom {
   bottom: 0;
   transform-origin: bottom center;
+  transform: scaleY(0.88);
   top: auto;
 }
 

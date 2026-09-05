@@ -64,6 +64,7 @@ const LOADER_FAILSAFE_MS = 45_000;
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
+  const [sectionsReady, setSectionsReady] = useState(false);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const [scrollPages, setScrollPages] = useState(1);
   /** Mirrors scrollPages, so the observer can compare without a stale closure. */
@@ -73,6 +74,12 @@ function App() {
   const scrollElementRef = useRef<HTMLDivElement | null>(null);
   /** Reader position captured just before the track is resized. */
   const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
+
+  const handleExitStart = useCallback(() => setSectionsReady(true), []);
+  const handleLoaded = useCallback(() => {
+    setSectionsReady(true);
+    setIsLoading(false);
+  }, []);
   /** Frames left to re-announce a restored position to ScrollControls. */
   const restoreSyncFramesRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,9 +164,9 @@ function App() {
    * load.
    */
   useEffect(() => {
-    const stalled = setTimeout(() => setIsLoading(false), LOADER_FAILSAFE_MS);
+    const stalled = setTimeout(handleLoaded, LOADER_FAILSAFE_MS);
     return () => clearTimeout(stalled);
-  }, []);
+  }, [handleLoaded]);
 
   /*
    * The prefetched model bytes have done their job -- but only once the scene
@@ -407,7 +414,12 @@ function App() {
     <div className={styles.container}>
       <AnimatePresence>
         {isLoading && (
-          <Loader key="loader" theme={theme} onLoaded={() => setIsLoading(false)} />
+          <Loader
+            key="loader"
+            theme={theme}
+            onExitStart={handleExitStart}
+            onLoaded={handleLoaded}
+          />
         )}
       </AnimatePresence>
 
@@ -415,7 +427,7 @@ function App() {
         <Navigation scrollToSection={scrollToSection} />
       )}
 
-      {!canRender3D && !isLoading && sections}
+      {!canRender3D && (sectionsReady || !isLoading) && sections}
 
       {canRender3D && (
       <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -448,7 +460,7 @@ function App() {
                 />
                 <ParticleBackground theme={theme} count={gpuConfig.particleCount} />
                 <Scroll html style={{ width: '100%' }}>
-                  {!isLoading && sections}
+                  {(sectionsReady || !isLoading) && sections}
                 </Scroll>
               </ScrollControls>
               <Preload all />
