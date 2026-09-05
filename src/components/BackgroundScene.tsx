@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, Suspense } from 'react';
+import { useRef, useMemo, useEffect, Suspense, Component, type ReactNode } from 'react';
 import { useFrame } from '@react-three/fiber';
 import {
   useGLTF,
@@ -164,6 +164,34 @@ function ResponsiveTV({ clips }: { clips: number }) {
       scale={[8, 8, 8]}
     />
   );
+}
+
+interface SafeTVProps {
+  clips: number;
+}
+
+interface SafeTVState {
+  hasError: boolean;
+}
+
+class SafeTV extends Component<SafeTVProps, SafeTVState> {
+  constructor(props: SafeTVProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn('Background TV prop failed to render, omitting:', error);
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) return null;
+    return <ResponsiveTV clips={this.props.clips} />;
+  }
 }
 
 function ResponsiveCamera() {
@@ -356,7 +384,7 @@ export function BackgroundScene({
           />
           
           {/* TV Model with Video */}
-          <ResponsiveTV clips={videoClips} />
+          <SafeTV clips={videoClips} />
         </Suspense>
 
         {/* Enhanced Lighting */}

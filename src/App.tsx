@@ -103,6 +103,8 @@ function App() {
    * asks, and does without.
    */
   const canRender3D = useMemo(() => isWebGLAvailable(), []);
+  const [webglRuntimeError, setWebglRuntimeError] = useState(false);
+  const show3D = canRender3D && !webglRuntimeError;
 
   /*
    * Publishes the tier to CSS.
@@ -401,7 +403,7 @@ function App() {
    */
   const sections = (
     <main ref={attachMain} className={styles.main}>
-      <Home onNavigate={scrollToSection} theme={theme} flat={!canRender3D} />
+      <Home onNavigate={scrollToSection} theme={theme} flat={!show3D} />
       <About />
       <Skills />
       <Projects theme={theme} />
@@ -427,10 +429,16 @@ function App() {
         <Navigation scrollToSection={scrollToSection} />
       )}
 
-      {!canRender3D && (sectionsReady || !isLoading) && sections}
+      {!show3D && (sectionsReady || !isLoading) && sections}
 
-      {canRender3D && (
-      <ErrorBoundary FallbackComponent={ErrorFallback}>
+      {show3D && (
+      <ErrorBoundary
+        fallbackRender={() => null}
+        onError={(error) => {
+          console.warn('3D Canvas encountered an error, falling back to 2D view:', error);
+          setWebglRuntimeError(true);
+        }}
+      >
           <Canvas
             dpr={gpuConfig.dpr}
             camera={{
@@ -442,7 +450,7 @@ function App() {
             gl={{
               antialias: gpuConfig.tier !== 'low',
               alpha: true,
-              powerPreference: 'high-performance',
+              powerPreference: 'default',
               stencil: false,
               depth: true,
             }}
@@ -526,25 +534,3 @@ function ScrollManager({
   return null;
 }
 
-function ErrorFallback({ error }: { error: Error }) {
-  return (
-    <div style={{ 
-      padding: '20px', 
-      textAlign: 'center', 
-      background: 'rgba(0,0,0,0.8)', 
-      color: 'white',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999
-    }}>
-      <h2>Something went wrong</h2>
-      <p>Please refresh the page or try on a different device.</p>
-      <details style={{ whiteSpace: 'pre-wrap' }}>
-        {error.message}
-      </details>
-    </div>
-  );
-}
