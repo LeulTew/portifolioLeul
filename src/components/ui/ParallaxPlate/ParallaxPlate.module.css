@@ -35,6 +35,11 @@
   box-shadow: 0 0 24px -8px #00ffc2;
 }
 
+:global([data-theme='light']) .plane:last-of-type {
+  border-color: #059669;
+  box-shadow: 0 0 20px -6px rgba(5, 150, 105, 0.4);
+}
+
 /*
  * A single line through the middle, which is what fixes the planes in space:
  * without a horizon the stack has no ground and the drift reads as wobble.
@@ -53,6 +58,10 @@
     transparent 100%
   );
   opacity: 0.38;
+}
+
+:global([data-theme='light']) .horizon {
+  opacity: 0.22;
 }
 
 .flipped {

@@ -372,6 +372,18 @@
   flex: 0 0 auto;
 }
 
+:global([data-theme='light']) .heldField {
+  color: rgba(15, 23, 42, 0.22);
+}
+
+.about[data-bg-transition='true'] .heldField {
+  color: rgba(210, 236, 255, 0.2);
+}
+
+:global([data-theme='light']) .about[data-bg-transition='true'] .heldField {
+  color: rgba(255, 255, 255, 0.25);
+}
+
 .statements {
   position: absolute;
   inset: 0;
