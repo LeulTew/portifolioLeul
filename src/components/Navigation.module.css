@@ -273,38 +273,31 @@
 
 /*
  * High-contrast navigation bar over green transition background (#0a5c40).
+ * Strictly scoped to .contraryHeader and .header[data-contrary="true"].
  */
 .contraryHeader .logo,
 :global([data-theme="light"]) .contraryHeader .logo,
-:global([data-theme="light"][data-navbar-contrary="true"]) .logo,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .logo,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .logo {
+:global([data-theme="light"]) .header[data-contrary="true"] .logo {
   color: #ffffff !important;
 }
 
 .contraryHeader .navBar,
 :global([data-theme="light"]) .contraryHeader .navBar,
-:global([data-theme="light"][data-navbar-contrary="true"]) .navBar,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navBar,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navBar {
+:global([data-theme="light"]) .header[data-contrary="true"] .navBar {
   background: rgba(255, 255, 255, 0.25) !important;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15) !important;
 }
 
 .contraryHeader .navBarInner,
 :global([data-theme="light"]) .contraryHeader .navBarInner,
-:global([data-theme="light"][data-navbar-contrary="true"]) .navBarInner,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navBarInner,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navBarInner {
+:global([data-theme="light"]) .header[data-contrary="true"] .navBarInner {
   background: rgba(255, 255, 255, 0.18) !important;
   backdrop-filter: blur(16px) !important;
 }
 
 .contraryHeader .navItem,
 :global([data-theme="light"]) .contraryHeader .navItem,
-:global([data-theme="light"][data-navbar-contrary="true"]) .navItem,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navItem {
+:global([data-theme="light"]) .header[data-contrary="true"] .navItem {
   color: rgba(255, 255, 255, 0.85) !important;
 }
 
@@ -312,57 +305,45 @@
 .contraryHeader .navItem.active,
 :global([data-theme="light"]) .contraryHeader .navItem:hover,
 :global([data-theme="light"]) .contraryHeader .navItem.active,
-:global([data-theme="light"][data-navbar-contrary="true"]) .navItem:hover,
-:global([data-theme="light"][data-navbar-contrary="true"]) .navItem.active,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem:hover,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .navItem.active,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navItem:hover,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .navItem.active {
+:global([data-theme="light"]) .header[data-contrary="true"] .navItem:hover,
+:global([data-theme="light"]) .header[data-contrary="true"] .navItem.active {
   color: #ffffff !important;
 }
 
 .contraryHeader .activeIndicator,
 :global([data-theme="light"]) .contraryHeader .activeIndicator,
-:global([data-theme="light"][data-navbar-contrary="true"]) .activeIndicator,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .activeIndicator,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .activeIndicator {
+:global([data-theme="light"]) .header[data-contrary="true"] .activeIndicator {
   background: #00ffc8 !important;
   box-shadow: 0 0 10px #00ffc8 !important;
 }
 
 .contraryHeader .divider,
 :global([data-theme="light"]) .contraryHeader .divider,
-:global([data-theme="light"][data-navbar-contrary="true"]) .divider,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .divider,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .divider {
+:global([data-theme="light"]) .header[data-contrary="true"] .divider {
   background: rgba(255, 255, 255, 0.25) !important;
 }
 
 .contraryHeader .themeToggle,
 :global([data-theme="light"]) .contraryHeader .themeToggle,
-:global([data-theme="light"][data-navbar-contrary="true"]) .themeToggle,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .themeToggle,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .themeToggle {
+:global([data-theme="light"]) .header[data-contrary="true"] .themeToggle {
   color: #ffffff !important;
 }
 
 .contraryHeader .themeToggle:hover,
 :global([data-theme="light"]) .contraryHeader .themeToggle:hover,
-:global([data-theme="light"][data-navbar-contrary="true"]) .themeToggle:hover,
-:global([data-theme="light"]:has(#about[data-bg-transition="true"])) .themeToggle:hover,
-:global([data-theme="light"] body:has(#about[data-bg-transition="true"])) .themeToggle:hover {
+:global([data-theme="light"]) .header[data-contrary="true"] .themeToggle:hover {
   background: rgba(255, 255, 255, 0.2) !important;
   color: #00ffc8 !important;
 }
 
 .contraryHeader .soundMutedIcon,
 :global([data-theme="light"]) .contraryHeader .soundMutedIcon,
-:global([data-theme="light"][data-navbar-contrary="true"]) .soundMutedIcon {
+:global([data-theme="light"]) .header[data-contrary="true"] .soundMutedIcon {
   color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .contraryHeader .soundActiveIcon,
 :global([data-theme="light"]) .contraryHeader .soundActiveIcon,
-:global([data-theme="light"][data-navbar-contrary="true"]) .soundActiveIcon {
+:global([data-theme="light"]) .header[data-contrary="true"] .soundActiveIcon {
   color: #00ffc8 !important;
 }

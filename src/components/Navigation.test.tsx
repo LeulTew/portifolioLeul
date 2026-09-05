@@ -444,5 +444,44 @@ describe('Navigation', () => {
 
       document.body.removeChild(aboutEl);
     });
+
+    it('reverts to normal when skills section arrives even if about still has data-bg-transition', () => {
+      const aboutEl = document.createElement('section');
+      aboutEl.id = 'about';
+      aboutEl.setAttribute('data-bg-transition', 'true');
+      vi.spyOn(aboutEl, 'getBoundingClientRect').mockReturnValue({
+        top: -600,
+        bottom: 50,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 650,
+      } as DOMRect);
+      document.body.appendChild(aboutEl);
+
+      const skillsEl = document.createElement('section');
+      skillsEl.id = 'skills';
+      vi.spyOn(skillsEl, 'getBoundingClientRect').mockReturnValue({
+        top: 50,
+        bottom: 850,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 800,
+      } as DOMRect);
+      document.body.appendChild(skillsEl);
+
+      render(
+        <ThemeContext.Provider value={{ theme: 'light', toggleTheme: mockToggleTheme }}>
+          <Navigation scrollToSection={mockScrollToSection} />
+        </ThemeContext.Provider>
+      );
+
+      const header = document.querySelector('header');
+      expect(header).not.toHaveAttribute('data-contrary');
+
+      document.body.removeChild(aboutEl);
+      document.body.removeChild(skillsEl);
+    });
   });
 });

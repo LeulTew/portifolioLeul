@@ -26,13 +26,24 @@ function checkIsContrary(theme: string): boolean {
     return false;
   }
 
+  // If Skills section has reached or passed under the navbar,
+  // we are no longer over About.
+  const skillsEl = document.getElementById('skills');
+  if (skillsEl) {
+    const skillsRect = skillsEl.getBoundingClientRect();
+    if (skillsRect.top <= 80) {
+      return false;
+    }
+  }
+
   const aboutEl = document.getElementById('about');
   if (!aboutEl) {
     return false;
   }
 
   const aboutRect = aboutEl.getBoundingClientRect();
-  const isOverAbout = aboutRect.top <= 80 && aboutRect.bottom >= 20;
+  // Physically over About: top is at or above navbar (<= 80) and bottom is below navbar (> 80)
+  const isOverAbout = aboutRect.top <= 80 && aboutRect.bottom > 80;
 
   if (isOverAbout) {
     const isTransitioned =
@@ -40,7 +51,7 @@ function checkIsContrary(theme: string): boolean {
       document.documentElement.getAttribute('data-navbar-contrary') === 'true';
     const eduEl = aboutEl.querySelector('[data-green-bg="true"]');
     const eduRect = eduEl?.getBoundingClientRect();
-    const inEdu = eduRect ? eduRect.top <= 80 && eduRect.bottom >= 20 : false;
+    const inEdu = eduRect ? eduRect.top <= 80 && eduRect.bottom > 80 : false;
 
     if (isTransitioned || inEdu) {
       return true;
