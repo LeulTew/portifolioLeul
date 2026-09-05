@@ -65,6 +65,13 @@ const CUE_WIDTH_PX = 60;
  */
 const NEVER_ENTERED_MS = 15000;
 
+/**
+ * Re-entry animation timing: faster and more fluid than the first load sequence,
+ * starting immediately on arrival with rapid snow accumulation.
+ */
+const REENTRY_DURATION_MS = 1400;
+const REENTRY_LEAD_MS = 280;
+
 interface HomeProps {
   onNavigate?: (sectionId: string) => void;
   theme?: string;
@@ -126,6 +133,15 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
   const frameRef = useRef(0);
   const lastFrameRef = useRef(0);
   const settledRef = useRef(false);
+  const [settled, setSettled] = useState(false);
+  const [reentryCount, setReentryCount] = useState(0);
+  const [isReentering, setIsReentering] = useState(false);
+  const [reentrySettled, setReentrySettled] = useState(false);
+
+  const firstLoadSettledRef = useRef(false);
+  const hasLeftHomeRef = useRef(false);
+  const isReenteringRef = useRef(false);
+  const reentryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
    * The hold.
@@ -352,7 +368,43 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
        */
       if (!settledRef.current && (inner > 0 || shut > 0)) {
         settledRef.current = true;
+        firstLoadSettledRef.current = true;
         setSettled(true);
+      }
+
+      /*
+       * Headline re-entry snow choreography:
+       * When the user leaves Home (after initial entrance is settled), we flag hasLeftHome.
+       * When returning to Home on scroll up (or nav jump), we replay the snow effect
+       * faster and more fluid without altering the first load sequence.
+       */
+      if (firstLoadSettledRef.current) {
+        if (inner >= 0.6 || progress >= 0.35) {
+          hasLeftHomeRef.current = true;
+          if (isReenteringRef.current) {
+            isReenteringRef.current = false;
+            setIsReentering(false);
+            setReentrySettled(true);
+            if (reentryTimerRef.current) clearTimeout(reentryTimerRef.current);
+          }
+        } else if (
+          !reducedMotion &&
+          hasLeftHomeRef.current &&
+          (progress <= 0.2 || !innerActiveRef.current)
+        ) {
+          hasLeftHomeRef.current = false;
+          isReenteringRef.current = true;
+          setIsReentering(true);
+          setReentrySettled(false);
+          setReentryCount((prev) => prev + 1);
+
+          if (reentryTimerRef.current) clearTimeout(reentryTimerRef.current);
+          reentryTimerRef.current = setTimeout(() => {
+            setReentrySettled(true);
+            setIsReentering(false);
+            isReenteringRef.current = false;
+          }, REENTRY_DURATION_MS + 50);
+        }
       }
 
       const isVisible = shut < 0.995;
@@ -414,6 +466,7 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
       if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
       lastFrameRef.current = 0;
+      if (reentryTimerRef.current) clearTimeout(reentryTimerRef.current);
     };
   }, [sectionElement, reducedMotion, held]);
 
@@ -642,8 +695,6 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
     };
   }, [sectionElement, held]);
 
-  const [settled, setSettled] = useState(false);
-
   /*
    * Guarantees the hero ends up visible, however the entrance goes.
    */
@@ -665,7 +716,10 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
      * an empty hero for ever. That path just waits a good deal longer.
      */
     const settle = setTimeout(
-      () => setSettled(true),
+      () => {
+        setSettled(true);
+        firstLoadSettledRef.current = true;
+      },
       hasEntered ? (sequenceDuration(HERO_SEQUENCE) + 0.8) * 1000 : NEVER_ENTERED_MS
     );
     return () => clearTimeout(settle);
@@ -761,23 +815,33 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
             </div>
           </div>
 
-          <h1 className={styles.title} style={at('title')} data-cue-layer="title">
+          <h1
+            className={`${styles.title} ${isReentering ? styles.titleReentering : ''}`}
+            style={at('title')}
+            data-cue-layer="title"
+          >
             <LiquidFillText
+              key={reentryCount > 0 ? `reentry-leul-${reentryCount}` : 'first-load-leul'}
               text="Leul"
               filling={hasEntered}
-              settled={settled}
-              delayMs={cueDelay(HERO_SEQUENCE, 'title') * 1000}
-              durationMs={cueDuration(HERO_SEQUENCE, 'title') * 1000}
-              leadMs={SNOW_LEAD * 1000}
+              settled={reentryCount > 0 ? reentrySettled : settled}
+              delayMs={reentryCount > 0 ? 0 : cueDelay(HERO_SEQUENCE, 'title') * 1000}
+              durationMs={
+                reentryCount > 0 ? REENTRY_DURATION_MS : cueDuration(HERO_SEQUENCE, 'title') * 1000
+              }
+              leadMs={reentryCount > 0 ? REENTRY_LEAD_MS : SNOW_LEAD * 1000}
               className="mr-3"
             />
             <LiquidFillText
+              key={reentryCount > 0 ? `reentry-tewodros-${reentryCount}` : 'first-load-tewodros'}
               text="Tewodros"
               filling={hasEntered}
-              settled={settled}
-              delayMs={cueDelay(HERO_SEQUENCE, 'title') * 1000}
-              durationMs={cueDuration(HERO_SEQUENCE, 'title') * 1000}
-              leadMs={SNOW_LEAD * 1000}
+              settled={reentryCount > 0 ? reentrySettled : settled}
+              delayMs={reentryCount > 0 ? 0 : cueDelay(HERO_SEQUENCE, 'title') * 1000}
+              durationMs={
+                reentryCount > 0 ? REENTRY_DURATION_MS : cueDuration(HERO_SEQUENCE, 'title') * 1000
+              }
+              leadMs={reentryCount > 0 ? REENTRY_LEAD_MS : SNOW_LEAD * 1000}
               className={styles.lastname}
             />
           </h1>

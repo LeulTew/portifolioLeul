@@ -383,6 +383,55 @@ describe('Home choreography', () => {
     expect(getByTestId('scroll-cue')).toBeInTheDocument();
   });
 
+  it('replays fluid faster snow animation when scrolling back up into Home', () => {
+    vi.useFakeTimers();
+    const { getAllByTestId, container } = render(<Home />);
+    enterHero();
+
+    // On first load, LiquidFillText has first load timing
+    const titleElements = getAllByTestId('liquid-fill-text');
+    expect(titleElements[0]).toHaveAttribute('data-filling', 'true');
+    expect(titleElements[0]).toHaveAttribute('data-settled', 'false');
+    expect(titleElements[0].style.getPropertyValue('--snow-duration')).toBe('2400ms');
+    expect(titleElements[0].style.getPropertyValue('--word-delay')).toBe('1000ms');
+
+    // Settle first load
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    expect(titleElements[0]).toHaveAttribute('data-settled', 'true');
+
+    // Scroll away (leave Home into hold)
+    scrollIntoHold(0.5);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // Scroll back up into Home
+    scrollIntoHold(0);
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
+
+    // On re-entry, LiquidFillText remounts with faster fluid timing and starts filling immediately
+    const reenteredElements = getAllByTestId('liquid-fill-text');
+    expect(reenteredElements[0]).toHaveAttribute('data-filling', 'true');
+    expect(reenteredElements[0]).toHaveAttribute('data-settled', 'false');
+    expect(reenteredElements[0].style.getPropertyValue('--snow-duration')).toBe('1400ms');
+    expect(reenteredElements[0].style.getPropertyValue('--word-delay')).toBe('0ms');
+
+    // The h1 has the titleReentering class during re-entry
+    const h1 = container.querySelector('h1');
+    expect(h1?.className).toContain('titleReentering');
+
+    // Settle re-entry animation
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(reenteredElements[0]).toHaveAttribute('data-settled', 'true');
+    expect(h1?.className).not.toContain('titleReentering');
+  });
+
   it('scrolls to about when the cue is activated', () => {
     const onNavigate = vi.fn();
     const { getByTestId } = render(<Home onNavigate={onNavigate} />);

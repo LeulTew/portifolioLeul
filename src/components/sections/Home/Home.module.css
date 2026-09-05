@@ -669,6 +669,16 @@
 }
 
 /*
+ * While the headline re-enters on scroll back up, allow the snow particles
+ * and rising liquid wave crests to render freely without the exit clip-path masking them.
+ */
+.settled .title.titleReentering {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) !important;
+  clip-path: none !important;
+}
+
+/*
  * The blur comes off while the hero is leaving.
  *
  * A backdrop-filter re-samples everything behind it, and this one sits inside
