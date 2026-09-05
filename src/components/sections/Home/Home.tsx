@@ -45,6 +45,7 @@ import {
   sequenceDuration,
 } from '@/lib/motion/sectionChoreography';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
 
 /**
@@ -487,6 +488,28 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
       const headingLeft = Number.parseFloat(headingStyle.paddingLeft) || 0;
 
       /*
+       * Plus the air built into the first letter.
+       *
+       * A display heading reads as aligned by the edge of its first letter,
+       * and that is not the edge of its text box: the glyph carries a left
+       * side bearing, and at this size it is worth a good many pixels. The
+       * mark stood on the box, so it lined up with the subtitle underneath --
+       * which shares the box -- and visibly not with the `A` it points at.
+       *
+       * Measured rather than written down, because there is no one answer.
+       * The stylesheet asks for Inter and nothing in the app loads it, so the
+       * face is whatever the reader has: Inter's `A` at weight 800 starts
+       * exactly on the origin, and the platform fallback starts well inside
+       * it. A constant would be right on one machine and wrong on the next.
+       */
+      const title = heading.querySelector('h2, h1') ?? heading;
+      const inkOffset = firstGlyphInkOffset(
+        title.textContent ?? '',
+        fontShorthand(window.getComputedStyle(title))
+      );
+      const markLeft = headingLeft + inkOffset;
+
+      /*
        * Where the held stretch begins, not where About's section does.
        *
        * About's heading lives in an overlay that is only drawn once the
@@ -531,7 +554,7 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
       if (headingLeft > 0) {
         root.setProperty(
           '--cue-x',
-          `${Math.round(headingLeft - cueRunOffset(CUE_WIDTH_PX))}px`
+          `${Math.round(markLeft - cueRunOffset(CUE_WIDTH_PX))}px`
         );
       }
       setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
@@ -567,6 +590,23 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
     window.addEventListener('resize', measure);
 
     /*
+     * And once more when the fonts have settled.
+     *
+     * The mark's inset now depends on the first letter's own side bearing,
+     * which is a property of the face that actually renders. Measure it while
+     * the page is still on a fallback and the answer belongs to a letter the
+     * reader never sees. Every other trigger here watches for size changing,
+     * and a face swapping for one of the same size moves the ink without
+     * moving anything a ResizeObserver would report.
+     */
+    let dropped = false;
+    document.fonts?.ready
+      ?.then(() => {
+        if (!dropped) measure();
+      })
+      .catch(() => {});
+
+    /*
      * Observed, not just listened for.
      *
      * Both ends of the rail are clamps against viewport size -- the heading's
@@ -594,6 +634,7 @@ export function Home({ onNavigate, theme = 'dark', flat = false }: HomeProps) {
     }
 
     return () => {
+      dropped = true;
       if (retry) clearInterval(retry);
       if (giveUp) clearTimeout(giveUp);
       window.removeEventListener('resize', measure);
