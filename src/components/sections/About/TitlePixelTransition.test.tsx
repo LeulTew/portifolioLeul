@@ -83,4 +83,33 @@ describe('TitlePixelTransition Component', () => {
     const activeDots = dots.filter((d) => d.getAttribute('data-active') === 'true');
     expect(activeDots.length).toBe(0);
   });
+
+  it('renders correctly with explicit progress override', () => {
+    const { rerender } = render(<TitlePixelTransition progress={0} />);
+    expect(screen.getByTestId('title-pixel-transition-heading').textContent).toBe('About Me');
+
+    rerender(<TitlePixelTransition progress={0.65} />);
+    expect(screen.getByTestId('title-pixel-transition-heading').textContent).toMatch(/^Edu/);
+
+    rerender(<TitlePixelTransition progress={1.0} />);
+    expect(screen.getByTestId('title-pixel-transition-heading').textContent).toBe('Education');
+  });
+
+  it('boundary clamp at seq >= 0.98 guarantees full Education heading before unpin', () => {
+    render(<TitlePixelTransition start={0.86} end={0.94} />);
+    const container = screen.getByTestId('title-pixel-transition');
+    container.style.setProperty('--seq', '0.99');
+    window.dispatchEvent(new Event('resize'));
+
+    expect(screen.getByTestId('title-pixel-transition-heading').textContent).toBe('Education');
+  });
+
+  it('boundary clamp at seq <= 0.05 guarantees pristine About Me heading', () => {
+    render(<TitlePixelTransition start={0.86} end={0.94} />);
+    const container = screen.getByTestId('title-pixel-transition');
+    container.style.setProperty('--seq', '0.02');
+    window.dispatchEvent(new Event('resize'));
+
+    expect(screen.getByTestId('title-pixel-transition-heading').textContent).toBe('About Me');
+  });
 });
