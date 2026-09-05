@@ -351,7 +351,21 @@ function App() {
       const containerScrollable = Math.max(container.scrollHeight - container.clientHeight, 1);
       const contentScrollable = Math.max(main.scrollHeight - container.clientHeight, 1);
       const rawOffset = id === 'home' ? 0 : target.offsetTop - (main.offsetTop || 0);
-      const adjustedOffset = Math.max(rawOffset - (id === 'home' ? 0 : 80), 0);
+
+      let adjustedOffset = 0;
+      if (id === 'home') {
+        adjustedOffset = 0;
+      } else if (id === 'about') {
+        // About uses PinnedSequence (screens = 3, travel = 2 * clientHeight).
+        // At 0.08 * clientHeight (progress = 0.04), the "About Me" heading reaches full
+        // unclipped presence (--head-in = 1, --title-in = 1) while the scroll cue arrow
+        // is at full rest directly pointing at the heading before statements arrive.
+        const clientHeight = container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
+        adjustedOffset = rawOffset + Math.round(clientHeight * 0.08);
+      } else {
+        adjustedOffset = Math.max(rawOffset - 80, 0);
+      }
+
       const ratio = Math.min(1, Math.max(0, adjustedOffset / contentScrollable));
 
       container.scrollTo({
@@ -359,6 +373,15 @@ function App() {
         behavior: 'smooth'
       });
       return;
+    }
+
+    if (id === 'about') {
+      const aboutEl = document.getElementById('about');
+      if (aboutEl && typeof window !== 'undefined') {
+        const top = aboutEl.offsetTop + Math.round(window.innerHeight * 0.08);
+        window.scrollTo({ top, behavior: 'smooth' });
+        return;
+      }
     }
 
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
