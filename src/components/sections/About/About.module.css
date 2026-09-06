@@ -14,6 +14,7 @@
 .about {
   --about-gutter: clamp(2rem, 9vw, 16rem);
   --about-indent: clamp(1.5rem, 11.5vw, 20rem);
+  --head-lead: clamp(5rem, 11vh, 8.5rem);
   position: relative;
   min-height: 120vh;
   width: 100%;
@@ -47,7 +48,7 @@
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 0;
 }
 
 /* ==========================================================================
@@ -126,6 +127,7 @@
    * property, which is exactly why they have to share it.
    */
   --about-indent: clamp(1.5rem, 11.5vw, 20rem);
+  --head-lead: clamp(5rem, 11vh, 8.5rem);
 
   /*
    * The drop from the heading to the statement.
@@ -154,16 +156,7 @@
  */
 .heldHeader {
   position: absolute;
-  /*
-   * Lower than the top of the stretch, deliberately.
-   *
-   * The arrow the hero draws points down into this section, and the reader's
-   * eye travels with it. Setting the heading against the top edge meets that
-   * movement halfway and stops it short; dropping it leaves the arrow room to
-   * finish, and the heading then arrives below where the eye already is
-   * rather than above it.
-   */
-  top: clamp(10.5rem, 24vh, 18rem);
+  top: var(--head-lead);
   left: 0;
   right: 0;
   padding-left: var(--about-indent);
@@ -803,8 +796,10 @@
 
 :global(body:has(#about[data-bg-transition='true'])) .heldHeader,
 :global(html[data-navbar-contrary='true']) .heldHeader,
+:global(#about[data-bg-transition='true']) .heldHeader,
 #about[data-bg-transition='true'] .heldHeader {
   opacity: 1 !important;
+  visibility: visible !important;
   transform: none !important;
 }
 

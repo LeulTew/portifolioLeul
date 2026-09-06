@@ -22,7 +22,7 @@
   --ink-muted: rgba(255, 255, 255, 0.66);
   --ink-faint: rgba(255, 255, 255, 0.4);
   --accent: #00ff9d;
-  --head-lead: clamp(10.5rem, 24vh, 18rem);
+  --head-lead: clamp(5rem, 11vh, 8.5rem);
   /* The stack `font-mono` resolves to everywhere else in this app. */
   --rail-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     'Liberation Mono', 'Courier New', monospace;
@@ -104,7 +104,7 @@
   padding-right: var(--about-gutter);
   /* The page's own scroll cue sits along the bottom edge of the viewport; the
      frame keeps clear of it rather than colliding with it. */
-  padding-bottom: clamp(4rem, 9vh, 6.5rem);
+  padding-bottom: clamp(2.5rem, 5vh, 4rem);
   box-sizing: border-box;
 }
 
@@ -158,9 +158,10 @@
      each end. A rectangle should be proportioned to what is in it. */
   display: flex;
   align-items: center;
+  justify-content: center;
   flex: 1 1 auto;
   min-height: 0;
-  padding-top: clamp(1.5rem, 3vh, 2.5rem);
+  padding-top: clamp(0.75rem, 1.5vh, 1.5rem);
 }
 
 /* --------------------------------------------------------------------------
@@ -172,7 +173,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  max-height: 32rem;
+  max-height: clamp(34rem, 64vh, 44rem);
   box-sizing: border-box;
   isolation: isolate;
 }

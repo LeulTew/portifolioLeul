@@ -181,9 +181,9 @@ export function EducationRail() {
           },
         })
         .to(head, {
-          scale: 0.74,
+          scale: 0.72,
           x: '-0.5rem',
-          y: '-3.25rem',
+          y: '-1.5rem',
           duration: 0.85,
         }, 0)
         .fromTo(
