@@ -369,12 +369,29 @@
   color: rgba(15, 23, 42, 0.22);
 }
 
-.about[data-bg-transition='true'] .heldField {
-  color: rgba(210, 236, 255, 0.2);
-}
-
-:global([data-theme='light']) .about[data-bg-transition='true'] .heldField {
-  color: rgba(255, 255, 255, 0.25);
+/*
+ * The 3D background geometry must disappear completely when the background changes.
+ * Enforce strict invisibility across all transition, active, settled, and education states.
+ */
+.about[data-bg-transition='true'] .heldField,
+.about[data-bg-active='true'] .heldField,
+.about[data-bg-settled='true'] .heldField,
+.about[data-title-active='true'] .heldField,
+.about[data-education-active='true'] .heldField,
+:global(#about[data-bg-transition='true']) .heldField,
+:global(#about[data-bg-active='true']) .heldField,
+:global(#about[data-bg-settled='true']) .heldField,
+:global(#about[data-title-active='true']) .heldField,
+:global(#about[data-education-active='true']) .heldField,
+:global(body:has(#about[data-bg-transition='true'])) .heldField,
+:global(body:has(#about[data-bg-active='true'])) .heldField,
+:global(body:has(#about[data-bg-settled='true'])) .heldField,
+:global(body:has(#about[data-title-active='true'])) .heldField,
+:global(body:has(#about[data-education-active='true'])) .heldField,
+:global(html[data-navbar-contrary='true']) .heldField {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .statements {

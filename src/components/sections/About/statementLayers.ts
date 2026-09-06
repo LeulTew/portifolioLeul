@@ -21,9 +21,10 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
   /*
    * The geometry leaves before the stretch does. Something still drifting as
    * the section hands over reads as scenery that was forgotten rather than
-   * cleared.
+   * cleared. Fades out completely by 0.76 so the 3D parallax plates are fully
+   * cleared before the background pixel transition begins at 0.78.
    */
-  { name: 'field', start: 0.01, end: 0.9, feather: 0.13 },
+  { name: 'field', start: 0.01, end: 0.76, feather: 0.08 },
   /*
    * The heading, and it arrives while the arrow is still pointing at it.
    *

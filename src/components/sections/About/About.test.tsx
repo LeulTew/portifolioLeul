@@ -96,7 +96,9 @@ describe('About held sequence', () => {
 
   it('clears the geometry before the stretch ends', () => {
     // Something still drifting at the handover reads as scenery left behind.
+    // Must be completely cleared before background pixel transition begins at 0.78
     const field = STATEMENT_LAYERS.find((l) => l.name === 'field')!;
+    expect(windowPresence(0.78, field.start, field.end, field.feather!)).toBe(0);
     expect(windowPresence(0.97, field.start, field.end, field.feather!)).toBe(0);
   });
 
