@@ -150,6 +150,7 @@ export function EducationRail() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [active, setActive] = useState(0);
   const activeRef = useRef(0);
+  const isFirstCrossingRef = useRef(true);
   const staged = useRailStaged();
 
   const total = EDUCATION_RECORDS.length;
@@ -260,8 +261,8 @@ export function EducationRail() {
           openTimeline.play();
         }
       } else {
-        // Scrolling back up into About: reverse timeline and restore heading size
-        if (openTimeline && (!openTimeline.reversed() || openTimeline.progress() > 0)) {
+        // Scrolling back up into About: reverse timeline and restore heading size only if open
+        if (openTimeline && openTimeline.progress() > 0) {
           startAnimation('education-open');
           openTimeline.reverse();
         }
@@ -317,6 +318,12 @@ export function EducationRail() {
   useEffect(() => {
     const track = trackRef.current;
     if (!track || !staged) return;
+
+    if (isFirstCrossingRef.current) {
+      isFirstCrossingRef.current = false;
+      gsap.set(track, { xPercent: trackOffset(active, total) });
+      return;
+    }
 
     const ctx = gsap.context(() => {
       const arriving = track.querySelector<HTMLElement>(`[data-record="${active}"]`);

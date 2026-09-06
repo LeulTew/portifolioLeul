@@ -15,6 +15,7 @@ type ScrollIntentListener = (direction: 'down' | 'up', event?: Event) => void;
 const activeAnimations = new Set<string>();
 const busyListeners = new Set<BusyListener>();
 const intentListeners = new Set<ScrollIntentListener>();
+const animationTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 let programmaticNav = false;
 let isInitialized = false;
@@ -37,10 +38,21 @@ export function isAnimationBusy(): boolean {
 /**
  * Registers an active animation by ID.
  * Returns an unregister function to call when the animation completes or unmounts.
+ * Includes a safety watchdog timer so an animation can never lock scroll indefinitely.
  */
-export function startAnimation(id: string): () => void {
+export function startAnimation(id: string, maxDurationMs: number = 2500): () => void {
   const wasBusy = activeAnimations.size > 0;
   activeAnimations.add(id);
+
+  if (animationTimeouts.has(id)) {
+    clearTimeout(animationTimeouts.get(id)!);
+  }
+
+  // Safety watchdog: auto-release if animation fails to finish within expected duration + buffer
+  const timer = setTimeout(() => {
+    endAnimation(id);
+  }, maxDurationMs + 500);
+  animationTimeouts.set(id, timer);
 
   if (!wasBusy) {
     notifyBusy(true);
@@ -50,15 +62,16 @@ export function startAnimation(id: string): () => void {
   return () => {
     if (ended) return;
     ended = true;
-    activeAnimations.delete(id);
-    if (activeAnimations.size === 0) {
-      notifyBusy(false);
-    }
+    endAnimation(id);
   };
 }
 
 /** Explicitly ends an animation by ID. */
 export function endAnimation(id: string): void {
+  if (animationTimeouts.has(id)) {
+    clearTimeout(animationTimeouts.get(id)!);
+    animationTimeouts.delete(id);
+  }
   if (activeAnimations.delete(id)) {
     if (activeAnimations.size === 0) {
       notifyBusy(false);
@@ -193,6 +206,10 @@ export function cleanupAnimationScrollGate(): void {
 
 /** Test utility to reset all gate state. */
 export function resetAnimationScrollGate(): void {
+  for (const timer of animationTimeouts.values()) {
+    clearTimeout(timer);
+  }
+  animationTimeouts.clear();
   activeAnimations.clear();
   busyListeners.clear();
   intentListeners.clear();
