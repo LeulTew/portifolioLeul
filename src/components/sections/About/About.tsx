@@ -55,6 +55,70 @@ function TransitionMaskedOverlay() {
   );
 }
 
+interface StatementsContainerProps {
+  children: React.ReactNode;
+}
+
+function StatementsContainer({ children }: StatementsContainerProps) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const checkIsGreen = () => {
+      if (typeof document === 'undefined') return false;
+      const aboutEl = document.getElementById('about');
+      if (aboutEl?.getAttribute('data-bg-transition') === 'true') return true;
+      if (aboutEl?.getAttribute('data-bg-active') === 'true') return true;
+      if (aboutEl?.getAttribute('data-bg-settled') === 'true') return true;
+      if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
+
+      const overlay = el.closest<HTMLElement>('[data-active]');
+      const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
+      const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+      return seq >= 0.78;
+    };
+
+    const update = () => {
+      const isGreen = checkIsGreen();
+      if (isGreen) {
+        if (el.dataset.contrary !== 'true') el.dataset.contrary = 'true';
+      } else {
+        if (el.dataset.contrary !== 'false') el.dataset.contrary = 'false';
+      }
+    };
+
+    update();
+    const unsub = subscribeScrollProgress(update);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, { passive: true });
+
+    const aboutEl = document.getElementById('about');
+    let observer: MutationObserver | null = null;
+    if (typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(update);
+      if (aboutEl) {
+        observer.observe(aboutEl, { attributes: true });
+      }
+      observer.observe(document.documentElement, { attributes: true });
+    }
+
+    return () => {
+      unsub();
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update);
+      observer?.disconnect();
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className={styles.statements} data-contrary="false">
+      {children}
+    </div>
+  );
+}
+
 export function About() {
   const containerRef = useRef<HTMLElement>(null);
   const educationRef = useRef<HTMLDivElement>(null);
@@ -144,7 +208,7 @@ export function About() {
             <ParallaxPlate flipped reducedMotion={reducedMotion} />
           </div>
 
-          <div className={styles.statements}>
+          <StatementsContainer>
             <div
               className={`${styles.leftColumn} ${styles.layerOne}`}
               data-testid="about-left-column"
@@ -212,7 +276,7 @@ export function About() {
                 ))}
               </div>
             </div>
-          </div>
+          </StatementsContainer>
 
 
         </PinnedSequence>

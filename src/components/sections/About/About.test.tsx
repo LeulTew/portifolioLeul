@@ -227,3 +227,33 @@ describe('About sequence pacing', () => {
     expect(ABOUT_SCREENS).toBeLessThanOrEqual(3);
   });
 });
+
+describe('About statements contrast reactivity', () => {
+  it('initializes statements with data-contrary="false"', () => {
+    render(<About />);
+    const leftCol = screen.getByTestId('about-left-column');
+    const statementsContainer = leftCol.closest('[data-contrary]');
+    expect(statementsContainer).toBeInTheDocument();
+    expect(statementsContainer?.getAttribute('data-contrary')).toBe('false');
+  });
+
+  it('reacts dynamically to contrary background attribute mutations', async () => {
+    render(<About />);
+    const leftCol = screen.getByTestId('about-left-column');
+    const statementsContainer = leftCol.closest('[data-contrary]');
+    const aboutSection = document.getElementById('about');
+    expect(aboutSection).toBeInTheDocument();
+
+    // Trigger green/contrary background state
+    aboutSection?.setAttribute('data-bg-transition', 'true');
+    // Allow mutation observer / microtask to run
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(statementsContainer?.getAttribute('data-contrary')).toBe('true');
+
+    // Remove green/contrary state
+    aboutSection?.removeAttribute('data-bg-transition');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(statementsContainer?.getAttribute('data-contrary')).toBe('false');
+  });
+});
+

@@ -104,6 +104,8 @@ export function TitlePixelTransition({
     if (typeof document === 'undefined') return false;
     const aboutSection = document.getElementById('about');
     if (aboutSection?.getAttribute('data-bg-transition') === 'true') return true;
+    if (aboutSection?.getAttribute('data-bg-active') === 'true') return true;
+    if (aboutSection?.getAttribute('data-bg-settled') === 'true') return true;
     if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
     // Background pixel transition starts at 0.78 and completes at 0.86; covers title zone by ~0.82
     return seq >= 0.82;

@@ -246,11 +246,19 @@
   background: #e8edf2;
 }
 
-.about[data-bg-transition='true'] .heldGround {
+.about[data-bg-transition='true'] .heldGround,
+:global(body:has(#about[data-bg-transition='true'])) .heldGround,
+:global(body:has(#about[data-bg-settled='true'])) .heldGround,
+:global(body:has(#about[data-bg-active='true'])) .heldGround,
+:global(html[data-navbar-contrary='true']) .heldGround {
   background: #001a1a;
 }
 
-:global([data-theme='light']) .about[data-bg-transition='true'] .heldGround {
+:global([data-theme='light']) .about[data-bg-transition='true'] .heldGround,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .heldGround,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .heldGround,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .heldGround,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .heldGround {
   background: #0a5c40;
 }
 
@@ -842,6 +850,19 @@
   display: none !important;
 }
 
+.statementText,
+.statementLine,
+.statementHighlight,
+.subStatement,
+.subStatementText,
+.subStatementBar,
+.metricItem,
+.metricValue,
+.metricLabel,
+.editorialPill {
+  transition: color 0.35s ease, border-color 0.35s ease, background-color 0.35s ease, text-shadow 0.35s ease;
+}
+
 :global([data-theme='light']) .statementText,
 :global([data-theme='light']) .statementLine {
   color: #111827;
@@ -865,4 +886,127 @@
   background: rgba(17, 24, 39, 0.06);
   border-color: rgba(17, 24, 39, 0.16);
   color: #111827;
+}
+
+/* ==========================================================================
+   Statement Text Color Reactivity on Dark/Green Contrary Background
+   When scrolling down or back up over emerald green (#0a5c40 / #001a1a),
+   all statement headlines, metrics, labels, and pills react dynamically to
+   pure white (#ffffff) and neon mint (#00ff9d) for pristine contrast (WCAG AAA).
+   When returning to the light background, styles smoothly restore to dark.
+   ========================================================================== */
+
+:global([data-theme='light']) .statements[data-contrary='true'] .statementText,
+:global([data-theme='light']) .statements[data-contrary='true'] .statementLine,
+:global([data-theme='light']) .statements[data-contrary='true'] .statementHighlight,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .statementText,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .statementLine,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .statementHighlight,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .statementText,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .statementLine,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .statementHighlight,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .statementText,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .statementLine,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .statementHighlight,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .statementText,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .statementLine,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .statementHighlight,
+:global([data-theme='light']) #about[data-bg-transition='true'] .statementText,
+:global([data-theme='light']) #about[data-bg-transition='true'] .statementLine,
+:global([data-theme='light']) #about[data-bg-transition='true'] .statementHighlight,
+:global([data-theme='light']) #about[data-bg-settled='true'] .statementText,
+:global([data-theme='light']) #about[data-bg-settled='true'] .statementLine,
+:global([data-theme='light']) #about[data-bg-settled='true'] .statementHighlight,
+:global([data-theme='light']) #about[data-bg-active='true'] .statementText,
+:global([data-theme='light']) #about[data-bg-active='true'] .statementLine,
+:global([data-theme='light']) #about[data-bg-active='true'] .statementHighlight,
+.statements[data-contrary='true'] .statementText,
+.statements[data-contrary='true'] .statementLine,
+.statements[data-contrary='true'] .statementHighlight {
+  color: #ffffff !important;
+  text-shadow: 0 0 16px rgba(0, 0, 0, 0.35);
+}
+
+:global([data-theme='light']) .statements[data-contrary='true'] .subStatement,
+:global([data-theme='light']) .statements[data-contrary='true'] .subStatementText,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .subStatement,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .subStatementText,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .subStatement,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .subStatementText,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .subStatement,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .subStatementText,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .subStatement,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .subStatementText,
+:global([data-theme='light']) #about[data-bg-transition='true'] .subStatement,
+:global([data-theme='light']) #about[data-bg-transition='true'] .subStatementText,
+:global([data-theme='light']) #about[data-bg-settled='true'] .subStatement,
+:global([data-theme='light']) #about[data-bg-settled='true'] .subStatementText,
+:global([data-theme='light']) #about[data-bg-active='true'] .subStatement,
+:global([data-theme='light']) #about[data-bg-active='true'] .subStatementText,
+.statements[data-contrary='true'] .subStatement,
+.statements[data-contrary='true'] .subStatementText {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:global([data-theme='light']) .statements[data-contrary='true'] .subStatementBar,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .subStatementBar,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .subStatementBar,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .subStatementBar,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .subStatementBar,
+:global([data-theme='light']) #about[data-bg-transition='true'] .subStatementBar,
+:global([data-theme='light']) #about[data-bg-settled='true'] .subStatementBar,
+:global([data-theme='light']) #about[data-bg-active='true'] .subStatementBar,
+.statements[data-contrary='true'] .subStatementBar {
+  background-color: #00ff9d !important;
+}
+
+:global([data-theme='light']) .statements[data-contrary='true'] .metricItem,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .metricItem,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .metricItem,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .metricItem,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .metricItem,
+:global([data-theme='light']) #about[data-bg-transition='true'] .metricItem,
+:global([data-theme='light']) #about[data-bg-settled='true'] .metricItem,
+:global([data-theme='light']) #about[data-bg-active='true'] .metricItem,
+.statements[data-contrary='true'] .metricItem {
+  border-left-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+:global([data-theme='light']) .statements[data-contrary='true'] .metricValue,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .metricValue,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .metricValue,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .metricValue,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .metricValue,
+:global([data-theme='light']) #about[data-bg-transition='true'] .metricValue,
+:global([data-theme='light']) #about[data-bg-settled='true'] .metricValue,
+:global([data-theme='light']) #about[data-bg-active='true'] .metricValue,
+.statements[data-contrary='true'] .metricValue {
+  color: #00ff9d !important;
+  text-shadow: 0 0 12px rgba(0, 255, 157, 0.4);
+}
+
+:global([data-theme='light']) .statements[data-contrary='true'] .metricLabel,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .metricLabel,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .metricLabel,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .metricLabel,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .metricLabel,
+:global([data-theme='light']) #about[data-bg-transition='true'] .metricLabel,
+:global([data-theme='light']) #about[data-bg-settled='true'] .metricLabel,
+:global([data-theme='light']) #about[data-bg-active='true'] .metricLabel,
+.statements[data-contrary='true'] .metricLabel {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:global([data-theme='light']) .statements[data-contrary='true'] .editorialPill,
+:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .editorialPill,
+:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .editorialPill,
+:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .editorialPill,
+:global([data-theme='light'] html[data-navbar-contrary='true']) .editorialPill,
+:global([data-theme='light']) #about[data-bg-transition='true'] .editorialPill,
+:global([data-theme='light']) #about[data-bg-settled='true'] .editorialPill,
+:global([data-theme='light']) #about[data-bg-active='true'] .editorialPill,
+.statements[data-contrary='true'] .editorialPill {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
 }
