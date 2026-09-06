@@ -24,6 +24,7 @@ import { ContextLossGuard } from './components/3d/ContextLossGuard';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
+import { useFooterContrast } from './lib/scroll/useFooterContrast';
 
 import './index.css';
 import styles from './App.module.css';
@@ -88,6 +89,7 @@ function App() {
   // hook is the project's existing way of asserting the provider is there.
   const { theme, toggleTheme } = useTheme();
   const gpuConfig = useGpuTier();
+  const isFooterContrast = useFooterContrast();
 
   /*
    * Asked once, before anything tries to mount a canvas.
@@ -506,6 +508,8 @@ function App() {
       {!isLoading && (
         <motion.div 
           className={styles.footer}
+          data-contrast={isFooterContrast ? 'true' : undefined}
+          data-testid="page-footer"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ 
