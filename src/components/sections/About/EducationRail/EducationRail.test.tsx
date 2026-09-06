@@ -128,6 +128,28 @@ describe('EducationRail marks', () => {
     ).toBeInTheDocument();
   });
 
+  it('gives each institution its own mark, not one shared treatment', () => {
+    // Two marks, built differently on purpose: a vector badge that fills with
+    // its own colours, and a raster seal that wipes in and cross-fades.
+    render(<EducationRail />);
+    expect(
+      screen.getByRole('img', { name: /HiLCoE School of Computer Science/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Saint Joseph School' })).toBeInTheDocument();
+  });
+
+  it('stands the two marks on opposite sides of their records', () => {
+    // Where the mark sits is the first thing the eye registers about a record,
+    // so the two do not share a side any more than they share a treatment.
+    render(<EducationRail />);
+    const stage = screen.getByTestId('education-stage');
+    expect(stage.querySelectorAll('[data-mark-side="left"]')).toHaveLength(1);
+    expect(stage.querySelectorAll('[data-mark-side="right"]')).toHaveLength(1);
+
+    const seal = screen.getByRole('img', { name: 'Saint Joseph School' });
+    expect(seal.closest('[data-mark-side]')?.getAttribute('data-mark-side')).toBe('left');
+  });
+
   it('gives the records we have no artwork for no mark at all', () => {
     /*
      * Not a placeholder, and above all not an approximation: a real school's
@@ -139,8 +161,9 @@ describe('EducationRail marks', () => {
       .getByTestId('education-stage')
       .querySelectorAll('[data-has-mark="true"]');
     expect(marked).toHaveLength(EDUCATION_RECORDS.filter((r) => r.logo).length);
-    expect(marked).toHaveLength(1);
-    expect(screen.getAllByRole('img')).toHaveLength(1);
+    expect(marked).toHaveLength(2);
+    // The two certifications carry nothing.
+    expect(EDUCATION_RECORDS.filter((r) => !r.logo)).toHaveLength(2);
   });
 });
 

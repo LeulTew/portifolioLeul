@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { HilcoeMark } from './HilcoeMark';
+import { SaintJosephMark } from './SaintJosephMark';
 import { EDUCATION_RECORDS, type EducationRecord } from './educationRecords';
 import {
   pinOffset,
@@ -44,6 +45,7 @@ function Record({
       className={styles.record}
       data-record={position}
       data-has-mark={record.logo ? 'true' : undefined}
+      data-mark-side={record.markSide}
       aria-label={`${record.kind}: ${record.title}`}
     >
       <div className={styles.plate}>
@@ -87,10 +89,22 @@ function Record({
         </ul>
       </div>
 
-      {/* Only where the real artwork exists. No placeholder for the rest. */}
-      {record.logo === 'hilcoe' ? (
-        <div className={styles.mark} onWheel={onWheel}>
-          <HilcoeMark className={styles.markArt} />
+      {/*
+        Only where the real artwork exists. No placeholder for the rest.
+
+        The figure, not the cell around it, is the hover target and the only
+        thing here that takes pointer events -- so it is also what hands the
+        wheel back to the page. See the note on `.markFigure`.
+      */}
+      {record.logo ? (
+        <div className={styles.mark}>
+          <span className={styles.markFigure} onWheel={onWheel}>
+            {record.logo === 'hilcoe' ? (
+              <HilcoeMark className={styles.markArt} />
+            ) : (
+              <SaintJosephMark className={styles.seal} />
+            )}
+          </span>
         </div>
       ) : null}
     </article>
@@ -314,6 +328,31 @@ export function EducationRail() {
        * would be redrawing it. Guarded rather than run against an empty
        * selection, so the records with no artwork stay silent.
        */
+      /*
+       * Saint Joseph's seal has an astrolabe orbital ring and circular disc.
+       * Deliberately animated as a compass aligning into place: the seal disc
+       * rotates and settles with a spring-back ease, while the outer orbital
+       * ring rotates counter-directionally into place.
+       */
+      const sealDisc = arriving.querySelector<HTMLElement>(`.${styles.sealDisc}`);
+      const sealRing = arriving.querySelector<HTMLElement>(`.${styles.sealRing}`);
+      if (sealDisc) {
+        timeline.fromTo(
+          sealDisc,
+          { opacity: 0, scale: 0.82, rotate: -24 },
+          { opacity: 1, scale: 1, rotate: 0, duration: 1.15, ease: 'back.out(1.2)' },
+          0.22
+        );
+      }
+      if (sealRing) {
+        timeline.fromTo(
+          sealRing,
+          { opacity: 0, scale: 0.9, rotate: 36 },
+          { opacity: 1, scale: 1, rotate: 0, duration: 1.3, ease: 'expo.out' },
+          0.26
+        );
+      }
+
       const reveal = arriving.querySelector(`.${styles.markReveal}`);
       const rim = arriving.querySelector(`.${styles.markRim}`);
       if (reveal && rim) {

@@ -28,7 +28,25 @@ export interface EducationRecord {
    * no mark at all rather than an approximation: drawing a real school's badge
    * from memory misrepresents it.
    */
-  logo?: 'hilcoe';
+  logo?: 'hilcoe' | 'saint-joseph';
+  /**
+   * Which side of the record the mark sits on.
+   *
+   * Not a formatting whim: the two marks are meant to read as two
+   * institutions rather than one template, and where they sit is the first
+   * thing the eye registers about a record. HiLCoE's badge closes its record;
+   * Saint Joseph's seal leads its own.
+   */
+  markSide?: 'left' | 'right';
+}
+
+/** The marks we hold real artwork for, keyed off the school's own name. */
+function logoFor(
+  school: string
+): { logo?: EducationRecord['logo']; markSide?: EducationRecord['markSide'] } {
+  if (school.startsWith('HiLCoE')) return { logo: 'hilcoe', markSide: 'right' };
+  if (school.startsWith('Saint Joseph')) return { logo: 'saint-joseph', markSide: 'left' };
+  return {};
 }
 
 const CERTIFICATION_KIND = 'Certification';
@@ -42,7 +60,7 @@ export const EDUCATION_RECORDS: readonly EducationRecord[] = [
     period: entry.period,
     summary: '',
     items: entry.details,
-    ...(entry.school.startsWith('HiLCoE') ? { logo: 'hilcoe' as const } : {}),
+    ...logoFor(entry.school),
   })),
   ...cvData.certifications.map((entry): EducationRecord => ({
     id: entry.issuer,

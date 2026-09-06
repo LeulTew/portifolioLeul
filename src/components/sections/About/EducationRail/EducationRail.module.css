@@ -437,18 +437,47 @@
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.05fr) minmax(0, 0.42fr);
 }
 
+/*
+ * A mark that leads its record rather than closing it.
+ *
+ * The narrow column moves to the front and the mark is ordered into it; the
+ * plate and the detail keep their own widths and follow. See `markSide` on the
+ * record model for why the two institutions differ here at all.
+ */
+.record[data-mark-side='left'] {
+  grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.85fr) minmax(0, 1.05fr);
+}
+
+.record[data-mark-side='left'] .mark {
+  order: -1;
+}
+
 .mark {
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 0;
   height: 100%;
-  /*
-   * Needed for the hover below -- and taking pointer events on this stage
-   * means taking the wheel with them, so the mark forwards it on by hand. See
-   * the note on `.control`.
-   */
-  pointer-events: auto;
+}
+
+/*
+ * The hover target, and the only interactive surface in the cell.
+ *
+ * Sized to the mark rather than to the column: hovering anywhere in the cell
+ * would colour the badge from halfway across the record, which is not what the
+ * reader pointed at. Everything around it stays pass-through, so the wheel
+ * goes to the page natively there.
+ *
+ * Taking pointer events on this stage means taking the wheel with them, so the
+ * figure hands the wheel back by hand -- see the note on `.control`.
+ */
+.markFigure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 10rem;
+  pointer-events: none;
 }
 
 /*
@@ -485,14 +514,122 @@
   height: auto;
   max-width: 9.5rem;
   max-height: 100%;
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: 50%;
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.4s ease;
 }
 
 @media (hover: hover) {
-  .mark:hover .markArt {
+  .markArt:hover {
     --mark-disc: #1d5dc3;
     --mark-accent: #dc1c2a;
     --mark-accent-line: #0e2752;
     --mark-rim: #0e2752;
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 20px rgba(29, 93, 195, 0.35));
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Saint Joseph's seal
+
+   Built unlike HiLCoE's badge on purpose. That one is line-art filling with
+   its own colours, uncovered by a circle opening from the centre; this is a
+   heritage preparatory academy seal with an astrolabe orbital ring, rotating
+   into alignment on arrival, with its rich crimson and royal gold emblem
+   revealed strictly when the cursor hovers directly over the circular insignia.
+   -------------------------------------------------------------------------- */
+
+.sealWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 9.5rem;
+  aspect-ratio: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Astrolabe / Heritage compass decorative outer ring */
+.sealRing {
+  position: absolute;
+  inset: -10%;
+  width: 120%;
+  height: 120%;
+  color: rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+  transition:
+    color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center center;
+}
+
+/* The circular seal button itself — strict circular hit target */
+.sealDisc {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: pointer;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 72%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center center;
+}
+
+.sealWhite,
+.sealColour {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.sealColour {
+  opacity: 0;
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sealWhite {
+  opacity: 0.95;
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) {
+  /* ONLY triggered when hovering directly on the circular seal disc, NOT the surrounding area */
+  .sealDisc:hover .sealColour {
+    opacity: 1;
+  }
+
+  .sealDisc:hover .sealWhite {
+    opacity: 0;
+  }
+
+  .sealDisc:hover {
+    transform: scale(1.05);
+    box-shadow:
+      0 0 28px rgba(255, 204, 0, 0.38),
+      0 8px 24px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 1.5px rgba(255, 215, 0, 0.65);
+  }
+
+  .sealWrapper:has(.sealDisc:hover) .sealRing {
+    color: rgba(255, 215, 0, 0.65);
+    transform: rotate(15deg);
   }
 }
 
@@ -543,7 +680,9 @@
   .markDisc,
   .markPaper,
   .markAccent,
-  .markRim {
+  .markRim,
+  .sealWhite,
+  .sealColour {
     transition: none;
   }
 }
@@ -753,6 +892,10 @@
   .mark {
     justify-content: flex-start;
     height: auto;
+  }
+
+  .markFigure {
+    max-width: 7rem;
   }
 
   .controls {
