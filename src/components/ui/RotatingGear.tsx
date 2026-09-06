@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { cn } from '@/lib/utils';
+import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 interface RotatingGearProps {
   className?: string;
@@ -25,6 +26,10 @@ export function RotatingGear({
   const dotColor = isLight ? '#059669' : '#00ff9d';
 
   useEffect(() => {
+    // Three dials turning forever is exactly the kind of ambient motion a
+    // reduced-motion preference is asking us to drop. The drawing still reads.
+    if (getPrefersReducedMotion()) return;
+
     const ctx = gsap.context(() => {
       // Smooth continuous rotational tick
       if (gear1Ref.current) {

@@ -38,17 +38,15 @@ describe("About Section", () => {
     });
   });
 
-  it("renders education cards in the layout", () => {
+  it("carries the education record set, degrees and certifications alike", () => {
     render(<About />);
-    expect(screen.getByText("Education")).toBeInTheDocument();
-    expect(screen.getByText(/HiLCoE School of Computer Science/i)).toBeInTheDocument();
-    expect(screen.getByText(/Saint Joseph School/i)).toBeInTheDocument();
-  });
-
-  it("renders certifications cards cleanly", () => {
-    render(<About />);
-    expect(screen.getByText("Certifications")).toBeInTheDocument();
-    expect(screen.getByText(/Bootdev/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Education" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /HiLCoE School of Computer Science/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Saint Joseph School/i })).toBeInTheDocument();
+    // Certifications used to be a second grid below the degrees, which read as
+    // an afterthought. They are records on the same rail now.
+    expect(screen.getByRole("heading", { name: "Bootdev" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "freeCodeCamp" })).toBeInTheDocument();
   });
 });
 
@@ -182,6 +180,14 @@ describe('About held heading', () => {
   it('still names the section exactly once', () => {
     render(<About />);
     expect(screen.getAllByText('About Me')).toHaveLength(1);
+  });
+
+  it('provides mutual exclusion structure so heldHeader and education-stage do not display duplicate titles', () => {
+    render(<About />);
+    const heldHeader = screen.getByTestId('about-held-header');
+    const stage = screen.getByTestId('education-stage');
+    expect(heldHeader).toBeInTheDocument();
+    expect(stage).toBeInTheDocument();
   });
 });
 

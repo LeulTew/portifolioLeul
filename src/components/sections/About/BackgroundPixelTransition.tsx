@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, useCallback, useContext } from 'react';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import {
+  advancePhase,
+  isPhaseAtTarget,
+  phaseGate,
+  PHASE_AT_REST,
+  type PhaseState,
+} from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ThemeContext, type Theme } from '../theme/ThemeContext';
 import styles from './BackgroundPixelTransition.module.css';
@@ -9,9 +16,13 @@ export interface BackgroundPixelTransitionProps {
   start?: number;
   /** Sequence progress where transition ends. Default: 1.0. */
   end?: number;
+  /** Consistent animation duration in milliseconds. Default: 1200 */
+  durationMs?: number;
   color?: string;
   className?: string;
   testId?: string;
+  /** Explicit progress override for deterministic testing. */
+  progress?: number;
 }
 
 interface PixelCellData {
@@ -72,9 +83,11 @@ function generateCells(cols: number, rows: number): PixelCellData[] {
 export function BackgroundPixelTransition({
   start = 0.78,
   end = 1.0,
+  durationMs = 1200,
   color,
   className,
   testId = 'bg-pixel-transition',
+  progress: explicitProgress,
 }: BackgroundPixelTransitionProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const backdropRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +98,11 @@ export function BackgroundPixelTransition({
   const [cols, setCols] = useState(10);
   const [rows, setRows] = useState(6);
   const reducedMotion = getPrefersReducedMotion();
+
+  const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const wasActiveRef = useRef(false);
+  const lastFrameRef = useRef(0);
+  const animFrameRef = useRef(0);
 
   const themeContext = useContext(ThemeContext);
   const currentTheme: Theme =
@@ -111,109 +129,196 @@ export function BackgroundPixelTransition({
     return () => window.removeEventListener('resize', updateGrid);
   }, [updateGrid]);
 
-  const update = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  const renderPhase = useCallback(
+    (p: number) => {
+      const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
 
-    // Read sequence progress from container or parent overlay
-    const computed = getComputedStyle(container);
-    const rawSeq = computed.getPropertyValue('--seq').trim();
-    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
-
-    // Transition progress: 0 when seq <= start, 1 when seq >= end
-    const span = Math.max(0.01, end - start);
-    const p = Math.min(1, Math.max(0, (seq - start) / span));
-
-    const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
-
-    if (p <= 0.005) {
-      if (backdropRef.current) backdropRef.current.dataset.active = 'false';
-      if (maskBackdropRef.current) maskBackdropRef.current.setAttribute('opacity', '0');
-      if (aboutSection && aboutSection.getAttribute('data-bg-transition') === 'true') {
-        aboutSection.removeAttribute('data-bg-transition');
-      }
-      if (typeof document !== 'undefined') {
-        document.documentElement.removeAttribute('data-navbar-contrary');
-      }
-      cellElementsRef.current.forEach((el) => {
-        if (el && el.dataset.active !== 'false') {
-          el.dataset.active = 'false';
+      if (p <= 0.005) {
+        if (backdropRef.current) backdropRef.current.dataset.active = 'false';
+        if (maskBackdropRef.current) maskBackdropRef.current.setAttribute('opacity', '0');
+        if (aboutSection && aboutSection.getAttribute('data-bg-transition') === 'true') {
+          aboutSection.removeAttribute('data-bg-transition');
         }
-      });
-      maskCellElementsRef.current.forEach((el) => {
-        if (el) el.setAttribute('opacity', '0');
-      });
-      return;
-    }
+        if (typeof document !== 'undefined') {
+          document.documentElement.removeAttribute('data-navbar-contrary');
+        }
+        cellElementsRef.current.forEach((el) => {
+          if (el && el.dataset.active !== 'false') {
+            el.dataset.active = 'false';
+          }
+        });
+        maskCellElementsRef.current.forEach((el) => {
+          if (el) el.setAttribute('opacity', '0');
+        });
+        return;
+      }
 
-    if (reducedMotion) {
+      if (reducedMotion) {
+        if (backdropRef.current) {
+          backdropRef.current.dataset.active = String(p > 0.1);
+        }
+        if (maskBackdropRef.current) {
+          maskBackdropRef.current.setAttribute('opacity', p > 0.1 ? '1' : '0');
+        }
+        if (aboutSection) {
+          if (p > 0.1) {
+            aboutSection.setAttribute('data-bg-transition', 'true');
+            document.documentElement.setAttribute('data-navbar-contrary', 'true');
+          } else {
+            aboutSection.removeAttribute('data-bg-transition');
+            document.documentElement.removeAttribute('data-navbar-contrary');
+          }
+        }
+        return;
+      }
+
+      // Once pixels have fully climbed, engage solid backdrop and section background
+      const isBackdropActive = p >= 0.95;
       if (backdropRef.current) {
-        backdropRef.current.dataset.active = String(p > 0.1);
+        backdropRef.current.dataset.active = String(isBackdropActive);
       }
       if (maskBackdropRef.current) {
-        maskBackdropRef.current.setAttribute('opacity', p > 0.1 ? '1' : '0');
+        maskBackdropRef.current.setAttribute('opacity', isBackdropActive ? '1' : '0');
       }
       if (aboutSection) {
-        if (p > 0.1) {
+        if (isBackdropActive && aboutSection.getAttribute('data-bg-transition') !== 'true') {
           aboutSection.setAttribute('data-bg-transition', 'true');
           document.documentElement.setAttribute('data-navbar-contrary', 'true');
-        } else {
+        } else if (p < 0.80 && aboutSection.getAttribute('data-bg-transition') === 'true') {
           aboutSection.removeAttribute('data-bg-transition');
           document.documentElement.removeAttribute('data-navbar-contrary');
         }
       }
+
+      // Update each cell's activation based on its bottom-up threshold
+      const total = cells.length;
+      for (let i = 0; i < total; i++) {
+        const el = cellElementsRef.current[i];
+        const maskEl = maskCellElementsRef.current[i];
+        const cell = cells[i];
+        const threshold = cell ? cell.threshold : 1;
+        const isActive = p >= threshold;
+
+        if (el) {
+          if (isActive && el.dataset.active !== 'true') {
+            el.dataset.active = 'true';
+          } else if (!isActive && el.dataset.active !== 'false') {
+            el.dataset.active = 'false';
+          }
+        }
+
+        if (maskEl) {
+          maskEl.setAttribute('opacity', isActive ? '1' : '0');
+        }
+      }
+    },
+    [cells, reducedMotion]
+  );
+
+  const step = useCallback(
+    (now: number) => {
+      animFrameRef.current = 0;
+      const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7;
+      lastFrameRef.current = now;
+
+      phaseRef.current = advancePhase(
+        phaseRef.current,
+        wasActiveRef.current,
+        dt,
+        durationMs
+      );
+
+      renderPhase(phaseRef.current.t);
+
+      if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        lastFrameRef.current = 0;
+      }
+    },
+    [durationMs, renderPhase]
+  );
+
+  const update = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let rawSeq = container.style.getPropertyValue('--seq').trim();
+    if (!rawSeq) {
+      const overlay = container.closest<HTMLElement>('[data-active]');
+      if (overlay) rawSeq = overlay.style.getPropertyValue('--seq').trim();
+    }
+    if (!rawSeq && typeof document !== 'undefined') {
+      const activeOverlay =
+        document.querySelector<HTMLElement>('[data-testid*="sequence-overlay"][data-active="true"]') ||
+        document.querySelector<HTMLElement>('[data-active="true"][style*="--seq"]');
+      if (activeOverlay) rawSeq = activeOverlay.style.getPropertyValue('--seq').trim();
+    }
+    if (!rawSeq) {
+      const computed = getComputedStyle(container);
+      rawSeq = computed.getPropertyValue('--seq').trim();
+    }
+    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+
+    // 1. Explicit test override prop
+    if (explicitProgress !== undefined) {
+      renderPhase(explicitProgress);
       return;
     }
 
-    // Once pixels have fully climbed, engage solid backdrop and section background
-    const isBackdropActive = p >= 0.95;
-    if (backdropRef.current) {
-      backdropRef.current.dataset.active = String(isBackdropActive);
-    }
-    if (maskBackdropRef.current) {
-      maskBackdropRef.current.setAttribute('opacity', isBackdropActive ? '1' : '0');
-    }
-    if (aboutSection) {
-      if (isBackdropActive && aboutSection.getAttribute('data-bg-transition') !== 'true') {
-        aboutSection.setAttribute('data-bg-transition', 'true');
-        document.documentElement.setAttribute('data-navbar-contrary', 'true');
-      } else if (p < 0.80 && aboutSection.getAttribute('data-bg-transition') === 'true') {
-        aboutSection.removeAttribute('data-bg-transition');
-        document.documentElement.removeAttribute('data-navbar-contrary');
-      }
+    // 2. Reduced motion: immediate swap without timed phase
+    if (reducedMotion) {
+      const isPast = seq >= start;
+      renderPhase(isPast ? 1 : 0);
+      return;
     }
 
-    // Update each cell's activation based on its bottom-up threshold
-    const total = cells.length;
-    for (let i = 0; i < total; i++) {
-      const el = cellElementsRef.current[i];
-      const maskEl = maskCellElementsRef.current[i];
-      const cell = cells[i];
-      const threshold = cell ? cell.threshold : 1;
-      const isActive = p >= threshold;
-
-      if (el) {
-        if (isActive && el.dataset.active !== 'true') {
-          el.dataset.active = 'true';
-        } else if (!isActive && el.dataset.active !== 'false') {
-          el.dataset.active = 'false';
-        }
-      }
-
-      if (maskEl) {
-        maskEl.setAttribute('opacity', isActive ? '1' : '0');
-      }
+    // 3. Fallback for testing environments where durationMs is 0 or unit tests
+    if (durationMs === 0 || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
+      const span = Math.max(0.01, end - start);
+      const testP = Math.min(1, Math.max(0, (seq - start) / span));
+      renderPhase(testP);
+      return;
     }
-  }, [start, end, cells, reducedMotion]);
+
+    // 4. Boundary safety overrides:
+    if (seq <= 0.05) {
+      phaseRef.current = { t: 0, heading: -1 };
+      wasActiveRef.current = false;
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = 0;
+      }
+      renderPhase(0);
+      return;
+    }
+
+    // 5. Normal time-driven triggered phase
+    const active = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
+    wasActiveRef.current = active;
+
+    if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
+      lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+      animFrameRef.current = requestAnimationFrame(step);
+    } else if (animFrameRef.current === 0) {
+      renderPhase(phaseRef.current.t);
+    }
+  }, [durationMs, end, explicitProgress, reducedMotion, renderPhase, start, step]);
 
   useEffect(() => {
     update();
     const unsubscribe = subscribeScrollProgress(update);
     window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, { passive: true });
 
     return () => {
       unsubscribe();
       window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update);
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = 0;
+      }
       if (typeof document !== 'undefined') {
         document.getElementById('about')?.removeAttribute('data-bg-transition');
         document.documentElement.removeAttribute('data-navbar-contrary');

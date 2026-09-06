@@ -757,123 +757,17 @@
   background-color: #0a5c40;
 }
 
-.educationStickyHeader {
-  position: sticky;
-  top: clamp(2.5rem, 5vh, 4rem);
-  padding-top: clamp(10.5rem, 24vh, 18rem);
-  padding-bottom: clamp(2rem, 4vh, 3.5rem);
-  padding-left: var(--about-indent);
-  padding-right: var(--about-gutter);
-  margin-left: calc(-1 * var(--about-gutter));
-  margin-right: calc(-1 * var(--about-gutter));
-  z-index: 25;
-  background-color: #001a1a;
-  transition: background-color 0.4s ease;
-  box-sizing: border-box;
-  width: calc(100% + 2 * var(--about-gutter));
-}
 
-:global([data-theme='light']) .educationStickyHeader {
-  background-color: #0a5c40;
-}
 
-.educationTitleBox {
-  position: relative;
-  display: inline-block;
-  vertical-align: top;
-  min-width: 9.8ch;
-}
 
-.educationSection {
-  width: 100%;
-}
 
-.educationTitle {
-  font-size: clamp(3.5rem, 7.5vw, 7.5rem);
-  font-weight: 800;
-  line-height: 0.92;
-  letter-spacing: -0.04em;
-  color: #ffffff;
-  margin: 0;
-  white-space: nowrap;
-  display: block;
-  text-align: left;
-}
 
-.educationSubtitle {
-  font-size: clamp(1.05rem, 1.3vw, 1.35rem);
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 1.25rem 0 0;
-  max-width: 720px;
-}
 
-.sectionTitle {
-  font-size: clamp(1.75rem, 3vw, 3rem);
-  font-weight: 600;
-  color: #ffffff;
-  margin: 0 0 2rem;
-  letter-spacing: -0.02em;
-}
 
-.visuallyHiddenEducation {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
 
-.educationGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
-  gap: 2rem;
-}
 
-.cardContent {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  color: rgb(var(--text-color));
-}
 
-.educationMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  color: rgb(var(--text-color));
-}
 
-.wide {
-  grid-column: 1 / -1;
-}
-
-@media (min-width: 1367px) {
-  .educationGrid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-
-  .wide {
-    grid-column: span 3;
-  }
-
-  .educationGrid > div:not(.wide) {
-    grid-column: span 2;
-  }
-
-  .cardContent {
-    gap: 2rem;
-    font-size: 1.25rem;
-  }
-
-  .educationMeta {
-    font-size: 1.3rem;
-  }
-}
 
 :global([data-theme='light']) .about {
   mix-blend-mode: normal;
@@ -890,16 +784,6 @@
   color: #1f2937;
   text-shadow: none;
   opacity: 0.9;
-}
-
-:global([data-theme='light']) .sectionTitle,
-:global([data-theme='light']) .educationTitle,
-:global([data-theme='light']) .about .sectionTitle,
-:global([data-theme='light']) .educationWrapper .sectionTitle,
-:global([data-theme='light']) .educationWrapper .educationTitle {
-  color: #ffffff;
-  mix-blend-mode: normal;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 :global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .title,
@@ -927,6 +811,22 @@
 :global(body:has(#about[data-bg-transition='true'])) .transitionMaskedOverlay,
 :global(html[data-navbar-contrary='true']) .transitionMaskedOverlay,
 #about[data-bg-transition='true'] .transitionMaskedOverlay {
+  display: none !important;
+}
+
+#about[data-education-active='true'][data-bg-transition='true'] .heldHeader,
+#about[data-education-active='true'] .heldHeader,
+:global(body:has(#about[data-education-active='true'])) .heldHeader,
+:global(body:has([data-testid="education-stage"][data-visible="true"])) .heldHeader,
+:global(html:has([data-testid="education-stage"][data-visible="true"])) .heldHeader {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+#about[data-education-active='true'] .transitionMaskedOverlay,
+:global(body:has([data-testid="education-stage"][data-visible="true"])) .transitionMaskedOverlay,
+:global(html:has([data-testid="education-stage"][data-visible="true"])) .transitionMaskedOverlay {
   display: none !important;
 }
 

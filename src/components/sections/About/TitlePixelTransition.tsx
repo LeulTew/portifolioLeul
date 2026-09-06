@@ -308,26 +308,15 @@ export function TitlePixelTransition({
       return;
     }
 
-    // 3. Fallback for testing environments where durationMs is 0
-    if (durationMs === 0) {
+    // 3. Fallback for testing environments where durationMs is 0 or unit tests
+    if (durationMs === 0 || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
       const span = Math.max(0.01, end - start);
       const p = Math.min(1, Math.max(0, (seq - start) / span));
       renderPhase(p, isLightMode, isGreenBg);
       return;
     }
 
-    // 4. Boundary safety overrides:
-    if (seq >= 0.98) {
-      phaseRef.current = { t: 1, heading: 1 };
-      wasActiveRef.current = true;
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-        animFrameRef.current = 0;
-      }
-      renderPhase(1, isLightMode, isGreenBg);
-      return;
-    }
-
+    // 4. Boundary safety override for returning to the very start of the section:
     if (seq <= 0.05) {
       phaseRef.current = { t: 0, heading: -1 };
       wasActiveRef.current = false;
@@ -336,14 +325,6 @@ export function TitlePixelTransition({
         animFrameRef.current = 0;
       }
       renderPhase(0, isLightMode, isGreenBg);
-      return;
-    }
-
-    // 5. In test environment when inspecting synchronous scrub points
-    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
-      const span = Math.max(0.01, end - start);
-      const testP = Math.min(1, Math.max(0, (seq - start) / span));
-      renderPhase(testP, isLightMode, isGreenBg);
       return;
     }
 

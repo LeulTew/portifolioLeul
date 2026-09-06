@@ -1,0 +1,817 @@
+/* ==========================================================================
+   Education rail
+
+   The heading and a framed record, held together on one screen. The frame draws
+   itself open as the heading settles back out of its way, and the record set
+   then crosses it right to left, one record per crossing.
+
+   The ground is the deep green the education wrapper paints in both themes, so
+   the palette is one white ramp on green rather than a themed pair, with the
+   page's own accent used sparingly. One line weight, all the way round the
+   rectangle -- no heavier corners, no interior scaffolding. What is inside the
+   frame is the record, and nothing else.
+   ========================================================================== */
+
+.rail,
+.stage {
+  --hairline: rgba(255, 255, 255, 0.16);
+  /* One weight, all the way round. */
+  --frame-line-color: rgba(255, 255, 255, 0.42);
+  --frame-line: 1px;
+  --ink: rgba(255, 255, 255, 0.96);
+  --ink-muted: rgba(255, 255, 255, 0.66);
+  --ink-faint: rgba(255, 255, 255, 0.4);
+  --accent: #00ff9d;
+  --head-lead: clamp(10.5rem, 24vh, 18rem);
+  /* The stack `font-mono` resolves to everywhere else in this app. */
+  --rail-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  /*
+   * The section's own gutters, restated.
+   *
+   * The stage is portalled to the body, so it inherits nothing from `.about`.
+   * These two must track the values in `About.module.css` or the heading will
+   * land somewhere the pixel transition did not hand it to.
+   */
+  --about-gutter: clamp(2rem, 9vw, 16rem);
+  --about-indent: clamp(1.5rem, 11.5vw, 20rem);
+}
+
+.rail {
+  position: relative;
+  /* One screen held, plus a screen of scroll for each crossing and a little
+     over at the end so the last record is read before the frame is let go. */
+  height: calc(100vh + (var(--count, 1) - 1) * 88vh + 46vh);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   The held stage
+
+   Fixed, and portalled out of the section to be so. `position: fixed` resolves
+   against the nearest transformed ancestor, and every section on this page
+   lives inside drei's `Scroll html`, which is positioned by a transform -- a
+   fixed child of the section would ride the scroll like everything else.
+
+   Held by the browser rather than by arithmetic, which is the entire point:
+   any hold computed per frame lands a frame behind the layer it is holding
+   against, and a frame behind on a damped scroll is a visible vibration.
+   -------------------------------------------------------------------------- */
+
+.stage {
+  position: fixed;
+  inset: 0;
+  /* Under the About sequence's own overlay (40), which is still covering this
+     while the two hand over; above the section background it sits on. */
+  z-index: 30;
+  visibility: hidden;
+  pointer-events: none;
+  /* Zero for the whole hold. Only the release moves, and the release is
+     supposed to be moving. */
+  transform: translate3d(0, calc(-1 * var(--release, 0px)), 0);
+  will-change: transform;
+}
+
+.stage[data-visible='true'] {
+  visibility: visible;
+  /* Above the About sequence overlay (40) while active or reversing, so the reverse
+     animation plays smoothly on screen without being abruptly occluded. */
+  z-index: 45;
+}
+
+/*
+ * Only what asks for them, exactly as `PinnedSequence` does it.
+ *
+ * This is not a detail. The stage is a fixed, full-viewport overlay portalled
+ * to the body, and the page scrolls inside drei's `ScrollControls` element --
+ * which is not an ancestor of it. Give the overlay pointer events and it
+ * swallows every wheel event over the whole screen, and the page cannot be
+ * scrolled at all while the section is on it.
+ */
+.control {
+  pointer-events: auto;
+}
+
+.pinned {
+  /* One screen of the stage: the heading, and the frame under it. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding-left: var(--about-gutter);
+  padding-right: var(--about-gutter);
+  /* The page's own scroll cue sits along the bottom edge of the viewport; the
+     frame keeps clear of it rather than colliding with it. */
+  padding-bottom: clamp(4rem, 9vh, 6.5rem);
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   Heading
+
+   Its resting geometry is the About sequence's, because that sequence's pixel
+   transition flips into this exact position -- the lead above it and the left
+   indent have to match or the handover jumps. It only moves once the frame
+   below it has something to show.
+   -------------------------------------------------------------------------- */
+
+.head {
+  flex: none;
+  padding-top: var(--head-lead);
+  padding-left: calc(var(--about-indent) - var(--about-gutter));
+  transform-origin: 0% 100%;
+  will-change: transform;
+}
+
+.headTitle {
+  margin: 0;
+  font-size: clamp(3.5rem, 7.5vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.headSubtitle {
+  margin: 1.25rem 0 0;
+  max-width: 720px;
+  font-size: clamp(1.05rem, 1.3vw, 1.35rem);
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/*
+ * Once the heading has been moved by the opening, its motion is driven
+ * entirely on the compositor via GSAP transforms, ensuring frame-perfect
+ * bidirectional synchronization and zero layout reflow.
+ */
+.head[data-settled='true'] {
+  will-change: transform;
+}
+
+.frameHold {
+  /* Centred in whatever the heading leaves, and capped: stretched to the full
+     remaining height the frame became a tall empty box with a line of type at
+     each end. A rectangle should be proportioned to what is in it. */
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: clamp(1.5rem, 3vh, 2.5rem);
+}
+
+/* --------------------------------------------------------------------------
+   The frame: four edges that draw out from their own midpoints. Scaled rather
+   than sized, so the opening runs entirely on the compositor.
+   -------------------------------------------------------------------------- */
+
+.frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: 32rem;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+.edge {
+  position: absolute;
+  background: var(--frame-line-color);
+  pointer-events: none;
+}
+
+.edgeH {
+  left: 0;
+  right: 0;
+  height: var(--frame-line);
+  transform: scaleX(0);
+  transform-origin: 50% 50%;
+}
+
+.edgeV {
+  top: 0;
+  bottom: 0;
+  width: var(--frame-line);
+  transform: scaleY(0);
+  transform-origin: 50% 50%;
+}
+
+.edgeTop {
+  top: 0;
+}
+.edgeBottom {
+  bottom: 0;
+}
+.edgeLeft {
+  left: 0;
+}
+.edgeRight {
+  right: 0;
+}
+
+/* No hold yet, or a reader who has asked for less motion: simply already open. */
+.frame[data-open='true'] .edgeH {
+  transform: scaleX(1);
+}
+
+.frame[data-open='true'] .edgeV {
+  transform: scaleY(1);
+}
+
+
+
+
+
+
+
+
+/* Everything inside the frame waits for the frame. */
+.opening {
+  opacity: 0;
+}
+
+.frame[data-open='true'] .opening {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   The travelling track
+
+   `xPercent` is written by a fixed timeline in the component, never by scroll
+   position, so every crossing looks the same however fast the reader got here.
+   -------------------------------------------------------------------------- */
+
+.viewport {
+  position: absolute;
+  inset: var(--frame-line) var(--frame-line) 4.75rem;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.track {
+  display: flex;
+  height: 100%;
+  width: calc(var(--count, 1) * 100%);
+  will-change: transform;
+}
+
+.record {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: stretch;
+  gap: clamp(2rem, 5vw, 5rem);
+  flex: 0 0 calc(100% / var(--count, 1));
+  min-width: 0;
+  height: 100%;
+  padding: clamp(1.5rem, 3.5vh, 2.75rem) clamp(1.5rem, 3vw, 3rem);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* --- plate ---------------------------------------------------------------- */
+
+.plate {
+  display: flex;
+  flex-direction: column;
+  /* Title against the top of the frame, the specification against the bottom
+     of it. The column is the drawing's title block, so it should read as one
+     panel filling its cell rather than as a paragraph in the corner. */
+  justify-content: space-between;
+  gap: 1.15rem;
+  min-width: 0;
+  height: 100%;
+}
+
+.plateHead {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.kind {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.recordTitle {
+  /* The page sets its headings heavy and tight -- see the section heading
+     above this frame. A light grotesque here would be another site's voice
+     inside this one. */
+  margin: 0;
+  font-size: clamp(1.45rem, 2.2vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  text-wrap: balance;
+  /* The clipping edge the title is uncovered from. */
+  overflow: hidden;
+}
+
+.recordTitleInner {
+  display: block;
+  will-change: transform;
+}
+
+.spec {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--hairline);
+}
+
+.specRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.specKey {
+  flex: none;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.specValue {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* --- detail --------------------------------------------------------------- */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.summary {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+.items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /*
+   * Never scrollable. A scrollable region on a fixed overlay is a wheel trap:
+   * the reader's scroll goes into the list instead of into the page, and the
+   * section appears to be stuck. Long sets are set in two columns instead.
+   */
+  overflow: hidden;
+}
+
+.items[data-dense='true'] {
+  display: block;
+  columns: 2;
+  column-gap: clamp(1.5rem, 3vw, 2.75rem);
+}
+
+.items[data-dense='true'] .item {
+  break-inside: avoid;
+}
+
+
+
+
+.item {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.85rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* A drawn lead-in rather than an index. Numbering four courses would imply an
+   order the list does not have. */
+.itemRule {
+  width: 1.1rem;
+  height: 1px;
+  background: var(--hairline);
+}
+
+.itemText {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   The institution's mark
+
+   Only records we hold the real artwork for get a column for it; the rest keep
+   the two-column layout rather than reserving space for a placeholder.
+   -------------------------------------------------------------------------- */
+
+.record[data-has-mark='true'] {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.05fr) minmax(0, 0.42fr);
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+  /*
+   * Needed for the hover below -- and taking pointer events on this stage
+   * means taking the wheel with them, so the mark forwards it on by hand. See
+   * the note on `.control`.
+   */
+  pointer-events: auto;
+}
+
+/*
+ * The badge in white at rest, its own colours on hover.
+ *
+ * At rest it is the artwork with the ground taken out from under it: every
+ * shape that is white in the real badge stays solid white, the disc behind
+ * them goes clear, and the one coloured shape falls in with the rest. The
+ * seams between the overlapping parts are what keep the N legible, so they
+ * stay dark throughout.
+ *
+ * The section runs on one white ramp over green. A full-colour badge sitting
+ * in it permanently would be the loudest thing on the screen and would pull
+ * the eye off the record it belongs to; under the cursor it becomes itself.
+ */
+.markArt {
+  --mark-disc: transparent;
+  --mark-paper: #ffffff;
+  --mark-accent: transparent;
+  /*
+   * White, not the navy the other seams use.
+   *
+   * The stripe is the one shape that lies mostly over the cleared disc rather
+   * than between two white ones, so a dark edge there would be drawn against
+   * the section's own dark ground and disappear. Its outline has to carry the
+   * shape on its own.
+   */
+  --mark-accent-line: rgba(255, 255, 255, 0.85);
+  --mark-line: #0e2752;
+  --mark-rim: rgba(255, 255, 255, 0.42);
+  --mark-weight: 2;
+
+  width: 100%;
+  height: auto;
+  max-width: 9.5rem;
+  max-height: 100%;
+}
+
+@media (hover: hover) {
+  .mark:hover .markArt {
+    --mark-disc: #1d5dc3;
+    --mark-accent: #dc1c2a;
+    --mark-accent-line: #0e2752;
+    --mark-rim: #0e2752;
+  }
+}
+
+.markDisc,
+.markPaper,
+.markAccent,
+.markRim {
+  stroke: var(--mark-line);
+  stroke-width: var(--mark-weight);
+  stroke-linejoin: round;
+  transition:
+    fill 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    stroke 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    stroke-width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.markDisc {
+  fill: var(--mark-disc);
+  /* Clear at rest, so the disc's own outline would draw a ring nobody asked
+     for; the rim outside the reveal is the badge's edge. */
+  stroke: var(--mark-disc);
+}
+
+.markPaper {
+  fill: var(--mark-paper);
+}
+
+.markAccent {
+  /* Unfilled at rest, but still drawn: the stripe reads as a cut through the
+     mark rather than as one more white shape in it, and it is still there. */
+  fill: var(--mark-accent);
+  stroke: var(--mark-accent-line);
+}
+
+.markRim {
+  fill: none;
+  stroke: var(--mark-rim);
+  stroke-width: 2.5;
+}
+
+/* Both are driven by the crossing; at rest the badge is simply whole. */
+.markReveal,
+.markRim {
+  will-change: r, stroke-dashoffset;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markDisc,
+  .markPaper,
+  .markAccent,
+  .markRim {
+    transition: none;
+  }
+}
+
+
+
+
+
+
+
+
+/* --------------------------------------------------------------------------
+   Readout and controls
+   -------------------------------------------------------------------------- */
+
+.mono {
+  font-family: var(--rail-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+
+.controls {
+  position: absolute;
+  left: var(--frame-line);
+  right: var(--frame-line);
+  bottom: var(--frame-line);
+  height: 4.75rem;
+  display: grid;
+  grid-template-columns: 5rem 8rem minmax(0, 1fr) 5rem;
+  align-items: center;
+  border-top: var(--frame-line) solid var(--frame-line-color);
+  z-index: 2;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Fills the control row, which is comfortably past the 48px touch floor. */
+  width: 100%;
+  height: 100%;
+  min-height: 48px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-right: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition:
+    color 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.control:last-of-type {
+  border-right: 0;
+  border-left: 1px solid var(--hairline);
+}
+
+.control:disabled {
+  color: rgba(255, 255, 255, 0.15);
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .control:not(:disabled):hover {
+    color: var(--ink);
+    background-color: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.control:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: -4px;
+}
+
+/* Where the reader is in the set, drawn rather than counted. */
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-right: 1px solid var(--hairline);
+}
+
+.progressTick {
+  width: 1.15rem;
+  height: 2px;
+  background: var(--hairline);
+  transform-origin: 0% 50%;
+  transition:
+    background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.progressTick[data-on='true'] {
+  background: var(--ink);
+}
+
+.progressTick[aria-current='true'] {
+  background: var(--accent);
+  transform: scaleX(1.35);
+}
+
+.nowReading {
+  margin: 0;
+  padding: 0 1.5rem;
+  font-size: clamp(0.95rem, 1.35vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   Narrow screens
+
+   A rail is a wide-screen idea. Below the breakpoint the frame keeps its drawn
+   edges, but nothing is held and the records read down the page -- the same
+   content, without asking a phone to hold three columns side by side.
+   -------------------------------------------------------------------------- */
+
+/*
+ * Unstaged -- a narrow screen, or a reader who asked for less motion. The
+ * stage is rendered inline instead of portalled, so it must stop being fixed.
+ */
+.rail:not([data-staged='true']) .stage {
+  position: static;
+  visibility: visible;
+  transform: none;
+  will-change: auto;
+}
+
+.rail:not([data-staged='true']) .pinned {
+  height: auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.rail:not([data-staged='true']) {
+  height: auto;
+}
+
+@media (max-width: 900px) {
+  .rail,
+  .pinned {
+    height: auto;
+  }
+
+  .head,
+  .head[data-settled='true'] {
+    padding-top: clamp(4rem, 12vh, 8rem);
+    margin-bottom: 0;
+    transform: none;
+  }
+
+  .frame {
+    height: auto;
+  }
+
+  .viewport {
+    position: static;
+    inset: auto;
+    overflow: visible;
+  }
+
+  .track {
+    flex-direction: column;
+    width: 100%;
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .record {
+    grid-template-columns: minmax(0, 1fr);
+    flex: none;
+    height: auto;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .record:last-child {
+    border-bottom: 0;
+  }
+
+  .plate,
+  .detail,
+  .items {
+    height: auto;
+    overflow: visible;
+  }
+
+  .items[data-dense='true'] {
+    columns: 1;
+  }
+
+  .record[data-has-mark='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mark {
+    justify-content: flex-start;
+    height: auto;
+  }
+
+  .controls {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: everything is open on arrival and the records stack, so
+   nothing is held, nothing travels, and nothing is drawn on.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .pinned {
+    height: auto;
+  }
+
+  .head,
+  .head[data-settled='true'] {
+    margin-bottom: 0;
+    transform: none;
+    transition: none;
+  }
+
+  .frame {
+    height: auto;
+  }
+
+  .opening {
+    opacity: 1;
+  }
+
+  .viewport {
+    position: static;
+    inset: auto;
+    overflow: visible;
+  }
+
+  .track {
+    flex-direction: column;
+    width: 100%;
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .record {
+    flex: none;
+    height: auto;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .plate,
+  .detail,
+  .items {
+    height: auto;
+    overflow: visible;
+  }
+
+  .controls {
+    display: none;
+  }
+}

@@ -1,11 +1,9 @@
 import { useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { PinnedSequence } from '../../ui/PinnedSequence';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import { Card } from '../../ui/Card';
-import { CardTitle, CardText, TagsGrid, Tag } from '../../ui/Card';
+import { EducationRail } from './EducationRail/EducationRail';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
@@ -24,8 +22,9 @@ function TransitionMaskedOverlay() {
       const overlay = el.closest<HTMLElement>('[data-active]');
       const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
       const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
-      // Masked cutout overlay is ONLY active while background pixels rise (0.78 <= seq < 0.86)
-      const isVisible = seq >= 0.78 && seq < 0.86;
+      // Masked cutout overlay is active while background pixels rise (seq >= 0.78)
+      // Once solid green engages, CSS rule #about[data-bg-transition='true'] hides it cleanly
+      const isVisible = seq >= 0.78;
       el.style.display = isVisible ? 'block' : 'none';
     };
 
@@ -87,6 +86,7 @@ export function About() {
     return () => {
       observer.disconnect();
       document.documentElement.removeAttribute('data-navbar-contrary');
+      document.getElementById('about')?.removeAttribute('data-education-active');
     };
   }, []);
 
@@ -219,79 +219,9 @@ export function About() {
 
         {/* Education Section */}
         <div ref={educationRef} className={styles.educationWrapper} data-green-bg="true">
-          <div className={styles.educationStickyHeader} data-testid="education-sticky-header">
-            <div className={styles.educationTitleBox}>
-              <h2 className={styles.educationTitle}>Education</h2>
-              <p className={styles.educationSubtitle}>
-                Academic Foundations &amp; Industry Certifications
-              </p>
-            </div>
-          </div>
-          <div className={styles.educationGrid}>
-            {cvData.education.map((edu, index) => (
-              <motion.div
-                key={edu.school}
-                className={edu.school.includes('HiLCoE') ? styles.wide : ''}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ 
-                  duration: 0.8, 
-                  ease: [0.76, 0, 0.24, 1],
-                  delay: index * 0.1
-                }}
-              >
-                <Card>
-                  <div className={styles.cardContent}>
-                    <CardTitle>{edu.school}</CardTitle>
-                    <div className={styles.educationMeta}>
-                      <CardText>{edu.degree}</CardText>
-                      <CardText>{edu.period}</CardText>
-                    </div>
-                    <TagsGrid>
-                      {edu.details.map((detail, i) => (
-                        <Tag key={i}>{detail}</Tag>
-                      ))}
-                    </TagsGrid>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Certifications Section */}
-          <div className={styles.sectionTitle} style={{ marginTop: '5rem' }}>Certifications</div>
-          <div className={styles.educationGrid}>
-            {cvData.certifications.map((cert, index) => (
-              <motion.div
-                key={cert.issuer}
-                className={cert.issuer.includes('Bootdev') ? styles.wide : ''}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ 
-                  duration: 0.8, 
-                  ease: [0.76, 0, 0.24, 1],
-                  delay: index * 0.1
-                }}
-              >
-                <Card>
-                  <div className={styles.cardContent}>
-                    <CardTitle>{cert.issuer}</CardTitle>
-                    <div className={styles.educationMeta}>
-                      <CardText>{cert.year}</CardText>
-                    </div>
-                    <CardText>{cert.description}</CardText>
-                    <TagsGrid>
-                      {cert.items.map((item, i) => (
-                        <Tag key={i}>{item}</Tag>
-                      ))}
-                    </TagsGrid>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+          {/* Owns the Education heading too: the heading has to be held on
+              screen with the frame, not scroll away above it. */}
+          <EducationRail />
         </div>
       </div>
     </section>
