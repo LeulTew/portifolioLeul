@@ -9,6 +9,7 @@ import {
 } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ThemeContext, type Theme } from '../theme/ThemeContext';
+import { startAnimation, endAnimation } from '@/lib/scroll/animationScrollGate';
 import styles from './BackgroundPixelTransition.module.css';
 
 export interface BackgroundPixelTransitionProps {
@@ -247,6 +248,13 @@ export function BackgroundPixelTransition({
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
+        endAnimation('about-bg-pixel');
+        const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+        if (wasActiveRef.current) {
+          aboutSection?.setAttribute('data-bg-settled', 'true');
+        } else {
+          aboutSection?.removeAttribute('data-bg-settled');
+        }
       }
     },
     [durationMs, renderPhase]
@@ -309,11 +317,19 @@ export function BackgroundPixelTransition({
     }
 
     // 5. Normal time-driven triggered phase
-    const active = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
+    const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+    const isTitleActiveOrSettled =
+      aboutSection?.getAttribute('data-title-settled') === 'true' ||
+      aboutSection?.getAttribute('data-title-active') === 'true';
+
+    const rawActive = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
+    // When reversing, hold background green if title is still Education active or settled
+    const active = wasActiveRef.current && isTitleActiveOrSettled ? true : rawActive;
     wasActiveRef.current = active;
 
     if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+      startAnimation('about-bg-pixel');
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
       renderPhase(phaseRef.current.t);
@@ -330,6 +346,7 @@ export function BackgroundPixelTransition({
       unsubscribe();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
+      endAnimation('about-bg-pixel');
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;

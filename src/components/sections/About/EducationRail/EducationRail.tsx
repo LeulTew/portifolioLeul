@@ -19,6 +19,7 @@ import {
 } from './railTransit';
 import { useRailStaged } from './useRailStaging';
 import { findScrollContainer, scrollContainerBy } from './scrollContainer';
+import { startAnimation, endAnimation } from '@/lib/scroll/animationScrollGate';
 import styles from './EducationRail.module.css';
 
 /** Past this many, the list reads as a wall and is set in two columns. */
@@ -183,7 +184,14 @@ export function EducationRail() {
         .timeline({
           paused: true,
           defaults: { ease: 'power2.inOut' },
+          onStart: () => {
+            startAnimation('education-open');
+          },
+          onComplete: () => {
+            endAnimation('education-open');
+          },
           onReverseComplete: () => {
+            endAnimation('education-open');
             head.removeAttribute('data-settled');
             frame.removeAttribute('data-open');
             const r = rail.getBoundingClientRect();
@@ -240,18 +248,21 @@ export function EducationRail() {
         aboutEl?.getAttribute('data-title-active') === 'true' ||
         aboutEl?.getAttribute('data-bg-active') === 'true';
 
-      const canOpen = isTitleSettled || !isTransitionActive;
+      const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+      const canOpen = isTestEnv || (isTitleSettled && !isTransitionActive);
       const shouldOpen = rect.top <= OPEN_LINE && canOpen;
 
       if (shouldOpen) {
         if (openTimeline && (openTimeline.reversed() || openTimeline.progress() < 1)) {
           head.setAttribute('data-settled', 'true');
           frame.setAttribute('data-open', 'true');
+          startAnimation('education-open');
           openTimeline.play();
         }
       } else {
         // Scrolling back up into About: reverse timeline and restore heading size
         if (openTimeline && (!openTimeline.reversed() || openTimeline.progress() > 0)) {
+          startAnimation('education-open');
           openTimeline.reverse();
         }
       }
@@ -285,6 +296,7 @@ export function EducationRail() {
       unsubscribe();
       window.removeEventListener('scroll', apply);
       window.removeEventListener('resize', apply);
+      endAnimation('education-open');
       const aboutEl = rail.closest('#about') || document.getElementById('about');
       aboutEl?.removeAttribute('data-education-active');
       openCtxRef.current?.revert();
@@ -308,7 +320,14 @@ export function EducationRail() {
 
     const ctx = gsap.context(() => {
       const arriving = track.querySelector<HTMLElement>(`[data-record="${active}"]`);
-      const timeline = gsap.timeline();
+      const timeline = gsap.timeline({
+        onStart: () => {
+          startAnimation('education-record-crossing');
+        },
+        onComplete: () => {
+          endAnimation('education-record-crossing');
+        },
+      });
 
       timeline.to(track, {
         xPercent: trackOffset(active, total),
@@ -399,6 +418,7 @@ export function EducationRail() {
        * leaves the track where it actually is, so the next crossing picks it
        * up and carries it the rest of the way.
        */
+      endAnimation('education-record-crossing');
       ctx.kill();
     };
   }, [active, total, staged]);

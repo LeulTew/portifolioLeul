@@ -25,6 +25,10 @@ import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
 import { useFooterContrast } from './lib/scroll/useFooterContrast';
+import {
+  initAnimationScrollGate,
+  setProgrammaticNavigation,
+} from './lib/scroll/animationScrollGate';
 
 import './index.css';
 import styles from './App.module.css';
@@ -85,6 +89,12 @@ function App() {
   /** Frames left to re-announce a restored position to ScrollControls. */
   const restoreSyncFramesRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const cleanup = initAnimationScrollGate();
+    return cleanup;
+  }, []);
   // The context is optional by type -- it has no sensible default -- and this
   // hook is the project's existing way of asserting the provider is there.
   const { theme, toggleTheme } = useTheme();
@@ -361,11 +371,18 @@ function App() {
     contentObserverRef.current?.disconnect();
     contentObserverRef.current = null;
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    if (navTimerRef.current) clearTimeout(navTimerRef.current);
   }, []);
 
   const scrollToSection = useCallback((id: string) => {
     const target = document.getElementById(id);
     if (!target) return;
+
+    setProgrammaticNavigation(true);
+    if (navTimerRef.current) clearTimeout(navTimerRef.current);
+    navTimerRef.current = setTimeout(() => {
+      setProgrammaticNavigation(false);
+    }, 1400);
 
     if (scrollElement && mainRef.current) {
       const container = scrollElement;

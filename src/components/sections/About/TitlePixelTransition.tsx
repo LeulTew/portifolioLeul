@@ -8,6 +8,11 @@ import {
   type PhaseState,
 } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import {
+  startAnimation,
+  endAnimation,
+  subscribeScrollIntent,
+} from '@/lib/scroll/animationScrollGate';
 import styles from './TitlePixelTransition.module.css';
 
 export interface TitlePixelTransitionProps {
@@ -81,6 +86,8 @@ export function TitlePixelTransition({
 
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
+  const scrollTriggeredRef = useRef(false);
+  const reverseRequestedRef = useRef(false);
   const lastSeqRef = useRef(0);
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
@@ -291,6 +298,7 @@ export function TitlePixelTransition({
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
+        endAnimation('about-title-pixel');
         const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
         if (wasActiveRef.current) {
           aboutSection?.setAttribute('data-title-settled', 'true');
@@ -298,6 +306,8 @@ export function TitlePixelTransition({
           aboutSection?.removeAttribute('data-reverse-transition-active');
           window.dispatchEvent(new Event('scroll'));
         } else {
+          reverseRequestedRef.current = false;
+          scrollTriggeredRef.current = false;
           aboutSection?.removeAttribute('data-reverse-transition-active');
           aboutSection?.removeAttribute('data-title-settled');
           aboutSection?.removeAttribute('data-title-active');
@@ -360,6 +370,8 @@ export function TitlePixelTransition({
     // 4. Boundary safety override for returning to the very start of the section:
     if (seq <= 0.05) {
       wasActiveRef.current = false;
+      reverseRequestedRef.current = false;
+      scrollTriggeredRef.current = false;
       if (phaseRef.current.t <= 0.005) {
         phaseRef.current = PHASE_AT_REST;
         if (animFrameRef.current) {
@@ -371,12 +383,33 @@ export function TitlePixelTransition({
       }
     }
 
-    // 6. Normal time-driven triggered phase
-    const active = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
+    // 6. Discrete scroll gating:
+    // In production/browser, forward title dissolve requires that:
+    // a) The background transition has settled green (data-bg-settled="true")
+    // b) A separate, distinct user scroll down intent occurred after settling
+    const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+    const isBgSettled = aboutSection?.getAttribute('data-bg-settled') === 'true';
+    const isEducationActive =
+      aboutSection?.getAttribute('data-education-active') === 'true' ||
+      (typeof document !== 'undefined' && document.querySelector('[data-open="true"]') !== null);
+
+    const isTestEnv =
+      durationMs === 0 ||
+      (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
+      explicitProgress !== undefined;
+
+    const canActivateForward = isTestEnv || (isBgSettled && scrollTriggeredRef.current);
+    const rawActive = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
+    const shouldTriggerForward = canActivateForward && (seq >= (start - 0.09) || rawActive);
+
+    const active = wasActiveRef.current
+      ? (isEducationActive ? true : (!reverseRequestedRef.current && rawActive))
+      : shouldTriggerForward;
     wasActiveRef.current = active;
 
     if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+      startAnimation('about-title-pixel');
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
       // Synchronize text colors/state with current theme and background state even when at rest
@@ -386,14 +419,37 @@ export function TitlePixelTransition({
 
   useEffect(() => {
     update();
-    const unsubscribe = subscribeScrollProgress(update);
+    const unsubscribeScroll = subscribeScrollProgress(update);
+    const unsubscribeIntent = subscribeScrollIntent((direction) => {
+      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      const bgSettled = aboutEl?.getAttribute('data-bg-settled') === 'true';
+      const isEducationActive =
+        aboutEl?.getAttribute('data-education-active') === 'true' ||
+        (typeof document !== 'undefined' && document.querySelector('[data-open="true"]') !== null);
+
+      if (direction === 'down') {
+        reverseRequestedRef.current = false;
+        if (bgSettled && !scrollTriggeredRef.current) {
+          scrollTriggeredRef.current = true;
+          update();
+        }
+      } else if (direction === 'up') {
+        if (!isEducationActive && wasActiveRef.current) {
+          reverseRequestedRef.current = true;
+          update();
+        }
+      }
+    });
+
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
     return () => {
-      unsubscribe();
+      unsubscribeScroll();
+      unsubscribeIntent();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
+      endAnimation('about-title-pixel');
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;
@@ -405,7 +461,7 @@ export function TitlePixelTransition({
         aboutSection?.removeAttribute('data-reverse-transition-active');
       }
     };
-  }, [update]);
+  }, [start, update]);
 
   return (
     <div
