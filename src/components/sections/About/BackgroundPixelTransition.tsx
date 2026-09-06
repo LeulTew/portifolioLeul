@@ -136,8 +136,10 @@ export function BackgroundPixelTransition({
       if (p <= 0.005) {
         if (backdropRef.current) backdropRef.current.dataset.active = 'false';
         if (maskBackdropRef.current) maskBackdropRef.current.setAttribute('opacity', '0');
-        if (aboutSection && aboutSection.getAttribute('data-bg-transition') === 'true') {
+        if (aboutSection) {
           aboutSection.removeAttribute('data-bg-transition');
+          aboutSection.removeAttribute('data-bg-active');
+          aboutSection.removeAttribute('data-bg-settled');
         }
         if (typeof document !== 'undefined') {
           document.documentElement.removeAttribute('data-navbar-contrary');
@@ -181,12 +183,23 @@ export function BackgroundPixelTransition({
         maskBackdropRef.current.setAttribute('opacity', isBackdropActive ? '1' : '0');
       }
       if (aboutSection) {
-        if (isBackdropActive && aboutSection.getAttribute('data-bg-transition') !== 'true') {
-          aboutSection.setAttribute('data-bg-transition', 'true');
-          document.documentElement.setAttribute('data-navbar-contrary', 'true');
-        } else if (p < 0.80 && aboutSection.getAttribute('data-bg-transition') === 'true') {
-          aboutSection.removeAttribute('data-bg-transition');
-          document.documentElement.removeAttribute('data-navbar-contrary');
+        if (isBackdropActive) {
+          if (aboutSection.getAttribute('data-bg-transition') !== 'true') {
+            aboutSection.setAttribute('data-bg-transition', 'true');
+            document.documentElement.setAttribute('data-navbar-contrary', 'true');
+          }
+          aboutSection.setAttribute('data-bg-settled', 'true');
+          aboutSection.removeAttribute('data-bg-active');
+        } else if (p < 0.80) {
+          if (aboutSection.getAttribute('data-bg-transition') === 'true') {
+            aboutSection.removeAttribute('data-bg-transition');
+            document.documentElement.removeAttribute('data-navbar-contrary');
+          }
+          aboutSection.removeAttribute('data-bg-settled');
+        }
+
+        if (p > 0.005 && p < 0.95) {
+          aboutSection.setAttribute('data-bg-active', 'true');
         }
       }
 
@@ -283,14 +296,16 @@ export function BackgroundPixelTransition({
 
     // 4. Boundary safety overrides:
     if (seq <= 0.05) {
-      phaseRef.current = { t: 0, heading: -1 };
       wasActiveRef.current = false;
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-        animFrameRef.current = 0;
+      if (phaseRef.current.t <= 0.005) {
+        phaseRef.current = PHASE_AT_REST;
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = 0;
+        }
+        renderPhase(0);
+        return;
       }
-      renderPhase(0);
-      return;
     }
 
     // 5. Normal time-driven triggered phase
@@ -320,7 +335,10 @@ export function BackgroundPixelTransition({
         animFrameRef.current = 0;
       }
       if (typeof document !== 'undefined') {
-        document.getElementById('about')?.removeAttribute('data-bg-transition');
+        const aboutSection = document.getElementById('about');
+        aboutSection?.removeAttribute('data-bg-transition');
+        aboutSection?.removeAttribute('data-bg-active');
+        aboutSection?.removeAttribute('data-bg-settled');
         document.documentElement.removeAttribute('data-navbar-contrary');
       }
     };

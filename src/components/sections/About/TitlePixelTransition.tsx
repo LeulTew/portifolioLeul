@@ -134,7 +134,27 @@ export function TitlePixelTransition({
           const el = dotElementsRef.current[i];
           if (el && el.dataset.active !== 'false') el.dataset.active = 'false';
         }
+        const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+        if (aboutSection) {
+          aboutSection.removeAttribute('data-title-settled');
+          aboutSection.removeAttribute('data-title-active');
+          aboutSection.removeAttribute('data-reverse-transition-active');
+        }
         return;
+      }
+
+      const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      if (p < 0.98) {
+        if (aboutSection) {
+          aboutSection.removeAttribute('data-title-settled');
+          if (wasActiveRef.current) {
+            aboutSection.setAttribute('data-title-active', 'true');
+            aboutSection.removeAttribute('data-reverse-transition-active');
+          } else {
+            aboutSection.setAttribute('data-reverse-transition-active', 'true');
+            aboutSection.removeAttribute('data-title-active');
+          }
+        }
       }
 
       // Step 1: Phase 1 (0.02 to 0.45) - White pixel dots spawn with organic noise, covering & dissolving "About Me"
@@ -231,6 +251,15 @@ export function TitlePixelTransition({
         const activeStr = String(isActive);
         if (el.dataset.active !== activeStr) el.dataset.active = activeStr;
       }
+
+      if (p >= 0.98) {
+        if (aboutSection && aboutSection.getAttribute('data-title-settled') !== 'true') {
+          aboutSection.setAttribute('data-title-settled', 'true');
+          aboutSection.removeAttribute('data-title-active');
+          aboutSection.removeAttribute('data-reverse-transition-active');
+          window.dispatchEvent(new Event('scroll'));
+        }
+      }
     },
     [dots, flippedSubtitle, flippedTitle, initialSubtitle, initialTitle]
   );
@@ -262,6 +291,18 @@ export function TitlePixelTransition({
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
+        const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+        if (wasActiveRef.current) {
+          aboutSection?.setAttribute('data-title-settled', 'true');
+          aboutSection?.removeAttribute('data-title-active');
+          aboutSection?.removeAttribute('data-reverse-transition-active');
+          window.dispatchEvent(new Event('scroll'));
+        } else {
+          aboutSection?.removeAttribute('data-reverse-transition-active');
+          aboutSection?.removeAttribute('data-title-settled');
+          aboutSection?.removeAttribute('data-title-active');
+          window.dispatchEvent(new Event('scroll'));
+        }
       }
     },
     [checkIsGreenBg, durationMs, renderPhase]
@@ -318,14 +359,16 @@ export function TitlePixelTransition({
 
     // 4. Boundary safety override for returning to the very start of the section:
     if (seq <= 0.05) {
-      phaseRef.current = { t: 0, heading: -1 };
       wasActiveRef.current = false;
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-        animFrameRef.current = 0;
+      if (phaseRef.current.t <= 0.005) {
+        phaseRef.current = PHASE_AT_REST;
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = 0;
+        }
+        renderPhase(0, isLightMode, isGreenBg);
+        return;
       }
-      renderPhase(0, isLightMode, isGreenBg);
-      return;
     }
 
     // 6. Normal time-driven triggered phase
@@ -354,6 +397,12 @@ export function TitlePixelTransition({
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;
+      }
+      if (typeof document !== 'undefined') {
+        const aboutSection = document.getElementById('about');
+        aboutSection?.removeAttribute('data-title-settled');
+        aboutSection?.removeAttribute('data-title-active');
+        aboutSection?.removeAttribute('data-reverse-transition-active');
       }
     };
   }, [update]);

@@ -220,7 +220,15 @@ export function EducationRail() {
       stage.style.setProperty('--release', `${releaseOffset(rect.top, rect.height, frameHeight)}px`);
 
       // Bidirectional animation trigger
-      const shouldOpen = rect.top <= OPEN_LINE;
+      const aboutEl = rail.closest('#about') || (typeof document !== 'undefined' ? document.getElementById('about') : null);
+      const isTitleSettled = aboutEl?.getAttribute('data-title-settled') === 'true';
+      const isTransitionActive =
+        aboutEl?.getAttribute('data-title-active') === 'true' ||
+        aboutEl?.getAttribute('data-bg-active') === 'true';
+
+      const canOpen = isTitleSettled || !isTransitionActive;
+      const shouldOpen = rect.top <= OPEN_LINE && canOpen;
+
       if (shouldOpen) {
         if (openTimeline && (openTimeline.reversed() || openTimeline.progress() < 1)) {
           head.setAttribute('data-settled', 'true');
@@ -236,8 +244,7 @@ export function EducationRail() {
 
       const pastEnd = releaseOffset(rect.top, rect.height, frameHeight) >= frameHeight;
       const isReversingToAbout = rect.top > OPEN_LINE && (openTimeline ? openTimeline.progress() > 0.005 : false);
-      const visible = !pastEnd && (stageVisible(rect.top, rect.height, frameHeight) || isReversingToAbout);
-      const aboutEl = rail.closest('#about') || document.getElementById('about');
+      const visible = !pastEnd && ((stageVisible(rect.top, rect.height, frameHeight) && canOpen) || isReversingToAbout);
 
       if (visible) {
         stage.setAttribute('data-visible', 'true');

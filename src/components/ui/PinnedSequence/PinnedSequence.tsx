@@ -133,7 +133,13 @@ export function PinnedSequence({
        * the viewport, so one merely faded out still covers every section after
        * it for the rest of the page.
        */
-      const pinned = rect.top <= 0 && rect.bottom >= rootHeight;
+      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      const isTransitioning =
+        aboutEl?.getAttribute('data-title-active') === 'true' ||
+        aboutEl?.getAttribute('data-bg-active') === 'true' ||
+        aboutEl?.getAttribute('data-reverse-transition-active') === 'true';
+
+      const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || (rect.top <= 0 && isTransitioning);
       overlay.dataset.active = String(pinned);
       if (!pinned) return;
 
