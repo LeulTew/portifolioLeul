@@ -54,8 +54,15 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * animating in underneath a heading that had not arrived yet and a mark that
    * was still pointing at it.
    */
-  { name: 'one', start: 0.07, end: 0.44 },
-  { name: 'two', start: 0.50, end: 0.78 },
+  /*
+   * Seamless zero-gap handover between statements:
+   * Statement One is fully settled across 0.15 - 0.38, then ramps down from 0.38 to 0.46.
+   * Statement Two ramps in concurrently from 0.38 to 0.46, reaching full settled strength
+   * and holding until the background pixel transition takes over at 0.78.
+   * At the 0.42 midpoint, both are at 0.5 presence so the screen is never empty or bland.
+   */
+  { name: 'one', start: 0.07, end: 0.46, feather: 0.08 },
+  { name: 'two', start: 0.38, end: 0.78, feather: 0.08 },
   /*
    * Background pixel transition (runrobrun stepped bottom-up pixel growth).
    * Takes over AFTER statement two has completely disappeared (progress > 0.78),

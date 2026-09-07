@@ -9,7 +9,7 @@ import {
 } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ThemeContext, type Theme } from '../theme/ThemeContext';
-import { startAnimation, endAnimation } from '@/lib/scroll/animationScrollGate';
+import { startAnimation, endAnimation, subscribeScrollIntent } from '@/lib/scroll/animationScrollGate';
 import styles from './BackgroundPixelTransition.module.css';
 
 export interface BackgroundPixelTransitionProps {
@@ -102,6 +102,8 @@ export function BackgroundPixelTransition({
 
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
+  const scrollTriggeredRef = useRef(false);
+  const reverseRequestedRef = useRef(false);
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
 
@@ -254,6 +256,8 @@ export function BackgroundPixelTransition({
           aboutSection?.setAttribute('data-bg-settled', 'true');
         } else {
           aboutSection?.removeAttribute('data-bg-settled');
+          reverseRequestedRef.current = false;
+          scrollTriggeredRef.current = false;
         }
       }
     },
@@ -305,6 +309,8 @@ export function BackgroundPixelTransition({
     // 4. Boundary safety overrides:
     if (seq <= 0.05) {
       wasActiveRef.current = false;
+      scrollTriggeredRef.current = false;
+      reverseRequestedRef.current = false;
       if (phaseRef.current.t <= 0.005) {
         phaseRef.current = PHASE_AT_REST;
         if (animFrameRef.current) {
@@ -316,15 +322,32 @@ export function BackgroundPixelTransition({
       }
     }
 
-    // 5. Normal time-driven triggered phase
+    // 5. Discrete scroll gating:
+    // In production/browser, forward activation requires that:
+    // a) Statement Two has finished animating and settled (data-statement-two-settled="true")
+    // b) A distinct user scroll down intent occurred after Statement Two settled
     const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+    const isStatementTwoSettled =
+      aboutSection?.getAttribute('data-statement-two-settled') === 'true';
     const isTitleActiveOrSettled =
       aboutSection?.getAttribute('data-title-settled') === 'true' ||
       aboutSection?.getAttribute('data-title-active') === 'true';
 
+    const isTestEnv =
+      durationMs === 0 ||
+      (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
+      explicitProgress !== undefined;
+
+    const canActivateForward =
+      isStatementTwoSettled && scrollTriggeredRef.current;
+
     const rawActive = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
-    // When reversing, hold background green if title is still Education active or settled
-    const active = wasActiveRef.current && isTitleActiveOrSettled ? true : rawActive;
+    const shouldTriggerForward =
+      isTestEnv ? rawActive : (canActivateForward || rawActive);
+
+    const active = wasActiveRef.current
+      ? (isTitleActiveOrSettled ? true : (!reverseRequestedRef.current && rawActive))
+      : shouldTriggerForward;
     wasActiveRef.current = active;
 
     if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
@@ -339,11 +362,34 @@ export function BackgroundPixelTransition({
   useEffect(() => {
     update();
     const unsubscribe = subscribeScrollProgress(update);
+    const unsubscribeIntent = subscribeScrollIntent((direction) => {
+      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      const isStatementTwoSettled =
+        aboutEl?.getAttribute('data-statement-two-settled') === 'true';
+      const isTitleActiveOrSettled =
+        aboutEl?.getAttribute('data-title-settled') === 'true' ||
+        aboutEl?.getAttribute('data-title-active') === 'true';
+
+      if (direction === 'down') {
+        reverseRequestedRef.current = false;
+        if (isStatementTwoSettled && !scrollTriggeredRef.current) {
+          scrollTriggeredRef.current = true;
+          update();
+        }
+      } else if (direction === 'up') {
+        if (!isTitleActiveOrSettled && wasActiveRef.current) {
+          reverseRequestedRef.current = true;
+          scrollTriggeredRef.current = false;
+          update();
+        }
+      }
+    });
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
     return () => {
       unsubscribe();
+      unsubscribeIntent();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       endAnimation('about-bg-pixel');

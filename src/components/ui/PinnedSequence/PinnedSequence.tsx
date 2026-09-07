@@ -136,7 +136,11 @@ export function PinnedSequence({
       const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
       const isTransitioning =
         aboutEl?.getAttribute('data-title-active') === 'true' ||
+        aboutEl?.getAttribute('data-title-settled') === 'true' ||
         aboutEl?.getAttribute('data-bg-active') === 'true' ||
+        aboutEl?.getAttribute('data-bg-settled') === 'true' ||
+        aboutEl?.getAttribute('data-statement-swap-active') === 'true' ||
+        aboutEl?.getAttribute('data-statement-two-settled') === 'true' ||
         aboutEl?.getAttribute('data-reverse-transition-active') === 'true';
 
       const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || (rect.top <= 0 && isTransitioning);

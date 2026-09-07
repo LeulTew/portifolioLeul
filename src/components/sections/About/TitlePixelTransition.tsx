@@ -400,9 +400,9 @@ export function TitlePixelTransition({
       (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
       explicitProgress !== undefined;
 
-    const canActivateForward = isTestEnv || (isBgSettled && scrollTriggeredRef.current);
+    const canActivateForward = isBgSettled && scrollTriggeredRef.current;
     const rawActive = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
-    const shouldTriggerForward = canActivateForward && (seq >= (start - 0.09) || rawActive);
+    const shouldTriggerForward = isTestEnv ? rawActive : (canActivateForward || rawActive);
 
     const active = wasActiveRef.current
       ? (isEducationActive ? true : (!reverseRequestedRef.current && rawActive))

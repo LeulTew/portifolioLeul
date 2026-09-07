@@ -77,13 +77,16 @@ describe('About held sequence', () => {
     }
   });
 
-  it('hands over rather than crossfading: neither is on at the changeover', () => {
-    // The statements only. The ground and the field are meant to be on here:
-    // they are what stays continuous across the handover.
-    for (const name of ['one', 'two']) {
-      const layer = STATEMENT_LAYERS.find((l) => l.name === name)!;
-      expect(windowPresence(0.5, layer.start, layer.end, 0.09)).toBe(0);
-    }
+  it('hands over seamlessly with zero empty gap: statements overlap at changeover', () => {
+    const one = STATEMENT_LAYERS.find((l) => l.name === 'one')!;
+    const two = STATEMENT_LAYERS.find((l) => l.name === 'two')!;
+    // At midpoint 0.42, statement one is ramping out while statement two is ramping in concurrently
+    const pOne = windowPresence(0.42, one.start, one.end, one.feather ?? 0.08);
+    const pTwo = windowPresence(0.42, two.start, two.end, two.feather ?? 0.08);
+    expect(pOne).toBeGreaterThan(0.2);
+    expect(pTwo).toBeGreaterThan(0.2);
+    expect(layerOpacity(pOne)).toBeGreaterThan(0.05);
+    expect(layerOpacity(pTwo)).toBeGreaterThan(0.05);
   });
 
   it('keeps the ground up for the whole stretch it is held for', () => {
@@ -254,6 +257,30 @@ describe('About statements contrast reactivity', () => {
     aboutSection?.removeAttribute('data-bg-transition');
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(statementsContainer?.getAttribute('data-contrary')).toBe('false');
+  });
+
+  it('settles statement one initially and statement two upon handover completion', async () => {
+    render(<About />);
+    const leftCol = screen.getByTestId('about-left-column');
+    const statementsContainer = leftCol.closest<HTMLElement>('[data-contrary]');
+    const aboutSection = document.getElementById('about');
+    expect(statementsContainer).toBeInTheDocument();
+
+    // Initially on Statement One
+    expect(statementsContainer?.style.getPropertyValue('--one-in')).toBe('1.000');
+    expect(statementsContainer?.style.getPropertyValue('--two-in')).toBe('0.000');
+    expect(aboutSection?.getAttribute('data-statement-two-settled')).toBeNull();
+
+    // Simulate sequence progress past handover (seq = 0.60)
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    overlay.style.setProperty('--seq', '0.60');
+    window.dispatchEvent(new Event('scroll'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Statement Two is now fully settled and holds showing
+    expect(statementsContainer?.style.getPropertyValue('--two-in')).toBe('1.000');
+    expect(statementsContainer?.style.getPropertyValue('--one-in')).toBe('0.000');
+    expect(aboutSection?.getAttribute('data-statement-two-settled')).toBe('true');
   });
 });
 

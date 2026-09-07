@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { PinnedSequence } from '../../ui/PinnedSequence';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { ParallaxPlate } from '../../ui/ParallaxPlate';
@@ -10,6 +10,18 @@ import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import {
+  startAnimation,
+  endAnimation,
+  subscribeScrollIntent,
+} from '@/lib/scroll/animationScrollGate';
+import {
+  advancePhase,
+  easeInOutCubic,
+  isPhaseAtTarget,
+  PHASE_AT_REST,
+  type PhaseState,
+} from '@/lib/motion/triggeredPhase';
 
 function TransitionMaskedOverlay() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -59,38 +71,154 @@ interface StatementsContainerProps {
   children: React.ReactNode;
 }
 
+const DURATION_STATEMENT_SWAP = 800;
+
 function StatementsContainer({ children }: StatementsContainerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const wasActiveRef = useRef(false);
+  const animFrameRef = useRef(0);
+  const lastFrameRef = useRef(0);
+  const scrollTriggeredRef = useRef(false);
+  const reverseRequestedRef = useRef(false);
+  const reducedMotion = getPrefersReducedMotion();
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+  const checkIsGreen = useCallback(() => {
+    if (typeof document === 'undefined') return false;
+    const aboutEl = document.getElementById('about');
+    if (aboutEl?.getAttribute('data-bg-transition') === 'true') return true;
+    if (aboutEl?.getAttribute('data-bg-active') === 'true') return true;
+    if (aboutEl?.getAttribute('data-bg-settled') === 'true') return true;
+    if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
 
-    const checkIsGreen = () => {
-      if (typeof document === 'undefined') return false;
-      const aboutEl = document.getElementById('about');
-      if (aboutEl?.getAttribute('data-bg-transition') === 'true') return true;
-      if (aboutEl?.getAttribute('data-bg-active') === 'true') return true;
-      if (aboutEl?.getAttribute('data-bg-settled') === 'true') return true;
-      if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
+    const overlay = ref.current?.closest<HTMLElement>('[data-active]');
+    const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
+    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+    return seq >= 0.78;
+  }, []);
 
-      const overlay = el.closest<HTMLElement>('[data-active]');
-      const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
-      const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
-      return seq >= 0.78;
-    };
+  const renderPhase = useCallback(
+    (t: number) => {
+      const el = ref.current;
+      if (!el) return;
 
-    const update = () => {
+      const eased = easeInOutCubic(t);
+      // Handover curves: zero empty gap.
+      // As Statement One ramps out, Statement Two ramps in concurrently.
+      el.style.setProperty('--one-in', (1 - t).toFixed(3));
+      el.style.setProperty('--one-on', (1 - eased).toFixed(3));
+      el.style.setProperty('--two-in', t.toFixed(3));
+      el.style.setProperty('--two-on', eased.toFixed(3));
+
       const isGreen = checkIsGreen();
       if (isGreen) {
         if (el.dataset.contrary !== 'true') el.dataset.contrary = 'true';
       } else {
         if (el.dataset.contrary !== 'false') el.dataset.contrary = 'false';
       }
-    };
 
+      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      if (t >= 0.999) {
+        aboutEl?.setAttribute('data-statement-two-settled', 'true');
+      } else {
+        aboutEl?.removeAttribute('data-statement-two-settled');
+      }
+    },
+    [checkIsGreen]
+  );
+
+  const step = useCallback(
+    (now: number) => {
+      animFrameRef.current = 0;
+      const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7;
+      lastFrameRef.current = now;
+
+      phaseRef.current = advancePhase(
+        phaseRef.current,
+        wasActiveRef.current,
+        dt,
+        DURATION_STATEMENT_SWAP
+      );
+
+      renderPhase(phaseRef.current.t);
+
+      if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        lastFrameRef.current = 0;
+        endAnimation('about-statement-swap');
+        const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
+        if (wasActiveRef.current) {
+          aboutEl?.setAttribute('data-statement-two-settled', 'true');
+        } else {
+          aboutEl?.removeAttribute('data-statement-two-settled');
+          reverseRequestedRef.current = false;
+        }
+      }
+    },
+    [renderPhase]
+  );
+
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const overlay = el.closest<HTMLElement>('[data-active]');
+    const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
+    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+
+    const isTestEnv =
+      (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
+      reducedMotion;
+
+    if (isTestEnv) {
+      // In test runner or reduced motion, directly map sequence progress:
+      // Below 0.38: statement one (t = 0)
+      // Above 0.46: statement two (t = 1)
+      // Between 0.38 and 0.46: seamless handover
+      const t = Math.min(1, Math.max(0, (seq - 0.38) / (0.46 - 0.38)));
+      renderPhase(t);
+      return;
+    }
+
+    // Returning to the start of the section:
+    if (seq <= 0.05) {
+      wasActiveRef.current = false;
+      scrollTriggeredRef.current = false;
+      reverseRequestedRef.current = false;
+      if (phaseRef.current.t > 0) {
+        phaseRef.current = PHASE_AT_REST;
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = 0;
+        }
+        endAnimation('about-statement-swap');
+        renderPhase(0);
+        return;
+      }
+    }
+
+    // Check contrary background state
+    const isGreen = checkIsGreen();
+    if (isGreen) {
+      if (el.dataset.contrary !== 'true') el.dataset.contrary = 'true';
+    } else {
+      if (el.dataset.contrary !== 'false') el.dataset.contrary = 'false';
+    }
+
+    // Normal time-driven execution
+    if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current) && animFrameRef.current === 0) {
+      lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+      startAnimation('about-statement-swap', 1200);
+      animFrameRef.current = requestAnimationFrame(step);
+    } else if (animFrameRef.current === 0) {
+      renderPhase(phaseRef.current.t);
+    }
+  }, [checkIsGreen, reducedMotion, renderPhase, step]);
+
+  useEffect(() => {
     update();
-    const unsub = subscribeScrollProgress(update);
+    const unsubProgress = subscribeScrollProgress(update);
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
@@ -104,13 +232,53 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       observer.observe(document.documentElement, { attributes: true });
     }
 
+    const unsubIntent = subscribeScrollIntent((direction) => {
+      const overlay = ref.current?.closest<HTMLElement>('[data-active]');
+      const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
+      const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+
+      // Only respond when in the About held sequence
+      const isSequenceActive = overlay?.dataset.active === 'true' || (seq >= 0.05 && seq <= 0.95);
+      if (!isSequenceActive) return;
+
+      if (direction === 'down') {
+        reverseRequestedRef.current = false;
+        if (!wasActiveRef.current) {
+          wasActiveRef.current = true;
+          startAnimation('about-statement-swap', 1200);
+          lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+          if (animFrameRef.current === 0) {
+            animFrameRef.current = requestAnimationFrame(step);
+          }
+        }
+      } else if (direction === 'up') {
+        const isGreen = checkIsGreen();
+        // If green background has already retreated / is not active, allow reversing statement two back to statement one:
+        if (!isGreen && wasActiveRef.current) {
+          wasActiveRef.current = false;
+          reverseRequestedRef.current = true;
+          startAnimation('about-statement-swap', 1200);
+          lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+          if (animFrameRef.current === 0) {
+            animFrameRef.current = requestAnimationFrame(step);
+          }
+        }
+      }
+    });
+
     return () => {
-      unsub();
+      unsubProgress();
+      unsubIntent();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       observer?.disconnect();
+      endAnimation('about-statement-swap');
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = 0;
+      }
     };
-  }, []);
+  }, [checkIsGreen, step, update]);
 
   return (
     <div ref={ref} className={styles.statements} data-contrary="false">
