@@ -26,6 +26,7 @@ import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
 import { watchContentSettled, type ContentSettleWatcher } from './lib/render/contentSettled';
 import { useFooterContrast } from './lib/scroll/useFooterContrast';
+import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 
 import './index.css';
 import styles from './App.module.css';
@@ -74,6 +75,8 @@ function App() {
   const mainRef = useRef<HTMLElement | null>(null);
   const contentObserverRef = useRef<ResizeObserver | null>(null);
   const settleWatcherRef = useRef<ContentSettleWatcher | null>(null);
+  /** The in-flight navigation glide, so a second click replaces the first. */
+  const glideRef = useRef<Glide | null>(null);
   const scrollElementRef = useRef<HTMLDivElement | null>(null);
   /** Reader position captured just before the track is resized. */
   const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
@@ -371,6 +374,8 @@ function App() {
     contentObserverRef.current = null;
     settleWatcherRef.current?.stop();
     settleWatcherRef.current = null;
+    glideRef.current?.cancel();
+    glideRef.current = null;
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
   }, []);
 
@@ -401,10 +406,19 @@ function App() {
 
       const ratio = Math.min(1, Math.max(0, adjustedOffset / contentScrollable));
 
-      container.scrollTo({
-        top: ratio * containerScrollable,
-        behavior: 'smooth'
-      });
+      /*
+       * Eased here rather than by the browser.
+       *
+       * This was `scrollTo({ behavior: 'smooth' })`, which is silently inert on
+       * this container: it belongs to drei's ScrollControls, which writes
+       * `scrollTop` itself every frame to drive its damping, and a script
+       * assignment cancels an in-flight native smooth scroll. The animation was
+       * being killed on the frame after it began, so every navigation link did
+       * nothing at all -- measured in a real browser, `scrollTop` never left 0
+       * while a plain instant assignment worked. See `glideScrollTo`.
+       */
+      glideRef.current?.cancel();
+      glideRef.current = glideScrollTo(container, ratio * containerScrollable);
       return;
     }
 
