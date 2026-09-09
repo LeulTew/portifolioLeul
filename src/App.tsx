@@ -24,11 +24,8 @@ import { ContextLossGuard } from './components/3d/ContextLossGuard';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
+import { watchContentSettled, type ContentSettleWatcher } from './lib/render/contentSettled';
 import { useFooterContrast } from './lib/scroll/useFooterContrast';
-import {
-  initAnimationScrollGate,
-  setProgrammaticNavigation,
-} from './lib/scroll/animationScrollGate';
 
 import './index.css';
 import styles from './App.module.css';
@@ -70,31 +67,22 @@ const LOADER_FAILSAFE_MS = 45_000;
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [sectionsReady, setSectionsReady] = useState(false);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const [scrollPages, setScrollPages] = useState(1);
   /** Mirrors scrollPages, so the observer can compare without a stale closure. */
   const scrollPagesRef = useRef(1);
   const mainRef = useRef<HTMLElement | null>(null);
   const contentObserverRef = useRef<ResizeObserver | null>(null);
+  const settleWatcherRef = useRef<ContentSettleWatcher | null>(null);
   const scrollElementRef = useRef<HTMLDivElement | null>(null);
   /** Reader position captured just before the track is resized. */
   const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
 
-  const handleExitStart = useCallback(() => setSectionsReady(true), []);
-  const handleLoaded = useCallback(() => {
-    setSectionsReady(true);
-    setIsLoading(false);
-  }, []);
+  const handleLoaded = useCallback(() => setIsLoading(false), []);
   /** Frames left to re-announce a restored position to ScrollControls. */
   const restoreSyncFramesRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const cleanup = initAnimationScrollGate();
-    return cleanup;
-  }, []);
   // The context is optional by type -- it has no sensible default -- and this
   // hook is the project's existing way of asserting the provider is there.
   const { theme, toggleTheme } = useTheme();
@@ -345,12 +333,23 @@ function App() {
   const attachMain = useCallback((node: HTMLElement | null) => {
     contentObserverRef.current?.disconnect();
     contentObserverRef.current = null;
+    settleWatcherRef.current?.stop();
+    settleWatcherRef.current = null;
     mainRef.current = node;
 
     if (!node) return;
 
+    // The loader is told when this has stopped moving, so it can stay up over
+    // the settling rather than fading away across it. Driven off the same
+    // observer as the track, because both are answers to "has the content
+    // finished moving" and a second observer on this node would be the same
+    // work twice.
+    const watcher = watchContentSettled();
+    settleWatcherRef.current = watcher;
+
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => {
+        watcher.poke();
         if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
         settleTimerRef.current = setTimeout(updateScrollPages, CONTENT_SETTLE_MS);
       });
@@ -370,19 +369,14 @@ function App() {
   useEffect(() => () => {
     contentObserverRef.current?.disconnect();
     contentObserverRef.current = null;
+    settleWatcherRef.current?.stop();
+    settleWatcherRef.current = null;
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-    if (navTimerRef.current) clearTimeout(navTimerRef.current);
   }, []);
 
   const scrollToSection = useCallback((id: string) => {
     const target = document.getElementById(id);
     if (!target) return;
-
-    setProgrammaticNavigation(true);
-    if (navTimerRef.current) clearTimeout(navTimerRef.current);
-    navTimerRef.current = setTimeout(() => {
-      setProgrammaticNavigation(false);
-    }, 1400);
 
     if (scrollElement && mainRef.current) {
       const container = scrollElement;
@@ -430,6 +424,14 @@ function App() {
    * One definition, rendered either inside the canvas's scroll layer or
    * straight into the document. Written once so the two paths cannot drift
    * into being two different sites.
+   *
+   * Mounted from the first render, and deliberately not held back until the
+   * loader is on its way out. Everything that happens when these appear --
+   * images decoding, the webfont swapping, `<main>` being measured,
+   * `ScrollControls` rebuilding its track and resetting scrollTop -- used to
+   * happen *during* the loader's fade, in full view. Mounting under an opaque
+   * overlay means the visitor sees a settled page when it lifts, and
+   * `watchContentSettled` is what keeps it down until that is true.
    */
   const sections = (
     <main ref={attachMain} className={styles.main}>
@@ -445,21 +447,14 @@ function App() {
   return (
     <div className={styles.container}>
       <AnimatePresence>
-        {isLoading && (
-          <Loader
-            key="loader"
-            theme={theme}
-            onExitStart={handleExitStart}
-            onLoaded={handleLoaded}
-          />
-        )}
+        {isLoading && <Loader key="loader" theme={theme} onLoaded={handleLoaded} />}
       </AnimatePresence>
 
       {!isLoading && (
         <Navigation scrollToSection={scrollToSection} />
       )}
 
-      {!show3D && (sectionsReady || !isLoading) && sections}
+      {!show3D && sections}
 
       {show3D && (
       <ErrorBoundary
@@ -498,7 +493,7 @@ function App() {
                 />
                 <ParticleBackground theme={theme} count={gpuConfig.particleCount} />
                 <Scroll html style={{ width: '100%' }}>
-                  {(sectionsReady || !isLoading) && sections}
+                  {sections}
                 </Scroll>
               </ScrollControls>
               <Preload all />

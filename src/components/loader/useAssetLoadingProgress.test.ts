@@ -246,8 +246,13 @@ describe('waiting for the world behind the loader', () => {
     advance(60);
     expect(onComplete).not.toHaveBeenCalled();
 
+    // Still waiting well past where the old four-second deadline would have
+    // fired: the grace period is deliberately longer than any real build.
+    advance(500, 16);
+    expect(onComplete).not.toHaveBeenCalled();
+
     // Past the grace period, with the scene still silent.
-    advance(400, 16);
+    advance(200, 16);
     await act(async () => { await Promise.resolve(); });
 
     expect(onComplete).toHaveBeenCalledTimes(1);

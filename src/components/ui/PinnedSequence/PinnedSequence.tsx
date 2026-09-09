@@ -144,7 +144,10 @@ export function PinnedSequence({
         aboutEl?.getAttribute('data-reverse-transition-active') === 'true';
 
       const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || (rect.top <= 0 && isTransitioning);
-      overlay.dataset.active = String(pinned);
+      // Guarded: a data attribute set to the value it already holds still
+      // marks the subtree dirty, and this overlay holds the whole section.
+      const active = String(pinned);
+      if (overlay.dataset.active !== active) overlay.dataset.active = active;
       if (!pinned) return;
 
       /*
@@ -215,6 +218,11 @@ export function PinnedSequence({
             ref={overlayRef}
             className={[styles.overlay, className].filter(Boolean).join(' ')}
             data-active="false"
+            /* The handle other per-frame code finds this by. A `data-testid`
+               is a test artifact, and matching one by substring -- which is
+               what production code was reduced to -- cannot use any index and
+               so walks every element in the document, once per frame. */
+            data-pinned-sequence="true"
             data-testid={`${testId}-overlay`}
           >
             {children}

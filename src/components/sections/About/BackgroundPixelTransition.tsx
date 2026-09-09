@@ -9,7 +9,7 @@ import {
 } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ThemeContext, type Theme } from '../theme/ThemeContext';
-import { startAnimation, endAnimation, subscribeScrollIntent } from '@/lib/scroll/animationScrollGate';
+import { createAboutReader, createSeqReader } from './seqReader';
 import styles from './BackgroundPixelTransition.module.css';
 
 export interface BackgroundPixelTransitionProps {
@@ -102,10 +102,11 @@ export function BackgroundPixelTransition({
 
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
-  const scrollTriggeredRef = useRef(false);
-  const reverseRequestedRef = useRef(false);
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
+
+  const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
+  const readAbout = useRef(createAboutReader()).current;
 
   const themeContext = useContext(ThemeContext);
   const currentTheme: Theme =
@@ -134,7 +135,7 @@ export function BackgroundPixelTransition({
 
   const renderPhase = useCallback(
     (p: number) => {
-      const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      const aboutSection = readAbout();
 
       if (p <= 0.005) {
         if (backdropRef.current) backdropRef.current.dataset.active = 'false';
@@ -228,7 +229,7 @@ export function BackgroundPixelTransition({
         }
       }
     },
-    [cells, reducedMotion]
+    [cells, readAbout, reducedMotion]
   );
 
   const step = useCallback(
@@ -250,40 +251,22 @@ export function BackgroundPixelTransition({
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
-        endAnimation('about-bg-pixel');
-        const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+        const aboutSection = readAbout();
         if (wasActiveRef.current) {
           aboutSection?.setAttribute('data-bg-settled', 'true');
         } else {
           aboutSection?.removeAttribute('data-bg-settled');
-          reverseRequestedRef.current = false;
-          scrollTriggeredRef.current = false;
         }
       }
     },
-    [durationMs, renderPhase]
+    [durationMs, readAbout, renderPhase]
   );
 
   const update = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    let rawSeq = container.style.getPropertyValue('--seq').trim();
-    if (!rawSeq) {
-      const overlay = container.closest<HTMLElement>('[data-active]');
-      if (overlay) rawSeq = overlay.style.getPropertyValue('--seq').trim();
-    }
-    if (!rawSeq && typeof document !== 'undefined') {
-      const activeOverlay =
-        document.querySelector<HTMLElement>('[data-testid*="sequence-overlay"][data-active="true"]') ||
-        document.querySelector<HTMLElement>('[data-active="true"][style*="--seq"]');
-      if (activeOverlay) rawSeq = activeOverlay.style.getPropertyValue('--seq').trim();
-    }
-    if (!rawSeq) {
-      const computed = getComputedStyle(container);
-      rawSeq = computed.getPropertyValue('--seq').trim();
-    }
-    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+    const seq = readSeq();
 
     // 1. Explicit test override prop
     if (explicitProgress !== undefined) {
@@ -306,11 +289,9 @@ export function BackgroundPixelTransition({
       return;
     }
 
-    // 4. Boundary safety overrides:
+    // 4. Boundary safety override for returning to the very start of the pin:
     if (seq <= 0.05) {
       wasActiveRef.current = false;
-      scrollTriggeredRef.current = false;
-      reverseRequestedRef.current = false;
       if (phaseRef.current.t <= 0.005) {
         phaseRef.current = PHASE_AT_REST;
         if (animFrameRef.current) {
@@ -322,77 +303,57 @@ export function BackgroundPixelTransition({
       }
     }
 
-    // 5. Discrete scroll gating:
-    // In production/browser, forward activation requires that:
-    // a) Statement Two has finished animating and settled (data-statement-two-settled="true")
-    // b) A distinct user scroll down intent occurred after Statement Two settled
-    const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
-    const isStatementTwoSettled =
-      aboutSection?.getAttribute('data-statement-two-settled') === 'true';
-    const isTitleActiveOrSettled =
-      aboutSection?.getAttribute('data-title-settled') === 'true' ||
-      aboutSection?.getAttribute('data-title-active') === 'true';
-
-    const isTestEnv =
-      durationMs === 0 ||
-      (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
-      explicitProgress !== undefined;
-
-    const canActivateForward =
-      isStatementTwoSettled && scrollTriggeredRef.current;
-
-    const rawActive = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
-    const shouldTriggerForward =
-      isTestEnv ? rawActive : (canActivateForward || rawActive);
-
-    const active = wasActiveRef.current
-      ? (isTitleActiveOrSettled ? true : (!reverseRequestedRef.current && rawActive))
-      : shouldTriggerForward;
+    /*
+     * 5. Where the beat stands is decided by position; how fast it plays is
+     * decided by time.
+     *
+     * `phaseGate` is the whole trigger, and it is deliberately the *only*
+     * trigger. This used to activate on a scroll gesture -- a sticky flag set
+     * by the first wheel notch after the statements settled -- while still
+     * asking `phaseGate` whether to *stay* active. The two disagree everywhere
+     * except at the threshold, so the beat switched on from the gesture and off
+     * from the position on alternating frames, forever, at whatever `seq` the
+     * reader happened to be holding.
+     *
+     * That oscillation is what jammed the section. Each swing re-registered a
+     * scroll block, so input was cancelled on every other frame and the reader
+     * could never travel to the position the sustain condition wanted -- the
+     * gate was the reason its own precondition could not be met. Position is
+     * now the single source of truth, so entering and staying cannot contradict
+     * each other, and no input is cancelled at all.
+     *
+     * The beat is still discrete and still fixed-duration: crossing `start`
+     * buys the whole 1200ms climb at its authored speed no matter how hard the
+     * wheel was spun, and `advancePhase` reverses it from wherever it got to.
+     * The deadband -- exit five hundredths below enter -- is what keeps an
+     * inertial wobble on the threshold from restarting it.
+     */
+    const active = phaseGate(
+      seq,
+      wasActiveRef.current,
+      start,
+      Math.max(0, start - 0.05)
+    );
     wasActiveRef.current = active;
 
     if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
-      startAnimation('about-bg-pixel');
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
       renderPhase(phaseRef.current.t);
     }
-  }, [durationMs, end, explicitProgress, reducedMotion, renderPhase, start, step]);
+  }, [durationMs, end, explicitProgress, readSeq, reducedMotion, renderPhase, start, step]);
 
   useEffect(() => {
     update();
     const unsubscribe = subscribeScrollProgress(update);
-    const unsubscribeIntent = subscribeScrollIntent((direction) => {
-      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
-      const isStatementTwoSettled =
-        aboutEl?.getAttribute('data-statement-two-settled') === 'true';
-      const isTitleActiveOrSettled =
-        aboutEl?.getAttribute('data-title-settled') === 'true' ||
-        aboutEl?.getAttribute('data-title-active') === 'true';
-
-      if (direction === 'down') {
-        reverseRequestedRef.current = false;
-        if (isStatementTwoSettled && !scrollTriggeredRef.current) {
-          scrollTriggeredRef.current = true;
-          update();
-        }
-      } else if (direction === 'up') {
-        if (!isTitleActiveOrSettled && wasActiveRef.current) {
-          reverseRequestedRef.current = true;
-          scrollTriggeredRef.current = false;
-          update();
-        }
-      }
-    });
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
     return () => {
       unsubscribe();
-      unsubscribeIntent();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
-      endAnimation('about-bg-pixel');
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;

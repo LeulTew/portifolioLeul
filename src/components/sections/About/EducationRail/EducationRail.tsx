@@ -19,7 +19,7 @@ import {
 } from './railTransit';
 import { useRailStaged } from './useRailStaging';
 import { findScrollContainer, scrollContainerBy } from './scrollContainer';
-import { startAnimation, endAnimation } from '@/lib/scroll/animationScrollGate';
+import { writeAttribute } from '@/lib/dom/cachedElement';
 import styles from './EducationRail.module.css';
 
 /** Past this many, the list reads as a wall and is set in two columns. */
@@ -185,14 +185,7 @@ export function EducationRail() {
         .timeline({
           paused: true,
           defaults: { ease: 'power2.inOut' },
-          onStart: () => {
-            startAnimation('education-open');
-          },
-          onComplete: () => {
-            endAnimation('education-open');
-          },
           onReverseComplete: () => {
-            endAnimation('education-open');
             head.removeAttribute('data-settled');
             frame.removeAttribute('data-open');
             const r = rail.getBoundingClientRect();
@@ -229,6 +222,16 @@ export function EducationRail() {
         );
     }, pinned);
 
+    /*
+     * The section this rail lives in, walked to once.
+     *
+     * `rail` is fixed for the life of this effect, so its ancestor is too --
+     * and `closest` per frame is a tree walk for an answer that cannot change.
+     */
+    const aboutSection =
+      rail.closest<HTMLElement>('#about') ||
+      (typeof document !== 'undefined' ? document.getElementById('about') : null);
+
     const apply = () => {
       const rect = rail.getBoundingClientRect();
       const frameHeight = pinned.offsetHeight;
@@ -239,11 +242,20 @@ export function EducationRail() {
        * arithmetic: offsetting a fixed overlay to chase a layer that is itself
        * being translated puts the two a frame apart, and a frame apart on a
        * damped scroll is exactly the vibration this replaced.
+       *
+       * Written only when it changes. The stage is a fixed overlay holding
+       * every record in the set, and setting a custom property on it
+       * invalidates style for all of them whether or not the value differs --
+       * and for most of the hold this value is the same zero every frame.
        */
-      stage.style.setProperty('--release', `${releaseOffset(rect.top, rect.height, frameHeight)}px`);
+      const release = releaseOffset(rect.top, rect.height, frameHeight);
+      const releasePx = `${release}px`;
+      if (stage.style.getPropertyValue('--release') !== releasePx) {
+        stage.style.setProperty('--release', releasePx);
+      }
 
       // Bidirectional animation trigger
-      const aboutEl = rail.closest('#about') || (typeof document !== 'undefined' ? document.getElementById('about') : null);
+      const aboutEl = aboutSection;
       const isTitleSettled = aboutEl?.getAttribute('data-title-settled') === 'true';
       const isTransitionActive =
         aboutEl?.getAttribute('data-title-active') === 'true' ||
@@ -257,13 +269,11 @@ export function EducationRail() {
         if (openTimeline && (openTimeline.reversed() || openTimeline.progress() < 1)) {
           head.setAttribute('data-settled', 'true');
           frame.setAttribute('data-open', 'true');
-          startAnimation('education-open');
           openTimeline.play();
         }
       } else {
         // Scrolling back up into About: reverse timeline and restore heading size only if open
         if (openTimeline && openTimeline.progress() > 0) {
-          startAnimation('education-open');
           openTimeline.reverse();
         }
       }
@@ -272,12 +282,16 @@ export function EducationRail() {
       const isReversingToAbout = rect.top > OPEN_LINE && (openTimeline ? openTimeline.progress() > 0.005 : false);
       const visible = !pastEnd && ((stageVisible(rect.top, rect.height, frameHeight) && canOpen) || isReversingToAbout);
 
-      if (visible) {
-        stage.setAttribute('data-visible', 'true');
-        aboutEl?.setAttribute('data-education-active', 'true');
-      } else {
-        stage.removeAttribute('data-visible');
-        aboutEl?.removeAttribute('data-education-active');
+      /*
+       * Both guarded. `setAttribute` invalidates style for the element's
+       * subtree whether or not the value differs -- and these two subtrees are
+       * the entire record set and the entire About section, restyled on every
+       * frame of the hold for an attribute that had not changed since it
+       * engaged.
+       */
+      writeAttribute(stage, 'data-visible', visible ? 'true' : null);
+      if (aboutEl) {
+        writeAttribute(aboutEl, 'data-education-active', visible ? 'true' : null);
       }
 
       const progress = recordWindow(pinProgress(pin, rect.height, frameHeight));
@@ -297,7 +311,6 @@ export function EducationRail() {
       unsubscribe();
       window.removeEventListener('scroll', apply);
       window.removeEventListener('resize', apply);
-      endAnimation('education-open');
       const aboutEl = rail.closest('#about') || document.getElementById('about');
       aboutEl?.removeAttribute('data-education-active');
       openCtxRef.current?.revert();
@@ -327,14 +340,7 @@ export function EducationRail() {
 
     const ctx = gsap.context(() => {
       const arriving = track.querySelector<HTMLElement>(`[data-record="${active}"]`);
-      const timeline = gsap.timeline({
-        onStart: () => {
-          startAnimation('education-record-crossing');
-        },
-        onComplete: () => {
-          endAnimation('education-record-crossing');
-        },
-      });
+      const timeline = gsap.timeline();
 
       timeline.to(track, {
         xPercent: trackOffset(active, total),
@@ -425,7 +431,6 @@ export function EducationRail() {
        * leaves the track where it actually is, so the next crossing picks it
        * up and carries it the rest of the way.
        */
-      endAnimation('education-record-crossing');
       ctx.kill();
     };
   }, [active, total, staged]);

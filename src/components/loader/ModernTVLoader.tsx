@@ -7,7 +7,6 @@ import styles from './ModernTVLoader.module.css';
 
 export interface ModernTVLoaderProps {
   onLoaded?: () => void;
-  onExitStart?: () => void;
   minDurationMs?: number;
   theme?: string;
 }
@@ -33,7 +32,6 @@ const FULL_HOLD_MS = 320;
 
 export function ModernTVLoader({
   onLoaded,
-  onExitStart,
   minDurationMs = 1800,
   theme: propTheme,
 }: ModernTVLoaderProps) {
@@ -59,10 +57,7 @@ export function ModernTVLoader({
     minDurationMs,
     onComplete: () => {
       // Let the wave land, and let it be seen landing, before pulling away.
-      holdTimerRef.current = setTimeout(() => {
-        setIsExiting(true);
-        onExitStart?.();
-      }, FULL_HOLD_MS);
+      holdTimerRef.current = setTimeout(() => setIsExiting(true), FULL_HOLD_MS);
     },
   });
 

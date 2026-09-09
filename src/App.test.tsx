@@ -174,9 +174,17 @@ vi.mock("@react-three/drei", () => ({
   PointMaterial: () => null,
 }));
 
+/**
+ * Whether the stubbed loader reports itself finished as it renders.
+ *
+ * Off for the coverage cases below, which are about what the page looks like
+ * *underneath* a loader that is still up.
+ */
+let loaderCompletesImmediately = true;
+
 vi.mock("./components/Loader", () => ({
   Loader: ({ onLoaded }: any) => {
-    onLoaded?.();
+    if (loaderCompletesImmediately) onLoaded?.();
     return <div data-testid="loader" role="progressbar" />;
   },
 }));
@@ -220,6 +228,55 @@ describe("App Component", () => {
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.getByTestId("r3f-canvas")).toBeInTheDocument();
     expect(screen.getByTestId("background-scene")).toBeInTheDocument();
+  });
+});
+
+describe("what the loader is covering", () => {
+  beforeEach(() => {
+    loaderCompletesImmediately = false;
+  });
+
+  afterEach(() => {
+    loaderCompletesImmediately = true;
+  });
+
+  it("mounts every section underneath the loader, before it starts to lift", () => {
+    /*
+     * The reported bug: the page showed its background and finished settling
+     * *after* the load screen had gone.
+     *
+     * The sections used to be withheld until the loader announced that its
+     * exit had begun, so everything that happens when they appear -- images
+     * decoding, the webfont swapping, `<main>` being measured, ScrollControls
+     * rebuilding its track and resetting scrollTop -- happened during the
+     * overlay's fade, in full view. Mounting them under an opaque loader is
+     * what makes the page look settled at the moment it is uncovered.
+     */
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+
+    // Still up, and nothing has told it to go.
+    expect(screen.getByTestId("loader")).toBeInTheDocument();
+
+    for (const id of ["home", "about", "skills", "projects", "contact"]) {
+      expect(screen.getByTestId(`${id}-section`)).toBeInTheDocument();
+    }
+  });
+
+  it("keeps the navigation and footer hidden until the loader has gone", () => {
+    // The chrome is the one thing that should arrive with the page rather than
+    // underneath it: there is nothing about it that needs to settle.
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    );
+
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByTestId("page-footer")).toBeNull();
   });
 });
 

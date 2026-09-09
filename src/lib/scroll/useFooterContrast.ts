@@ -1,8 +1,34 @@
 import { useEffect, useState } from 'react';
 import { subscribeScrollProgress } from './scrollProgress';
 import { useActiveSection } from './useActiveSection';
+import { cachedElement, writeAttribute } from '@/lib/dom/cachedElement';
 
 const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
+
+/*
+ * The nodes this check consults, resolved once each.
+ *
+ * `checkIsFooterContrast` runs on every frame of the render loop. It used to
+ * re-run all six lookups each time, two of them attribute-substring
+ * `querySelector` scans over the whole document, before it read a single rect.
+ */
+const findSkills = cachedElement(() => document.getElementById('skills'));
+const findAbout = cachedElement(() => document.getElementById('about'));
+const findEduStage = cachedElement(() =>
+  document.querySelector<HTMLElement>('[data-testid="education-stage"]')
+);
+/*
+ * Cached on a selector that does not include `data-active`, because that
+ * attribute flips while the node stays put -- caching on it would pin whichever
+ * state it happened to be in when first seen. Whether the overlay is currently
+ * pinned is asked at the point of use instead.
+ */
+const findSequenceOverlay = cachedElement(() =>
+  document.querySelector<HTMLElement>('[data-pinned-sequence="true"]')
+);
+const findHeldGround = cachedElement(() =>
+  document.querySelector<HTMLElement>('[data-held-ground="true"]')
+);
 
 /**
  * Checks whether the bottom footer (which sits ~50-60px above the viewport bottom)
@@ -25,7 +51,7 @@ export function checkIsFooterContrast(): boolean {
 
   // 1. If Skills section has reached or passed above the footer,
   // we are definitely on normal background.
-  const skillsEl = document.getElementById('skills');
+  const skillsEl = findSkills();
   if (skillsEl) {
     const skillsRect = skillsEl.getBoundingClientRect();
     if (skillsRect.top <= footerY) {
@@ -34,7 +60,7 @@ export function checkIsFooterContrast(): boolean {
   }
 
   // 2. Condition A: Education Stage is visible and physically covers the footer
-  const eduStage = document.querySelector<HTMLElement>('[data-testid="education-stage"]');
+  const eduStage = findEduStage();
   if (eduStage && eduStage.getAttribute('data-visible') === 'true') {
     const stageRect = eduStage.getBoundingClientRect();
     // Only true if the stage's bottom edge hasn't lifted above the footer!
@@ -46,7 +72,7 @@ export function checkIsFooterContrast(): boolean {
   }
 
   // 3. Condition B: PinnedSequence in About is actively pinned and in green background state
-  const aboutEl = document.getElementById('about');
+  const aboutEl = findAbout();
   if (!aboutEl) {
     return false;
   }
@@ -57,9 +83,8 @@ export function checkIsFooterContrast(): boolean {
     return false;
   }
 
-  const activeOverlay =
-    document.querySelector<HTMLElement>('[data-testid*="sequence-overlay"][data-active="true"]') ||
-    document.querySelector<HTMLElement>('[data-active="true"][style*="--seq"]');
+  const overlay = findSequenceOverlay();
+  const activeOverlay = overlay?.dataset.active === 'true' ? overlay : null;
 
   if (activeOverlay) {
     const rawSeq = activeOverlay.style.getPropertyValue('--seq').trim();
@@ -72,7 +97,7 @@ export function checkIsFooterContrast(): boolean {
 
   // If About has solidified green transition AND is currently holding the screen
   if (aboutEl.getAttribute('data-bg-transition') === 'true') {
-    const heldGround = aboutEl.querySelector<HTMLElement>('[class*="heldGround"]');
+    const heldGround = findHeldGround();
     if (heldGround) {
       const hgRect = heldGround.getBoundingClientRect();
       if (hgRect.top <= footerY && hgRect.bottom >= footerY) {
@@ -103,11 +128,14 @@ export function useFooterContrast(): boolean {
       const next = checkIsFooterContrast();
       setIsContrast(next);
       if (typeof document !== 'undefined') {
-        if (next) {
-          document.documentElement.setAttribute('data-footer-contrast', 'true');
-        } else {
-          document.documentElement.removeAttribute('data-footer-contrast');
-        }
+        // Guarded, because this runs on every frame and an unconditional
+        // setAttribute on documentElement invalidates style for the entire
+        // document -- every section, every card, over a live WebGL canvas.
+        writeAttribute(
+          document.documentElement,
+          'data-footer-contrast',
+          next ? 'true' : null
+        );
       }
     };
 

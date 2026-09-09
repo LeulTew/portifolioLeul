@@ -10,15 +10,12 @@ import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
-import {
-  startAnimation,
-  endAnimation,
-  subscribeScrollIntent,
-} from '@/lib/scroll/animationScrollGate';
+import { createAboutReader, createSeqReader } from './seqReader';
 import {
   advancePhase,
   easeInOutCubic,
   isPhaseAtTarget,
+  phaseGate,
   PHASE_AT_REST,
   type PhaseState,
 } from '@/lib/motion/triggeredPhase';
@@ -30,14 +27,15 @@ function TransitionMaskedOverlay() {
     const el = ref.current;
     if (!el) return;
 
+    const readSeq = createSeqReader(() => ref.current);
+
     const update = () => {
-      const overlay = el.closest<HTMLElement>('[data-active]');
-      const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
-      const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
       // Masked cutout overlay is active while background pixels rise (seq >= 0.78)
       // Once solid green engages, CSS rule #about[data-bg-transition='true'] hides it cleanly
-      const isVisible = seq >= 0.78;
-      el.style.display = isVisible ? 'block' : 'none';
+      const display = readSeq() >= 0.78 ? 'block' : 'none';
+      // Assigning the same value still invalidates style for the subtree, and
+      // this runs on every frame of the page, not just this stretch.
+      if (el.style.display !== display) el.style.display = display;
     };
 
     update();
@@ -73,29 +71,38 @@ interface StatementsContainerProps {
 
 const DURATION_STATEMENT_SWAP = 800;
 
+/**
+ * Where the two statements hand over.
+ *
+ * Taken from `STATEMENT_LAYERS`: statement one ramps out across 0.38 to 0.46
+ * while statement two ramps in over the same span, so 0.42 is the midpoint the
+ * choreography is built around. The exit sits below the ramp so scrolling back
+ * up genuinely leaves the beat rather than chattering on its own edge.
+ */
+const STATEMENT_SWAP_ENTER = 0.42;
+const STATEMENT_SWAP_EXIT = 0.37;
+
 function StatementsContainer({ children }: StatementsContainerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
   const animFrameRef = useRef(0);
   const lastFrameRef = useRef(0);
-  const scrollTriggeredRef = useRef(false);
-  const reverseRequestedRef = useRef(false);
   const reducedMotion = getPrefersReducedMotion();
+
+  const readSeq = useRef(createSeqReader(() => ref.current)).current;
+  const readAbout = useRef(createAboutReader()).current;
 
   const checkIsGreen = useCallback(() => {
     if (typeof document === 'undefined') return false;
-    const aboutEl = document.getElementById('about');
+    const aboutEl = readAbout();
     if (aboutEl?.getAttribute('data-bg-transition') === 'true') return true;
     if (aboutEl?.getAttribute('data-bg-active') === 'true') return true;
     if (aboutEl?.getAttribute('data-bg-settled') === 'true') return true;
     if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
 
-    const overlay = ref.current?.closest<HTMLElement>('[data-active]');
-    const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
-    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
-    return seq >= 0.78;
-  }, []);
+    return readSeq() >= 0.78;
+  }, [readAbout, readSeq]);
 
   const renderPhase = useCallback(
     (t: number) => {
@@ -117,14 +124,16 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         if (el.dataset.contrary !== 'false') el.dataset.contrary = 'false';
       }
 
-      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      const aboutEl = readAbout();
       if (t >= 0.999) {
-        aboutEl?.setAttribute('data-statement-two-settled', 'true');
-      } else {
-        aboutEl?.removeAttribute('data-statement-two-settled');
+        if (aboutEl?.getAttribute('data-statement-two-settled') !== 'true') {
+          aboutEl?.setAttribute('data-statement-two-settled', 'true');
+        }
+      } else if (aboutEl?.hasAttribute('data-statement-two-settled')) {
+        aboutEl.removeAttribute('data-statement-two-settled');
       }
     },
-    [checkIsGreen]
+    [checkIsGreen, readAbout]
   );
 
   const step = useCallback(
@@ -146,26 +155,22 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
-        endAnimation('about-statement-swap');
-        const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
+        const aboutEl = readAbout();
         if (wasActiveRef.current) {
           aboutEl?.setAttribute('data-statement-two-settled', 'true');
         } else {
           aboutEl?.removeAttribute('data-statement-two-settled');
-          reverseRequestedRef.current = false;
         }
       }
     },
-    [renderPhase]
+    [readAbout, renderPhase]
   );
 
   const update = useCallback(() => {
     const el = ref.current;
     if (!el) return;
 
-    const overlay = el.closest<HTMLElement>('[data-active]');
-    const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
-    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+    const seq = readSeq();
 
     const isTestEnv =
       (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
@@ -184,15 +189,12 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     // Returning to the start of the section:
     if (seq <= 0.05) {
       wasActiveRef.current = false;
-      scrollTriggeredRef.current = false;
-      reverseRequestedRef.current = false;
       if (phaseRef.current.t > 0) {
         phaseRef.current = PHASE_AT_REST;
         if (animFrameRef.current) {
           cancelAnimationFrame(animFrameRef.current);
           animFrameRef.current = 0;
         }
-        endAnimation('about-statement-swap');
         renderPhase(0);
         return;
       }
@@ -206,15 +208,34 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       if (el.dataset.contrary !== 'false') el.dataset.contrary = 'false';
     }
 
-    // Normal time-driven execution
+    /*
+     * The handover is triggered by reaching it, and then plays on its own clock.
+     *
+     * This beat had no position gate at all: it was armed purely by a scroll
+     * gesture anywhere inside the pin, which is why one notch at the very top
+     * of the section could fire the swap before either statement had been read
+     * -- and, because the two downstream stages keyed off the attribute it sets,
+     * why the whole chain could arm itself hundreds of pixels early and then
+     * fight the position thresholds it was handing over to.
+     *
+     * `advancePhase` still owns the pace, so the 800ms cross-fade cannot be
+     * scrubbed or rushed, and reversing back up re-treads it from wherever it
+     * got to.
+     */
+    wasActiveRef.current = phaseGate(
+      seq,
+      wasActiveRef.current,
+      STATEMENT_SWAP_ENTER,
+      STATEMENT_SWAP_EXIT
+    );
+
     if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current) && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
-      startAnimation('about-statement-swap', 1200);
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
       renderPhase(phaseRef.current.t);
     }
-  }, [checkIsGreen, reducedMotion, renderPhase, step]);
+  }, [checkIsGreen, readSeq, reducedMotion, renderPhase, step]);
 
   useEffect(() => {
     update();
@@ -222,63 +243,52 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
-    const aboutEl = document.getElementById('about');
+    /*
+     * Watches only what this component reads and never writes.
+     *
+     * The statements have to flip to white the moment the ground behind them
+     * goes green, and that can happen with the reader completely still: the
+     * background beat is time-driven, so it finishes on its own clock while
+     * the scroll store -- which drops publishes below a 1e-4 delta -- has
+     * nothing to say. Without a signal the copy stays dark on green until the
+     * reader moves again.
+     *
+     * The filter is the whole point. This used to observe every attribute on
+     * `#about` *and* on `documentElement`, with `update` as the callback --
+     * and `update` itself writes `data-statement-two-settled` onto `#about`
+     * and `data-contrary` onto its own node. Every write scheduled the
+     * observer, which ran `update`, which wrote again: a self-sustaining loop,
+     * fed further by the two downstream stages writing their own `data-title-*`
+     * and `data-bg-*` onto the same section. Naming exactly the attributes
+     * this reads leaves nothing it writes inside its own watch.
+     */
+    const aboutEl = readAbout();
     let observer: MutationObserver | null = null;
     if (typeof MutationObserver !== 'undefined') {
       observer = new MutationObserver(update);
       if (aboutEl) {
-        observer.observe(aboutEl, { attributes: true });
+        observer.observe(aboutEl, {
+          attributes: true,
+          attributeFilter: ['data-bg-transition', 'data-bg-active', 'data-bg-settled'],
+        });
       }
-      observer.observe(document.documentElement, { attributes: true });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-navbar-contrary', 'data-theme'],
+      });
     }
-
-    const unsubIntent = subscribeScrollIntent((direction) => {
-      const overlay = ref.current?.closest<HTMLElement>('[data-active]');
-      const rawSeq = overlay ? overlay.style.getPropertyValue('--seq').trim() : '';
-      const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
-
-      // Only respond when in the About held sequence
-      const isSequenceActive = overlay?.dataset.active === 'true' || (seq >= 0.05 && seq <= 0.95);
-      if (!isSequenceActive) return;
-
-      if (direction === 'down') {
-        reverseRequestedRef.current = false;
-        if (!wasActiveRef.current) {
-          wasActiveRef.current = true;
-          startAnimation('about-statement-swap', 1200);
-          lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
-          if (animFrameRef.current === 0) {
-            animFrameRef.current = requestAnimationFrame(step);
-          }
-        }
-      } else if (direction === 'up') {
-        const isGreen = checkIsGreen();
-        // If green background has already retreated / is not active, allow reversing statement two back to statement one:
-        if (!isGreen && wasActiveRef.current) {
-          wasActiveRef.current = false;
-          reverseRequestedRef.current = true;
-          startAnimation('about-statement-swap', 1200);
-          lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
-          if (animFrameRef.current === 0) {
-            animFrameRef.current = requestAnimationFrame(step);
-          }
-        }
-      }
-    });
 
     return () => {
       unsubProgress();
-      unsubIntent();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       observer?.disconnect();
-      endAnimation('about-statement-swap');
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;
       }
     };
-  }, [checkIsGreen, step, update]);
+  }, [readAbout, update]);
 
   return (
     <div ref={ref} className={styles.statements} data-contrary="false">
@@ -343,7 +353,11 @@ export function About() {
         >
           {/* Shuts the world out for exactly as long as the reader is held,
               and gives it back on the way out. Hosts the bottom-up background pixel transition. */}
-          <div className={styles.heldGround} aria-hidden="true">
+          {/* `data-held-ground` rather than a class match: the footer contrast
+              check looks this up per frame, and CSS-module class names are
+              hashed, so it was reduced to a `[class*=]` substring scan over
+              every element in the document. */}
+          <div className={styles.heldGround} data-held-ground="true" aria-hidden="true">
             <BackgroundPixelTransition start={0.78} end={0.86} />
           </div>
 

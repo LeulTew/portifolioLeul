@@ -100,6 +100,7 @@ describe('useFooterContrast & checkIsFooterContrast', () => {
     });
 
     const overlay = document.createElement('div');
+    overlay.setAttribute('data-pinned-sequence', 'true');
     overlay.setAttribute('data-testid', 'sequence-overlay-0');
     overlay.setAttribute('data-active', 'true');
     overlay.style.setProperty('--seq', '0.82');

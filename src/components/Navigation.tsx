@@ -6,8 +6,16 @@ import { ThemeContext } from './sections/theme/ThemeContext';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { useActiveSection } from '@/lib/scroll/useActiveSection';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { cachedElement } from '@/lib/dom/cachedElement';
 
 const SECTION_IDS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
+
+/* Resolved once each: `checkIsContrary` runs on every frame in light mode. */
+const findSkills = cachedElement(() => document.getElementById('skills'));
+const findAbout = cachedElement(() => document.getElementById('about'));
+const findEducation = cachedElement(() =>
+  document.querySelector<HTMLElement>('#about [data-green-bg="true"]')
+);
 
 const menuItems = [
   { id: 'home', label: 'Home' },
@@ -28,7 +36,7 @@ function checkIsContrary(theme: string): boolean {
 
   // If Skills section has reached or passed under the navbar,
   // we are no longer over About.
-  const skillsEl = document.getElementById('skills');
+  const skillsEl = findSkills();
   if (skillsEl) {
     const skillsRect = skillsEl.getBoundingClientRect();
     if (skillsRect.top <= 80) {
@@ -36,7 +44,7 @@ function checkIsContrary(theme: string): boolean {
     }
   }
 
-  const aboutEl = document.getElementById('about');
+  const aboutEl = findAbout();
   if (!aboutEl) {
     return false;
   }
@@ -49,7 +57,7 @@ function checkIsContrary(theme: string): boolean {
     const isTransitioned =
       aboutEl.getAttribute('data-bg-transition') === 'true' ||
       document.documentElement.getAttribute('data-navbar-contrary') === 'true';
-    const eduEl = aboutEl.querySelector('[data-green-bg="true"]');
+    const eduEl = findEducation();
     const eduRect = eduEl?.getBoundingClientRect();
     const inEdu = eduRect ? eduRect.top <= 80 && eduRect.bottom > 80 : false;
 

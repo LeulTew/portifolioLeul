@@ -8,11 +8,7 @@ import {
   type PhaseState,
 } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import {
-  startAnimation,
-  endAnimation,
-  subscribeScrollIntent,
-} from '@/lib/scroll/animationScrollGate';
+import { createAboutReader, createSeqReader } from './seqReader';
 import styles from './TitlePixelTransition.module.css';
 
 export interface TitlePixelTransitionProps {
@@ -86,12 +82,13 @@ export function TitlePixelTransition({
 
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
-  const scrollTriggeredRef = useRef(false);
-  const reverseRequestedRef = useRef(false);
   const lastSeqRef = useRef(0);
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
   const reducedMotion = getPrefersReducedMotion();
+
+  const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
+  const readAbout = useRef(createAboutReader()).current;
 
   const [cols] = useState(DEFAULT_COLS);
   const [rows] = useState(DEFAULT_ROWS);
@@ -102,14 +99,14 @@ export function TitlePixelTransition({
 
   const checkIsGreenBg = useCallback((seq: number): boolean => {
     if (typeof document === 'undefined') return false;
-    const aboutSection = document.getElementById('about');
+    const aboutSection = readAbout();
     if (aboutSection?.getAttribute('data-bg-transition') === 'true') return true;
     if (aboutSection?.getAttribute('data-bg-active') === 'true') return true;
     if (aboutSection?.getAttribute('data-bg-settled') === 'true') return true;
     if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
     // Background pixel transition starts at 0.78 and completes at 0.86; covers title zone by ~0.82
     return seq >= 0.82;
-  }, []);
+  }, [readAbout]);
 
   const renderPhase = useCallback(
     (p: number, isLightMode: boolean, isGreenBg: boolean) => {
@@ -143,16 +140,16 @@ export function TitlePixelTransition({
           const el = dotElementsRef.current[i];
           if (el && el.dataset.active !== 'false') el.dataset.active = 'false';
         }
-        const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
-        if (aboutSection) {
-          aboutSection.removeAttribute('data-title-settled');
-          aboutSection.removeAttribute('data-title-active');
-          aboutSection.removeAttribute('data-reverse-transition-active');
+        const atRest = readAbout();
+        if (atRest) {
+          atRest.removeAttribute('data-title-settled');
+          atRest.removeAttribute('data-title-active');
+          atRest.removeAttribute('data-reverse-transition-active');
         }
         return;
       }
 
-      const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+      const aboutSection = readAbout();
       if (p < 0.98) {
         if (aboutSection) {
           aboutSection.removeAttribute('data-title-settled');
@@ -266,11 +263,10 @@ export function TitlePixelTransition({
           aboutSection.setAttribute('data-title-settled', 'true');
           aboutSection.removeAttribute('data-title-active');
           aboutSection.removeAttribute('data-reverse-transition-active');
-          window.dispatchEvent(new Event('scroll'));
         }
       }
     },
-    [dots, flippedSubtitle, flippedTitle, initialSubtitle, initialTitle]
+    [dots, flippedSubtitle, flippedTitle, initialSubtitle, initialTitle, readAbout]
   );
 
   const step = useCallback(
@@ -300,47 +296,37 @@ export function TitlePixelTransition({
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
-        endAnimation('about-title-pixel');
-        const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
+        /*
+         * The rail is told by the next frame, not by a synthetic event.
+         *
+         * This used to `dispatchEvent(new Event('scroll'))` here, which
+         * synchronously re-entered all ten per-frame scroll subscribers from
+         * inside this one's own rAF callback -- each of them reading rects and
+         * writing styles, several of them writing the very attributes this
+         * block had just set. EducationRail reads `data-title-settled` off the
+         * scroll store every frame anyway, and cannot open until the reader has
+         * scrolled the rail up to the fold regardless, so nothing needs waking.
+         */
+        const aboutSection = readAbout();
         if (wasActiveRef.current) {
           aboutSection?.setAttribute('data-title-settled', 'true');
           aboutSection?.removeAttribute('data-title-active');
           aboutSection?.removeAttribute('data-reverse-transition-active');
-          window.dispatchEvent(new Event('scroll'));
         } else {
-          reverseRequestedRef.current = false;
-          scrollTriggeredRef.current = false;
           aboutSection?.removeAttribute('data-reverse-transition-active');
           aboutSection?.removeAttribute('data-title-settled');
           aboutSection?.removeAttribute('data-title-active');
-          window.dispatchEvent(new Event('scroll'));
         }
       }
     },
-    [checkIsGreenBg, durationMs, renderPhase]
+    [checkIsGreenBg, durationMs, readAbout, renderPhase]
   );
 
   const update = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Read sequence progress from container, closest overlay, active overlay in DOM, or computed style
-    let rawSeq = container.style.getPropertyValue('--seq').trim();
-    if (!rawSeq) {
-      const overlay = container.closest<HTMLElement>('[data-active]');
-      if (overlay) rawSeq = overlay.style.getPropertyValue('--seq').trim();
-    }
-    if (!rawSeq && typeof document !== 'undefined') {
-      const activeOverlay =
-        document.querySelector<HTMLElement>('[data-testid*="sequence-overlay"][data-active="true"]') ||
-        document.querySelector<HTMLElement>('[data-active="true"][style*="--seq"]');
-      if (activeOverlay) rawSeq = activeOverlay.style.getPropertyValue('--seq').trim();
-    }
-    if (!rawSeq) {
-      const computed = getComputedStyle(container);
-      rawSeq = computed.getPropertyValue('--seq').trim();
-    }
-    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
+    const seq = readSeq();
     lastSeqRef.current = seq;
 
     const isLightMode =
@@ -372,8 +358,6 @@ export function TitlePixelTransition({
     // 4. Boundary safety override for returning to the very start of the section:
     if (seq <= 0.05) {
       wasActiveRef.current = false;
-      reverseRequestedRef.current = false;
-      scrollTriggeredRef.current = false;
       if (phaseRef.current.t <= 0.005) {
         phaseRef.current = PHASE_AT_REST;
         if (animFrameRef.current) {
@@ -385,73 +369,55 @@ export function TitlePixelTransition({
       }
     }
 
-    // 6. Discrete scroll gating:
-    // In production/browser, forward title dissolve requires that:
-    // a) The background transition has settled green (data-bg-settled="true")
-    // b) A separate, distinct user scroll down intent occurred after settling
-    const aboutSection = typeof document !== 'undefined' ? document.getElementById('about') : null;
-    const isBgSettled = aboutSection?.getAttribute('data-bg-settled') === 'true';
-    const isEducationActive =
-      aboutSection?.getAttribute('data-education-active') === 'true' ||
-      (typeof document !== 'undefined' && document.querySelector('[data-open="true"]') !== null);
-
-    const isTestEnv =
-      durationMs === 0 ||
-      (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
-      explicitProgress !== undefined;
-
-    const canActivateForward = isBgSettled && scrollTriggeredRef.current;
-    const rawActive = phaseGate(seq, wasActiveRef.current, start, Math.max(0, start - 0.05));
-    const shouldTriggerForward = isTestEnv ? rawActive : (canActivateForward || rawActive);
-
-    const active = wasActiveRef.current
-      ? (isEducationActive ? true : (!reverseRequestedRef.current && rawActive))
-      : shouldTriggerForward;
+    /*
+     * 5. Position is the trigger; time is the pace. See the long note in
+     * BackgroundPixelTransition for why -- this stage had the identical
+     * contradiction, activating from a sticky scroll-gesture flag while asking
+     * a position threshold whether to stay activated, and so flip-flopping
+     * every frame with input cancelled on each swing.
+     *
+     * Crossing `start` still buys the whole 1500ms three-phase write of
+     * "Education" at its authored speed, and it still reverses from wherever it
+     * reached when the reader scrolls back up past the deadband.
+     */
+    const active = phaseGate(
+      seq,
+      wasActiveRef.current,
+      start,
+      Math.max(0, start - 0.05)
+    );
     wasActiveRef.current = active;
 
     if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
-      startAnimation('about-title-pixel');
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
       // Synchronize text colors/state with current theme and background state even when at rest
       renderPhase(phaseRef.current.t, isLightMode, isGreenBg);
     }
-  }, [checkIsGreenBg, durationMs, end, explicitProgress, reducedMotion, renderPhase, start, step]);
+  }, [
+    checkIsGreenBg,
+    durationMs,
+    end,
+    explicitProgress,
+    readSeq,
+    reducedMotion,
+    renderPhase,
+    start,
+    step,
+  ]);
 
   useEffect(() => {
     update();
     const unsubscribeScroll = subscribeScrollProgress(update);
-    const unsubscribeIntent = subscribeScrollIntent((direction) => {
-      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
-      const bgSettled = aboutEl?.getAttribute('data-bg-settled') === 'true';
-      const isEducationActive =
-        aboutEl?.getAttribute('data-education-active') === 'true' ||
-        (typeof document !== 'undefined' && document.querySelector('[data-open="true"]') !== null);
-
-      if (direction === 'down') {
-        reverseRequestedRef.current = false;
-        if (bgSettled && !scrollTriggeredRef.current) {
-          scrollTriggeredRef.current = true;
-          update();
-        }
-      } else if (direction === 'up') {
-        if (!isEducationActive && wasActiveRef.current) {
-          reverseRequestedRef.current = true;
-          update();
-        }
-      }
-    });
 
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
     return () => {
       unsubscribeScroll();
-      unsubscribeIntent();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
-      endAnimation('about-title-pixel');
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;

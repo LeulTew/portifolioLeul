@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { loadCriticalAssets, type AssetProgress } from '@/lib/assets/criticalAssets';
 import { isSceneReady, subscribeSceneReady } from '@/lib/render/sceneReady';
+import { isContentSettled, subscribeContentSettled } from '@/lib/render/contentSettled';
 
 /**
  * Drives the fill, and decides when the page is allowed to open.
@@ -53,28 +54,37 @@ const FILL_EASING = 0.12;
 const FILL_EPSILON = 0.4;
 
 /**
- * Where the fill waits while the world finishes assembling itself.
+ * Where the fill waits while the world and the page finish assembling.
  *
  * Downloading the models is most of the wait but not all of it: they still
  * have to be decoded and their shaders compiled, which on a weak GPU is a
- * visible pause. Holding just short of full means the last sliver of the
- * letters fills as the world actually arrives, rather than the page opening
- * onto a scene that is still putting itself together.
+ * visible pause -- and the DOM layer in front of them has its own settling to
+ * do. Holding just short of full means the last sliver of the letters fills as
+ * the page actually arrives, rather than the loader pulling away from a scene
+ * and a layout that are both still putting themselves together.
  */
 const SCENE_PENDING_CEILING = 0.97;
 
 /**
- * How long the fill will wait on the scene after the bytes are all in.
+ * How long the fill will wait on the scene and the layout after the bytes are
+ * all in.
  *
  * Waiting for the world to finish building is a refinement, and a refinement
  * must not be able to hold the page shut. The download is the part that takes
- * real time and is now genuinely tracked; compiling what arrived is a moment
- * on top of it. If that signal does not come -- a scene that failed to mount,
- * a render loop the browser has parked because the tab is in the background --
- * the page opens anyway rather than leaving someone in front of letters that
- * are almost, but never quite, full.
+ * real time and is genuinely tracked; compiling what arrived and laying out
+ * the copy over it is a moment on top of it. If those signals do not come -- a
+ * scene that failed to mount, a render loop the browser has parked because the
+ * tab is in the background, a `document.fonts` that never resolves -- the page
+ * opens anyway rather than leaving someone in front of letters that are almost,
+ * but never quite, full.
+ *
+ * This was four seconds, which was not a grace period so much as a second
+ * deadline: compiling the ocean's shaders and laying out five sections of copy
+ * over them can exceed it on integrated graphics, and every time it did the
+ * loader opened onto exactly the half-built page it exists to hide. Well past
+ * any real build now, and still comfortably inside `LOADER_FAILSAFE_MS`.
  */
-const SCENE_GRACE_MS = 4000;
+const SCENE_GRACE_MS = 10_000;
 
 export function useAssetLoadingProgress(
   options: UseAssetLoadingProgressOptions = {}
@@ -98,6 +108,7 @@ export function useAssetLoadingProgress(
   const assetRatioRef = useRef(0);
   const completedRef = useRef(false);
   const sceneReadyRef = useRef(isSceneReady());
+  const contentSettledRef = useRef(isContentSettled());
   /** When the last byte landed, and the grace period started. */
   const bytesInAtRef = useRef<number | null>(null);
 
@@ -126,6 +137,13 @@ export function useAssetLoadingProgress(
   }, []);
 
   useEffect(() => {
+    contentSettledRef.current = isContentSettled();
+    return subscribeContentSettled(() => {
+      contentSettledRef.current = isContentSettled();
+    });
+  }, []);
+
+  useEffect(() => {
     const start = Date.now();
     let frame: number | null = null;
 
@@ -133,12 +151,13 @@ export function useAssetLoadingProgress(
       const elapsed = Date.now() - start;
 
       // The fill is the download, paced so it always reads as a fill, and
-      // held just short of full until the world behind it is up -- but only
-      // for as long as it is reasonable to wait for that.
+      // held just short of full until both the world behind it and the page in
+      // front of it are up -- but only for as long as it is reasonable to wait
+      // for that.
       const waitedForScene =
         bytesInAtRef.current !== null && Date.now() - bytesInAtRef.current >= SCENE_GRACE_MS;
-      const ceiling =
-        sceneReadyRef.current || waitedForScene ? 1 : SCENE_PENDING_CEILING;
+      const pageIsUp = sceneReadyRef.current && contentSettledRef.current;
+      const ceiling = pageIsUp || waitedForScene ? 1 : SCENE_PENDING_CEILING;
       const target =
         Math.min(assetRatioRef.current, elapsed / minDurationMs, ceiling) * 100;
 
