@@ -96,6 +96,11 @@ export function PinnedSequence({
         typeof document !== 'undefined' ? document.getElementById('about') : null;
       if (!aboutEl) return false;
       const flag = (name: string) => aboutEl.getAttribute(name) === 'true';
+      /*
+       * The heading's own journey, which is owed in both directions and is the
+       * only beat that can still be running once every other one has finished.
+       */
+      if (flag('data-head-travelling')) return true;
       const started =
         flag('data-statements-cleared') ||
         flag('data-bg-active') ||
@@ -139,9 +144,26 @@ export function PinnedSequence({
     const apply = () => {
       const overlay = overlayRef.current;
       if (!overlay) return;
-      // Keep applying through the chapter even once the spacer is behind us,
-      // for the same reason the observer stops hiding it.
-      if (!nearby && !chapterBusy()) return;
+      /*
+       * Keep applying through the chapter even once the spacer is behind us,
+       * for the same reason the observer stops hiding it -- and keep applying
+       * for as long as the overlay is still switched on, whatever else is true.
+       *
+       * That last clause is what guarantees the hold has a terminus. Switching
+       * the overlay off was the observer's job alone, and the observer is
+       * edge-triggered: it asks `chapterBusy()` once, at the instant the reader
+       * crosses out of the spacer's neighbourhood, and it is never called again
+       * because the intersection does not change again. A reader who leaves
+       * while the chapter is mid-beat therefore leaves it switched on for good
+       * -- and an overlay is fixed to the viewport, so "Education" stayed
+       * painted across Skills, Projects and Contact for the rest of the page.
+       *
+       * Letting the frame loop see it means the ordinary path below can turn it
+       * off on the next frame, which it does, because the spacer is no longer
+       * overhead and nothing is owed. One frame of work to close the leak, and
+       * then this returns early again and an idle frame costs nothing.
+       */
+      if (!nearby && !chapterBusy() && overlay.dataset.active !== 'true') return;
 
       const rect = spacer.getBoundingClientRect();
       const rootHeight = window.innerHeight;

@@ -276,6 +276,89 @@ describe('PinnedSequence pin extension', () => {
     );
   });
 
+  it('holds while the heading is still making its own journey', () => {
+    /*
+     * The heading's climb is the one beat that can still be running after every
+     * other has finished, which is exactly what happens on the way back up: the
+     * later beats reverse first, the chapter reads as done, and the overlay
+     * retires on top of a heading that is four-fifths of the way home.
+     *
+     * Measured before the fix: the words vanished at travel 0.84 and the rest
+     * of the movement played to a `visibility: hidden` element, with the hero's
+     * mark drifting from 36px above them to 12px because its base had been
+     * handed back to the scroll mid-escort.
+     */
+    const { about, spacer } = mountWithAbout();
+    // Everything else is done -- the state the reverse ends in.
+    about.setAttribute('data-title-settled', 'true');
+
+    expect(activeWith(spacer, about, 'data-head-travelling', SPENT)).toBe('true');
+  });
+
+  it('switches the overlay off even after the observer has stopped asking', () => {
+    /*
+     * The leak that gave the hold no terminus.
+     *
+     * Turning the overlay off was the observer's job alone, and the observer is
+     * edge-triggered: it asks whether the chapter is busy once, as the reader
+     * crosses out of the spacer's neighbourhood, and never again. Leave during
+     * a beat and it stays on for good -- "Education" painted across Skills,
+     * Projects and Contact, which is the shape this bug kept coming back in.
+     *
+     * So the observer is driven here rather than left inert, because an inert
+     * one cannot reproduce it: this only happens on the edge it declines to act
+     * on.
+     */
+    const observers: IntersectionObserverCallback[] = [];
+    const RealIO = global.IntersectionObserver;
+    global.IntersectionObserver = class {
+      root: Element | null = null;
+      rootMargin = '';
+      thresholds: ReadonlyArray<number> = [];
+      constructor(callback: IntersectionObserverCallback) {
+        observers.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords(): IntersectionObserverEntry[] { return []; }
+    } as unknown as typeof IntersectionObserver;
+
+    try {
+      const { about, spacer } = mountWithAbout();
+      const overlay = screen.getByTestId('pinned-sequence-overlay');
+
+      // Held, on screen, mid-beat.
+      about.setAttribute('data-statements-cleared', 'true');
+      spacer.getBoundingClientRect = () =>
+        ({ top: -100, bottom: 2000, height: 2400 }) as DOMRect;
+      act(() => setScrollProgress(Math.random()));
+      expect(overlay.dataset.active).toBe('true');
+
+      // The reader leaves while it is still mid-beat. The observer sees the
+      // edge, finds the chapter busy, and declines to hide -- correctly.
+      spacer.getBoundingClientRect = () => SPENT as DOMRect;
+      act(() => {
+        for (const fire of observers) {
+          fire(
+            [{ isIntersecting: false } as IntersectionObserverEntry],
+            null as unknown as IntersectionObserver
+          );
+        }
+      });
+      expect(overlay.dataset.active).toBe('true');
+
+      // The chapter now finishes, with the reader long gone and the observer
+      // never going to fire again. The frame loop has to be the one to let go.
+      about.removeAttribute('data-statements-cleared');
+      act(() => setScrollProgress(Math.random()));
+
+      expect(overlay.dataset.active).toBe('false');
+    } finally {
+      global.IntersectionObserver = RealIO;
+    }
+  });
+
   it('does not publish a position from a spacer it cannot measure', () => {
     /*
      * `localProgress` answers 0 for a zero-height spacer, and 0 is also a real

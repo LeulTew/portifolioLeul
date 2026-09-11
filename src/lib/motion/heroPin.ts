@@ -299,13 +299,58 @@ export function cueDraw(
  * to be carried off the top the moment About settled, which meant the one
  * frame everything had been built for was the frame it disappeared on.
  *
- * Matched to when About's own copy arrives: the statements begin a fourteenth
- * of the held stretch in, which at three screens is this much scroll.
+ * Matched to when About's own copy arrives -- and the copy now arrives much
+ * later than it used to, so this is much longer than it used to be.
+ *
+ * The heading no longer starts in the corner. It arrives centred, on the head
+ * of this line, and holds there alone; the reader scrolls, it climbs to its
+ * resting corner, and only then is the copy allowed in. The mark's whole reason
+ * to exist spans all of that: it draws down, finds the title, pulses on it
+ * while the title is the only thing on screen, and walks the title up before
+ * letting go. Cut short at a fourteenth of the stretch it let go in the middle
+ * of the journey it was escorting.
+ *
+ * `STATEMENT_ARRIVE.enter` in `aboutBeats.ts` is the number this is matched to.
  */
-export const CUE_REST_SCREENS = 0.14;
+export const CUE_REST_SCREENS = 0.34;
 
-/** Screens of scroll the mark takes to leave, once the copy has its turn. */
-export const CUE_FADE_SCREENS = 0.09;
+/**
+ * Screens of scroll the mark takes to leave, once the copy has its turn.
+ *
+ * A touch longer than it was, because it is now leaving from the corner rather
+ * than from mid-screen -- a shorter distance to cover, so the same duration
+ * would read as quicker.
+ */
+export const CUE_FADE_SCREENS = 0.12;
+
+/**
+ * Where the mark sits once the chapter has taken hold of it, in hero space.
+ *
+ * A constant, and that is the entire point. Everywhere else the mark's place
+ * is a function of the scroll -- `cueRest` cancels the scroll out for a while
+ * and then lets the mark go with the page -- but from the moment the line
+ * lands on About's heading the mark is escorting that heading, and the heading
+ * moves on a clock.
+ *
+ * Mixing the two cannot be made symmetric. The heading's climb takes the same
+ * 1.1s whatever the reader does, so the scroll depth at which it finishes going
+ * down is not the depth at which it finishes coming back up; a base that reads
+ * the scroll therefore lands somewhere different each way. Measured, the head
+ * sat 36px above the words going down and 12px above them coming back -- the
+ * same state, drawn differently, which is exactly what rule 8 forbids.
+ *
+ * So while the chapter holds the mark, the scroll does not get a say in where
+ * it is. It keeps the place it landed in, the heading's own displacement moves
+ * it from there, and the fade -- a pure function of the scroll, and symmetric
+ * for that reason -- is what takes it away.
+ *
+ * This is the value `cueRest` already produces for the whole of the rest, so
+ * the two agree exactly at the moment the hold begins and nothing steps.
+ */
+export function cueHeld(railTop: number, heldTop: number): number {
+  if (!Number.isFinite(railTop) || !Number.isFinite(heldTop)) return 0;
+  return railTop - heldTop;
+}
 
 /**
  * How far to push the finished mark down so it keeps its place on screen.

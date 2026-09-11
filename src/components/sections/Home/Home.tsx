@@ -6,11 +6,13 @@ import { KineticRotator } from '../../ui/KineticText';
 import { ScrollCue, cueRunForHeight, cueRunOffset } from '../../ui/ScrollCue';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
+import { cachedElement } from '@/lib/dom/cachedElement';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import {
   HERO_SCREENS,
   cueDraw,
+  cueHeld,
   cuePresence,
   cueRail,
   cueRest,
@@ -47,6 +49,20 @@ import {
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
+
+/*
+ * About's pinned overlay, which says whether the chapter has the mark.
+ *
+ * Resolved once: this is read on every frame of the hold, and the overlay is
+ * portalled to the body, so a query per frame would be a document scan for a
+ * node that does not move.
+ */
+const findAboutOverlay = cachedElement(() =>
+  typeof document === 'undefined'
+    ? null
+    : document.querySelector<HTMLElement>('[data-testid="about-sequence-overlay"]')
+);
+
 
 /**
  * Rendered width of the cue, matching the stylesheet.
@@ -260,8 +276,19 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         const rail = railRef.current;
         const scrolled = Math.max(-top, 0);
 
+        /*
+         * The mark escorts About's heading rather than letting go of it, and
+         * the escort is not here: the heading publishes how far it has climbed
+         * and `.scrollCue` adds it in CSS. Reading the heading from this
+         * callback would put the mark a frame behind it. See `HeldHeader`.
+         */
+        const overlay = findAboutOverlay();
+        const holding = overlay?.dataset.active === 'true';
+
         const y = `${Math.round(
-          rail.top - scrolled + cueRest(top, held, window.innerHeight)
+          holding
+            ? cueHeld(rail.top, held)
+            : rail.top - scrolled + cueRest(top, held, window.innerHeight)
         )}px`;
         if (root.getPropertyValue('--cue-y') !== y) root.setProperty('--cue-y', y);
 
@@ -524,7 +551,25 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
        * happens to be when this runs.
        */
       const headingStyle = window.getComputedStyle(heading);
-      const headingTop = Number.parseFloat(headingStyle.top);
+
+      /*
+       * Aimed at where the heading FIRST appears, which is the middle of the
+       * screen, not at the corner it ends up in.
+       *
+       * The heading now makes a journey: it arrives centred -- on the head of
+       * this very line -- holds there alone, and climbs to its resting corner
+       * when the reader scrolls. Its resolved `top` is therefore not one
+       * number any more; it is wherever the travel happens to have got to, and
+       * reading it here aimed the mark at whatever the heading was doing on the
+       * frame this ran.
+       *
+       * So the arrival is computed instead of read: the browser's own centring
+       * restated, `top: 50%` with a counter-translate of half the heading's
+       * height. The mark is drawn to that. Where the heading goes afterwards is
+       * not computed anywhere -- the heading publishes it. See `HeldHeader`.
+       */
+      const headingHeight = heading.getBoundingClientRect().height;
+      const headingTop = window.innerHeight / 2 - headingHeight / 2;
       if (!Number.isFinite(headingTop) || headingTop <= 0) return false;
 
       /*

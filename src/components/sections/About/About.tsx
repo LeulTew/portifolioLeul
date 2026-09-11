@@ -146,6 +146,8 @@ function TransitionMaskedOverlay() {
  */
 function HeldHeader({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  /** Where the heading sits when it is centred, so its climb can be published. */
+  const centredTopRef = useRef<number | null>(null);
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
   const animFrameRef = useRef(0);
@@ -167,11 +169,75 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
        * to live somewhere they both inherit from.
        */
       const overlay = el.closest<HTMLElement>('[data-active]') ?? el;
-      writeStyleProperty(overlay, '--head-travel', easeInOutCubic(t).toFixed(3));
+      const eased = easeInOutCubic(t);
+      const next = eased.toFixed(3);
+      const moved = overlay.style.getPropertyValue('--head-travel') !== next;
+      writeStyleProperty(overlay, '--head-travel', next);
+
+      /*
+       * And how far that has actually moved it, in pixels, for the hero's mark.
+       *
+       * The mark keeps its head a fixed gap above these words for the whole
+       * climb, so it needs this number every frame -- and the two things it
+       * must not do are guess it and chase it.
+       *
+       * Guessing means interpolating towards the resting place, which is a
+       * `clamp()` in an unregistered custom property: its computed value is the
+       * `clamp(...)` token, so there is no number there to interpolate towards.
+       *
+       * Chasing means the hero reading this heading's rect from its own frame
+       * callback. That is a whole frame late whenever this one runs second, and
+       * a frame of this climb is several pixels: measured, the gap breathed
+       * between 19px and 41px on its way back down, which is a quarter of the
+       * gap itself.
+       *
+       * So the heading publishes, in the same breath as the write that moved
+       * it. The rect below is read after that write, so it is this frame's
+       * position, and the mark adds it in CSS -- which means the two are
+       * composited from one value on one frame and cannot disagree at all,
+       * whatever order their callbacks happen to run in.
+       *
+       * Only on frames that moved: `--head-travel` has a terminal state at both
+       * ends, so an idle frame does no layout work here.
+       */
+      if (moved) {
+        const top = el.getBoundingClientRect().top;
+        if (eased <= 0) centredTopRef.current = top;
+        const centred = centredTopRef.current;
+        if (centred !== null) {
+          writeStyleProperty(
+            document.documentElement,
+            '--head-offset',
+            `${Math.round(top - centred)}px`
+          );
+        }
+      }
+
       // Published for the statements, which may not arrive until it lands.
       const aboutEl = readAbout();
       if (aboutEl) {
         writeAttribute(aboutEl, 'data-head-settled', t >= 0.999 ? 'true' : null);
+        /*
+         * And separately: that the chapter still owes this movement.
+         *
+         * `data-head-settled` cannot say it. It is absent both before the climb
+         * and after it has fully reversed, so it cannot tell a heading that is
+         * mid-journey from one that is standing still at either end -- and the
+         * pin needs exactly that distinction.
+         *
+         * Without it the climb was only ever half-protected. Going down the
+         * later beats keep the chapter busy, so the pin holds; coming back up
+         * they finish reversing first, the chapter reads as done while the
+         * heading is still walking, and the overlay retires on top of it. The
+         * reader saw the words vanish outright at four-fifths of the way back
+         * and the rest of the movement played to a hidden element -- which is
+         * rule 6 in reverse, and rule 8 with it.
+         */
+        writeAttribute(
+          aboutEl,
+          'data-head-travelling',
+          t > 0.001 && t < 0.999 ? 'true' : null
+        );
       }
     },
     [readAbout]

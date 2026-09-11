@@ -417,7 +417,17 @@
    * its resting place above the heading.
    */
   position: fixed;
-  top: var(--cue-y, 100vh);
+  /*
+   * Plus however far About's heading has climbed out of the centre.
+   *
+   * The mark escorts it -- head a fixed gap above the words the whole way --
+   * and the heading publishes its own displacement rather than the mark
+   * measuring it. Added here rather than folded into `--cue-y` so that both
+   * are composited from one value on one frame: a JavaScript escort reads the
+   * heading from a different frame callback and is a frame behind it whenever
+   * that callback runs second, which the gap shows as a breath.
+   */
+  top: calc(var(--cue-y, 100vh) + var(--head-offset, 0px));
   bottom: auto;
   /*
    * Written from the heading's own inset, so the line stands on the same
