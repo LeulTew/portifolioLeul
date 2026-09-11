@@ -11,8 +11,10 @@ import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { createAboutReader, createSeqReader } from './seqReader';
-import { writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import {
+  HEAD_SETTLE,
+  STATEMENT_ARRIVE,
   STATEMENT_CLEAR,
   STATEMENT_CLEAR_SPAN,
   STATEMENT_SWAP,
@@ -129,6 +131,131 @@ function TransitionMaskedOverlay() {
   );
 }
 
+
+/**
+ * The heading, and the one journey it makes.
+ *
+ * It arrives centred -- on the head of the line the hero draws down the page,
+ * which is where the reader is already looking -- and stays there, alone, until
+ * the reader scrolls. Then it climbs to the corner it occupies for the rest of
+ * the chapter, and only once it has landed does anything else appear.
+ *
+ * `--head-travel` is 0 centred and 1 at rest. The CSS interpolates `top` and a
+ * counter-translate between the two, so the centring is the browser's own and
+ * nothing here has to measure the heading.
+ */
+function HeldHeader({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const wasActiveRef = useRef(false);
+  const animFrameRef = useRef(0);
+  const lastFrameRef = useRef(0);
+  const reducedMotion = getPrefersReducedMotion();
+
+  const readSeq = useRef(createSeqReader(() => ref.current)).current;
+  const readAbout = useRef(createAboutReader()).current;
+
+  const renderPhase = useCallback(
+    (t: number) => {
+      const el = ref.current;
+      if (!el) return;
+      /*
+       * Written on the overlay, not on this node.
+       *
+       * The masked mirror of the heading carries the same class from a
+       * different subtree and has to travel with it exactly, so the value has
+       * to live somewhere they both inherit from.
+       */
+      const overlay = el.closest<HTMLElement>('[data-active]') ?? el;
+      writeStyleProperty(overlay, '--head-travel', easeInOutCubic(t).toFixed(3));
+      // Published for the statements, which may not arrive until it lands.
+      const aboutEl = readAbout();
+      if (aboutEl) {
+        writeAttribute(aboutEl, 'data-head-settled', t >= 0.999 ? 'true' : null);
+      }
+    },
+    [readAbout]
+  );
+
+  const step = useCallback(
+    (now: number) => {
+      animFrameRef.current = 0;
+      const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7;
+      lastFrameRef.current = now;
+
+      phaseRef.current = advancePhase(
+        phaseRef.current,
+        wasActiveRef.current,
+        dt,
+        HEAD_SETTLE.durationMs
+      );
+      renderPhase(phaseRef.current.t);
+
+      if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        lastFrameRef.current = 0;
+      }
+    },
+    [renderPhase]
+  );
+
+  const update = useCallback(() => {
+    if (!ref.current) return;
+    const seq = readSeq();
+
+    if (
+      (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
+      reducedMotion
+    ) {
+      // Position-mapped, with no clock in between.
+      renderPhase(seq >= HEAD_SETTLE.enter ? 1 : 0);
+      return;
+    }
+
+    /*
+     * Position is the whole trigger. This is the chapter's first beat, and the
+     * scroll that brought the reader here IS the request for it -- there is no
+     * earlier beat for it to wait on, and nothing to ask twice for.
+     */
+    wasActiveRef.current = phaseGate(
+      seq,
+      wasActiveRef.current,
+      HEAD_SETTLE.enter,
+      HEAD_SETTLE.exit
+    );
+
+    if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current) && animFrameRef.current === 0) {
+      lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+      animFrameRef.current = requestAnimationFrame(step);
+    } else if (animFrameRef.current === 0) {
+      renderPhase(phaseRef.current.t);
+    }
+  }, [readSeq, reducedMotion, renderPhase, step]);
+
+  useEffect(() => {
+    update();
+    const unsubscribe = subscribeScrollProgress(update);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, { passive: true });
+    return () => {
+      unsubscribe();
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update);
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = 0;
+      }
+    };
+  }, [update]);
+
+  return (
+    <div ref={ref} className={styles.heldHeader} data-testid="about-held-header">
+      {children}
+    </div>
+  );
+}
+
 interface StatementsContainerProps {
   children: React.ReactNode;
 }
@@ -137,6 +264,8 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
+  const arrivePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const wasArrivingRef = useRef(false);
   const clearPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasClearingRef = useRef(false);
   const animFrameRef = useRef(0);
@@ -158,7 +287,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   }, [readAbout, readSeq]);
 
   const renderPhase = useCallback(
-    (t: number, clear: number) => {
+    (t: number, clear: number, arrive: number) => {
       const el = ref.current;
       if (!el) return;
 
@@ -172,8 +301,20 @@ function StatementsContainer({ children }: StatementsContainerProps) {
        * would snap statement two back to full presence first if the reader
        * arrived at 0.70 with the swap still mid-flight.
        */
-      const present = 1 - clear;
-      const presentOn = 1 - easeInOutCubic(clear);
+      /*
+       * Three factors, multiplied: arriving, handing over, and leaving.
+       *
+       * `arrive` is the statements' own entrance, and it is why they are no
+       * longer on screen the moment the section is. The heading used to be
+       * placed at its resting position from the first frame and the copy
+       * ramped in three hundredths of the stretch later, so the name of the
+       * section and its first statement introduced themselves together and
+       * neither was read. Now the heading travels in alone, lands, and only
+       * then is this allowed to start.
+       */
+      const arrived = easeInOutCubic(arrive);
+      const present = (1 - clear) * arrive;
+      const presentOn = (1 - easeInOutCubic(clear)) * arrived;
 
       /*
        * Handover curves: zero empty gap. As statement one ramps out, statement
@@ -244,14 +385,25 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         dt,
         STATEMENT_CLEAR.durationMs
       );
+      arrivePhaseRef.current = advancePhase(
+        arrivePhaseRef.current,
+        wasArrivingRef.current,
+        dt,
+        STATEMENT_ARRIVE.durationMs
+      );
 
-      renderPhase(phaseRef.current.t, clearPhaseRef.current.t);
+      renderPhase(
+        phaseRef.current.t,
+        clearPhaseRef.current.t,
+        arrivePhaseRef.current.t
+      );
 
       // One loop for both beats: a second `requestAnimationFrame` would run
       // the same composition twice per frame and publish it twice.
       const running =
         !isPhaseAtTarget(phaseRef.current, wasActiveRef.current) ||
-        !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current);
+        !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current) ||
+        !isPhaseAtTarget(arrivePhaseRef.current, wasArrivingRef.current);
 
       if (running) {
         animFrameRef.current = requestAnimationFrame(step);
@@ -287,7 +439,11 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         1,
         Math.max(0, (seq - STATEMENT_CLEAR.enter) / STATEMENT_CLEAR_SPAN)
       );
-      renderPhase(t, clear);
+      const arrive = Math.min(
+        1,
+        Math.max(0, (seq - STATEMENT_ARRIVE.enter) / STATEMENT_CLEAR_SPAN)
+      );
+      renderPhase(t, clear, arrive);
       return;
     }
 
@@ -310,14 +466,20 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     if (seq <= 0.05 && !chapterLeaving) {
       wasActiveRef.current = false;
       wasClearingRef.current = false;
-      if (phaseRef.current.t > 0 || clearPhaseRef.current.t > 0) {
+      wasArrivingRef.current = false;
+      if (
+        phaseRef.current.t > 0 ||
+        clearPhaseRef.current.t > 0 ||
+        arrivePhaseRef.current.t > 0
+      ) {
         phaseRef.current = PHASE_AT_REST;
         clearPhaseRef.current = PHASE_AT_REST;
+        arrivePhaseRef.current = PHASE_AT_REST;
         if (animFrameRef.current) {
           cancelAnimationFrame(animFrameRef.current);
           animFrameRef.current = 0;
         }
-        renderPhase(0, 0);
+        renderPhase(0, 0, 0);
         return;
       }
     }
@@ -346,6 +508,23 @@ function StatementsContainer({ children }: StatementsContainerProps) {
      * scrubbed or rushed, and reversing back up re-treads it from wherever it
      * got to.
      */
+    /*
+     * Nothing arrives until the heading has finished travelling.
+     *
+     * Serialised on the heading's completion rather than on a threshold of its
+     * own: the reader picks the speed, so no gap between two positions is wide
+     * enough to keep two movements apart.
+     */
+    const headSettled = aboutEl?.getAttribute('data-head-settled') === 'true';
+    wasArrivingRef.current =
+      headSettled &&
+      phaseGate(
+        seq,
+        wasArrivingRef.current,
+        STATEMENT_ARRIVE.enter,
+        STATEMENT_ARRIVE.exit
+      );
+
     wasActiveRef.current = phaseGate(
       seq,
       wasActiveRef.current,
@@ -380,13 +559,18 @@ function StatementsContainer({ children }: StatementsContainerProps) {
 
     const running =
       !isPhaseAtTarget(phaseRef.current, wasActiveRef.current) ||
-      !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current);
+      !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current) ||
+      !isPhaseAtTarget(arrivePhaseRef.current, wasArrivingRef.current);
 
     if (running && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
-      renderPhase(phaseRef.current.t, clearPhaseRef.current.t);
+      renderPhase(
+        phaseRef.current.t,
+        clearPhaseRef.current.t,
+        arrivePhaseRef.current.t
+      );
     }
   }, [checkIsGreen, readAbout, readSeq, reducedMotion, renderPhase, step]);
 
@@ -422,7 +606,12 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       if (aboutEl) {
         observer.observe(aboutEl, {
           attributes: true,
-          attributeFilter: ['data-bg-transition', 'data-bg-active', 'data-bg-settled'],
+          attributeFilter: [
+            'data-bg-transition',
+            'data-bg-active',
+            'data-bg-settled',
+            'data-head-settled',
+          ],
         });
       }
       observer.observe(document.documentElement, {
@@ -522,7 +711,7 @@ export function About() {
             stretch and flips horizontally left-to-right into Education once the
             background transition finishes fully.
           */}
-          <div className={styles.heldHeader} data-testid="about-held-header">
+          <HeldHeader>
             <TitlePixelTransition
               start={0.86}
               end={0.94}
@@ -531,7 +720,7 @@ export function About() {
               flippedTitle="Education"
               flippedSubtitle="Academic Foundations & Industry Certifications"
             />
-          </div>
+          </HeldHeader>
 
           {/* Masked transition overlay: pure white text cutout over rising green transition background */}
           <TransitionMaskedOverlay />

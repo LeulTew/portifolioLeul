@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { About } from './About';
 
 /**
@@ -23,30 +23,59 @@ import { About } from './About';
  * frame" is exactly the quantity that was wrong and is checkable anywhere.
  */
 describe('what an idle frame costs', () => {
-  let setProperty: ReturnType<typeof vi.spyOn>;
-  let setAttribute: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    setProperty = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty');
-    setAttribute = vi.spyOn(Element.prototype, 'setAttribute');
-  });
-  afterEach(() => {
-    setProperty.mockRestore();
-    setAttribute.mockRestore();
-  });
-
-  /** Publishes a frame at the given position and counts what it wrote. */
-  const frameAt = async (seq: string) => {
+  /*
+   * Spied per element rather than on `CSSStyleDeclaration.prototype`.
+   *
+   * A prototype spy catches every style write on the page, including GSAP's
+   * ticker driving the Education rail's opening timeline -- which is a real
+   * animation on its own clock and has every right to be writing. That made
+   * this fail intermittently depending on where the rail happened to be, which
+   * is the worst kind of test: it goes red for something it is not measuring.
+   *
+   * The claim here is narrow and worth pinning exactly: the nodes About writes
+   * to on every frame must not be written to on a frame where nothing moved.
+   */
+  const watch = () => {
+    const statements = screen
+      .getByTestId('about-left-column')
+      .closest<HTMLElement>('[data-contrary]')!;
     const overlay = screen.getByTestId('about-sequence-overlay');
-    overlay.style.setProperty('--seq', seq);
-    setProperty.mockClear();
-    setAttribute.mockClear();
+    const about = document.getElementById('about')!;
+
+    const calls: string[] = [];
+    for (const [name, node] of [
+      ['statements', statements],
+      ['overlay', overlay],
+      ['about', about],
+    ] as const) {
+      const style = node.style;
+      const original = style.setProperty.bind(style);
+      style.setProperty = (property: string, value: string | null, priority?: string) => {
+        // `--seq` on the overlay is the harness standing in for the scroll store.
+        if (!(name === 'overlay' && property === '--seq')) {
+          calls.push(`${name}:${property}`);
+        }
+        return original(property, value, priority);
+      };
+      const setAttr = node.setAttribute.bind(node);
+      node.setAttribute = (attribute: string, value: string) => {
+        calls.push(`${name}:@${attribute}`);
+        return setAttr(attribute, value);
+      };
+    }
+    return calls;
+  };
+
+  const publish = async () => {
     window.dispatchEvent(new Event('scroll'));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    return {
-      properties: setProperty.mock.calls.length,
-      attributes: setAttribute.mock.calls.length,
-    };
+  };
+
+  const settleAt = async (seq: string) => {
+    screen
+      .getByTestId('about-sequence-overlay')
+      .style.setProperty('--seq', seq);
+    await publish();
   };
 
   it.each([
@@ -57,43 +86,36 @@ describe('what an idle frame costs', () => {
     ['fully green', '0.95'],
   ])('writes nothing on a repeat frame %s', async (_name, seq) => {
     render(<About />);
+    await settleAt(seq);
 
-    // First frame at this position does the real work.
-    await frameAt(seq);
-    // Every frame after it, with the reader still, must be free.
-    const repeat = await frameAt(seq);
+    // Everything real happened on the frame above. This one must be free.
+    const calls = watch();
+    await publish();
 
-    expect(repeat.properties).toBe(0);
-    expect(repeat.attributes).toBe(0);
+    expect(calls).toEqual([]);
   });
 
   it('writes nothing across many still frames in a row', async () => {
     render(<About />);
-    await frameAt('0.60');
+    await settleAt('0.60');
 
-    const overlay = screen.getByTestId('about-sequence-overlay');
-    setProperty.mockClear();
-    setAttribute.mockClear();
+    const calls = watch();
     for (let frame = 0; frame < 30; frame++) {
-      overlay.style.setProperty('--seq', '0.60');
       window.dispatchEvent(new Event('scroll'));
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // The 30 `--seq` writes above are the harness standing in for the scroll
-    // store, so they are discounted; nothing the section itself owns may move.
-    const written = setProperty.mock.calls as unknown as string[][];
-    const own = written.filter((call) => call[0] !== '--seq');
-    expect(own.length).toBe(0);
-    expect(setAttribute.mock.calls.length).toBe(0);
+    expect(calls).toEqual([]);
   });
 
   it('does write when the reader actually moves', async () => {
     // The guard must not be so eager that the section stops animating.
     render(<About />);
-    await frameAt('0.40');
-    const moved = await frameAt('0.44');
+    await settleAt('0.40');
 
-    expect(moved.properties).toBeGreaterThan(0);
+    const calls = watch();
+    await settleAt('0.44');
+
+    expect(calls.length).toBeGreaterThan(0);
   });
 });

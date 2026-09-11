@@ -24,6 +24,7 @@ Detailed rule modules are located in `.agent/rules/`:
 - [`workflow.md`](./.agent/rules/workflow.md): Commit conventions, WSL fish GitHub CLI (`gh`), issue pipelines, **Local Bun Verification (Zero CI Waiting)**.
 - [`ui-design.md`](./.agent/rules/ui-design.md): 90/10 color distribution, WCAG contrast, mobile touch targets (48x48px), anti-slop rules.
 - [`animations-3d.md`](./.agent/rules/animations-3d.md): WebGL memory disposal, 60fps budget, GPU transforms, reduced motion a11y.
+- [`scroll-choreography.md`](./.claude/rules/scroll-choreography.md): **The scroll animation contract.** One trigger per beat, position triggers and time paces, never cancel input, beats serialised by completion, gesture + cooldown before the next, nothing skippable, nothing pops, reverse mirrors forward. Read before touching any scroll-driven animation.
 - [`review.md`](./.agent/rules/review.md): 16-Phase Production-Grade Code Review Contract (100% Local Bun Verification).
 - [`PRODUCTION_GRADE_REVIEW_PROMPT.md`](./.agent/rules/PRODUCTION_GRADE_REVIEW_PROMPT.md): Canonical review standard.
 

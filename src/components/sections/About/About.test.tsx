@@ -231,6 +231,76 @@ describe('About sequence pacing', () => {
   });
 });
 
+describe('About introduces one thing at a time', () => {
+  const seqTo = async (value: string) => {
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    overlay.style.setProperty('--seq', value);
+    window.dispatchEvent(new Event('scroll'));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  };
+
+  const header = () => screen.getByTestId('about-held-header');
+  const statements = () =>
+    screen.getByTestId('about-left-column').closest<HTMLElement>('[data-contrary]')!;
+  const travel = () =>
+    Number.parseFloat(
+      screen
+        .getByTestId('about-sequence-overlay')
+        .style.getPropertyValue('--head-travel') || '0'
+    );
+
+  it('opens with the heading centred and nothing else on screen', async () => {
+    render(<About />);
+    await seqTo('0.00');
+
+    expect(travel()).toBe(0);
+    expect(header()).toBeInTheDocument();
+    expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
+    expect(statements().style.getPropertyValue('--two-in')).toBe('0.000');
+  });
+
+  it('travels the heading to its resting corner before anything joins it', async () => {
+    render(<About />);
+    await seqTo('0.10');
+
+    expect(travel()).toBe(1);
+    // Landed, but the copy has not started yet: its own window opens later.
+    expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
+  });
+
+  it('brings the copy in only after the heading has landed', async () => {
+    render(<About />);
+    await seqTo('0.30');
+
+    expect(travel()).toBe(1);
+    expect(Number.parseFloat(statements().style.getPropertyValue('--one-in'))).toBe(1);
+  });
+
+  it('never has the heading travelling while the copy is arriving', async () => {
+    /*
+     * The regression this whole beat exists to prevent: two things introducing
+     * themselves at once. Wherever the heading is still moving, the copy must
+     * be at nothing.
+     */
+    render(<About />);
+    for (const seq of ['0.00', '0.02', '0.04', '0.06', '0.08']) {
+      await seqTo(seq);
+      if (travel() < 1) {
+        expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
+      }
+    }
+  });
+
+  it('publishes the heading landing, so the copy can wait on it', async () => {
+    render(<About />);
+    await seqTo('0.00');
+    expect(document.getElementById('about')?.getAttribute('data-head-settled')).toBeNull();
+
+    await seqTo('0.30');
+    expect(document.getElementById('about')?.getAttribute('data-head-settled')).toBe('true');
+  });
+});
+
 describe('About statement two clears before the background rises', () => {
   /*
    * The reported bug: the right-hand statement never went away. It sat over
@@ -332,13 +402,28 @@ describe('About statements contrast reactivity', () => {
     const aboutSection = document.getElementById('about');
     expect(statementsContainer).toBeInTheDocument();
 
-    // Initially on Statement One
-    expect(statementsContainer?.style.getPropertyValue('--one-in')).toBe('1.000');
+    /*
+     * Nothing at all at the start, which is the point of the intro.
+     *
+     * The heading arrives centred and alone, travels to its corner, and only
+     * then is the copy allowed in. Statement one used to be at full presence
+     * from the very first frame -- the container wrote `--one-in` as `1 - t`
+     * with `t` at 0 -- so the name of the section and its first statement
+     * introduced themselves in the same frame and neither was read.
+     */
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    expect(statementsContainer?.style.getPropertyValue('--one-in')).toBe('0.000');
     expect(statementsContainer?.style.getPropertyValue('--two-in')).toBe('0.000');
     expect(aboutSection?.getAttribute('data-statements-cleared')).toBeNull();
 
+    // Once the heading has landed, statement one is up.
+    overlay.style.setProperty('--seq', '0.30');
+    window.dispatchEvent(new Event('scroll'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(statementsContainer?.style.getPropertyValue('--one-in')).toBe('1.000');
+    expect(statementsContainer?.style.getPropertyValue('--two-in')).toBe('0.000');
+
     // Simulate sequence progress past handover (seq = 0.60)
-    const overlay = screen.getByTestId('about-sequence-overlay');
     overlay.style.setProperty('--seq', '0.60');
     window.dispatchEvent(new Event('scroll'));
     await new Promise((resolve) => setTimeout(resolve, 50));

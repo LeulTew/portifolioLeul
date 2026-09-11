@@ -152,7 +152,37 @@
  */
 .heldHeader {
   position: absolute;
-  top: var(--head-lead);
+  /*
+   * Centred at the start, at its resting lead once it has travelled.
+   *
+   * `--head-travel` is 0 when the heading first appears -- on the head of the
+   * line the hero draws down the page, which is where the reader is already
+   * looking -- and 1 once the reader has scrolled it into the corner it
+   * occupies for the rest of the chapter.
+   *
+   * The centring is `top: 50%` with a counter-translate of half the element's
+   * own height, so it is the browser's, and nothing in JavaScript has to
+   * measure a heading whose size is a `clamp()` of the viewport. Both terms are
+   * interpolated by the same number, which keeps the two ends exact: at 0 this
+   * is precisely `top: 50%; translateY(-50%)`, and at 1 precisely
+   * `top: var(--head-lead); translateY(0)`.
+   *
+   * Published on the overlay rather than on this element, because the masked
+   * mirror of the heading carries this same class from a different subtree and
+   * has to travel with it exactly. A default declared here would shadow the
+   * inherited value and leave the mirror centred while the real heading sits in
+   * the corner; the fallback lives in the `var()` calls instead.
+   *
+   * `top` rather than a transform for the travel because the distance is a
+   * percentage of the viewport and a fraction of the element's own height at
+   * once, which a single transform cannot express -- and this animates once,
+   * over a second, on a `position: absolute` element in a fixed overlay with
+   * nothing else in its containing block. There is no layout to thrash.
+   */
+  top: calc(
+    50% * (1 - var(--head-travel, 0)) + var(--head-lead) * var(--head-travel, 0)
+  );
+  transform: translate3d(0, calc(-50% * (1 - var(--head-travel, 0))), 0);
   left: 0;
   right: 0;
   padding-left: var(--about-indent);

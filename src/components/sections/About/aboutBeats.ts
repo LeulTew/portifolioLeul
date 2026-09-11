@@ -124,3 +124,43 @@ export const BEAT_REST_MS = 420;
  * someone reading at a normal pace never notices they were held.
  */
 export const BEAT_COOLDOWN_MS = 1200;
+
+/**
+ * The heading travelling from where the reader was looking to where it lives.
+ *
+ * The hero hands over by drawing a line down the page, and the head of that
+ * line comes to rest in the middle of the screen. That is where the reader is
+ * looking, so that is where the name of the section appears -- centred, on the
+ * mark, with nothing else on screen competing with it.
+ *
+ * Then the reader scrolls, and the heading climbs to the corner it occupies for
+ * the rest of the chapter. Only once it has arrived does anything else.
+ *
+ * This beat used not to exist. The heading was simply placed at its resting
+ * position from the first frame, and `STATEMENT_LAYERS` starts statement one at
+ * 0.07 -- three hundredths of the stretch after the heading's own ramp ends --
+ * so the name and the first statement arrived within a few frames of each
+ * other. Two things introducing themselves at once, neither of them read.
+ */
+export const HEAD_SETTLE: StatementBeat = {
+  enter: 0.045,
+  exit: round(0.045 - DEADBAND / 2),
+  durationMs: 1100,
+};
+
+/**
+ * Statement one arriving, once the heading has finished getting out of its way.
+ *
+ * Serialised on the heading rather than on a position of its own, for the
+ * reason §4 of the choreography contract gives: the reader picks the speed, so
+ * no gap between two thresholds is wide enough to keep them apart.
+ *
+ * No gesture of its own, unlike the beats further down the chapter. This one is
+ * the answer to the heading landing -- the reader has already asked, by
+ * scrolling the heading into place -- so it owes them the rest and then arrives.
+ */
+export const STATEMENT_ARRIVE: StatementBeat = {
+  enter: round(TWO.start - TWO_FEATHER * 3),
+  exit: round(TWO.start - TWO_FEATHER * 3 - DEADBAND),
+  durationMs: 900,
+};
