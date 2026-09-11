@@ -103,7 +103,7 @@ function Record({
             {record.logo === 'hilcoe' ? (
               <HilcoeMark className={styles.markArt} />
             ) : (
-              <SaintJosephMark className={styles.seal} />
+              <SaintJosephMark />
             )}
           </span>
         </div>
