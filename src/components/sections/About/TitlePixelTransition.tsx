@@ -209,6 +209,21 @@ export function TitlePixelTransition({
       }
 
       const totalDots = dots.length;
+      const aboutSection = readAbout();
+      if (aboutSection) {
+        const moving = p > 0 && p < 1;
+        writeAttribute(aboutSection, 'data-title-settled', p >= 1 ? 'true' : null);
+        writeAttribute(
+          aboutSection,
+          'data-title-active',
+          moving && wasActiveRef.current ? 'true' : null
+        );
+        writeAttribute(
+          aboutSection,
+          'data-reverse-transition-active',
+          moving && !wasActiveRef.current ? 'true' : null
+        );
+      }
 
       // Step 0: Initial state before pixel dissolve begins (p <= 0.02)
       if (p <= 0.02) {
@@ -223,33 +238,7 @@ export function TitlePixelTransition({
           const el = dotElementsRef.current[i];
           if (el && el.dataset.active !== 'false') el.dataset.active = 'false';
         }
-        const atRest = readAbout();
-        if (atRest) {
-          writeAttribute(atRest, 'data-title-settled', null);
-          writeAttribute(atRest, 'data-title-active', null);
-          writeAttribute(atRest, 'data-reverse-transition-active', null);
-        }
         return;
-      }
-
-      const aboutSection = readAbout();
-      if (p < 0.98 && aboutSection) {
-        /*
-         * Guarded, because this runs on every frame of the beat.
-         *
-         * `#about` is watched by `body:has(#about[data-...])` selectors, and an
-         * attribute set to the value it already holds still marks the subtree
-         * dirty and forces those to be re-evaluated against the document. Doing
-         * that three times a frame for a second and a half, to write values
-         * that changed once, is most of what this beat costs.
-         */
-        writeAttribute(aboutSection, 'data-title-settled', null);
-        writeAttribute(aboutSection, 'data-title-active', wasActiveRef.current ? 'true' : null);
-        writeAttribute(
-          aboutSection,
-          'data-reverse-transition-active',
-          wasActiveRef.current ? null : 'true'
-        );
       }
 
       // Step 1: Phase 1 (0.02 to 0.45) - White pixel dots spawn with organic noise, covering & dissolving "About Me"
@@ -356,13 +345,6 @@ export function TitlePixelTransition({
         if (el.dataset.active !== activeStr) el.dataset.active = activeStr;
       }
 
-      if (p >= 0.98) {
-        if (aboutSection && aboutSection.getAttribute('data-title-settled') !== 'true') {
-          aboutSection.setAttribute('data-title-settled', 'true');
-          aboutSection.removeAttribute('data-title-active');
-          aboutSection.removeAttribute('data-reverse-transition-active');
-        }
-      }
     },
     [
       dots,
@@ -404,30 +386,9 @@ export function TitlePixelTransition({
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
-        /*
-         * The rail is told by the next frame, not by a synthetic event.
-         *
-         * This used to `dispatchEvent(new Event('scroll'))` here, which
-         * synchronously re-entered all ten per-frame scroll subscribers from
-         * inside this one's own rAF callback -- each of them reading rects and
-         * writing styles, several of them writing the very attributes this
-         * block had just set. EducationRail reads `data-title-settled` off the
-         * scroll store every frame anyway, and cannot open until the reader has
-         * scrolled the rail up to the fold regardless, so nothing needs waking.
-         */
-        const aboutSection = readAbout();
-        if (wasActiveRef.current) {
-          aboutSection?.setAttribute('data-title-settled', 'true');
-          aboutSection?.removeAttribute('data-title-active');
-          aboutSection?.removeAttribute('data-reverse-transition-active');
-        } else {
-          aboutSection?.removeAttribute('data-reverse-transition-active');
-          aboutSection?.removeAttribute('data-title-settled');
-          aboutSection?.removeAttribute('data-title-active');
-        }
       }
     },
-    [checkIsGreenBg, durationMs, readAbout, renderPhase]
+    [checkIsGreenBg, durationMs, renderPhase]
   );
 
   const update = useCallback(() => {
