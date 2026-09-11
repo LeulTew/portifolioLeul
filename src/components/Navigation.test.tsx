@@ -366,10 +366,46 @@ describe('Navigation', () => {
   });
 
   describe('contrary navigation in light mode', () => {
-    it('applies contrary styles in light mode when about section has transitioned', () => {
+    it('stays dark while the rise is under way but has not reached the bar', () => {
+      /*
+       * The bar sits at the very top of the screen, which is the LAST place a
+       * wall climbing from the bottom reaches. It used to take its cue from
+       * `data-bg-transition`, published when the rise is 95% done, so it spent
+       * almost the whole climb dark on green. `data-nav-contrast` is measured
+       * against the pixel grid instead, and is absent until the green is
+       * actually up there.
+       */
       const aboutEl = document.createElement('section');
       aboutEl.id = 'about';
       aboutEl.setAttribute('data-bg-transition', 'true');
+      vi.spyOn(aboutEl, 'getBoundingClientRect').mockReturnValue({
+        top: 0,
+        bottom: 500,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 500,
+      } as DOMRect);
+      document.body.appendChild(aboutEl);
+
+      render(
+        <ThemeContext.Provider value={{ theme: 'light', toggleTheme: mockToggleTheme }}>
+          <Navigation scrollToSection={mockScrollToSection} />
+        </ThemeContext.Provider>
+      );
+
+      expect(document.querySelector('header')).not.toHaveAttribute(
+        'data-contrary',
+        'true'
+      );
+
+      document.body.removeChild(aboutEl);
+    });
+
+    it('applies contrary styles in light mode once the green has reached the bar', () => {
+      document.documentElement.setAttribute('data-nav-contrast', 'true');
+      const aboutEl = document.createElement('section');
+      aboutEl.id = 'about';
       vi.spyOn(aboutEl, 'getBoundingClientRect').mockReturnValue({
         top: 0,
         bottom: 500,
@@ -390,6 +426,7 @@ describe('Navigation', () => {
       expect(header).toHaveAttribute('data-contrary', 'true');
 
       document.body.removeChild(aboutEl);
+      document.documentElement.removeAttribute('data-nav-contrast');
     });
 
     it('does not apply contrary styles in dark mode even if about has transitioned', () => {

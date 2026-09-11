@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { subscribeScrollProgress } from './scrollProgress';
 import { useActiveSection } from './useActiveSection';
 import { cachedElement, writeAttribute } from '@/lib/dom/cachedElement';
+import { isChapterBehind } from './chapterBehind';
 
 const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
@@ -83,16 +84,18 @@ export function checkIsFooterContrast(): boolean {
     return false;
   }
 
+  /*
+   * Ask the wall, not the scroll position.
+   *
+   * This used to return true at `seq >= 0.78`, which is where the rise is
+   * TRIGGERED. The rise then climbs from the bottom of the screen over a second
+   * and a half, and the footer sits sixty pixels off the bottom edge -- so it
+   * was switching to light ink a whole beat before the green got anywhere near
+   * it, sitting pale on the old ground until the wall caught up.
+   */
   const overlay = findSequenceOverlay();
-  const activeOverlay = overlay?.dataset.active === 'true' ? overlay : null;
-
-  if (activeOverlay) {
-    const rawSeq = activeOverlay.style.getPropertyValue('--seq').trim();
-    const seq = rawSeq ? Number.parseFloat(rawSeq) : 0;
-    // Green pixels rise starting at seq = 0.78
-    if (seq >= 0.78) {
-      return true;
-    }
+  if (overlay?.dataset.active === 'true' && isChapterBehind(footerY)) {
+    return true;
   }
 
   // If About has solidified green transition AND is currently holding the screen
@@ -111,6 +114,41 @@ export function checkIsFooterContrast(): boolean {
   return false;
 }
 
+
+/** Where the navigation bar's ink sits, measured from the top of the screen. */
+const NAV_Y = 40;
+
+/**
+ * Whether the navigation bar is currently standing on the chapter colour.
+ *
+ * Same question as the footer's, asked at the top of the screen instead of the
+ * bottom -- and therefore answered last rather than first while the wall
+ * climbs. Education counts too: once its stage covers the bar, the bar is on
+ * green whatever the pixel grid is doing.
+ */
+export function checkIsNavContrast(): boolean {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return false;
+  }
+
+  const eduStage = findEduStage();
+  if (eduStage?.getAttribute('data-visible') === 'true') {
+    const rect = eduStage.getBoundingClientRect();
+    if (rect.top <= NAV_Y && rect.bottom >= NAV_Y) return true;
+  }
+
+  const aboutEl = findAbout();
+  if (!aboutEl) return false;
+  const aboutRect = aboutEl.getBoundingClientRect();
+  if (aboutRect.top > NAV_Y || aboutRect.bottom < NAV_Y) return false;
+
+  const overlay = findSequenceOverlay();
+  if (overlay?.dataset.active === 'true' && isChapterBehind(NAV_Y)) return true;
+
+  // Settled green, with the section itself carrying the colour.
+  return aboutEl.getAttribute('data-bg-settled') === 'true';
+}
+
 if (typeof window !== 'undefined') {
   (window as unknown as { __checkIsFooterContrast: () => boolean }).__checkIsFooterContrast = checkIsFooterContrast;
 }
@@ -127,6 +165,23 @@ export function useFooterContrast(): boolean {
     const update = () => {
       const next = checkIsFooterContrast();
       setIsContrast(next);
+      if (typeof document !== 'undefined') {
+        /*
+         * The bar is decided here too, because it is the same question asked at
+         * a different height, and one owner is the only way the two can never
+         * disagree.
+         *
+         * It reaches the opposite conclusion from the footer for most of the
+         * climb, which is correct and is the whole point: the wall arrives at
+         * the bottom of the screen first and at the top last, so for a second
+         * and a half the footer is over green and the bar is not.
+         */
+        writeAttribute(
+          document.documentElement,
+          'data-nav-contrast',
+          checkIsNavContrast() ? 'true' : null
+        );
+      }
       if (typeof document !== 'undefined') {
         // Guarded, because this runs on every frame and an unconditional
         // setAttribute on documentElement invalidates style for the entire

@@ -54,14 +54,28 @@ function checkIsContrary(theme: string): boolean {
   const isOverAbout = aboutRect.top <= 80 && aboutRect.bottom > 80;
 
   if (isOverAbout) {
-    const isTransitioned =
-      aboutEl.getAttribute('data-bg-transition') === 'true' ||
-      document.documentElement.getAttribute('data-navbar-contrary') === 'true';
+    /*
+     * `data-nav-contrast` is measured, not scheduled.
+     *
+     * It says whether the chapter's green has actually climbed as far as the
+     * bar, asked of the pixel grid on the frame it is asked. What it replaced
+     * -- `data-bg-transition`, and `data-navbar-contrary` alongside it -- is
+     * published when the rise is 95% done, and the bar sits at the very top of
+     * the screen, which is the LAST place a wall climbing from the bottom
+     * reaches. So the bar spent almost the entire climb dark on green.
+     *
+     * `data-navbar-contrary` is deliberately not consulted any more. It has
+     * accumulated a second job inside About -- a dozen rules key the held
+     * copy's colour off it -- and a flag meaning two things cannot be made
+     * accurate for either.
+     */
+    if (document.documentElement.getAttribute('data-nav-contrast') === 'true') {
+      return true;
+    }
+
     const eduEl = findEducation();
     const eduRect = eduEl?.getBoundingClientRect();
-    const inEdu = eduRect ? eduRect.top <= 80 && eduRect.bottom > 80 : false;
-
-    if (isTransitioned || inEdu) {
+    if (eduRect && eduRect.top <= 80 && eduRect.bottom > 80) {
       return true;
     }
   }
@@ -130,7 +144,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       }
       observer.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ['data-navbar-contrary', 'data-theme'],
+        attributeFilter: ['data-nav-contrast', 'data-theme'],
       });
     }
 
