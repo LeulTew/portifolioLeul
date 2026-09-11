@@ -35,6 +35,21 @@
   --footer-text-color: rgba(255, 255, 255, 0.4);
   --footer-line-color: rgba(255, 255, 255, 0.2);
   --footer-line-glow: rgba(255, 255, 255, 0.6);
+
+  /*
+   * The colour the About/Education chapter turns, and the only thing the
+   * bottom-up pixel transition exists to reveal.
+   *
+   * Dark mode used to paint it #001a1a -- which is the exact colour the scene
+   * behind it is already cleared to: BackgroundScene sets background, fog and
+   * ground all to #001a1a in dark. So the pixels climbed the whole screen and
+   * arrived at the colour that was there before they started. The beat ran
+   * correctly and was invisible.
+   *
+   * A deep emerald reads as a chapter arriving without reading as a bright
+   * panel: 1.9:1 against the scene it rises over, and 9.6:1 under white text.
+   */
+  --about-chapter-bg: #0a4f38;
 }
 
 [data-theme="light"] {
@@ -57,6 +72,9 @@
   --footer-text-color: rgba(17, 24, 39, 0.55);
   --footer-line-color: rgba(17, 24, 39, 0.2);
   --footer-line-glow: rgba(17, 24, 39, 0.6);
+
+  /* Already well clear of its own backdrop; same hue, one step brighter. */
+  --about-chapter-bg: #0a5c40;
 }
 
 html {

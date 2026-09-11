@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { SHORE_FIELD_LAYOUT, DEFAULT_WAVE_SETTINGS } from './waveShader';
 import { DEFAULT_OCEAN_GEOMETRY } from '@/lib/ocean/oceanGeometry';
 
@@ -15,7 +15,19 @@ import { DEFAULT_OCEAN_GEOMETRY } from '@/lib/ocean/oceanGeometry';
  * So the numbers are read back out of the script and checked against the ones
  * the shader is compiled with.
  */
-const BAKE_SCRIPT = readFileSync('scripts/bake-shore-field.mjs', 'utf8');
+/*
+ * `scripts/` is gitignored, so the bake script is present in a working copy
+ * that has run the asset pipeline and absent from a fresh clone -- where this
+ * whole file used to fail at import time with ENOENT, taking the suite red for
+ * a reason that has nothing to do with the code under test.
+ *
+ * Skipped rather than deleted: the agreement it checks is real and silent when
+ * broken, so it should keep running everywhere the script actually exists.
+ * Un-ignoring and committing `scripts/` would make that everywhere.
+ */
+const BAKE_SCRIPT_PATH = 'scripts/bake-shore-field.mjs';
+const HAS_BAKE_SCRIPT = existsSync(BAKE_SCRIPT_PATH);
+const BAKE_SCRIPT = HAS_BAKE_SCRIPT ? readFileSync(BAKE_SCRIPT_PATH, 'utf8') : '';
 
 /** Reads `const NAME = <number>;` out of the script. */
 function constant(name: string): number {
@@ -34,7 +46,7 @@ function terrainPosition(): [number, number, number] {
   return [parts[0], parts[1], parts[2]];
 }
 
-describe('shore field layout', () => {
+describe.skipIf(!HAS_BAKE_SCRIPT)('shore field layout', () => {
   it('spans the same world area the field was baked over', () => {
     expect(SHORE_FIELD_LAYOUT.extent).toBe(constant('HALF_EXTENT') * 2);
   });

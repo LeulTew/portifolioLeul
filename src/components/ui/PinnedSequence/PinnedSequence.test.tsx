@@ -1,5 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PinnedSequence } from './PinnedSequence';
 import { localProgress } from './localProgress';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
@@ -169,6 +169,78 @@ describe('PinnedSequence activation', () => {
     expect(activeAfter(spacer, { top: -2400, bottom: 0, height: 2400 })).toBe(
       'false'
     );
+  });
+});
+
+describe('PinnedSequence pin extension', () => {
+  /*
+   * The pin is held past the spacer's end so a beat triggered near the end can
+   * finish on screen, and About marks that with attributes on `#about`.
+   *
+   * The regression this covers: the list also read the `-settled` attributes,
+   * which are set when a beat FINISHES and stay set for the rest of the page.
+   * Past the stretch `rect.top <= 0` is permanently true as well, so the pin
+   * never released -- and a fixed, full-screen overlay that never releases goes
+   * on painting the held statements over Education and everything after it.
+   */
+  beforeEach(() => {
+    resetScrollProgress();
+    // `getElementById` returns the FIRST match, so a section left behind by an
+    // earlier case would be the one every later case reads.
+    document.querySelectorAll('#about').forEach((el) => el.remove());
+  });
+  afterEach(() => {
+    document.querySelectorAll('#about').forEach((el) => el.remove());
+  });
+
+  const SPENT = { top: -2400, bottom: 0, height: 2400 } as Partial<DOMRect>;
+  const IN_FLIGHT = { top: -400, bottom: 2000, height: 2400 } as Partial<DOMRect>;
+
+  const mountWithAbout = () => {
+    const about = document.createElement('section');
+    about.id = 'about';
+    document.body.appendChild(about);
+    render(
+      <PinnedSequence layers={LAYERS}>
+        <p>held</p>
+      </PinnedSequence>
+    );
+    return { about, spacer: screen.getByTestId('pinned-sequence') };
+  };
+
+  const activeWith = (
+    spacer: HTMLElement,
+    about: HTMLElement,
+    attribute: string,
+    rect: Partial<DOMRect>
+  ) => {
+    about.setAttribute(attribute, 'true');
+    spacer.getBoundingClientRect = () => rect as DOMRect;
+    act(() => setScrollProgress(Math.random()));
+    const active = screen.getByTestId('pinned-sequence-overlay').dataset.active;
+    about.removeAttribute(attribute);
+    return active;
+  };
+
+  it.each([
+    'data-bg-active',
+    'data-title-active',
+    'data-reverse-transition-active',
+  ])('holds past the spacer while %s says a beat is still running', (attribute) => {
+    const { about, spacer } = mountWithAbout();
+    expect(activeWith(spacer, about, attribute, SPENT)).toBe('true');
+  });
+
+  it.each([
+    'data-bg-settled',
+    'data-title-settled',
+    'data-statement-two-settled',
+    'data-statement-swap-active',
+  ])('releases past the spacer even though %s is still set', (attribute) => {
+    const { about, spacer } = mountWithAbout();
+    // Sanity: the same attribute must not change anything mid-stretch either.
+    expect(activeWith(spacer, about, attribute, IN_FLIGHT)).toBe('true');
+    expect(activeWith(spacer, about, attribute, SPENT)).toBe('false');
   });
 });
 

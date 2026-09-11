@@ -22,7 +22,20 @@
   display: block;
   position: relative;
   z-index: 2;
-  transition: opacity 0.08s linear;
+  /*
+   * No opacity transition here, deliberately.
+   *
+   * This element's opacity is written by the beat on EVERY frame. A transition
+   * on top of that is a second animation racing the first: each frame sets a
+   * new target, the transition starts easing towards it, and 16ms later it is
+   * retargeted before it arrives. The rendered value is never the value the
+   * beat computed -- it lags by the transition's duration and lands nowhere,
+   * which on a headline this size reads as the text smearing and stuttering
+   * rather than fading.
+   *
+   * The pixel dots below still carry one, and should: they are switched by a
+   * data attribute, discretely, so there the transition IS the animation.
+   */
 }
 
 .subtitle {
@@ -35,7 +48,7 @@
   position: relative;
   z-index: 2;
   clip-path: inset(calc((1 - var(--sub-in, 1)) * 100%) 0 -0.2em 0);
-  transition: opacity 0.15s ease-out;
+  /* Driven per frame by the beat; see the note on `.title`. */
 }
 
 :global(#about[data-bg-transition='true']) .subtitle {

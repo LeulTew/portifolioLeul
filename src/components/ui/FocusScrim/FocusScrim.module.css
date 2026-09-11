@@ -97,11 +97,7 @@
 }
 
 :global(#about[data-bg-transition='true']) .scrim.solid {
-  background: #001a1a;
-}
-
-:global([data-theme='light'] #about[data-bg-transition='true']) .scrim.solid {
-  background: #0a5c40;
+  background: var(--about-chapter-bg);
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {

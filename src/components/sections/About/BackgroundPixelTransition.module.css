@@ -11,11 +11,11 @@
   height: 100%;
   pointer-events: none;
   overflow: hidden;
-  --bg-transition-color: #001a1a;
-}
-
-:global([data-theme='light']) .pixelContainer {
-  --bg-transition-color: #0a5c40;
+  /*
+   * The component also writes this inline, from the same two values, so the
+   * `color` prop can override it. Both sides read one token per theme.
+   */
+  --bg-transition-color: var(--about-chapter-bg);
 }
 
 .svgDef {
@@ -29,7 +29,7 @@
 .backdrop {
   position: absolute;
   inset: 0;
-  background-color: var(--bg-transition-color, #001a1a);
+  background-color: var(--bg-transition-color, var(--about-chapter-bg));
   opacity: 0;
   transition: opacity 0.4s ease-out;
   pointer-events: none;
@@ -59,7 +59,7 @@
 .pixelCell {
   width: calc(100% + 0.5px);
   height: calc(100% + 0.5px);
-  background-color: var(--bg-transition-color, #001a1a);
+  background-color: var(--bg-transition-color, var(--about-chapter-bg));
   opacity: 0;
   border: none;
   outline: none;
@@ -67,7 +67,21 @@
   display: block;
   pointer-events: none;
   will-change: opacity;
-  transition: opacity 35ms linear;
+  /*
+   * A hard pop, exactly as the reference does it.
+   *
+   * runrobrun's cells are `opacity 0.02s linear` -- effectively instant. Nearly
+   * all of the softness in that effect is in the spread of the thresholds and
+   * almost none of it is in the cell, which is what keeps it reading as pixels
+   * rather than as a blur. A 130ms fade, which this briefly had, turns sixty
+   * hard-edged blocks into one soft wash and throws the character away.
+   *
+   * A little longer than the reference, because this wall is a fifth of the
+   * speed and a hard cut at that pace reads as a step rather than as travel.
+   * Still far short of the ~215ms a row gets, so a cell has always finished
+   * before its neighbours above it begin.
+   */
+  transition: opacity 55ms linear;
   margin: 0;
   padding: 0;
   box-sizing: border-box;

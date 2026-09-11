@@ -38,3 +38,22 @@ export function writeAttribute(element: Element, name: string, value: string | n
   }
   if (element.getAttribute(name) !== value) element.setAttribute(name, value);
 }
+
+/**
+ * Sets a custom property only when it would change it.
+ *
+ * The counterpart to `writeAttribute`, and for the same reason: `setProperty`
+ * invalidates style for the subtree whether or not the value differs, and the
+ * callers are animation loops publishing from inside the render loop. Most of
+ * their frames -- every frame a beat spends at rest, which is nearly all of
+ * them -- write the value that is already there.
+ */
+export function writeStyleProperty(
+  element: HTMLElement,
+  property: string,
+  value: string
+): void {
+  if (element.style.getPropertyValue(property) !== value) {
+    element.style.setProperty(property, value);
+  }
+}

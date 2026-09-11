@@ -231,6 +231,72 @@ describe('About sequence pacing', () => {
   });
 });
 
+describe('About statement two clears before the background rises', () => {
+  /*
+   * The reported bug: the right-hand statement never went away. It sat over
+   * the rising green, then over the Education frame.
+   *
+   * `STATEMENT_LAYERS` has always declared `two` as ending at 0.78 on an 0.08
+   * ramp -- the same 0.78 the background transition starts at -- but the
+   * component wrote `--two-in` / `--two-on` onto `.statements`, a descendant of
+   * the overlay the layer window is published on, so the nearer declaration won
+   * and the layer's exit ramp never applied. What the component wrote instead
+   * was the handover alone, which only runs 0 -> 1.
+   */
+  const seqTo = async (value: number) => {
+    const overlay = screen.getByTestId('about-sequence-overlay');
+    overlay.style.setProperty('--seq', value.toFixed(3));
+    window.dispatchEvent(new Event('scroll'));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  };
+
+  const presence = () => {
+    const container = screen
+      .getByTestId('about-right-column')
+      .closest<HTMLElement>('[data-contrary]')!;
+    return {
+      in: Number.parseFloat(container.style.getPropertyValue('--two-in')),
+      on: Number.parseFloat(container.style.getPropertyValue('--two-on')),
+    };
+  };
+
+  it('holds statement two up through the middle of the stretch', async () => {
+    render(<About />);
+    await seqTo(0.6);
+    expect(presence().in).toBe(1);
+    expect(presence().on).toBe(1);
+  });
+
+  it('has taken statement two away by the time the green starts rising', async () => {
+    const bg = STATEMENT_LAYERS.find((l) => l.name === 'bgTransition')!;
+    render(<About />);
+    await seqTo(bg.start);
+
+    expect(presence().in).toBe(0);
+    expect(presence().on).toBe(0);
+  });
+
+  it('clears it on a ramp rather than switching it off', async () => {
+    const two = STATEMENT_LAYERS.find((l) => l.name === 'two')!;
+    const midway = two.end - (two.feather ?? 0.09) / 2;
+    render(<About />);
+    await seqTo(midway);
+
+    const at = presence();
+    expect(at.in).toBeGreaterThan(0);
+    expect(at.in).toBeLessThan(1);
+  });
+
+  it('brings it back when the reader scrolls up out of the exit', async () => {
+    render(<About />);
+    await seqTo(0.78);
+    expect(presence().in).toBe(0);
+
+    await seqTo(0.6);
+    expect(presence().in).toBe(1);
+  });
+});
+
 describe('About statements contrast reactivity', () => {
   it('initializes statements with data-contrary="false"', () => {
     render(<About />);
@@ -269,7 +335,7 @@ describe('About statements contrast reactivity', () => {
     // Initially on Statement One
     expect(statementsContainer?.style.getPropertyValue('--one-in')).toBe('1.000');
     expect(statementsContainer?.style.getPropertyValue('--two-in')).toBe('0.000');
-    expect(aboutSection?.getAttribute('data-statement-two-settled')).toBeNull();
+    expect(aboutSection?.getAttribute('data-statements-cleared')).toBeNull();
 
     // Simulate sequence progress past handover (seq = 0.60)
     const overlay = screen.getByTestId('about-sequence-overlay');
@@ -280,7 +346,13 @@ describe('About statements contrast reactivity', () => {
     // Statement Two is now fully settled and holds showing
     expect(statementsContainer?.style.getPropertyValue('--two-in')).toBe('1.000');
     expect(statementsContainer?.style.getPropertyValue('--one-in')).toBe('0.000');
-    expect(aboutSection?.getAttribute('data-statement-two-settled')).toBe('true');
+    /*
+     * Statement two is up, and the screen is NOT yet clear -- the exit runs
+     * from 0.70 and this is 0.60. `data-statements-cleared` is the section's
+     * one published fact about the statements now, and it is what the
+     * background waits on, so it must still be absent here.
+     */
+    expect(aboutSection?.getAttribute('data-statements-cleared')).toBeNull();
   });
 });
 

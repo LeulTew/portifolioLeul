@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
+import { BEAT_DEADBAND, TITLE_WRITE } from './aboutBeats';
+import { writeAttribute } from '@/lib/dom/cachedElement';
 import {
   advancePhase,
   isPhaseAtTarget,
@@ -64,9 +67,9 @@ const DEFAULT_COLS = 12;
 const DEFAULT_ROWS = 3;
 
 export function TitlePixelTransition({
-  start = 0.86,
+  start = TITLE_WRITE.enter,
   end = 0.94,
-  durationMs = 1500,
+  durationMs = TITLE_WRITE.durationMs,
   initialTitle = 'About Me',
   initialSubtitle = 'Architecting resilient full-stack systems, 3D graphics engines, and intelligent web agents.',
   flippedTitle = 'Education',
@@ -85,6 +88,7 @@ export function TitlePixelTransition({
   const lastSeqRef = useRef(0);
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
+  const armedRef = useRef(false);
   const reducedMotion = getPrefersReducedMotion();
 
   const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
@@ -97,15 +101,36 @@ export function TitlePixelTransition({
   // Contrasting text color (pure white on contrary emerald green in both light and dark modes)
   const resolvedDotColor = '#ffffff';
 
-  const checkIsGreenBg = useCallback((seq: number): boolean => {
+  /**
+   * Whether the heading is standing on green YET -- which is not the same as
+   * the background having started.
+   *
+   * This decides the real heading's colour, and in light mode that is a jump
+   * from near-black to white. It used to answer yes on `data-bg-active`, which
+   * is set on the first frame of the rise while the wall is still a single row
+   * along the bottom of the screen, and yes again on `seq >= 0.82` whether or
+   * not anything had risen at all. Either way the heading went white a second
+   * before the green got anywhere near it, standing white-on-pale in light
+   * mode until the wall caught up.
+   *
+   * While the wall is climbing, the heading's own colour must not change at
+   * all. `TransitionMaskedOverlay` is what makes it react: it lays a white copy
+   * of the heading over the same pixel mask the rise is drawn from, so the
+   * letters go white exactly where the green has reached and stay dark
+   * everywhere else -- the edge cuts through mid-letter. That only reads
+   * correctly if the heading underneath is still its normal colour.
+   *
+   * So this is true only once the green is actually everywhere:
+   * `data-bg-transition` lands with the solid backdrop at 95%, and
+   * `data-bg-settled` when the beat is done.
+   */
+  const checkIsGreenBg = useCallback((): boolean => {
     if (typeof document === 'undefined') return false;
     const aboutSection = readAbout();
     if (aboutSection?.getAttribute('data-bg-transition') === 'true') return true;
-    if (aboutSection?.getAttribute('data-bg-active') === 'true') return true;
     if (aboutSection?.getAttribute('data-bg-settled') === 'true') return true;
     if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
-    // Background pixel transition starts at 0.78 and completes at 0.86; covers title zone by ~0.82
-    return seq >= 0.82;
+    return false;
   }, [readAbout]);
 
   const renderPhase = useCallback(
@@ -142,25 +167,31 @@ export function TitlePixelTransition({
         }
         const atRest = readAbout();
         if (atRest) {
-          atRest.removeAttribute('data-title-settled');
-          atRest.removeAttribute('data-title-active');
-          atRest.removeAttribute('data-reverse-transition-active');
+          writeAttribute(atRest, 'data-title-settled', null);
+          writeAttribute(atRest, 'data-title-active', null);
+          writeAttribute(atRest, 'data-reverse-transition-active', null);
         }
         return;
       }
 
       const aboutSection = readAbout();
-      if (p < 0.98) {
-        if (aboutSection) {
-          aboutSection.removeAttribute('data-title-settled');
-          if (wasActiveRef.current) {
-            aboutSection.setAttribute('data-title-active', 'true');
-            aboutSection.removeAttribute('data-reverse-transition-active');
-          } else {
-            aboutSection.setAttribute('data-reverse-transition-active', 'true');
-            aboutSection.removeAttribute('data-title-active');
-          }
-        }
+      if (p < 0.98 && aboutSection) {
+        /*
+         * Guarded, because this runs on every frame of the beat.
+         *
+         * `#about` is watched by `body:has(#about[data-...])` selectors, and an
+         * attribute set to the value it already holds still marks the subtree
+         * dirty and forces those to be re-evaluated against the document. Doing
+         * that three times a frame for a second and a half, to write values
+         * that changed once, is most of what this beat costs.
+         */
+        writeAttribute(aboutSection, 'data-title-settled', null);
+        writeAttribute(aboutSection, 'data-title-active', wasActiveRef.current ? 'true' : null);
+        writeAttribute(
+          aboutSection,
+          'data-reverse-transition-active',
+          wasActiveRef.current ? null : 'true'
+        );
       }
 
       // Step 1: Phase 1 (0.02 to 0.45) - White pixel dots spawn with organic noise, covering & dissolving "About Me"
@@ -208,7 +239,17 @@ export function TitlePixelTransition({
           if (titleElRef.current.textContent !== written) {
             titleElRef.current.textContent = written;
           }
-          titleElRef.current.style.opacity = Math.min(1, 0.6 + p2 * 0.4).toFixed(2);
+          /*
+           * From nothing, not from 0.6.
+           *
+           * Phase one leaves the heading at exactly 0 -- its ramp reaches zero
+           * well before the phase ends -- so opening phase two at 0.6 was a
+           * jump from invisible to more than half opaque in one frame, in both
+           * directions. Scrolling down it flashed on; scrolling back up it
+           * flashed off. Starting at p2 makes the two phases meet at the same
+           * value, and phase three then continues from the 1 this ends at.
+           */
+          titleElRef.current.style.opacity = p2.toFixed(2);
         }
 
         if (subtitleElRef.current) {
@@ -253,7 +294,23 @@ export function TitlePixelTransition({
         const el = dotElementsRef.current[i];
         const dot = dots[i];
         if (!el || !dot) continue;
-        const isActive = p3 < 0.98 && p3 < dot.threshold;
+        /*
+         * Carries on clearing from where phase two left off.
+         *
+         * Phase two ends with exactly the dots above 0.4 still lit. This used
+         * to restart from `p3 < threshold`, which at p3 = 0 lights every dot
+         * above zero -- so every dot between 0 and 0.4 flicked back ON for one
+         * frame at the boundary, a visible sparkle across the heading right as
+         * it was supposed to be resolving. Sweeping the cut up from 0.4
+         * continues the same motion instead.
+         *
+         * Past 1, not to 1: `generateDots` clamps with `Math.min(1, ...)`, so a
+         * dot can sit at exactly 1.0 and a cut that stops there leaves it lit
+         * forever -- a stray dot stranded on the finished heading. The sweep
+         * therefore overshoots slightly and every dot is out a little before
+         * the phase ends, which is invisible and correct.
+         */
+        const isActive = dot.threshold >= 0.4 + p3 * 0.65;
         const activeStr = String(isActive);
         if (el.dataset.active !== activeStr) el.dataset.active = activeStr;
       }
@@ -286,7 +343,7 @@ export function TitlePixelTransition({
         typeof document !== 'undefined' &&
         document.documentElement.dataset.theme === 'light';
       const isGreenBg =
-        checkIsGreenBg(lastSeqRef.current) ||
+        checkIsGreenBg() ||
         wasActiveRef.current ||
         phaseRef.current.t > 0;
 
@@ -332,7 +389,7 @@ export function TitlePixelTransition({
     const isLightMode =
       typeof document !== 'undefined' &&
       document.documentElement.dataset.theme === 'light';
-    const isGreenBg = checkIsGreenBg(seq);
+    const isGreenBg = checkIsGreenBg();
 
     // 1. Explicit test override prop
     if (explicitProgress !== undefined) {
@@ -380,12 +437,83 @@ export function TitlePixelTransition({
      * "Education" at its authored speed, and it still reverses from wherever it
      * reached when the reader scrolls back up past the deadband.
      */
-    const active = phaseGate(
+    const reached = phaseGate(
       seq,
       wasActiveRef.current,
       start,
-      Math.max(0, start - 0.05)
+      Math.max(0, start - BEAT_DEADBAND)
     );
+
+    /*
+     * And the background has to have finished before this may begin.
+     *
+     * Position alone cannot order these two. The background is triggered at
+     * 0.78 and plays for a fixed two seconds; this is triggered at 0.86, which
+     * is 0.08 of the pin away -- about 144px of scroll on a 900px screen. Any
+     * ordinary scroll crosses that in a fraction of the background's duration,
+     * so the heading began dissolving into "Education" with the green still
+     * climbing behind it, and the two beats trod on each other.
+     *
+     * Widening the gap cannot fix that: no distance is safe, because the reader
+     * chooses the speed. Blocking the scroll would fix it and is not allowed --
+     * that is the whole reason this section used to trap the reader.
+     *
+     * So the *other* beat's completion is a precondition, read off the
+     * attribute it already publishes when it settles. This cannot reintroduce
+     * the flip-flop: `data-bg-settled` is not a scroll gesture and is not a
+     * competing position threshold. It is written once when the background
+     * reaches 1 and removed once when it reverses below its own deadband, and
+     * while it is set this expression reduces to the position gate alone.
+     *
+     * A reader who flicks straight past 0.86 does not lose the beat -- the gate
+     * stays satisfied by position, so the title plays the moment the background
+     * reports itself done, at its own speed, exactly as if it had waited.
+     */
+    const isBackgroundSettled = readAbout()?.getAttribute('data-bg-settled') === 'true';
+
+    /*
+     * And the reader has to ask for it.
+     *
+     * The wall takes 1500ms to climb and the reader keeps scrolling while it does,
+     * so 0.86 is almost always behind them by the time it lands. Gating on
+     * position and on the background alone therefore rewrote the heading the
+     * instant the last cell arrived, with no input in between -- the two beats
+     * read as one long movement, which is exactly what they are not.
+     *
+     * `armed` is set by a scroll gesture, but ONLY one that happens after the
+     * previous beat has finished -- which is what makes this a separate event
+     * rather than the tail of the one before it. A single flick arms nothing,
+     * because at the moment of the flick the beat before this had not
+     * completed.
+     *
+     * This cannot bring back the flip-flop. The old bug was a gesture flag
+     * deciding whether to ENTER while a position threshold decided whether to
+     * STAY, so the two disagreed every frame and the beat swung forever. Here
+     * the gesture only ever ANDs into the trigger, `phaseGate` still owns
+     * entering and staying, and `armed` is monotonic for as long as the beat is
+     * running. Once the beat reverses to rest it is cleared, so coming back
+     * down asks again.
+     */
+    if (!isBackgroundSettled) armedRef.current = false;
+    const active =
+      reached && isBackgroundSettled && (armedRef.current || wasActiveRef.current);
+
+    /*
+     * Disarmed only on the way OUT, never merely for not having started.
+     *
+     * `armed` used to be cleared on any frame where the beat was not active,
+     * which sounds equivalent and is not: the scroll is damped, so `seq` lags
+     * the wheel by a few hundred milliseconds. The gesture would arm the beat,
+     * the very next frame would find the position still short of the threshold,
+     * and the arm was thrown away before the scroll it came from had arrived.
+     * The reader then had to scroll, wait, and scroll again -- and the second
+     * gesture usually landed while the position was still catching up too.
+     *
+     * A falling edge is the honest test: the beat WAS running and now is not,
+     * which means the reader has left it behind and coming back should ask
+     * again. Not yet started is not the same as finished with.
+     */
+    if (wasActiveRef.current && !active) armedRef.current = false;
     wasActiveRef.current = active;
 
     if (!isPhaseAtTarget(phaseRef.current, active) && animFrameRef.current === 0) {
@@ -400,6 +528,7 @@ export function TitlePixelTransition({
     durationMs,
     end,
     explicitProgress,
+    readAbout,
     readSeq,
     reducedMotion,
     renderPhase,
@@ -411,11 +540,49 @@ export function TitlePixelTransition({
     update();
     const unsubscribeScroll = subscribeScrollProgress(update);
 
+    const unsubscribeGesture = subscribeScrollGesture((direction) => {
+      if (direction !== 'down') return;
+      if (readAbout()?.getAttribute('data-bg-settled') !== 'true') return;
+      if (armedRef.current) return;
+      armedRef.current = true;
+      update();
+    });
+
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
+    /*
+     * Watches the one attribute this beat waits on.
+     *
+     * The precondition is published by another component when ITS beat
+     * finishes, and that happens on a clock -- so it can land while the reader
+     * is completely still. `update` is otherwise only driven by the scroll
+     * store, which publishes nothing when nothing is moving, so a reader who
+     * flicked past the whole section and stopped would sit there with the beat
+     * released and never started, waiting for a scroll they have no reason to
+     * make.
+     *
+     * The filter is what keeps this safe. This component writes `data-title-active`, `data-title-settled` and `data-reverse-transition-active` onto
+     * the same element; naming only data-bg-settled -- which it reads and never writes
+     * -- leaves nothing it writes inside its own watch, so there is no loop.
+     */
+    let gateObserver: MutationObserver | null = null;
+    if (typeof MutationObserver !== 'undefined') {
+      const aboutEl = readAbout();
+      if (aboutEl) {
+        gateObserver = new MutationObserver(update);
+        gateObserver.observe(aboutEl, {
+          attributes: true,
+          attributeFilter: ['data-bg-settled'],
+        });
+      }
+    }
+
+
     return () => {
       unsubscribeScroll();
+      unsubscribeGesture();
+      gateObserver?.disconnect();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       if (animFrameRef.current) {
@@ -429,7 +596,7 @@ export function TitlePixelTransition({
         aboutSection?.removeAttribute('data-reverse-transition-active');
       }
     };
-  }, [start, update]);
+  }, [readAbout, start, update]);
 
   return (
     <div

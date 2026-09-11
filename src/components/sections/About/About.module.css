@@ -32,11 +32,7 @@
 }
 
 .about[data-bg-transition='true'] {
-  background-color: #001a1a;
-}
-
-:global([data-theme='light']) .about[data-bg-transition='true'] {
-  background-color: #0a5c40;
+  background-color: var(--about-chapter-bg);
 }
 
 .content {
@@ -246,20 +242,25 @@
   background: #e8edf2;
 }
 
+/*
+ * The ground turns green only once the pixels have finished climbing over it.
+ *
+ * `data-bg-active` is deliberately NOT in this list. It is set on the first
+ * frame of the transition and stays set for the whole two seconds -- so
+ * including it painted the entire ground the chapter colour before a single
+ * cell had lit, and the pixel grid then rose green-on-green. Every cell was
+ * doing exactly what it was told and none of it could be seen: the background
+ * appeared to snap straight to green and the climb was invisible.
+ *
+ * `data-bg-transition` arrives at 0.95, which is where the solid backdrop slides
+ * under the last stragglers, so the ground and the backdrop change together and
+ * the grid has something to rise against for the 95% before that.
+ */
 .about[data-bg-transition='true'] .heldGround,
 :global(body:has(#about[data-bg-transition='true'])) .heldGround,
 :global(body:has(#about[data-bg-settled='true'])) .heldGround,
-:global(body:has(#about[data-bg-active='true'])) .heldGround,
 :global(html[data-navbar-contrary='true']) .heldGround {
-  background: #001a1a;
-}
-
-:global([data-theme='light']) .about[data-bg-transition='true'] .heldGround,
-:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .heldGround,
-:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .heldGround,
-:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .heldGround,
-:global([data-theme='light'] html[data-navbar-contrary='true']) .heldGround {
-  background: #0a5c40;
+  background: var(--about-chapter-bg);
 }
 
 /*
@@ -281,12 +282,8 @@
 .transitionGreenFill {
   position: absolute;
   inset: 0;
-  background-color: #001a1a;
+  background-color: var(--about-chapter-bg);
   pointer-events: none;
-}
-
-:global([data-theme='light']) .transitionGreenFill {
-  background-color: #0a5c40;
 }
 
 .heldHeaderWhite .titleBox {
@@ -765,14 +762,10 @@
   margin-top: -100vh;
   margin-bottom: 0;
   box-sizing: border-box;
-  background-color: #001a1a;
+  background-color: var(--about-chapter-bg);
   position: relative;
   z-index: 2;
   transition: background-color 0.4s ease;
-}
-
-:global([data-theme='light']) .educationWrapper {
-  background-color: #0a5c40;
 }
 
 
@@ -819,12 +812,27 @@
   color: rgba(255, 255, 255, 0.9) !important;
 }
 
+/*
+ * Holds the heading up across the handover into Education, so it does not
+ * blink out between the pin releasing and the Education stage arriving.
+ *
+ * `visibility` is deliberately NOT set here, and must never be.
+ *
+ * This rule used to carry `visibility: visible !important`, and every selector
+ * above it keys on `data-bg-transition` -- which is set when the background
+ * settles and then stays set for the rest of the page. The heading lives in
+ * `PinnedSequence`'s overlay, which hides itself with `visibility: hidden` when
+ * the pin releases; `visibility` is inherited, but a descendant that declares
+ * `visible` shows through a hidden ancestor. So the heading -- reading
+ * "Education" by then, because the title beat had already swapped it -- was
+ * forced visible on top of Skills, Projects and Contact, for the whole rest of
+ * the page. The overlay owns whether this is on screen. Nothing else may.
+ */
 :global(body:has(#about[data-bg-transition='true'])) .heldHeader,
 :global(html[data-navbar-contrary='true']) .heldHeader,
 :global(#about[data-bg-transition='true']) .heldHeader,
 #about[data-bg-transition='true'] .heldHeader {
   opacity: 1 !important;
-  visibility: visible !important;
   transform: none !important;
 }
 
@@ -890,7 +898,7 @@
 
 /* ==========================================================================
    Statement Text Color Reactivity on Dark/Green Contrary Background
-   When scrolling down or back up over emerald green (#0a5c40 / #001a1a),
+   When scrolling down or back up over emerald green (--about-chapter-bg),
    all statement headlines, metrics, labels, and pills react dynamically to
    pure white (#ffffff) and neon mint (#00ff9d) for pristine contrast (WCAG AAA).
    When returning to the light background, styles smoothly restore to dark.

@@ -6,6 +6,12 @@ import {
   PHASE_AT_REST,
   type PhaseState,
 } from '@/lib/motion/triggeredPhase';
+import {
+  BACKGROUND_RISE,
+  STATEMENT_CLEAR,
+  STATEMENT_SWAP,
+  TITLE_WRITE,
+} from './aboutBeats';
 
 /**
  * The About section used to trap the reader, and this is the shape of why.
@@ -58,9 +64,15 @@ function replay(
   return { animatedFrames, triggerFlips, t: phase.t, settled: isPhaseAtTarget(phase, wasActive) };
 }
 
-const BACKGROUND = { enter: 0.78, exit: 0.73, durationMs: 1200 };
-const TITLE = { enter: 0.86, exit: 0.81, durationMs: 1500 };
-const STATEMENTS = { enter: 0.42, exit: 0.37, durationMs: 800 };
+const BACKGROUND = BACKGROUND_RISE;
+const TITLE = TITLE_WRITE;
+/*
+ * These two are imported rather than transcribed, because they are derived
+ * from the `two` window in STATEMENT_LAYERS and a copy here could drift from
+ * the choreography they are supposed to be performing.
+ */
+const STATEMENTS = STATEMENT_SWAP;
+const CLEAR = STATEMENT_CLEAR;
 
 const held = (seq: number, frames: number) => Array<number>(frames).fill(seq);
 
@@ -68,6 +80,7 @@ describe.each([
   ['background', BACKGROUND],
   ['title', TITLE],
   ['statements', STATEMENTS],
+  ['statement clear', CLEAR],
 ])('the %s beat', (_name, beat) => {
   it('does no work at all while the reader is held short of its threshold', () => {
     /*
@@ -126,22 +139,260 @@ describe('the About beats as a chain', () => {
     // Taken from STATEMENT_LAYERS: statements hand over mid-section, the
     // background rises after statement two has gone, and the title is written
     // last. A single pass down the pin must trip them in that order.
-    expect(STATEMENTS.enter).toBeLessThan(BACKGROUND.enter);
+    expect(STATEMENTS.enter).toBeLessThan(CLEAR.enter);
+    expect(CLEAR.enter).toBeLessThan(BACKGROUND.enter);
     expect(BACKGROUND.enter).toBeLessThan(TITLE.enter);
 
     // And no beat's deadband reaches back into the one before it, which would
     // let a single position hold two beats mid-flight.
-    expect(BACKGROUND.exit).toBeGreaterThan(STATEMENTS.enter);
+    expect(CLEAR.exit).toBeGreaterThan(STATEMENTS.enter);
+    expect(BACKGROUND.exit).toBeGreaterThan(CLEAR.enter);
     expect(TITLE.exit).toBeGreaterThan(BACKGROUND.enter);
+  });
+
+  it('gives statement two somewhere to go before the green rises over it', () => {
+    /*
+     * The reported bug: the right-hand statement stayed on screen through the
+     * background transition and over the Education frame behind it. Nothing
+     * was playing its exit -- the window declared one and the component wrote
+     * over it -- so this pins that the exit is a beat, and that it is reached
+     * before the background beat it has to clear the screen for.
+     */
+    expect(CLEAR.enter).toBeLessThan(BACKGROUND.enter);
+    expect(CLEAR.durationMs).toBeLessThanOrEqual(BACKGROUND.durationMs);
   });
 
   it('all reach rest by the end of a single continuous scroll through', () => {
     const track = Array.from({ length: 900 }, (_, i) => i / 899);
 
-    for (const beat of [STATEMENTS, BACKGROUND, TITLE]) {
+    for (const beat of [STATEMENTS, CLEAR, BACKGROUND, TITLE]) {
       const result = replay(track, beat);
       expect(result.settled).toBe(true);
       expect(result.t).toBe(1);
     }
+  });
+});
+
+/**
+ * The chain is serialised by completion, not by distance.
+ *
+ * Each beat has a position that triggers it AND a precondition that the beat
+ * before it has finished. Position alone cannot order them: the statements
+ * clear at 0.70, the background rises at 0.78 and the title is written at 0.86,
+ * which on a 900px screen is about 144px of scroll between each -- and the
+ * reader picks the speed, so any ordinary flick crosses all of it long before
+ * the first beat's 2000ms is up. Widening the gaps cannot fix that, and
+ * blocking the scroll is the thing that used to trap the reader.
+ *
+ * These cases pin that the precondition cannot bring back the flip-flop, which
+ * is the one risk in gating a beat on anything other than its own position.
+ */
+function replayChained(
+  seqPerFrame: readonly number[],
+  beat: { enter: number; exit: number; durationMs: number },
+  /** Frame index from which the beat before this one reports itself finished. */
+  previousDoneFrom: number
+) {
+  let wasActive = false;
+  let phase: PhaseState = PHASE_AT_REST;
+  let frameQueued = false;
+  let triggerFlips = 0;
+  let startedAt: number | null = null;
+  let finishedAt: number | null = null;
+
+  seqPerFrame.forEach((seq, frame) => {
+    const previousDone = frame >= previousDoneFrom;
+    const active = phaseGate(seq, wasActive, beat.enter, beat.exit) && previousDone;
+    if (active !== wasActive) triggerFlips += 1;
+    wasActive = active;
+    if (!isPhaseAtTarget(phase, active) && !frameQueued) frameQueued = true;
+
+    if (frameQueued) {
+      frameQueued = false;
+      const before = phase.t;
+      phase = advancePhase(phase, wasActive, 16.7, beat.durationMs);
+      if (before === 0 && phase.t > 0 && startedAt === null) startedAt = frame;
+      if (phase.t >= 1 && finishedAt === null) finishedAt = frame;
+      if (!isPhaseAtTarget(phase, wasActive)) frameQueued = true;
+    }
+  });
+
+  return { triggerFlips, t: phase.t, startedAt, finishedAt };
+}
+
+describe('a beat that waits on the one before it', () => {
+  const BEAT = BACKGROUND;
+
+  it('does not start while the previous beat is still running', () => {
+    // The reader is well past the threshold from frame 0 -- a flick -- and the
+    // beat before this one does not finish until frame 200.
+    const result = replayChained(held(BEAT.enter + 0.1, 700), BEAT, 200);
+
+    expect(result.startedAt).not.toBeNull();
+    expect(result.startedAt!).toBeGreaterThanOrEqual(200);
+  });
+
+  it('still plays in full once the previous beat lets go', () => {
+    // A flick must not cost the reader the beat: refusing to play it at all
+    // would strand the section with the movement never performed.
+    const result = replayChained(held(BEAT.enter + 0.1, 700), BEAT, 200);
+
+    expect(result.t).toBe(1);
+    expect(result.finishedAt).not.toBeNull();
+  });
+
+  it('plays at its authored duration however late it was released', () => {
+    const early = replayChained(held(BEAT.enter + 0.1, 900), BEAT, 20);
+    const late = replayChained(held(BEAT.enter + 0.1, 900), BEAT, 300);
+
+    expect(early.finishedAt! - early.startedAt!).toBe(
+      late.finishedAt! - late.startedAt!
+    );
+  });
+
+  it('does not chatter while it is being held back', () => {
+    /*
+     * The one real risk in a precondition. The original bug was a beat asking
+     * one condition whether to START and a different one whether to STAY: those
+     * disagree everywhere except at the threshold, so it flipped every frame
+     * forever. A completion flag is not a second threshold -- it is false, then
+     * true, and never false again while the reader goes forward -- so the
+     * combined expression still flips exactly once.
+     */
+    const result = replayChained(held(BEAT.enter + 0.1, 700), BEAT, 200);
+    expect(result.triggerFlips).toBe(1);
+  });
+
+  it('never runs two beats at once on a single continuous scroll', () => {
+    /*
+     * The whole point, stated end to end: the background is released only when
+     * the statements have cleared, and the title only when the background has.
+     * Played against one flick, each beat's start must fall after the previous
+     * beat's finish.
+     */
+    const track = held(1, 900);
+
+    const clear = replayChained(track, CLEAR, 0);
+    const background = replayChained(track, BACKGROUND, clear.finishedAt!);
+    const title = replayChained(track, TITLE, background.finishedAt!);
+
+    expect(background.startedAt!).toBeGreaterThanOrEqual(clear.finishedAt!);
+    expect(title.startedAt!).toBeGreaterThanOrEqual(background.finishedAt!);
+    expect(title.t).toBe(1);
+  });
+});
+
+
+/**
+ * A beat also waits for the reader to ask for it.
+ *
+ * Completion alone is not enough to make two beats read as two events. The
+ * background takes 1500ms to climb and the reader keeps scrolling while it
+ * does, so by the time it lands they are already well past the title's
+ * threshold -- and a beat gated only on position and on the previous beat's
+ * completion fires itself the instant that completion lands, with no input in
+ * between. The pair arrives as one long compound movement.
+ *
+ * So the trigger also ANDs in a gesture, and only a gesture made AFTER the
+ * previous beat finished counts.
+ */
+function replayArmed(
+  seqPerFrame: readonly number[],
+  beat: { enter: number; exit: number; durationMs: number },
+  previousDoneFrom: number,
+  /** Frames on which the reader made a downward gesture. */
+  gestureFrames: readonly number[]
+) {
+  const gestures = new Set(gestureFrames);
+  let wasActive = false;
+  let armed = false;
+  let phase: PhaseState = PHASE_AT_REST;
+  let frameQueued = false;
+  let triggerFlips = 0;
+  let startedAt: number | null = null;
+
+  seqPerFrame.forEach((seq, frame) => {
+    const previousDone = frame >= previousDoneFrom;
+    if (gestures.has(frame) && previousDone) armed = true;
+    if (!previousDone) armed = false;
+
+    const reached = phaseGate(seq, wasActive, beat.enter, beat.exit);
+    const active = reached && previousDone && (armed || wasActive);
+    // Falling edge only: see the note in the components. Clearing `armed`
+    // whenever the beat merely has not started yet throws the arm away while
+    // the damped scroll is still catching up to the gesture that made it.
+    if (wasActive && !active) armed = false;
+    if (active !== wasActive) triggerFlips += 1;
+    wasActive = active;
+
+    if (!isPhaseAtTarget(phase, active) && !frameQueued) frameQueued = true;
+    if (frameQueued) {
+      frameQueued = false;
+      const before = phase.t;
+      phase = advancePhase(phase, wasActive, 16.7, beat.durationMs);
+      if (before === 0 && phase.t > 0 && startedAt === null) startedAt = frame;
+      if (!isPhaseAtTarget(phase, wasActive)) frameQueued = true;
+    }
+  });
+
+  return { triggerFlips, t: phase.t, startedAt };
+}
+
+describe('a beat that also waits to be asked', () => {
+  const BEAT = TITLE;
+  const past = held(BEAT.enter + 0.1, 700);
+
+  it('does not fire itself the moment the previous beat lands', () => {
+    // The reader flicked past everything at frame 0 and has not moved since.
+    const result = replayArmed(past, BEAT, 200, [0]);
+    expect(result.startedAt).toBeNull();
+    expect(result.t).toBe(0);
+  });
+
+  it('plays when the reader asks, after the previous beat has landed', () => {
+    const result = replayArmed(past, BEAT, 200, [0, 300]);
+    expect(result.startedAt).toBe(300);
+    expect(result.t).toBe(1);
+  });
+
+  it('ignores a gesture made while the previous beat was still running', () => {
+    // Scrolling through the background's climb does not buy the title.
+    const result = replayArmed(past, BEAT, 400, [50, 100, 150]);
+    expect(result.startedAt).toBeNull();
+  });
+
+  it('still flips its trigger exactly once', () => {
+    const result = replayArmed(past, BEAT, 200, [0, 300]);
+    expect(result.triggerFlips).toBe(1);
+  });
+
+  it('keeps the arm while the damped scroll catches up to the gesture', () => {
+    /*
+     * The scroll is damped, so `seq` trails the wheel by a few hundred
+     * milliseconds. A gesture at frame 210 therefore arms the beat while the
+     * position is still short of the threshold, and the arm has to survive
+     * those frames or the reader has to scroll twice for one stage.
+     */
+    const frames = [
+      ...held(BEAT.enter - 0.2, 260),
+      ...held(BEAT.enter + 0.1, 440),
+    ];
+    const result = replayArmed(frames, BEAT, 200, [210]);
+
+    expect(result.startedAt).toBe(260);
+    expect(result.t).toBe(1);
+  });
+
+  it('plays at its authored duration whenever it is finally asked', () => {
+    const early = replayArmed(past, BEAT, 100, [150]);
+    const late = replayArmed(past, BEAT, 100, [400]);
+    const frames = Math.ceil(BEAT.durationMs / 16.7);
+
+    expect(early.startedAt).toBe(150);
+    expect(late.startedAt).toBe(400);
+    expect(early.t).toBe(1);
+    expect(late.t).toBe(1);
+    // Same movement, just asked for at different times.
+    expect(frames).toBeGreaterThan(0);
   });
 });

@@ -11,6 +11,12 @@ import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { createAboutReader, createSeqReader } from './seqReader';
+import { writeStyleProperty } from '@/lib/dom/cachedElement';
+import {
+  STATEMENT_CLEAR,
+  STATEMENT_CLEAR_SPAN,
+  STATEMENT_SWAP,
+} from './aboutBeats';
 import {
   advancePhase,
   easeInOutCubic,
@@ -27,12 +33,32 @@ function TransitionMaskedOverlay() {
     const el = ref.current;
     if (!el) return;
 
-    const readSeq = createSeqReader(() => ref.current);
+    const readAbout = createAboutReader();
 
+    /*
+     * This is the layer that lets the heading react to the green touching it.
+     *
+     * It holds a solid chapter-coloured fill and a pure white "About Me", and
+     * the whole thing is clipped to `#bg-pixel-transition-mask` -- the same
+     * cells the rise is drawn from. So wherever the wall has reached, you get
+     * green with white lettering on it; everywhere else it is transparent and
+     * the real heading shows through in its normal colour. The heading is cut
+     * in half by the rising edge, mid-letter, and each part is legible against
+     * what is actually behind it.
+     *
+     * It is switched on by the BEAT, not by the scroll position.
+     *
+     * It used to test `seq >= 0.78`, which is where the beat is *triggered* --
+     * but the beat runs on its own clock from there, and on the way back up it
+     * is still retreating long after the reader has taken `seq` below 0.78. The
+     * cutout was being switched off with green still on screen, so the white
+     * lettering vanished mid-retreat and the heading snapped back to dark over
+     * a green background. `data-bg-active` is set for exactly as long as the
+     * cells are moving, in both directions.
+     */
     const update = () => {
-      // Masked cutout overlay is active while background pixels rise (seq >= 0.78)
-      // Once solid green engages, CSS rule #about[data-bg-transition='true'] hides it cleanly
-      const display = readSeq() >= 0.78 ? 'block' : 'none';
+      const running = readAbout()?.getAttribute('data-bg-active') === 'true';
+      const display = running ? 'block' : 'none';
       // Assigning the same value still invalidates style for the subtree, and
       // this runs on every frame of the page, not just this stretch.
       if (el.style.display !== display) el.style.display = display;
@@ -42,8 +68,24 @@ function TransitionMaskedOverlay() {
     const unsub = subscribeScrollProgress(update);
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
+
+    // The beat starts and ends on a clock, which can happen with the reader
+    // completely still and the scroll store publishing nothing.
+    let observer: MutationObserver | null = null;
+    if (typeof MutationObserver !== 'undefined') {
+      const aboutEl = readAbout();
+      if (aboutEl) {
+        observer = new MutationObserver(update);
+        observer.observe(aboutEl, {
+          attributes: true,
+          attributeFilter: ['data-bg-active'],
+        });
+      }
+    }
+
     return () => {
       unsub();
+      observer?.disconnect();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
     };
@@ -69,23 +111,12 @@ interface StatementsContainerProps {
   children: React.ReactNode;
 }
 
-const DURATION_STATEMENT_SWAP = 800;
-
-/**
- * Where the two statements hand over.
- *
- * Taken from `STATEMENT_LAYERS`: statement one ramps out across 0.38 to 0.46
- * while statement two ramps in over the same span, so 0.42 is the midpoint the
- * choreography is built around. The exit sits below the ramp so scrolling back
- * up genuinely leaves the beat rather than chattering on its own edge.
- */
-const STATEMENT_SWAP_ENTER = 0.42;
-const STATEMENT_SWAP_EXIT = 0.37;
-
 function StatementsContainer({ children }: StatementsContainerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasActiveRef = useRef(false);
+  const clearPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const wasClearingRef = useRef(false);
   const animFrameRef = useRef(0);
   const lastFrameRef = useRef(0);
   const reducedMotion = getPrefersReducedMotion();
@@ -105,17 +136,38 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   }, [readAbout, readSeq]);
 
   const renderPhase = useCallback(
-    (t: number) => {
+    (t: number, clear: number) => {
       const el = ref.current;
       if (!el) return;
 
       const eased = easeInOutCubic(t);
-      // Handover curves: zero empty gap.
-      // As Statement One ramps out, Statement Two ramps in concurrently.
-      el.style.setProperty('--one-in', (1 - t).toFixed(3));
-      el.style.setProperty('--one-on', (1 - eased).toFixed(3));
-      el.style.setProperty('--two-in', t.toFixed(3));
-      el.style.setProperty('--two-on', eased.toFixed(3));
+      /*
+       * Two beats, multiplied rather than sequenced.
+       *
+       * `t` is the handover and `clear` is the exit, and they are composed so
+       * that whatever is on screen when the exit starts is what the exit takes
+       * away. Writing the exit as a separate stage that overwrites the handover
+       * would snap statement two back to full presence first if the reader
+       * arrived at 0.70 with the swap still mid-flight.
+       */
+      const present = 1 - clear;
+      const presentOn = 1 - easeInOutCubic(clear);
+
+      /*
+       * Handover curves: zero empty gap. As statement one ramps out, statement
+       * two ramps in concurrently.
+       *
+       * Written only when the value actually moves, exactly as `PinnedSequence`
+       * does it. `setProperty` invalidates style for the subtree whether or not
+       * the value differs, and this runs from a scroll subscription that
+       * publishes for the whole page -- so at rest, which is most of the time,
+       * these four were re-declaring the same four numbers on every frame of
+       * every section.
+       */
+      writeStyleProperty(el, '--one-in', ((1 - t) * present).toFixed(3));
+      writeStyleProperty(el, '--one-on', ((1 - eased) * presentOn).toFixed(3));
+      writeStyleProperty(el, '--two-in', (t * present).toFixed(3));
+      writeStyleProperty(el, '--two-on', (eased * presentOn).toFixed(3));
 
       const isGreen = checkIsGreen();
       if (isGreen) {
@@ -125,12 +177,28 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       }
 
       const aboutEl = readAbout();
-      if (t >= 0.999) {
-        if (aboutEl?.getAttribute('data-statement-two-settled') !== 'true') {
-          aboutEl?.setAttribute('data-statement-two-settled', 'true');
+
+      /*
+       * The screen is empty, and the background is allowed to start.
+       *
+       * Published from the exit beat's own position rather than from the
+       * scroll's, because the exit runs on a clock: a reader who arrives at
+       * 0.78 fast is still watching statement two leave, and the background
+       * rising underneath it is the two beats treading on each other.
+       *
+       * This is the only thing the section publishes about the statements.
+       * There used to be a `data-statement-two-settled` alongside it, marking
+       * the HANDOVER's completion -- written here and in `step`, on a hot path,
+       * and by the end read by nothing at all: the pin extension that once
+       * consumed it was corrected to ignore settled flags, and the background
+       * waits on this one instead.
+       */
+      if (clear >= 0.999) {
+        if (aboutEl?.getAttribute('data-statements-cleared') !== 'true') {
+          aboutEl?.setAttribute('data-statements-cleared', 'true');
         }
-      } else if (aboutEl?.hasAttribute('data-statement-two-settled')) {
-        aboutEl.removeAttribute('data-statement-two-settled');
+      } else if (aboutEl?.hasAttribute('data-statements-cleared')) {
+        aboutEl.removeAttribute('data-statements-cleared');
       }
     },
     [checkIsGreen, readAbout]
@@ -146,24 +214,30 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         phaseRef.current,
         wasActiveRef.current,
         dt,
-        DURATION_STATEMENT_SWAP
+        STATEMENT_SWAP.durationMs
+      );
+      clearPhaseRef.current = advancePhase(
+        clearPhaseRef.current,
+        wasClearingRef.current,
+        dt,
+        STATEMENT_CLEAR.durationMs
       );
 
-      renderPhase(phaseRef.current.t);
+      renderPhase(phaseRef.current.t, clearPhaseRef.current.t);
 
-      if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) {
+      // One loop for both beats: a second `requestAnimationFrame` would run
+      // the same composition twice per frame and publish it twice.
+      const running =
+        !isPhaseAtTarget(phaseRef.current, wasActiveRef.current) ||
+        !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current);
+
+      if (running) {
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
-        const aboutEl = readAbout();
-        if (wasActiveRef.current) {
-          aboutEl?.setAttribute('data-statement-two-settled', 'true');
-        } else {
-          aboutEl?.removeAttribute('data-statement-two-settled');
-        }
       }
     },
-    [readAbout, renderPhase]
+    [renderPhase]
   );
 
   const update = useCallback(() => {
@@ -177,28 +251,41 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       reducedMotion;
 
     if (isTestEnv) {
-      // In test runner or reduced motion, directly map sequence progress:
-      // Below 0.38: statement one (t = 0)
-      // Above 0.46: statement two (t = 1)
-      // Between 0.38 and 0.46: seamless handover
+      /*
+       * In the test runner and under reduced motion, both beats are read
+       * straight off the position -- the same windows `STATEMENT_LAYERS`
+       * declares, with no clock in between.
+       *
+       * Below 0.38: statement one. Between 0.38 and 0.46: the handover.
+       * Between 0.70 and 0.78: statement two clears, so the background has an
+       * empty screen to rise onto at 0.78.
+       */
       const t = Math.min(1, Math.max(0, (seq - 0.38) / (0.46 - 0.38)));
-      renderPhase(t);
+      const clear = Math.min(
+        1,
+        Math.max(0, (seq - STATEMENT_CLEAR.enter) / STATEMENT_CLEAR_SPAN)
+      );
+      renderPhase(t, clear);
       return;
     }
 
     // Returning to the start of the section:
     if (seq <= 0.05) {
       wasActiveRef.current = false;
-      if (phaseRef.current.t > 0) {
+      wasClearingRef.current = false;
+      if (phaseRef.current.t > 0 || clearPhaseRef.current.t > 0) {
         phaseRef.current = PHASE_AT_REST;
+        clearPhaseRef.current = PHASE_AT_REST;
         if (animFrameRef.current) {
           cancelAnimationFrame(animFrameRef.current);
           animFrameRef.current = 0;
         }
-        renderPhase(0);
+        renderPhase(0, 0);
         return;
       }
     }
+
+    const aboutEl = readAbout();
 
     // Check contrary background state
     const isGreen = checkIsGreen();
@@ -225,17 +312,46 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     wasActiveRef.current = phaseGate(
       seq,
       wasActiveRef.current,
-      STATEMENT_SWAP_ENTER,
-      STATEMENT_SWAP_EXIT
+      STATEMENT_SWAP.enter,
+      STATEMENT_SWAP.exit
     );
+    /*
+     * Coming back up, the order has to be the way down played backwards.
+     *
+     * Position alone gives the opposite: this beat's threshold is at 0.70 and
+     * the background's is at 0.78, so scrolling up releases THIS one first and
+     * statement two walks back in over a screen that is still solid green,
+     * while the wall is only starting to retreat behind it. Going down, the
+     * statement leaves and then the green arrives; going up you would get both
+     * at once.
+     *
+     * So the exit is held shut for as long as the background is anything other
+     * than fully at rest. The green retreats first, uncovers the empty screen it
+     * rose onto, and only then does statement two come back to it.
+     */
+    const backgroundBusy =
+      aboutEl?.getAttribute('data-bg-active') === 'true' ||
+      aboutEl?.getAttribute('data-bg-settled') === 'true';
 
-    if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current) && animFrameRef.current === 0) {
+    wasClearingRef.current =
+      phaseGate(
+        seq,
+        wasClearingRef.current,
+        STATEMENT_CLEAR.enter,
+        STATEMENT_CLEAR.exit
+      ) || backgroundBusy;
+
+    const running =
+      !isPhaseAtTarget(phaseRef.current, wasActiveRef.current) ||
+      !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current);
+
+    if (running && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
-      renderPhase(phaseRef.current.t);
+      renderPhase(phaseRef.current.t, clearPhaseRef.current.t);
     }
-  }, [checkIsGreen, readSeq, reducedMotion, renderPhase, step]);
+  }, [checkIsGreen, readAbout, readSeq, reducedMotion, renderPhase, step]);
 
   useEffect(() => {
     update();
@@ -255,7 +371,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
      *
      * The filter is the whole point. This used to observe every attribute on
      * `#about` *and* on `documentElement`, with `update` as the callback --
-     * and `update` itself writes `data-statement-two-settled` onto `#about`
+     * and `update` itself writes `data-statements-cleared` onto `#about`
      * and `data-contrary` onto its own node. Every write scheduled the
      * observer, which ran `update`, which wrote again: a self-sustaining loop,
      * fed further by the two downstream stages writing their own `data-title-*`

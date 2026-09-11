@@ -267,8 +267,10 @@ export function EducationRail() {
 
       if (shouldOpen) {
         if (openTimeline && (openTimeline.reversed() || openTimeline.progress() < 1)) {
-          head.setAttribute('data-settled', 'true');
-          frame.setAttribute('data-open', 'true');
+          // Guarded: `apply` runs on every frame the rail is open, and these
+          // were re-declaring the values they already held each time.
+          writeAttribute(head, 'data-settled', 'true');
+          writeAttribute(frame, 'data-open', 'true');
           openTimeline.play();
         }
       } else {

@@ -113,7 +113,7 @@ describe('TitlePixelTransition Component', () => {
     expect(screen.getByTestId('title-pixel-transition-heading').textContent).toBe('About Me');
   });
 
-  it('keeps title color pure white (#ffffff) in light mode when on green background (data-bg-transition or seq >= 0.82)', () => {
+  it('holds the heading its normal colour until the green has actually arrived', () => {
     document.documentElement.dataset.theme = 'light';
     const aboutSection = document.createElement('div');
     aboutSection.id = 'about';
@@ -129,12 +129,34 @@ describe('TitlePixelTransition Component', () => {
       window.dispatchEvent(new Event('resize'));
       expect(heading.style.color).toBe('rgb(17, 24, 39)');
 
-      // Once background pixel transition reaches heading zone (seq = 0.83): heading MUST be white (#ffffff)
+      /*
+       * Still dark at 0.83, and this is the point of the case.
+       *
+       * The background is TRIGGERED at 0.78 but plays on a clock from there, so
+       * position says nothing about how far up the screen the wall has got. The
+       * heading used to go white here -- and on `data-bg-active`, which is set
+       * on the rise's very first frame -- so in light mode it turned white
+       * while the green was still a single row along the bottom, and sat
+       * white-on-pale until the wall caught up.
+       *
+       * The heading reacting to the green is `TransitionMaskedOverlay`'s job:
+       * it lays a white copy over the same pixel mask the rise is drawn from,
+       * so the letters go white exactly where the green has reached and the
+       * edge cuts through mid-letter. That only works if the heading
+       * underneath is still its own colour.
+       */
       container.style.setProperty('--seq', '0.83');
       window.dispatchEvent(new Event('resize'));
-      expect(heading.style.color).toBe('rgb(255, 255, 255)');
+      expect(heading.style.color).toBe('rgb(17, 24, 39)');
 
-      // When section sets data-bg-transition="true" at completion (seq = 0.856): heading MUST stay white (#ffffff)
+      // And still dark while the rise is merely in flight.
+      aboutSection.setAttribute('data-bg-active', 'true');
+      window.dispatchEvent(new Event('resize'));
+      expect(heading.style.color).toBe('rgb(17, 24, 39)');
+      aboutSection.removeAttribute('data-bg-active');
+
+      // Once the green is everywhere, the masked overlay is gone and the real
+      // heading is the only one left, so it takes the white itself.
       aboutSection.setAttribute('data-bg-transition', 'true');
       container.style.setProperty('--seq', '0.856');
       window.dispatchEvent(new Event('resize'));

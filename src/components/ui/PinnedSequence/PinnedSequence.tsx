@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
+import { writeStyleProperty } from '@/lib/dom/cachedElement';
 import styles from './PinnedSequence.module.css';
 
 /**
@@ -58,13 +59,6 @@ const DEFAULT_FEATHER = 0.09;
  * skip below worth having.
  */
 const PRECISION = 3;
-
-/** Sets a property only if it differs, and reports whether it did. */
-function write(element: HTMLElement, property: string, value: string): boolean {
-  if (element.style.getPropertyValue(property) === value) return false;
-  element.style.setProperty(property, value);
-  return true;
-}
 
 export function PinnedSequence({
   screens = 3,
@@ -133,14 +127,28 @@ export function PinnedSequence({
        * the viewport, so one merely faded out still covers every section after
        * it for the rest of the page.
        */
+      /*
+       * The pin is held past the spacer's end only while a beat is still in
+       * flight, and `in flight` has to mean exactly that.
+       *
+       * A beat triggered near the end of the stretch plays for a fixed
+       * duration, which can outlast the scroll that started it -- so without
+       * this the overlay would unpin mid-movement and the beat would finish
+       * off screen.
+       *
+       * These three attributes are removed the moment their beat settles. The
+       * `-settled` attributes are NOT: they are set at the end of a beat and
+       * left set for as long as the reader is anywhere past it. Reading those
+       * here made `isTransitioning` true for the whole rest of the page, and
+       * `rect.top <= 0` is also true for the whole rest of the page, so the
+       * overlay stayed pinned and kept painting the held statements on top of
+       * Education and everything after it. `data-statement-swap-active` was in
+       * the list too and is never written by anything.
+       */
       const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
       const isTransitioning =
         aboutEl?.getAttribute('data-title-active') === 'true' ||
-        aboutEl?.getAttribute('data-title-settled') === 'true' ||
         aboutEl?.getAttribute('data-bg-active') === 'true' ||
-        aboutEl?.getAttribute('data-bg-settled') === 'true' ||
-        aboutEl?.getAttribute('data-statement-swap-active') === 'true' ||
-        aboutEl?.getAttribute('data-statement-two-settled') === 'true' ||
         aboutEl?.getAttribute('data-reverse-transition-active') === 'true';
 
       const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || (rect.top <= 0 && isTransitioning);
@@ -159,7 +167,7 @@ export function PinnedSequence({
        * there, so most of that work is for nothing -- and a blur re-rasterises
        * on any change at all.
        */
-      write(overlay, '--seq', progress.toFixed(PRECISION));
+      writeStyleProperty(overlay, '--seq', progress.toFixed(PRECISION));
 
       for (const layer of layers) {
         const presence = windowPresence(
@@ -168,8 +176,8 @@ export function PinnedSequence({
           layer.end,
           layer.feather ?? DEFAULT_FEATHER
         );
-        write(overlay, `--${layer.name}-in`, presence.toFixed(PRECISION));
-        write(
+        writeStyleProperty(overlay, `--${layer.name}-in`, presence.toFixed(PRECISION));
+        writeStyleProperty(
           overlay,
           `--${layer.name}-on`,
           layerOpacity(presence).toFixed(PRECISION)
