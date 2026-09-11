@@ -75,7 +75,9 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.value('one-on')).toBe(0);
     expect(chapter.clock.pending).toBe(0);
     expect(chapter.about).toHaveAttribute('data-head-pending', 'true');
+    expect(chapter.overlay).toHaveAttribute('data-active', 'false');
     await handover(true);
+    expect(chapter.overlay).toHaveAttribute('data-active', 'true');
     await chapter.wheel();
     await chapter.run(BEAT_COOLDOWN_MS + 20);
     expect(chapter.travel()).toBe(0);
@@ -94,9 +96,11 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.position(0.1);
     await chapter.position(2);
     await chapter.run(3000);
-    expect(chapter.overlay).toHaveAttribute('data-active', 'true');
+    expect(chapter.overlay).toHaveAttribute('data-active', 'false');
     expect(chapter.travel()).toBe(0);
+    expect(chapter.overlay.style.getPropertyValue('--seq')).toBe('1.000');
     await handover(true);
+    expect(chapter.overlay).toHaveAttribute('data-active', 'true');
     await chapter.run(BEAT_COOLDOWN_MS - 20);
     expect(chapter.travel()).toBe(0);
     await chapter.run(14000);

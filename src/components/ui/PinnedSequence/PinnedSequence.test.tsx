@@ -372,6 +372,25 @@ describe('PinnedSequence pin extension', () => {
     expect(overlay.dataset.active).toBe('false');
   });
 
+  it('tracks a spent position without covering an unfinished hero, then observes eligibility', async () => {
+    render(<section id="home" />);
+    const home = document.getElementById('home')!;
+    const { about, spacer } = mountWithAbout();
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    spacer.getBoundingClientRect = () => SPENT as DOMRect;
+    about.setAttribute('data-head-pending', 'true');
+    act(() => setScrollProgress(0.9));
+    expect(overlay.dataset.active).toBe('false');
+    expect(overlay.style.getPropertyValue('--seq')).toBe('1.000');
+    await act(async () => { home.setAttribute('data-hero-handover-settled', 'true'); });
+    expect(overlay.dataset.active).toBe('true');
+    await act(async () => {
+      about.removeAttribute('data-head-pending');
+      about.setAttribute('data-title-settled', 'true');
+    });
+    expect(overlay.dataset.active).toBe('false');
+  });
+
   it.each(['data-head-pending', 'data-head-settled', 'data-statements-present'])(
     'holds the gap before clearing on %s and observes its terminal release',
     async (flag) => {

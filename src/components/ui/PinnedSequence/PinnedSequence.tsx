@@ -75,6 +75,7 @@ export function PinnedSequence({
 
   useEffect(() => {
     if (!spacer) return;
+    const home = document.getElementById('home');
 
     /*
      * Whether the spacer is anywhere near the screen.
@@ -146,6 +147,9 @@ export function PinnedSequence({
     const apply = () => {
       const overlay = overlayRef.current;
       if (!overlay) return;
+      // Flat/reduced-motion Home publishes ready immediately; standalone
+      // sequences with no Home keep their existing eligibility.
+      const eligible = !home || home.getAttribute('data-hero-handover-settled') === 'true';
       /*
        * Keep applying through the chapter even once the spacer is behind us,
        * for the same reason the observer stops hiding it -- and keep applying
@@ -165,7 +169,7 @@ export function PinnedSequence({
        * overhead and nothing is owed. One frame of work to close the leak, and
        * then this returns early again and an idle frame costs nothing.
        */
-      if (!nearby && !chapterBusy() && overlay.dataset.active !== 'true') return;
+      if (eligible && !nearby && !chapterBusy() && overlay.dataset.active !== 'true') return;
 
       const rect = spacer.getBoundingClientRect();
       const rootHeight = window.innerHeight;
@@ -217,12 +221,12 @@ export function PinnedSequence({
        * either side of the stretch.
        */
       const busy = chapterBusy();
-      const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || busy;
+      const pinned = eligible && ((rect.top <= 0 && rect.bottom >= rootHeight) || busy);
       // Guarded: a data attribute set to the value it already holds still
       // marks the subtree dirty, and this overlay holds the whole section.
       const active = String(pinned);
       if (overlay.dataset.active !== active) overlay.dataset.active = active;
-      if (!pinned) return;
+      if (!pinned && eligible) return;
 
       /*
        * Nothing is published from a spacer that has not been laid out.
@@ -249,6 +253,10 @@ export function PinnedSequence({
        * on any change at all.
        */
       writeStyleProperty(overlay, '--seq', progress.toFixed(PRECISION));
+      // Debt can be requested before the stage is eligible. Keep the real
+      // position while hidden, otherwise a spent flick is lost when Home
+      // finishes and no further scroll publication arrives to request About.
+      if (!pinned) return;
 
       for (const layer of layers) {
         // The real position still requests beats. Their stage must not fade
@@ -278,7 +286,7 @@ export function PinnedSequence({
     const unsubscribe = subscribeScrollProgress(apply);
     window.addEventListener('resize', apply);
     const about = document.getElementById('about');
-    const completionObserver = about && typeof MutationObserver !== 'undefined'
+    const completionObserver = (about || home) && typeof MutationObserver !== 'undefined'
       ? new MutationObserver(apply)
       : null;
     if (about) {
@@ -296,6 +304,12 @@ export function PinnedSequence({
           'data-title-settled',
           'data-reverse-transition-active',
         ],
+      });
+    }
+    if (home) {
+      completionObserver?.observe(home, {
+        attributes: true,
+        attributeFilter: ['data-hero-handover-settled'],
       });
     }
 
