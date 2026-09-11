@@ -27,9 +27,9 @@ describe('the mounted About chapter plays every movement in order', () => {
     vi.useRealTimers();
   });
 
-  const mount = () => {
+  const mount = (withHome = false) => {
     const clock = animationClock();
-    const { unmount } = render(<About />);
+    const { unmount } = render(<>{withHome && <section id="home" />}<About /></>);
     const about = document.getElementById('about')!;
     const overlay = screen.getByTestId('about-sequence-overlay');
     const statements = screen.getByTestId('about-left-column').parentElement!;
@@ -57,6 +57,91 @@ describe('the mounted About chapter plays every movement in order', () => {
     const travel = () => Number(overlay.style.getPropertyValue('--head-travel'));
     return { clock, about, overlay, position, wheel, run, value, travel, statements, unmount };
   };
+
+  const handover = async (complete: boolean) => {
+    await act(async () => {
+      const home = document.getElementById('home')!;
+      if (complete) home.setAttribute('data-hero-handover-settled', 'true');
+      else home.removeAttribute('data-hero-handover-settled');
+    });
+  };
+
+  it('keeps the heading centered until the hero finishes and a fresh post-cooldown ask arrives', async () => {
+    const chapter = mount(true);
+    await chapter.position(0.953);
+    await chapter.wheel();
+    await chapter.run(3000);
+    expect(chapter.travel()).toBe(0);
+    expect(chapter.value('one-on')).toBe(0);
+    expect(chapter.clock.pending).toBe(0);
+    expect(chapter.about).toHaveAttribute('data-head-pending', 'true');
+    await handover(true);
+    await chapter.wheel();
+    await chapter.run(BEAT_COOLDOWN_MS + 20);
+    expect(chapter.travel()).toBe(0);
+    expect(chapter.clock.pending).toBe(0);
+    await chapter.wheel();
+    await chapter.run(100);
+    expect(chapter.travel()).toBeGreaterThan(0);
+    expect(chapter.value('one-on')).toBe(0);
+    await chapter.run(HEAD_SETTLE.durationMs);
+    expect(chapter.about).toHaveAttribute('data-head-settled', 'true');
+    expect(chapter.about).not.toHaveAttribute('data-head-pending');
+  });
+
+  it('holds an end flick for the hero and wakes the heading after completion without another gesture', async () => {
+    const chapter = mount(true);
+    await chapter.position(0.1);
+    await chapter.position(2);
+    await chapter.run(3000);
+    expect(chapter.overlay).toHaveAttribute('data-active', 'true');
+    expect(chapter.travel()).toBe(0);
+    await handover(true);
+    await chapter.run(BEAT_COOLDOWN_MS - 20);
+    expect(chapter.travel()).toBe(0);
+    await chapter.run(14000);
+    expect(chapter.about).toHaveAttribute('data-title-settled', 'true');
+    expect(chapter.overlay).toHaveAttribute('data-active', 'false');
+    expect(chapter.about).not.toHaveAttribute('data-head-pending');
+    expect(chapter.clock.pending).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('withdraws a pending climb on reverse and cancels its hero cooldown on unmount', async () => {
+    const chapter = mount(true);
+    await chapter.position(0.953);
+    await handover(true);
+    await chapter.run(100);
+    await chapter.position(-1);
+    expect(chapter.about).not.toHaveAttribute('data-head-pending');
+    expect(chapter.overlay).toHaveAttribute('data-active', 'false');
+    await handover(false);
+    expect(vi.getTimerCount()).toBe(0);
+    await handover(true);
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    chapter.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(chapter.clock.pending).toBe(0);
+  });
+
+  it('does not reuse the first climb gesture when the heading returns under a still-complete cue', async () => {
+    const chapter = mount(true);
+    await chapter.position(0.06);
+    await handover(true);
+    await chapter.run(BEAT_COOLDOWN_MS + 20);
+    await chapter.wheel();
+    await chapter.run(HEAD_SETTLE.durationMs + 20);
+    expect(chapter.travel()).toBe(1);
+    await chapter.position(0);
+    await chapter.run(BEAT_REST_MS + HEAD_SETTLE.durationMs + 30);
+    expect(chapter.travel()).toBe(0);
+    await chapter.position(0.06);
+    await chapter.run(100);
+    expect(chapter.travel()).toBe(0);
+    await chapter.wheel();
+    await chapter.run(100);
+    expect(chapter.travel()).toBeGreaterThan(0);
+  });
 
   it('a hard flick cannot clear the copy before the heading or skip statement one', async () => {
     const chapter = mount();

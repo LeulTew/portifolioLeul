@@ -77,6 +77,7 @@ describe('the chapter has one author per flag', () => {
     );
 
     expect([...written].sort()).toEqual([
+      'data-head-pending',
       'data-head-settled',
       'data-head-travelling',
       'data-statements-cleared',

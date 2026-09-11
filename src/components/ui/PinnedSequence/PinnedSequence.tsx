@@ -100,7 +100,7 @@ export function PinnedSequence({
        * The heading's own journey, which is owed in both directions and is the
        * only beat that can still be running once every other one has finished.
        */
-      if (flag('data-head-travelling')) return true;
+      if (flag('data-head-pending') || flag('data-head-travelling')) return true;
       const started =
         flag('data-statements-present') ||
         flag('data-head-settled') ||
@@ -286,6 +286,7 @@ export function PinnedSequence({
         attributes: true,
         attributeFilter: [
           'data-head-travelling',
+          'data-head-pending',
           'data-head-settled',
           'data-statements-present',
           'data-statements-cleared',

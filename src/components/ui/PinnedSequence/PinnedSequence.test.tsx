@@ -372,7 +372,7 @@ describe('PinnedSequence pin extension', () => {
     expect(overlay.dataset.active).toBe('false');
   });
 
-  it.each(['data-head-settled', 'data-statements-present'])(
+  it.each(['data-head-pending', 'data-head-settled', 'data-statements-present'])(
     'holds the gap before clearing on %s and observes its terminal release',
     async (flag) => {
       const { about, spacer } = mountWithAbout();

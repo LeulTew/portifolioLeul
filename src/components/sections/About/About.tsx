@@ -12,7 +12,7 @@ import { TitlePixelTransition } from './TitlePixelTransition';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { createAboutReader, createSeqReader } from './seqReader';
-import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import {
   BEAT_DEADBAND,
   BEAT_REST_MS,
@@ -164,10 +164,14 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
   const lastFrameRef = useRef(0);
   const returnRestRef = useRef(0);
   const returnWaitingRef = useRef(false);
+  const handoverRequestRef = useRef(UNREQUESTED_BEAT);
+  const handoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef(false);
   const reducedMotion = getPrefersReducedMotion();
 
   const readSeq = useRef(createSeqReader(() => ref.current)).current;
   const readAbout = useRef(createAboutReader()).current;
+  const readHome = useRef(cachedElement(() => document.getElementById('home'))).current;
 
   const renderPhase = useCallback(
     (t: number) => {
@@ -229,6 +233,7 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
       const aboutEl = readAbout();
       if (aboutEl) {
         writeAttribute(aboutEl, 'data-head-settled', t >= 1 ? 'true' : null);
+        writeAttribute(aboutEl, 'data-head-pending', pendingRef.current && t < 1 ? 'true' : null);
         /*
          * And separately: that the chapter still owes this movement.
          *
@@ -270,6 +275,7 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
         }
         dt = Math.max(0, dt - remaining);
         wasActiveRef.current = false;
+        handoverRequestRef.current = { ...handoverRequestRef.current, armed: false };
       }
       phaseRef.current = advancePhase(
         phaseRef.current,
@@ -296,15 +302,17 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
       (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
       reducedMotion
     ) {
-      // Position-mapped, with no clock in between.
+      // Static/reduced-motion rendering has no timed hero handover to await.
+      pendingRef.current = false;
       renderPhase(seq >= HEAD_SETTLE.enter ? 1 : 0);
       return;
     }
 
     /*
-     * Position is the whole trigger. This is the chapter's first beat, and the
-     * scroll that brought the reader here IS the request for it -- there is no
-     * earlier beat for it to wait on, and nothing to ask twice for.
+     * Position still owns the trigger. With a hero, its completed cue and a
+     * fresh post-cooldown ask are prerequisites, so the reader first sees the
+     * heading centered under the completed line. Standalone/flat About with no
+     * #home retains its position-only entrance; there is no preceding cue.
      */
     const reached = phaseGate(
       seq,
@@ -312,11 +320,36 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
       HEAD_SETTLE.enter,
       HEAD_SETTLE.exit
     );
-    const statementsPresent = readAbout()?.getAttribute('data-statements-present') === 'true';
+    const about = readAbout();
+    const home = readHome();
+    const now = performance.now();
+    handoverRequestRef.current = prepareBeatRequest(
+      handoverRequestRef.current,
+      home?.getAttribute('data-hero-handover-settled') === 'true',
+      now
+    );
+    const delay = beatWakeDelay([{ request: handoverRequestRef.current }], now);
+    if (handoverTimerRef.current !== null) clearTimeout(handoverTimerRef.current);
+    handoverTimerRef.current = delay === null ? null : setTimeout(() => {
+      handoverTimerRef.current = null;
+      update();
+    }, delay);
+    pendingRef.current = reached && phaseRef.current.t < 1;
+    if (about) writeAttribute(about, 'data-head-pending', pendingRef.current ? 'true' : null);
+
+    const forward = reached && (
+      !home || wasActiveRef.current ||
+      beatRequested(handoverRequestRef.current, seq >= 0.995, now)
+    );
+    const statementsPresent = about?.getAttribute('data-statements-present') === 'true';
     if (reached || statementsPresent) returnRestRef.current = 0;
     returnWaitingRef.current = !reached && !statementsPresent && phaseRef.current.t > 0;
-    wasActiveRef.current = reached || statementsPresent ||
+    const active = forward || statementsPresent ||
       (wasActiveRef.current && returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS);
+    if (wasActiveRef.current && !active) {
+      handoverRequestRef.current = { ...handoverRequestRef.current, armed: false };
+    }
+    wasActiveRef.current = active;
 
     const resting = returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS;
     if ((resting || !isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) && animFrameRef.current === 0) {
@@ -325,22 +358,35 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
     } else if (animFrameRef.current === 0) {
       renderPhase(phaseRef.current.t);
     }
-  }, [readAbout, readSeq, reducedMotion, renderPhase, step]);
+  }, [readAbout, readHome, readSeq, reducedMotion, renderPhase, step]);
 
   useEffect(() => {
     update();
     const unsubscribe = subscribeScrollProgress(update);
+    const unsubscribeGesture = subscribeScrollGesture(direction => {
+      if (direction !== 'down' || !readHome()) return;
+      handoverRequestRef.current = askBeat(handoverRequestRef.current, performance.now());
+      update();
+    });
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
     const about = readAbout();
-    const observer = about ? new MutationObserver(update) : null;
+    const home = readHome();
+    const observer = about || home ? new MutationObserver(update) : null;
     if (about) observer?.observe(about, {
       attributes: true,
       attributeFilter: ['data-statements-present'],
     });
+    if (home) observer?.observe(home, {
+      attributes: true,
+      attributeFilter: ['data-hero-handover-settled'],
+    });
     return () => {
       unsubscribe();
+      unsubscribeGesture();
       observer?.disconnect();
+      if (handoverTimerRef.current !== null) clearTimeout(handoverTimerRef.current);
+      handoverTimerRef.current = null;
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       if (animFrameRef.current) {
@@ -348,7 +394,7 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
         animFrameRef.current = 0;
       }
     };
-  }, [readAbout, update]);
+  }, [readAbout, readHome, update]);
 
   return (
     <div ref={ref} className={styles.heldHeader} data-testid="about-held-header">
