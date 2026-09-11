@@ -194,7 +194,6 @@ describe('PinnedSequence pin extension', () => {
   });
 
   const SPENT = { top: -2400, bottom: 0, height: 2400 } as Partial<DOMRect>;
-  const IN_FLIGHT = { top: -400, bottom: 2000, height: 2400 } as Partial<DOMRect>;
 
   const mountWithAbout = () => {
     const about = document.createElement('section');
@@ -226,21 +225,76 @@ describe('PinnedSequence pin extension', () => {
     'data-bg-active',
     'data-title-active',
     'data-reverse-transition-active',
-  ])('holds past the spacer while %s says a beat is still running', (attribute) => {
+    // Not a beat in flight, but a chapter that still owes one: the green has
+    // landed and the heading has not been rewritten yet.
+    'data-bg-settled',
+    'data-statements-cleared',
+  ])('holds past the spacer while %s says the chapter is unfinished', (attribute) => {
     const { about, spacer } = mountWithAbout();
     expect(activeWith(spacer, about, attribute, SPENT)).toBe('true');
   });
 
-  it.each([
-    'data-bg-settled',
-    'data-title-settled',
-    'data-statement-two-settled',
-    'data-statement-swap-active',
-  ])('releases past the spacer even though %s is still set', (attribute) => {
+  it('releases as soon as the chapter is finished', () => {
+    /*
+     * `data-title-settled` is the terminal state going down, and it is what
+     * makes the hold safe to have: without a terminus, an overlay that is fixed
+     * to the viewport and pinned on a sticky attribute covers every section
+     * after it for the rest of the page -- which is exactly what it used to do,
+     * with "Education" painted on top of Skills, Projects and Contact.
+     */
     const { about, spacer } = mountWithAbout();
-    // Sanity: the same attribute must not change anything mid-stretch either.
-    expect(activeWith(spacer, about, attribute, IN_FLIGHT)).toBe('true');
-    expect(activeWith(spacer, about, attribute, SPENT)).toBe('false');
+    about.setAttribute('data-bg-settled', 'true');
+    about.setAttribute('data-statements-cleared', 'true');
+
+    expect(activeWith(spacer, about, 'data-title-settled', SPENT)).toBe('false');
+  });
+
+  it('releases past the spacer when the chapter never started', () => {
+    const { spacer } = mountWithAbout();
+    spacer.getBoundingClientRect = () => SPENT as DOMRect;
+    act(() => setScrollProgress(Math.random()));
+    expect(screen.getByTestId('pinned-sequence-overlay').dataset.active).toBe(
+      'false'
+    );
+  });
+
+  it('holds through the gap between two serialised beats', () => {
+    /*
+     * The bug this exists for. The beats wait for each other, so between them
+     * there are stretches where the chapter is unfinished and yet nothing is
+     * animating. A reader who flicks crosses the whole spacer inside the first
+     * of those gaps; if the pin keyed on "a beat is running" it released there,
+     * and the two remaining movements played to nobody above the fold.
+     */
+    const { about, spacer } = mountWithAbout();
+    about.setAttribute('data-statements-cleared', 'true');
+    spacer.getBoundingClientRect = () => SPENT as DOMRect;
+    act(() => setScrollProgress(Math.random()));
+
+    expect(screen.getByTestId('pinned-sequence-overlay').dataset.active).toBe(
+      'true'
+    );
+  });
+
+  it('does not publish a position from a spacer it cannot measure', () => {
+    /*
+     * `localProgress` answers 0 for a zero-height spacer, and 0 is also a real
+     * position -- the top of the stretch. Publishing it would tell a section
+     * mid-chapter that the reader had jumped back to the beginning. Reachable
+     * only since the pin started being held for the chapter rather than for the
+     * spacer, because the overlay can now be active while the spacer is not
+     * laid out.
+     */
+    const { about, spacer } = mountWithAbout();
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    overlay.style.setProperty('--seq', '0.640');
+
+    about.setAttribute('data-statements-cleared', 'true');
+    spacer.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 0, height: 0 }) as DOMRect;
+    act(() => setScrollProgress(Math.random()));
+
+    expect(overlay.style.getPropertyValue('--seq')).toBe('0.640');
   });
 });
 

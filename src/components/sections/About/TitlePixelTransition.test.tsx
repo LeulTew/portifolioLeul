@@ -155,9 +155,22 @@ describe('TitlePixelTransition Component', () => {
       expect(heading.style.color).toBe('rgb(17, 24, 39)');
       aboutSection.removeAttribute('data-bg-active');
 
-      // Once the green is everywhere, the masked overlay is gone and the real
-      // heading is the only one left, so it takes the white itself.
+      /*
+       * `data-bg-transition` is NOT enough, and this is the case that says so.
+       *
+       * It lands at 95%, with the solid backdrop still fading up for another
+       * 400ms -- and the heading sits at the top of the screen, the last place
+       * a wall climbing from the bottom reaches. Taking the white there put
+       * white letters on a pale ground for the length of that fade, so the
+       * heading disappeared in the beat before it was due to be rewritten.
+       */
       aboutSection.setAttribute('data-bg-transition', 'true');
+      window.dispatchEvent(new Event('resize'));
+      expect(heading.style.color).toBe('rgb(17, 24, 39)');
+
+      // Only once the climb has genuinely finished does the real heading carry
+      // the white on its own.
+      aboutSection.setAttribute('data-bg-settled', 'true');
       container.style.setProperty('--seq', '0.856');
       window.dispatchEvent(new Event('resize'));
       expect(heading.style.color).toBe('rgb(255, 255, 255)');

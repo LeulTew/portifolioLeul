@@ -84,6 +84,28 @@ export function PinnedSequence({
      * for this stretch. The sequence can only be pinned while its spacer is on
      * screen, so away from it the layout flush buys nothing at all.
      */
+    /**
+     * Whether the chapter still owes the reader a movement.
+     *
+     * Something has started and the last thing has not finished. Monotone in
+     * both directions, with a terminal state at each end -- `title-settled`
+     * going down, nothing set at all coming back up -- so it cannot latch on.
+     */
+    const chapterBusy = () => {
+      const aboutEl =
+        typeof document !== 'undefined' ? document.getElementById('about') : null;
+      if (!aboutEl) return false;
+      const flag = (name: string) => aboutEl.getAttribute(name) === 'true';
+      const started =
+        flag('data-statements-cleared') ||
+        flag('data-bg-active') ||
+        flag('data-bg-settled') ||
+        flag('data-title-active') ||
+        flag('data-title-settled') ||
+        flag('data-reverse-transition-active');
+      return started && !flag('data-title-settled');
+    };
+
     let nearby = true;
 
     let observer: IntersectionObserver | null = null;
@@ -93,7 +115,17 @@ export function PinnedSequence({
           const entry = entries[entries.length - 1];
           if (!entry) return;
           nearby = entry.isIntersecting;
-          if (!nearby && overlayRef.current) {
+          /*
+           * Not while the chapter is still playing.
+           *
+           * This is the other half of the flick. A reader who flicks is a
+           * screen past the spacer within a few frames, so the observer fires
+           * and switches the overlay off -- and the beats, which are driven by
+           * their own clocks and not by this, went on running correctly with
+           * nothing on screen to show for it. The heading rewrote itself to an
+           * empty room.
+           */
+          if (!nearby && overlayRef.current && !chapterBusy()) {
             // An overlay is fixed to the viewport, so one left switched on
             // covers every section after it.
             overlayRef.current.dataset.active = 'false';
@@ -107,7 +139,9 @@ export function PinnedSequence({
     const apply = () => {
       const overlay = overlayRef.current;
       if (!overlay) return;
-      if (!nearby) return;
+      // Keep applying through the chapter even once the spacer is behind us,
+      // for the same reason the observer stops hiding it.
+      if (!nearby && !chapterBusy()) return;
 
       const rect = spacer.getBoundingClientRect();
       const rootHeight = window.innerHeight;
@@ -128,35 +162,57 @@ export function PinnedSequence({
        * it for the rest of the page.
        */
       /*
-       * The pin is held past the spacer's end only while a beat is still in
-       * flight, and `in flight` has to mean exactly that.
+       * The pin is held past the spacer's end for as long as the chapter still
+       * owes the reader a movement.
        *
-       * A beat triggered near the end of the stretch plays for a fixed
-       * duration, which can outlast the scroll that started it -- so without
-       * this the overlay would unpin mid-movement and the beat would finish
-       * off screen.
+       * Holding only while a beat is literally mid-flight is not enough, and
+       * this is the bug that let a flick skip the whole thing. The beats are
+       * serialised: each waits for the one before it to finish, so between them
+       * there are stretches where the chain is unfinished and yet no beat is
+       * running. A reader who flicks crosses the entire spacer during the first
+       * of those stretches, the overlay releases because nothing is currently
+       * animating, and the two remaining movements play -- correctly, on time,
+       * at the right speed -- to nobody, somewhere above the fold. The reader
+       * arrives in Education having never seen the chapter change.
        *
-       * These three attributes are removed the moment their beat settles. The
-       * `-settled` attributes are NOT: they are set at the end of a beat and
-       * left set for as long as the reader is anywhere past it. Reading those
-       * here made `isTransitioning` true for the whole rest of the page, and
-       * `rect.top <= 0` is also true for the whole rest of the page, so the
-       * overlay stayed pinned and kept painting the held statements on top of
-       * Education and everything after it. `data-statement-swap-active` was in
-       * the list too and is never written by anything.
+       * The same gap running backwards is why scrolling up fast dropped them
+       * straight into the hero: the reverse chain had barely started when the
+       * spacer left the top of the screen and took the overlay with it.
+       *
+       * So the test is the chain's state, not any single beat's. Something has
+       * started, and the last thing has not finished. That is monotone in both
+       * directions and it has a terminal state at each end -- `title-settled`
+       * going down, nothing set at all coming back up -- so it cannot latch on:
+       * the moment the chapter is done, the pin lets go for good.
+       *
+       * Note this clause does NOT require `rect.top <= 0`. That was the other
+       * half of the reverse bug: a reader scrolling up is above the spacer
+       * within a frame or two, and requiring the spacer to still be overhead
+       * released the pin before the reverse had anything to show. The
+       * IntersectionObserver above already stops this reaching beyond a screen
+       * either side of the stretch.
        */
-      const aboutEl = typeof document !== 'undefined' ? document.getElementById('about') : null;
-      const isTransitioning =
-        aboutEl?.getAttribute('data-title-active') === 'true' ||
-        aboutEl?.getAttribute('data-bg-active') === 'true' ||
-        aboutEl?.getAttribute('data-reverse-transition-active') === 'true';
-
-      const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || (rect.top <= 0 && isTransitioning);
+      const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || chapterBusy();
       // Guarded: a data attribute set to the value it already holds still
       // marks the subtree dirty, and this overlay holds the whole section.
       const active = String(pinned);
       if (overlay.dataset.active !== active) overlay.dataset.active = active;
       if (!pinned) return;
+
+      /*
+       * Nothing is published from a spacer that has not been laid out.
+       *
+       * `localProgress` answers 0 for a zero-height spacer, which is the only
+       * honest answer and the wrong thing to publish: 0 is also a real position
+       * -- the very top of the stretch -- and every beat downstream reads this
+       * as gospel. Writing it would tell a section mid-chapter that the reader
+       * had jumped back to the start.
+       *
+       * This became reachable when the pin started being held for the chapter
+       * rather than for the spacer: the overlay can now be active while the
+       * spacer is unmeasured, which before it never was.
+       */
+      if (rect.height <= 0) return;
 
       /*
        * Written only when the value actually changes.

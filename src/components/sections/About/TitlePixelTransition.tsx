@@ -179,11 +179,20 @@ export function TitlePixelTransition({
    */
   const checkIsGreenBg = useCallback((): boolean => {
     if (typeof document === 'undefined') return false;
-    const aboutSection = readAbout();
-    if (aboutSection?.getAttribute('data-bg-transition') === 'true') return true;
-    if (aboutSection?.getAttribute('data-bg-settled') === 'true') return true;
-    if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
-    return false;
+    /*
+     * `data-bg-settled` alone, and the omissions matter as much as the term.
+     *
+     * `data-bg-transition` and `data-navbar-contrary` both land at 95%, with
+     * the solid backdrop still fading up behind them for another 400ms -- and
+     * the heading is at the top of the screen, the last place a wall climbing
+     * from the bottom arrives. Taking the white on either of those put white
+     * letters on a pale ground for the length of that fade, so the heading
+     * disappeared in the beat before it was due to be rewritten.
+     *
+     * Until then the heading keeps its own colour and the masked mirror carries
+     * the white exactly as far as the green has actually climbed.
+     */
+    return readAbout()?.getAttribute('data-bg-settled') === 'true';
   }, [readAbout]);
 
   const renderPhase = useCallback(
@@ -536,8 +545,27 @@ export function TitlePixelTransition({
      * down asks again.
      */
     if (!isBackgroundSettled) armedRef.current = false;
+
+    /*
+     * Past the end of the stretch, the beat stops waiting to be asked.
+     *
+     * The gesture requirement is what makes the stages discrete for someone
+     * reading: each movement is theirs to call for. It cannot apply to someone
+     * who has already gone. A flick spends the whole spacer in well under the
+     * first beat's duration, the wheel stops, and every later stage is left
+     * armed-but-unasked forever -- so the chapter never finishes, and because
+     * the pin is now held until it does, the reader would be stuck under an
+     * overlay waiting for an input they have no reason to give.
+     *
+     * Reaching the end of the stretch IS the request. There is nothing further
+     * to scroll for, so the remaining movements play themselves out in order,
+     * each still at its own fixed speed, and the chapter closes.
+     */
+    const spent = seq >= 0.995;
     const active =
-      reached && isBackgroundSettled && (armedRef.current || wasActiveRef.current);
+      reached &&
+      isBackgroundSettled &&
+      (armedRef.current || wasActiveRef.current || spent);
 
     /*
      * Disarmed only on the way OUT, never merely for not having started.

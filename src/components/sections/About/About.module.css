@@ -864,9 +864,24 @@
   transform: none !important;
 }
 
-:global(body:has(#about[data-bg-transition='true'])) .transitionMaskedOverlay,
-:global(html[data-navbar-contrary='true']) .transitionMaskedOverlay,
-#about[data-bg-transition='true'] .transitionMaskedOverlay {
+/*
+ * The two-tone layer is retired when the green is FINISHED, not at 95%.
+ *
+ * `data-bg-transition` lands with the solid backdrop at 95%, and the backdrop
+ * takes another 400ms to fade up. The heading sits at the top of the screen,
+ * which is the very last place a wall climbing from the bottom reaches -- so at
+ * 95% the ground behind the heading is still the pale scene. Retiring the
+ * mirror there took away the white lettering and handed the real heading its
+ * white at the same moment: white text, pale ground, for the length of the
+ * backdrop's fade. The heading vanished, and it vanished exactly in the beat
+ * before it was supposed to be rewritten into "Education".
+ *
+ * `data-bg-settled` is published when the climb is genuinely complete and the
+ * ground is solid, which is the first moment the real heading can carry the
+ * white on its own.
+ */
+:global(body:has(#about[data-bg-settled='true'])) .transitionMaskedOverlay,
+#about[data-bg-settled='true'] .transitionMaskedOverlay {
   display: none !important;
 }
 

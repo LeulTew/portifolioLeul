@@ -291,8 +291,23 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       return;
     }
 
-    // Returning to the start of the section:
-    if (seq <= 0.05) {
+    /*
+     * Returning to the start of the section.
+     *
+     * Only once the chapter behind these statements has actually gone, though.
+     * This branch snaps both beats to rest, and a reader scrolling up quickly
+     * is above the spacer -- so `seq` reads 0 -- while the green is still
+     * retreating and the title still un-writing. Snapping here threw the copy
+     * back on screen over a chapter that had not finished leaving, which is the
+     * same collision the reverse ordering exists to prevent, arriving by a
+     * different door.
+     */
+    const chapterLeaving =
+      readAbout()?.getAttribute('data-bg-active') === 'true' ||
+      readAbout()?.getAttribute('data-bg-settled') === 'true' ||
+      readAbout()?.getAttribute('data-reverse-transition-active') === 'true';
+
+    if (seq <= 0.05 && !chapterLeaving) {
       wasActiveRef.current = false;
       wasClearingRef.current = false;
       if (phaseRef.current.t > 0 || clearPhaseRef.current.t > 0) {

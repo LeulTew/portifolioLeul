@@ -446,8 +446,25 @@ export function BackgroundPixelTransition({
      * down asks again.
      */
     if (!statementsCleared) armedRef.current = false;
+
+    /*
+     * Past the end of the stretch, the beat stops waiting to be asked.
+     *
+     * The gesture requirement is what makes the stages discrete for someone
+     * reading: each movement is theirs to call for. It cannot apply to someone
+     * who has already gone. A flick spends the whole spacer in well under the
+     * first beat's duration, the wheel stops, and every later stage is left
+     * armed-but-unasked forever -- so the chapter never finishes, and because
+     * the pin is now held until it does, the reader would be stuck under an
+     * overlay waiting for an input they have no reason to give.
+     *
+     * Reaching the end of the stretch IS the request. There is nothing further
+     * to scroll for, so the remaining movements play themselves out in order,
+     * each still at its own fixed speed, and the chapter closes.
+     */
+    const spent = seq >= 0.995;
     const active =
-      (reached && statementsCleared && (armedRef.current || wasActiveRef.current)) ||
+      (reached && statementsCleared && (armedRef.current || wasActiveRef.current || spent)) ||
       titleBusy;
 
     /*
