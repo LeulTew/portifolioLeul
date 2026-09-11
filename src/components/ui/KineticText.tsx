@@ -19,6 +19,7 @@ export function KineticHeading({
   as: Component = 'h1',
 }: KineticHeadingProps) {
   const words = text.split(' ');
+  const prefersReduced = getPrefersReducedMotion();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -57,8 +58,8 @@ export function KineticHeading({
     <Tag className={cn('flex flex-wrap items-baseline gap-x-3 gap-y-1', className)} aria-label={text}>
       <MotionSpan
         variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
+        initial={prefersReduced ? false : 'hidden'}
+        whileInView={prefersReduced ? undefined : 'visible'}
         viewport={{ once: true, margin: '-20px' }}
         className="flex flex-wrap items-baseline gap-x-2"
       >

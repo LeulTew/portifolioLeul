@@ -5,12 +5,14 @@ import { TelegramIcon } from '../../ui/TelegramIcon';
 import { KineticHeading } from '../../ui/KineticText';
 import { ContactForm } from './ContactForm';
 import { soundFx } from '@/lib/gateways/soundFx';
+import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import styles from './Contact.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 
 export function Contact() {
   const containerRef = useRef<HTMLElement>(null);
+  const reducedMotion = getPrefersReducedMotion();
 
   const handleSocialHover = () => {
     soundFx.playMagneticSnap();
@@ -38,8 +40,8 @@ export function Contact() {
         <div className={styles.grid}>
           <motion.div 
             className={styles.formContainer}
-            initial={{ opacity: 0, x: -40 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={reducedMotion ? false : { opacity: 0, x: -40 }}
+            whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
           >
@@ -48,8 +50,8 @@ export function Contact() {
 
           <motion.div 
             className={styles.contactInfo}
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={reducedMotion ? false : { opacity: 0, x: 40 }}
+            whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.15 }}
           >

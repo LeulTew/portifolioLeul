@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { KineticHeading, DancingCharText } from '../../ui/KineticText';
+import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import styles from './Skills.module.css';
 
 import { cvData } from '../../../data/cv';
@@ -10,6 +11,7 @@ const skillCategories = cvData.skills;
 
 export function Skills() {
   const containerRef = useRef<HTMLElement>(null);
+  const reducedMotion = getPrefersReducedMotion();
 
   return (
     <section ref={containerRef} className={styles.skills} id="skills">
@@ -18,8 +20,8 @@ export function Skills() {
       <motion.div className={styles.content}>
         <motion.div 
           className={styles.header}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 20 }}
+          whileInView={reducedMotion ? undefined : { opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
         >
@@ -29,8 +31,8 @@ export function Skills() {
 
         <motion.div 
           className={styles.skillsGrid}
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 40 }}
+          whileInView={reducedMotion ? undefined : { opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.2 }}
         >
@@ -38,8 +40,8 @@ export function Skills() {
             <motion.div
               key={category.title}
               className={styles.skillCard}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 20 }}
+              whileInView={reducedMotion ? undefined : { opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ 
                 duration: 0.8, 
@@ -54,8 +56,8 @@ export function Skills() {
                   <motion.span
                     key={skill}
                     className={styles.skill}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
+                    initial={reducedMotion ? false : { opacity: 0, scale: 0.8 }}
+                    whileInView={reducedMotion ? undefined : { opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ 
                       duration: 0.4, 
