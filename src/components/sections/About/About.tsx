@@ -10,14 +10,17 @@ import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { createAboutReader, createSeqReader } from './seqReader';
 import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import {
+  BEAT_COOLDOWN_MS,
   HEAD_SETTLE,
   STATEMENT_ARRIVE,
   STATEMENT_CLEAR,
   STATEMENT_CLEAR_SPAN,
   STATEMENT_SWAP,
+  statementsHeldClear,
 } from './aboutBeats';
 import {
   advancePhase,
@@ -334,6 +337,10 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   const wasArrivingRef = useRef(false);
   const clearPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasClearingRef = useRef(false);
+  /** When the wall finished retreating, so the return can be made to wait. */
+  const groundRestedAtRef = useRef(0);
+  /** Whether the reader has asked for the return since then. */
+  const returnArmedRef = useRef(false);
   const animFrameRef = useRef(0);
   const lastFrameRef = useRef(0);
   const reducedMotion = getPrefersReducedMotion();
@@ -615,13 +622,43 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       aboutEl?.getAttribute('data-bg-active') === 'true' ||
       aboutEl?.getAttribute('data-bg-settled') === 'true';
 
-    wasClearingRef.current =
-      phaseGate(
+    /*
+     * And having waited for the wall, it waits to be asked, like every other
+     * beat -- because on the way up it was the only one that did not.
+     *
+     * Ordering was already right: `backgroundBusy` holds this shut until the
+     * green has gone. What it did not give was a pause. Measured coming back up,
+     * the wall finished retreating and the statements began walking in 10ms
+     * later, against a forward pass where the same two beats sat 3131ms apart.
+     * The way down is a sequence of separate movements the reader calls for one
+     * at a time; the way up ran the last two together.
+     *
+     * So the mirror of rule 5: the wall lands, a rest is served, and the reader
+     * has to ask again. A gesture during the rest is discarded rather than
+     * queued, so spamming the wheel upward buys nothing.
+     */
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (backgroundBusy || !wasClearingRef.current) {
+      groundRestedAtRef.current = 0;
+      returnArmedRef.current = false;
+    } else if (groundRestedAtRef.current === 0) {
+      groundRestedAtRef.current = now;
+    }
+
+    wasClearingRef.current = statementsHeldClear({
+      positionWants: phaseGate(
         seq,
         wasClearingRef.current,
         STATEMENT_CLEAR.enter,
         STATEMENT_CLEAR.exit
-      ) || backgroundBusy;
+      ),
+      backgroundBusy,
+      wasClear: wasClearingRef.current,
+      seq,
+      armed: returnArmedRef.current,
+      restedAt: groundRestedAtRef.current,
+      now,
+    });
 
     const running =
       !isPhaseAtTarget(phaseRef.current, wasActiveRef.current) ||
@@ -643,6 +680,28 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   useEffect(() => {
     update();
     const unsubProgress = subscribeScrollProgress(update);
+
+    /*
+     * The ask for the statements to come back.
+     *
+     * Upward only, and only once the wall has been down long enough. The
+     * gesture is an intention and never a permission -- `scrollGesture` is
+     * strictly passive and cannot cancel anything, so this holds the reader's
+     * attention without ever holding their scroll.
+     */
+    const unsubGesture = subscribeScrollGesture((direction) => {
+      if (direction !== 'up') return;
+      if (!wasClearingRef.current || returnArmedRef.current) return;
+      const since =
+        (typeof performance !== 'undefined' ? performance.now() : 0) -
+        groundRestedAtRef.current;
+      // Discarded, not queued: arriving early must not pay off once the rest
+      // is over, or spamming the wheel works simply by being early.
+      if (groundRestedAtRef.current === 0 || since < BEAT_COOLDOWN_MS) return;
+      returnArmedRef.current = true;
+      update();
+    });
+
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
 
@@ -688,6 +747,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
 
     return () => {
       unsubProgress();
+      unsubGesture();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       observer?.disconnect();
@@ -710,35 +770,31 @@ export function About() {
   const educationRef = useRef<HTMLDivElement>(null);
   const reducedMotion = getPrefersReducedMotion();
 
-  useEffect(() => {
-    const el = educationRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') return;
+  /*
+   * The rail used to publish the chapter's colour from an IntersectionObserver
+   * here, and it had no business doing so.
+   *
+   * It set `data-bg-transition` and `data-navbar-contrary` the moment the
+   * Education rail so much as touched the viewport -- attributes owned by
+   * `BackgroundPixelTransition`, which decides them from the beat that actually
+   * paints the green. Two authors for one flag is rule 1 at the level of the
+   * DOM: they agree nowhere except by accident. Measured, the rail clipped the
+   * viewport at `seq` 0.549 and set `data-bg-transition`; the background's own
+   * frame loop took it straight back off 8ms later, because the rise had not
+   * started and its precondition was not even set.
+   *
+   * Eight milliseconds is one frame, and that frame is not free. `checkIsGreen`
+   * reads that flag to decide the statements' ink, `useFooterContrast` watches
+   * it, and it sits on `#about`, which `body:has(...)` selectors watch -- so a
+   * one-frame flicker is a document-wide restyle and a visible twitch in the
+   * chapter's colour, a third of the way in, for no reason at all.
+   *
+   * Nothing replaces it. `data-education-active` is published by `EducationRail`
+   * from its own state, the bar reads the live grid through `data-nav-contrast`,
+   * and the footer reads it through `isChapterBehind`. Every consumer already
+   * had a better source than this observer's guess.
+   */
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        const aboutEl = document.getElementById('about');
-        if (!aboutEl) return;
-        if (entry.isIntersecting) {
-          aboutEl.setAttribute('data-bg-transition', 'true');
-          document.documentElement.setAttribute('data-navbar-contrary', 'true');
-        } else {
-          const rect = aboutEl.getBoundingClientRect();
-          if (rect.bottom < 80 || rect.top > 80) {
-            document.documentElement.removeAttribute('data-navbar-contrary');
-          }
-        }
-      },
-      { rootMargin: '-5% 0px -10% 0px' }
-    );
-
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-      document.documentElement.removeAttribute('data-navbar-contrary');
-      document.getElementById('about')?.removeAttribute('data-education-active');
-    };
-  }, []);
 
   /**
    * Symmetric, and driven by the scroll rather than played once on arrival.

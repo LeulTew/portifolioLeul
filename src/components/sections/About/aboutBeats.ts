@@ -164,3 +164,49 @@ export const STATEMENT_ARRIVE: StatementBeat = {
   exit: round(TWO.start - TWO_FEATHER * 3 - DEADBAND),
   durationMs: 900,
 };
+
+/**
+ * Whether the statements are still held out of the chapter's way.
+ *
+ * The way down is a chain of separate movements, each one the reader's to call
+ * for: the statements clear, and then the wall waits for a gesture and a rest
+ * before it rises. Measured on the way back up, the wall finished retreating
+ * and the statements began walking in 10ms later, against 3131ms between the
+ * same two beats going down. The order was right and the pacing was not, so the
+ * last two movements of the reverse read as one.
+ *
+ * This is rule 5 in the other direction. `backgroundBusy` keeps the ordering --
+ * the green goes first, and uncovers the empty screen it rose onto -- and then
+ * the reader has to ask again, and be made to wait once more before the ask
+ * counts. A gesture that arrives during the rest is discarded rather than
+ * queued, so spamming the wheel upward buys nothing.
+ *
+ * `seq` past the start of the stretch is the escape, and it is the same one the
+ * forward beats have at the far end: a reader who flicks all the way up stops
+ * producing gestures, and a beat still waiting for one would leave the
+ * statements cleared for good -- with the pin held until the chapter finishes,
+ * which it then never would. Reaching the start IS the request.
+ */
+export function statementsHeldClear(input: {
+  /** What the position gate alone wants. */
+  positionWants: boolean;
+  /** The wall is up, or still on its way up or down. */
+  backgroundBusy: boolean;
+  /** Last frame's answer, because this beat is sticky on the way out. */
+  wasClear: boolean;
+  /** Where the reader is in the held stretch. */
+  seq: number;
+  /** An upward gesture has arrived since the rest was served. */
+  armed: boolean;
+  /** When the wall finished retreating; 0 while it has not. */
+  restedAt: number;
+  now: number;
+}): boolean {
+  if (input.positionWants || input.backgroundBusy) return true;
+  if (!input.wasClear) return false;
+  // Past the start of the stretch there is nobody left to ask.
+  if (input.seq <= BEAT_DEADBAND) return false;
+  const rested =
+    input.restedAt > 0 && input.now - input.restedAt >= BEAT_COOLDOWN_MS;
+  return !(input.armed && rested);
+}
