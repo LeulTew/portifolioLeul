@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { BEAT_DEADBAND, TITLE_WRITE } from './aboutBeats';
-import { writeAttribute } from '@/lib/dom/cachedElement';
+import { cachedElement, writeAttribute } from '@/lib/dom/cachedElement';
 import {
   advancePhase,
   isPhaseAtTarget,
@@ -94,6 +94,59 @@ export function TitlePixelTransition({
   const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
   const readAbout = useRef(createAboutReader()).current;
 
+  /*
+   * The white half of the heading, which lives in the masked overlay.
+   *
+   * Resolved through the same cache as everything else here, so it is a lookup
+   * once rather than per frame, and re-resolved only if the node is replaced.
+   */
+  const readMirrorTitle = useRef(
+    cachedElement(() =>
+      typeof document === 'undefined'
+        ? null
+        : document.querySelector<HTMLElement>('[data-testid="about-masked-title"]')
+    )
+  ).current;
+  const readMirrorSubtitle = useRef(
+    cachedElement(() =>
+      typeof document === 'undefined'
+        ? null
+        : document.querySelector<HTMLElement>('[data-testid="about-masked-subtitle"]')
+    )
+  ).current;
+
+  /**
+   * Writes a line of the heading, and its mirror, from one call.
+   *
+   * The mirror is a second paint of the SAME words -- the only way to get two
+   * colours out of one run of text split by a 2D boundary -- so every write
+   * that reaches the real element has to reach it too. Routing both through
+   * one function is what stops them drifting: there is no way to update one
+   * and forget the other, which is how the copy ended up permanently reading
+   * "About Me" while the real heading typed itself into "Education".
+   */
+  const paintLine = useCallback(
+    (
+      element: HTMLElement | null,
+      mirror: HTMLElement | null,
+      text: string,
+      opacity: string
+    ) => {
+      if (element) {
+        if (element.textContent !== text) element.textContent = text;
+        if (element.style.opacity !== opacity) element.style.opacity = opacity;
+      }
+      if (mirror) {
+        // The mirror renders through `content: attr(data-text)`.
+        if (mirror.getAttribute('data-text') !== text) {
+          mirror.setAttribute('data-text', text);
+        }
+        if (mirror.style.opacity !== opacity) mirror.style.opacity = opacity;
+      }
+    },
+    []
+  );
+
   const [cols] = useState(DEFAULT_COLS);
   const [rows] = useState(DEFAULT_ROWS);
   const [dots] = useState<PixelDotData[]>(() => generateDots(DEFAULT_COLS, DEFAULT_ROWS));
@@ -149,18 +202,13 @@ export function TitlePixelTransition({
 
       // Step 0: Initial state before pixel dissolve begins (p <= 0.02)
       if (p <= 0.02) {
-        if (titleElRef.current) {
-          if (titleElRef.current.textContent !== initialTitle) {
-            titleElRef.current.textContent = initialTitle;
-          }
-          titleElRef.current.style.opacity = '1';
-        }
-        if (subtitleElRef.current) {
-          if (subtitleElRef.current.textContent !== initialSubtitle) {
-            subtitleElRef.current.textContent = initialSubtitle;
-          }
-          subtitleElRef.current.style.opacity = '0.9';
-        }
+        paintLine(titleElRef.current, readMirrorTitle(), initialTitle, '1');
+        paintLine(
+          subtitleElRef.current,
+          readMirrorSubtitle(),
+          initialSubtitle,
+          '0.9'
+        );
         for (let i = 0; i < totalDots; i++) {
           const el = dotElementsRef.current[i];
           if (el && el.dataset.active !== 'false') el.dataset.active = 'false';
@@ -198,20 +246,19 @@ export function TitlePixelTransition({
       if (p < 0.45) {
         const p1 = (p - 0.02) / 0.43; // 0 -> 1
 
-        if (titleElRef.current) {
-          if (titleElRef.current.textContent !== initialTitle) {
-            titleElRef.current.textContent = initialTitle;
-          }
-          // Text dissolves as white pixel dots multiply over it
-          titleElRef.current.style.opacity = Math.max(0, 1 - p1 * 1.8).toFixed(2);
-        }
-
-        if (subtitleElRef.current) {
-          if (subtitleElRef.current.textContent !== initialSubtitle) {
-            subtitleElRef.current.textContent = initialSubtitle;
-          }
-          subtitleElRef.current.style.opacity = Math.max(0, 0.9 - p1 * 2.0).toFixed(2);
-        }
+        // Text dissolves as white pixel dots multiply over it.
+        paintLine(
+          titleElRef.current,
+          readMirrorTitle(),
+          initialTitle,
+          Math.max(0, 1 - p1 * 1.8).toFixed(2)
+        );
+        paintLine(
+          subtitleElRef.current,
+          readMirrorSubtitle(),
+          initialSubtitle,
+          Math.max(0, 0.9 - p1 * 2.0).toFixed(2)
+        );
 
         // Activate white pixel dots with organic clustering
         for (let i = 0; i < totalDots; i++) {
@@ -229,35 +276,24 @@ export function TitlePixelTransition({
       if (p < 0.82) {
         const p2 = (p - 0.45) / 0.37; // 0 -> 1
 
-        if (titleElRef.current) {
-          // Character by character emergence inside pixel field: E -> Ed -> Edu -> ... -> Education
-          const numChars = Math.max(
-            1,
-            Math.min(flippedTitle.length, Math.ceil(p2 * flippedTitle.length))
-          );
-          const written = flippedTitle.slice(0, numChars);
-          if (titleElRef.current.textContent !== written) {
-            titleElRef.current.textContent = written;
-          }
-          /*
-           * From nothing, not from 0.6.
-           *
-           * Phase one leaves the heading at exactly 0 -- its ramp reaches zero
-           * well before the phase ends -- so opening phase two at 0.6 was a
-           * jump from invisible to more than half opaque in one frame, in both
-           * directions. Scrolling down it flashed on; scrolling back up it
-           * flashed off. Starting at p2 makes the two phases meet at the same
-           * value, and phase three then continues from the 1 this ends at.
-           */
-          titleElRef.current.style.opacity = p2.toFixed(2);
-        }
-
-        if (subtitleElRef.current) {
-          if (subtitleElRef.current.textContent !== flippedSubtitle) {
-            subtitleElRef.current.textContent = flippedSubtitle;
-          }
-          subtitleElRef.current.style.opacity = Math.min(0.9, p2 * 1.2).toFixed(2);
-        }
+        // Character by character emergence inside the pixel field:
+        // E -> Ed -> Edu -> ... -> Education
+        const numChars = Math.max(
+          1,
+          Math.min(flippedTitle.length, Math.ceil(p2 * flippedTitle.length))
+        );
+        paintLine(
+          titleElRef.current,
+          readMirrorTitle(),
+          flippedTitle.slice(0, numChars),
+          p2.toFixed(2)
+        );
+        paintLine(
+          subtitleElRef.current,
+          readMirrorSubtitle(),
+          flippedSubtitle,
+          Math.min(0.9, p2 * 1.2).toFixed(2)
+        );
 
         // Keep pixel dots animated across the writing phase
         for (let i = 0; i < totalDots; i++) {
@@ -275,19 +311,14 @@ export function TitlePixelTransition({
       // Step 3: Phase 3 (0.82 to 1.00) - Pixel dots clear away, leaving crisp clean title "Education"
       const p3 = Math.min(1, (p - 0.82) / 0.18); // 0 -> 1
 
-      if (titleElRef.current) {
-        if (titleElRef.current.textContent !== flippedTitle) {
-          titleElRef.current.textContent = flippedTitle;
-        }
-        titleElRef.current.style.opacity = '1';
-      }
+      paintLine(titleElRef.current, readMirrorTitle(), flippedTitle, '1');
 
-      if (subtitleElRef.current) {
-        if (subtitleElRef.current.textContent !== flippedSubtitle) {
-          subtitleElRef.current.textContent = flippedSubtitle;
-        }
-        subtitleElRef.current.style.opacity = '0.95';
-      }
+      paintLine(
+        subtitleElRef.current,
+        readMirrorSubtitle(),
+        flippedSubtitle,
+        '0.95'
+      );
 
       // Pixel dots clear away left-to-right
       for (let i = 0; i < totalDots; i++) {
@@ -323,7 +354,17 @@ export function TitlePixelTransition({
         }
       }
     },
-    [dots, flippedSubtitle, flippedTitle, initialSubtitle, initialTitle, readAbout]
+    [
+      dots,
+      flippedSubtitle,
+      flippedTitle,
+      initialSubtitle,
+      initialTitle,
+      paintLine,
+      readAbout,
+      readMirrorSubtitle,
+      readMirrorTitle,
+    ]
   );
 
   const step = useCallback(

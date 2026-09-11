@@ -303,11 +303,39 @@
   display: block;
 }
 
+/*
+ * The mirror adds nothing of its own. Everything it might inherit is off here.
+ *
+ * `.heldHeader .title` carries a `clip-path` reveal and a 1.2% scale driven by
+ * `--title-in`, and `.subtitle` carries a soft white glow. Those belong to a
+ * heading arriving and to a subtitle standing on the dark scene; this copy
+ * exists only to recolour a heading that has already arrived. Inheriting the
+ * reveal put the two layers a fraction of a percent out of register, and
+ * inheriting the glow drew a halo around white letters sitting exactly on top
+ * of the same letters in ink -- between them, the pair stopped reading as one
+ * two-tone heading and started reading as two, badly registered.
+ *
+ * `transition` too: the real heading's opacity is written every frame by the
+ * beat, and this one now takes the same value from the same call, so a CSS
+ * ease on either would put them on different clocks.
+ */
+.heldHeaderWhite .titleWhite,
+.heldHeaderWhite .subtitleWhite {
+  clip-path: none;
+  transform: none;
+  text-shadow: none;
+  transition: none;
+}
+
 .heldHeaderWhite .titleWhite::before {
   content: attr(data-text);
   display: block;
   color: #ffffff !important;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
+  /*
+   * No shadow. A glow around white letters sitting exactly on top of the same
+   * letters in dark ink is what made the pair read as two badly-registered
+   * copies instead of one two-tone heading.
+   */
   mix-blend-mode: normal;
 }
 
@@ -323,7 +351,7 @@
   display: block;
   color: #ffffff !important;
   opacity: 0.95;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  /* No shadow, for the same reason as the title above. */
   mix-blend-mode: normal;
 }
 

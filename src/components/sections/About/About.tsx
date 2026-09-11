@@ -94,12 +94,34 @@ function TransitionMaskedOverlay() {
   return (
     <div ref={ref} className={styles.transitionMaskedOverlay} aria-hidden="true">
       <div className={styles.transitionGreenFill} />
+      {/*
+        * The white half of the heading, and it must never be its own heading.
+        *
+        * There is no way in CSS to paint one run of text in two colours split
+        * by an arbitrary 2D boundary, so the two-tone effect needs a second
+        * paint -- but the copy has to be a MIRROR, not a lookalike. This markup
+        * used to carry a hardcoded "About Me", its own font rules and its own
+        * drop shadow, so it drifted from the real heading in three ways at
+        * once: it never followed the typing into "Education", it took an extra
+        * `clip-path` reveal the real one does not have, and the shadow drew a
+        * dark halo around white letters that read as a badly-registered second
+        * copy -- which is exactly what it was.
+        *
+        * `TitlePixelTransition` now writes these two `data-text` values and
+        * their opacity from the same code that writes the real heading, so
+        * whatever the real one says, this says.
+        */}
       <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
         <div className={styles.titleBox}>
-          <div className={`${styles.title} ${styles.titleWhite}`} data-text="About Me" />
+          <div
+            className={`${styles.title} ${styles.titleWhite}`}
+            data-testid="about-masked-title"
+            data-text="About Me"
+          />
         </div>
         <div
           className={`${styles.subtitle} ${styles.subtitleWhite}`}
+          data-testid="about-masked-subtitle"
           data-text={cvData.about.subtitle}
         />
       </div>
