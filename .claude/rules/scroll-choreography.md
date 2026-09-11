@@ -50,6 +50,10 @@ lands as a visible step. No easing fixes that, because the input is lumpy.
 **Fixed speed is observable and must stay so:** the same beat driven by a slow
 scroll and by a hard flick takes the same wall-clock time. Measured, not assumed.
 
+Suspended frames are not visible time. `phaseFrameDelta` caps each movement
+and its post-movement rest at 50ms per paint; a hidden tab or long task must
+resume the remaining movement, never complete it in a single frame.
+
 ---
 
 ## 3. Never cancel the reader's input
@@ -193,7 +197,7 @@ to.
 Local only — GitHub Actions is over quota.
 
 ```bash
-bun test && bun run lint && bun x tsc -p tsconfig.app.json --noEmit && bun run build
+bun x vitest run && bun run lint && bun x tsc -p tsconfig.app.json --noEmit && bun run build
 ```
 
 Behaviour that a unit test cannot prove — smoothness, ordering as seen — is

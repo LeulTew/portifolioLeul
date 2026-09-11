@@ -51,13 +51,16 @@ export function isPhaseAtTarget(state: PhaseState, active: boolean): boolean {
 }
 
 /**
- * Moves a beat on by one frame.
+ * A stalled or hidden frame is not time the reader saw the movement.
  *
- * `active` is the trigger -- the only thing scroll is allowed to say. A single
- * step is capped at the full duration so that a tab left in the background,
- * which returns with a frame gap of several seconds, lands the beat at its end
- * instead of overshooting into a wild number.
+ * Preserve ordinary pacing down to 20fps, but never spend a suspended tab's
+ * entire gap in one paint. Rests use the same clock as the movement.
  */
+export function phaseFrameDelta(dtMs: number): number {
+  return Number.isFinite(dtMs) && dtMs > 0 ? Math.min(dtMs, 50) : 0;
+}
+
+/** Moves a beat one visible frame towards the position-selected target. */
 export function advancePhase(
   state: PhaseState,
   active: boolean,
@@ -70,7 +73,7 @@ export function advancePhase(
     return heading === state.heading ? state : { t: state.t, heading };
   }
 
-  const step = Math.min(dtMs, durationMs) / durationMs;
+  const step = phaseFrameDelta(dtMs) / durationMs;
   const next = state.t + step * heading;
   return { t: next < 0 ? 0 : next > 1 ? 1 : next, heading };
 }

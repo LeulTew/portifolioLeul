@@ -4,6 +4,7 @@ import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import {
   advancePhase,
   isPhaseAtTarget,
+  phaseFrameDelta,
   phaseGate,
   PHASE_AT_REST,
   type PhaseState,
@@ -268,8 +269,9 @@ export function BackgroundPixelTransition({
   const step = useCallback(
     (now: number) => {
       animFrameRef.current = 0;
-      const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7;
+      const dt = phaseFrameDelta(lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7);
       lastFrameRef.current = now;
+      const remainingRiseMs = (1 - phaseRef.current.t) * durationMs;
 
       phaseRef.current = advancePhase(
         phaseRef.current,
@@ -300,7 +302,7 @@ export function BackgroundPixelTransition({
        * the frame loop still running, and only then does the beat announce
        * itself done to whatever is waiting on it.
        */
-      restRef.current += dt;
+      restRef.current += Math.max(0, dt - remainingRiseMs);
       if (restRef.current < BEAT_REST_MS) {
         animFrameRef.current = requestAnimationFrame(step);
         return;

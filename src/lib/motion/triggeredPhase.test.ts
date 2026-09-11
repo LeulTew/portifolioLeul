@@ -52,8 +52,12 @@ describe('advancePhase', () => {
     expect(run(backABit, false, 700, 600).t).toBe(0);
   });
 
-  it('lands the beat when a backgrounded tab returns with a huge gap', () => {
-    expect(advancePhase(PHASE_AT_REST, true, 9000, 600).t).toBe(1);
+  it('resumes rather than skips a beat after a suspended frame', () => {
+    const resumed = advancePhase(PHASE_AT_REST, true, 9000, 600);
+    expect(resumed.t).toBeGreaterThan(0);
+    expect(resumed.t).toBeLessThanOrEqual(50 / 600);
+    const reversing = advancePhase({ t: 1, heading: 1 }, false, 9000, 600);
+    expect(reversing.t).toBeGreaterThanOrEqual(1 - 50 / 600);
   });
 
   it('never leaves the unit range', () => {
