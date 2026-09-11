@@ -328,13 +328,16 @@ export function FocusRail({
                       {activeItem.title}
                     </h2>
                     
-                    {/* Collapsible Content Area */}
+                    {/* Collapse the paint, not the normal-flow space (§7).
+                        Contact's intersection controls this exit. Animating
+                        height/margin changes Contact's position and rebuilds
+                        ScrollControls, feeding the observer back into itself. */}
                     <motion.div
                       animate={{ 
-                        height: isFocused ? "auto" : 0,
+                        clipPath: isFocused ? "inset(0% 0% 0% 0%)" : "inset(0% 0% 100% 0%)",
                         opacity: isFocused ? 1 : 0,
-                        marginTop: isFocused ? 16 : 0
                       }}
+                      style={{ marginTop: 16 }}
                       initial={false}
                       transition={{ 
                         type: "spring", 
