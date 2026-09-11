@@ -11,7 +11,7 @@ import {
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ThemeContext, type Theme } from '../theme/ThemeContext';
 import { ABOUT_CHAPTER_BG } from './chapterBackground';
-import { BACKGROUND_RISE, BEAT_DEADBAND, BEAT_REST_MS } from './aboutBeats';
+import { BACKGROUND_RISE, BEAT_DEADBAND, BEAT_REST_MS, BEAT_COOLDOWN_MS } from './aboutBeats';
 import { generateCells, getGridConfig, type PixelCellData } from './pixelRise';
 import { createAboutReader, createSeqReader } from './seqReader';
 import styles from './BackgroundPixelTransition.module.css';
@@ -56,6 +56,7 @@ export function BackgroundPixelTransition({
   const animFrameRef = useRef(0);
   const restRef = useRef(0);
   const armedRef = useRef(false);
+  const readyAtRef = useRef(0);
 
   const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
   const readAbout = useRef(createAboutReader()).current;
@@ -445,7 +446,30 @@ export function BackgroundPixelTransition({
      * running. Once the beat reverses to rest it is cleared, so coming back
      * down asks again.
      */
-    if (!statementsCleared) armedRef.current = false;
+
+    /*
+     * Gestures made during the beat, and during the pause after it, count for
+     * nothing.
+     *
+     * Requiring the previous beat to be finished is not enough on its own. A
+     * reader spamming the wheel is still producing gestures at the exact moment
+     * the flag lands, so the first one arms the next beat instantly and the
+     * chain runs straight through as one movement -- the thing the arming was
+     * added to prevent. `readyAtRef` is stamped when the precondition arrives,
+     * and nothing is accepted until the rest has been served.
+     */
+    if (!statementsCleared) {
+      armedRef.current = false;
+      readyAtRef.current = 0;
+    } else if (readyAtRef.current === 0) {
+      readyAtRef.current =
+        typeof performance !== 'undefined' ? performance.now() : 0;
+    }
+    const rested =
+      readyAtRef.current > 0 &&
+      (typeof performance !== 'undefined' ? performance.now() : 0) -
+        readyAtRef.current >=
+        BEAT_COOLDOWN_MS;
 
     /*
      * Past the end of the stretch, the beat stops waiting to be asked.
@@ -464,7 +488,7 @@ export function BackgroundPixelTransition({
      */
     const spent = seq >= 0.995;
     const active =
-      (reached && statementsCleared && (armedRef.current || wasActiveRef.current || spent)) ||
+      (reached && statementsCleared && (armedRef.current || wasActiveRef.current || (spent && rested))) ||
       titleBusy;
 
     /*
@@ -501,6 +525,12 @@ export function BackgroundPixelTransition({
       if (direction !== 'down') return;
       if (readAbout()?.getAttribute('data-statements-cleared') !== 'true') return;
       if (armedRef.current) return;
+      // Discarded, not queued: a gesture that merely arrived early
+      // must not take effect the instant the rest is over.
+      const since =
+        (typeof performance !== 'undefined' ? performance.now() : 0) -
+        readyAtRef.current;
+      if (readyAtRef.current === 0 || since < BEAT_COOLDOWN_MS) return;
       armedRef.current = true;
       update();
     });

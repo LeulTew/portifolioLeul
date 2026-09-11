@@ -106,3 +106,21 @@ export const TITLE_WRITE: StatementBeat = {
  * green, and then see it renamed.
  */
 export const BEAT_REST_MS = 420;
+
+/**
+ * How long the chapter rests after a beat before it will take the next request.
+ *
+ * The gesture requirement alone does not make the stages separate. A beat only
+ * arms once the one before it has finished, but a reader spamming the wheel is
+ * still producing gestures at that exact moment -- so the first one after the
+ * flag lands arms the next beat instantly and the chain runs straight through
+ * as one long movement, which is the thing the arming was added to prevent.
+ *
+ * Gestures inside this window are DISCARDED, not queued. Queuing them would
+ * make spam work by simply arriving early, which is the same failure wearing a
+ * delay. The reader has to ask again after the pause.
+ *
+ * Long enough to read as a beat landing and being let go of; short enough that
+ * someone reading at a normal pace never notices they were held.
+ */
+export const BEAT_COOLDOWN_MS = 1200;

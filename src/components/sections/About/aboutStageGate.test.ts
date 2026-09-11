@@ -8,6 +8,7 @@ import {
 } from '@/lib/motion/triggeredPhase';
 import {
   BACKGROUND_RISE,
+  BEAT_COOLDOWN_MS,
   STATEMENT_CLEAR,
   STATEMENT_SWAP,
   TITLE_WRITE,
@@ -394,5 +395,98 @@ describe('a beat that also waits to be asked', () => {
     expect(late.t).toBe(1);
     // Same movement, just asked for at different times.
     expect(frames).toBeGreaterThan(0);
+  });
+});
+
+describe('a beat that will not take a request until it has rested', () => {
+  const BEAT = TITLE;
+  const COOLDOWN_FRAMES = Math.ceil(BEAT_COOLDOWN_MS / 16.7);
+
+  /** As `replayArmed`, but a gesture only counts once the rest has been served. */
+  const replayRested = (
+    seqPerFrame: readonly number[],
+    previousDoneFrom: number,
+    gestureFrames: readonly number[]
+  ) => {
+    const gestures = new Set(gestureFrames);
+    let wasActive = false;
+    let armed = false;
+    let readyAt: number | null = null;
+    let phase: PhaseState = PHASE_AT_REST;
+    let frameQueued = false;
+    let startedAt: number | null = null;
+
+    seqPerFrame.forEach((seq, frame) => {
+      const previousDone = frame >= previousDoneFrom;
+      if (!previousDone) {
+        armed = false;
+        readyAt = null;
+      } else if (readyAt === null) {
+        readyAt = frame;
+      }
+      const rested = readyAt !== null && frame - readyAt >= COOLDOWN_FRAMES;
+      if (gestures.has(frame) && rested) armed = true;
+
+      const reached = phaseGate(seq, wasActive, BEAT.enter, BEAT.exit);
+      const active = reached && previousDone && (armed || wasActive);
+      if (wasActive && !active) armed = false;
+      wasActive = active;
+
+      if (!isPhaseAtTarget(phase, active) && !frameQueued) frameQueued = true;
+      if (frameQueued) {
+        frameQueued = false;
+        const before = phase.t;
+        phase = advancePhase(phase, wasActive, 16.7, BEAT.durationMs);
+        if (before === 0 && phase.t > 0 && startedAt === null) startedAt = frame;
+        if (!isPhaseAtTarget(phase, wasActive)) frameQueued = true;
+      }
+    });
+
+    return { startedAt, t: phase.t };
+  };
+
+  const past = held(BEAT.enter + 0.1, 900);
+
+  it('ignores a wheel spammed through the beat and the rest after it', () => {
+    /*
+     * The reported behaviour. Requiring the previous beat to be finished is
+     * not enough by itself: someone spamming the wheel is still producing
+     * gestures at the exact moment that flag lands, so the first one arms the
+     * next beat instantly and the chain runs through as one movement.
+     */
+    const everyFrame = Array.from({ length: 900 }, (_, frame) => frame);
+    const result = replayRested(past, 200, everyFrame);
+
+    expect(result.startedAt).not.toBeNull();
+    expect(result.startedAt!).toBeGreaterThanOrEqual(200 + COOLDOWN_FRAMES);
+  });
+
+  it('does nothing at all for a reader who asks only during the rest', () => {
+    const duringRestOnly = Array.from(
+      { length: COOLDOWN_FRAMES },
+      (_, i) => 200 + i
+    );
+    const result = replayRested(past, 200, duringRestOnly);
+
+    // Discarded, not queued: an early gesture must not fire the moment the
+    // rest is over. The reader has to ask again.
+    expect(result.startedAt).toBeNull();
+    expect(result.t).toBe(0);
+  });
+
+  it('takes the request as soon as the rest has been served', () => {
+    const after = 200 + COOLDOWN_FRAMES + 5;
+    const result = replayRested(past, 200, [after]);
+
+    expect(result.startedAt).toBe(after);
+    expect(result.t).toBe(1);
+  });
+
+  it('restarts the rest if the previous beat is undone', () => {
+    // Scrolling back up takes the precondition away; the clock starts again.
+    const frames = [...held(BEAT.enter + 0.1, 900)];
+    const result = replayRested(frames, 400, [400 + COOLDOWN_FRAMES + 2]);
+
+    expect(result.startedAt).toBe(400 + COOLDOWN_FRAMES + 2);
   });
 });
