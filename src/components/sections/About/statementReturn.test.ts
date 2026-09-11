@@ -175,9 +175,16 @@ describe('the statements wait to be asked back', () => {
         wasClear: true,
         seq: BEAT_DEADBAND,
         armed: false,
-        restedAt: 0,
-        now: 0,
+        restedAt: 1,
+        now: BEAT_COOLDOWN_MS + 1,
       })
     ).toBe(false);
+  });
+
+  it('does not spend the reverse cooldown just because the reader reached the start', () => {
+    expect(statementsHeldClear({
+      positionWants: false, backgroundBusy: false, wasClear: true,
+      seq: 0, armed: false, restedAt: 1, now: BEAT_COOLDOWN_MS,
+    })).toBe(true);
   });
 });

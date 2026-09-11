@@ -12,7 +12,10 @@ import {
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ThemeContext, type Theme } from '../theme/ThemeContext';
 import { ABOUT_CHAPTER_BG } from './chapterBackground';
-import { BACKGROUND_RISE, BEAT_DEADBAND, BEAT_REST_MS, BEAT_COOLDOWN_MS } from './aboutBeats';
+import {
+  BACKGROUND_RISE, BEAT_DEADBAND, BEAT_REST_MS, BEAT_COOLDOWN_MS,
+  askBeat, beatRequested, beatWakeDelay, prepareBeatRequest, UNREQUESTED_BEAT,
+} from './aboutBeats';
 import { generateCells, getGridConfig, type PixelCellData } from './pixelRise';
 import { createAboutReader, createSeqReader } from './seqReader';
 import styles from './BackgroundPixelTransition.module.css';
@@ -59,6 +62,8 @@ export function BackgroundPixelTransition({
   const armedRef = useRef(false);
   const readyAtRef = useRef(0);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const returnRequestRef = useRef(UNREQUESTED_BEAT);
+  const returnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
   const readAbout = useRef(createAboutReader()).current;
@@ -91,7 +96,7 @@ export function BackgroundPixelTransition({
     (p: number) => {
       const aboutSection = readAbout();
 
-      if (p <= 0.005) {
+      if (p <= 0) {
         /*
          * The at-rest branch, and therefore the hot one.
          *
@@ -176,7 +181,7 @@ export function BackgroundPixelTransition({
        * mid-climb.
        */
       const isBackdropActive = p >= 0.95;
-      const isComplete = p >= 0.999;
+      const isComplete = p >= 1;
 
       if (backdropRef.current) {
         // Guarded like everything else in this loop: assigning the value it
@@ -224,7 +229,7 @@ export function BackgroundPixelTransition({
           if (aboutSection.hasAttribute('data-bg-settled')) {
             aboutSection.removeAttribute('data-bg-settled');
           }
-          if (p > 0.005) {
+          if (p > 0) {
             if (aboutSection.getAttribute('data-bg-active') !== 'true') {
               aboutSection.setAttribute('data-bg-active', 'true');
             }
@@ -346,20 +351,6 @@ export function BackgroundPixelTransition({
       const testP = Math.min(1, Math.max(0, (seq - start) / span));
       renderPhase(testP);
       return;
-    }
-
-    // 4. Boundary safety override for returning to the very start of the pin:
-    if (seq <= 0.05) {
-      wasActiveRef.current = false;
-      if (phaseRef.current.t <= 0.005) {
-        phaseRef.current = PHASE_AT_REST;
-        if (animFrameRef.current) {
-          cancelAnimationFrame(animFrameRef.current);
-          animFrameRef.current = 0;
-        }
-        renderPhase(0);
-        return;
-      }
     }
 
     /*
@@ -498,9 +489,20 @@ export function BackgroundPixelTransition({
      * each still at its own fixed speed, and the chapter closes.
      */
     const spent = seq >= 0.995;
+    const now = performance.now();
+    returnRequestRef.current = prepareBeatRequest(
+      returnRequestRef.current, !titleBusy && phaseRef.current.t > 0, now
+    );
+    const returnDelay = beatWakeDelay([{ request: returnRequestRef.current }], now);
+    if (returnTimerRef.current !== null) clearTimeout(returnTimerRef.current);
+    returnTimerRef.current = returnDelay === null ? null : setTimeout(() => {
+      returnTimerRef.current = null;
+      update();
+    }, returnDelay);
     const active =
       (reached && statementsCleared && (armedRef.current || wasActiveRef.current || (spent && rested))) ||
-      titleBusy;
+      titleBusy ||
+      (wasActiveRef.current && !beatRequested(returnRequestRef.current, seq <= BEAT_DEADBAND, now));
 
     /*
      * Disarmed only on the way OUT, never merely for not having started.
@@ -533,6 +535,11 @@ export function BackgroundPixelTransition({
     const unsubscribe = subscribeScrollProgress(update);
 
     const unsubscribeGesture = subscribeScrollGesture((direction) => {
+      if (direction === 'up') {
+        returnRequestRef.current = askBeat(returnRequestRef.current, performance.now());
+        update();
+        return;
+      }
       if (direction !== 'down') return;
       if (readAbout()?.getAttribute('data-statements-cleared') !== 'true') return;
       if (armedRef.current) return;
@@ -587,6 +594,8 @@ export function BackgroundPixelTransition({
       gateObserver?.disconnect();
       if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
       cooldownTimerRef.current = null;
+      if (returnTimerRef.current !== null) clearTimeout(returnTimerRef.current);
+      returnTimerRef.current = null;
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       if (animFrameRef.current) {

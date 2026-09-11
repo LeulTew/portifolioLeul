@@ -425,20 +425,6 @@ export function TitlePixelTransition({
       return;
     }
 
-    // 4. Boundary safety override for returning to the very start of the section:
-    if (seq <= 0.05) {
-      wasActiveRef.current = false;
-      if (phaseRef.current.t <= 0.005) {
-        phaseRef.current = PHASE_AT_REST;
-        if (animFrameRef.current) {
-          cancelAnimationFrame(animFrameRef.current);
-          animFrameRef.current = 0;
-        }
-        renderPhase(0, isLightMode, isGreenBg);
-        return;
-      }
-    }
-
     /*
      * 5. Position is the trigger; time is the pace. See the long note in
      * BackgroundPixelTransition for why -- this stage had the identical

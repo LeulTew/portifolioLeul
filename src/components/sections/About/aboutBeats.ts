@@ -99,6 +99,7 @@ export const TITLE_WRITE: StatementBeat = {
 /**
  * The pause between one beat finishing and the next being allowed to start.
  *
+ * The heading-to-copy handoff also uses this authored, visible-frame rest.
  * The background and the title are two separate events, and without a gap they
  * do not read as two: the last cell lands and the heading is already
  * dissolving, so the pair arrives as one compound movement with a change of
@@ -108,7 +109,9 @@ export const TITLE_WRITE: StatementBeat = {
 export const BEAT_REST_MS = 420;
 
 /**
- * How long the chapter rests after a beat before it will take the next request.
+ * How long the chapter rests after a beat before it will take the next request,
+ * including each statement handoff and their reverse. Boundary requests skip
+ * only the gesture, never this cooldown; cancellable timers wake a stopped pin.
  *
  * The gesture requirement alone does not make the stages separate. A beat only
  * arms once the one before it has finished, but a reader spamming the wheel is
@@ -165,6 +168,58 @@ export const STATEMENT_ARRIVE: StatementBeat = {
   durationMs: 900,
 };
 
+export interface BeatRequest {
+  readonly readyAt: number | null;
+  readonly armed: boolean;
+}
+
+export const UNREQUESTED_BEAT: BeatRequest = { readyAt: null, armed: false };
+
+/** A completion clock is reset whenever its prerequisite is no longer true. */
+export function prepareBeatRequest(
+  request: BeatRequest,
+  ready: boolean,
+  now: number
+): BeatRequest {
+  if (!ready) return UNREQUESTED_BEAT;
+  return request.readyAt === null ? { readyAt: now, armed: false } : request;
+}
+
+/** Early gestures are discarded, never saved until a timer expires. */
+export function askBeat(
+  request: BeatRequest,
+  now: number,
+  cooldown = BEAT_COOLDOWN_MS
+): BeatRequest {
+  return request.readyAt !== null && now - request.readyAt >= cooldown
+    ? { ...request, armed: true }
+    : request;
+}
+
+export function beatRequested(
+  request: BeatRequest,
+  boundary: boolean,
+  now: number,
+  cooldown = BEAT_COOLDOWN_MS
+): boolean {
+  return request.readyAt !== null &&
+    now - request.readyAt >= cooldown && (request.armed || boundary);
+}
+
+/** One cancellable wake instead of a frame loop during a stopped-reader rest. */
+export function beatWakeDelay(
+  requests: readonly { request: BeatRequest; cooldown?: number }[],
+  now: number
+): number | null {
+  let delay = Infinity;
+  for (const { request, cooldown = BEAT_COOLDOWN_MS } of requests) {
+    if (request.readyAt === null) continue;
+    const remaining = request.readyAt + cooldown - now;
+    if (remaining > 0) delay = Math.min(delay, remaining);
+  }
+  return Number.isFinite(delay) ? Math.max(1, delay) : null;
+}
+
 /**
  * Whether the statements are still held out of the chapter's way.
  *
@@ -204,9 +259,7 @@ export function statementsHeldClear(input: {
 }): boolean {
   if (input.positionWants || input.backgroundBusy) return true;
   if (!input.wasClear) return false;
-  // Past the start of the stretch there is nobody left to ask.
-  if (input.seq <= BEAT_DEADBAND) return false;
   const rested =
     input.restedAt > 0 && input.now - input.restedAt >= BEAT_COOLDOWN_MS;
-  return !(input.armed && rested);
+  return !((input.armed || input.seq <= BEAT_DEADBAND) && rested);
 }

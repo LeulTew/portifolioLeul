@@ -80,6 +80,7 @@ describe('the chapter has one author per flag', () => {
       'data-head-settled',
       'data-head-travelling',
       'data-statements-cleared',
+      'data-statements-present',
     ]);
   });
 });

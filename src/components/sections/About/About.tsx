@@ -14,18 +14,25 @@ import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { createAboutReader, createSeqReader } from './seqReader';
 import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import {
-  BEAT_COOLDOWN_MS,
+  BEAT_DEADBAND,
+  BEAT_REST_MS,
   HEAD_SETTLE,
   STATEMENT_ARRIVE,
   STATEMENT_CLEAR,
   STATEMENT_CLEAR_SPAN,
   STATEMENT_SWAP,
+  askBeat,
+  beatRequested,
+  beatWakeDelay,
+  prepareBeatRequest,
+  UNREQUESTED_BEAT,
   statementsHeldClear,
 } from './aboutBeats';
 import {
   advancePhase,
   easeInOutCubic,
   isPhaseAtTarget,
+  phaseFrameDelta,
   phaseGate,
   PHASE_AT_REST,
   type PhaseState,
@@ -155,6 +162,8 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
   const wasActiveRef = useRef(false);
   const animFrameRef = useRef(0);
   const lastFrameRef = useRef(0);
+  const returnRestRef = useRef(0);
+  const returnWaitingRef = useRef(false);
   const reducedMotion = getPrefersReducedMotion();
 
   const readSeq = useRef(createSeqReader(() => ref.current)).current;
@@ -219,7 +228,7 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
       // Published for the statements, which may not arrive until it lands.
       const aboutEl = readAbout();
       if (aboutEl) {
-        writeAttribute(aboutEl, 'data-head-settled', t >= 0.999 ? 'true' : null);
+        writeAttribute(aboutEl, 'data-head-settled', t >= 1 ? 'true' : null);
         /*
          * And separately: that the chapter still owes this movement.
          *
@@ -239,7 +248,7 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
         writeAttribute(
           aboutEl,
           'data-head-travelling',
-          t > 0.001 && t < 0.999 ? 'true' : null
+          t > 0 && t < 1 ? 'true' : null
         );
       }
     },
@@ -249,9 +258,19 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
   const step = useCallback(
     (now: number) => {
       animFrameRef.current = 0;
-      const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7;
+      let dt = phaseFrameDelta(lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7);
       lastFrameRef.current = now;
 
+      if (returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS) {
+        const remaining = BEAT_REST_MS - returnRestRef.current;
+        returnRestRef.current += dt;
+        if (returnRestRef.current < BEAT_REST_MS) {
+          animFrameRef.current = requestAnimationFrame(step);
+          return;
+        }
+        dt = Math.max(0, dt - remaining);
+        wasActiveRef.current = false;
+      }
       phaseRef.current = advancePhase(
         phaseRef.current,
         wasActiveRef.current,
@@ -287,28 +306,41 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
      * scroll that brought the reader here IS the request for it -- there is no
      * earlier beat for it to wait on, and nothing to ask twice for.
      */
-    wasActiveRef.current = phaseGate(
+    const reached = phaseGate(
       seq,
       wasActiveRef.current,
       HEAD_SETTLE.enter,
       HEAD_SETTLE.exit
     );
+    const statementsPresent = readAbout()?.getAttribute('data-statements-present') === 'true';
+    if (reached || statementsPresent) returnRestRef.current = 0;
+    returnWaitingRef.current = !reached && !statementsPresent && phaseRef.current.t > 0;
+    wasActiveRef.current = reached || statementsPresent ||
+      (wasActiveRef.current && returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS);
 
-    if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current) && animFrameRef.current === 0) {
+    const resting = returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS;
+    if ((resting || !isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) && animFrameRef.current === 0) {
       lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
       animFrameRef.current = requestAnimationFrame(step);
     } else if (animFrameRef.current === 0) {
       renderPhase(phaseRef.current.t);
     }
-  }, [readSeq, reducedMotion, renderPhase, step]);
+  }, [readAbout, readSeq, reducedMotion, renderPhase, step]);
 
   useEffect(() => {
     update();
     const unsubscribe = subscribeScrollProgress(update);
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
+    const about = readAbout();
+    const observer = about ? new MutationObserver(update) : null;
+    if (about) observer?.observe(about, {
+      attributes: true,
+      attributeFilter: ['data-statements-present'],
+    });
     return () => {
       unsubscribe();
+      observer?.disconnect();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       if (animFrameRef.current) {
@@ -316,7 +348,7 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
         animFrameRef.current = 0;
       }
     };
-  }, [update]);
+  }, [readAbout, update]);
 
   return (
     <div ref={ref} className={styles.heldHeader} data-testid="about-held-header">
@@ -337,10 +369,15 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   const wasArrivingRef = useRef(false);
   const clearPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const wasClearingRef = useRef(false);
-  /** When the wall finished retreating, so the return can be made to wait. */
-  const groundRestedAtRef = useRef(0);
-  /** Whether the reader has asked for the return since then. */
-  const returnArmedRef = useRef(false);
+  const arriveRestRef = useRef(0);
+  const arriveWaitingRef = useRef(false);
+  const swapRequestRef = useRef(UNREQUESTED_BEAT);
+  const clearRequestRef = useRef(UNREQUESTED_BEAT);
+  const returnRequestRef = useRef(UNREQUESTED_BEAT);
+  const unswapRequestRef = useRef(UNREQUESTED_BEAT);
+  const leaveRequestRef = useRef(UNREQUESTED_BEAT);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const updateRef = useRef<() => void>(() => {});
   const animFrameRef = useRef(0);
   const lastFrameRef = useRef(0);
   const reducedMotion = getPrefersReducedMotion();
@@ -356,8 +393,10 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     if (aboutEl?.getAttribute('data-bg-settled') === 'true') return true;
     if (document.documentElement.getAttribute('data-navbar-contrary') === 'true') return true;
 
-    return readSeq() >= 0.78;
-  }, [readAbout, readSeq]);
+    // Position may be spent before any copy has arrived. Only the painted
+    // background can choose the ink, or a flick leaves white copy on white.
+    return false;
+  }, [readAbout]);
 
   const renderPhase = useCallback(
     (t: number, clear: number, arrive: number) => {
@@ -365,15 +404,6 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       if (!el) return;
 
       const eased = easeInOutCubic(t);
-      /*
-       * Two beats, multiplied rather than sequenced.
-       *
-       * `t` is the handover and `clear` is the exit, and they are composed so
-       * that whatever is on screen when the exit starts is what the exit takes
-       * away. Writing the exit as a separate stage that overwrites the handover
-       * would snap statement two back to full presence first if the reader
-       * arrived at 0.70 with the swap still mid-flight.
-       */
       /*
        * Three factors, multiplied: arriving, handing over, and leaving.
        *
@@ -422,14 +452,14 @@ function StatementsContainer({ children }: StatementsContainerProps) {
        * 0.78 fast is still watching statement two leave, and the background
        * rising underneath it is the two beats treading on each other.
        *
-       * This is the only thing the section publishes about the statements.
-       * There used to be a `data-statement-two-settled` alongside it, marking
-       * the HANDOVER's completion -- written here and in `step`, on a hot path,
-       * and by the end read by nothing at all: the pin extension that once
-       * consumed it was corrected to ignore settled flags, and the background
-       * waits on this one instead.
+       * Presence holds the heading through the complete reverse. Its existing
+       * settled flag holds the pin during the rests on either side of the copy.
        */
-      if (clear >= 0.999) {
+      if (aboutEl) {
+        const present = arrive > 0 || t > 0 || clear > 0 || wasArrivingRef.current;
+        writeAttribute(aboutEl, 'data-statements-present', present ? 'true' : null);
+      }
+      if (clear >= 1) {
         if (aboutEl?.getAttribute('data-statements-cleared') !== 'true') {
           aboutEl?.setAttribute('data-statements-cleared', 'true');
         }
@@ -446,6 +476,15 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7;
       lastFrameRef.current = now;
 
+      if (arriveWaitingRef.current && arriveRestRef.current < BEAT_REST_MS) {
+        arriveRestRef.current += phaseFrameDelta(dt);
+        if (arriveRestRef.current < BEAT_REST_MS) {
+          animFrameRef.current = requestAnimationFrame(step);
+        } else {
+          updateRef.current();
+        }
+        return;
+      }
       phaseRef.current = advancePhase(
         phaseRef.current,
         wasActiveRef.current,
@@ -482,6 +521,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         lastFrameRef.current = 0;
+        updateRef.current();
       }
     },
     [renderPhase]
@@ -520,147 +560,60 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       return;
     }
 
-    /*
-     * Returning to the start of the section.
-     *
-     * Only once the chapter behind these statements has actually gone, though.
-     * This branch snaps both beats to rest, and a reader scrolling up quickly
-     * is above the spacer -- so `seq` reads 0 -- while the green is still
-     * retreating and the title still un-writing. Snapping here threw the copy
-     * back on screen over a chapter that had not finished leaving, which is the
-     * same collision the reverse ordering exists to prevent, arriving by a
-     * different door.
-     */
-    const chapterLeaving =
-      readAbout()?.getAttribute('data-bg-active') === 'true' ||
-      readAbout()?.getAttribute('data-bg-settled') === 'true' ||
-      readAbout()?.getAttribute('data-reverse-transition-active') === 'true';
-
-    if (seq <= 0.05 && !chapterLeaving) {
-      wasActiveRef.current = false;
-      wasClearingRef.current = false;
-      wasArrivingRef.current = false;
-      if (
-        phaseRef.current.t > 0 ||
-        clearPhaseRef.current.t > 0 ||
-        arrivePhaseRef.current.t > 0
-      ) {
-        phaseRef.current = PHASE_AT_REST;
-        clearPhaseRef.current = PHASE_AT_REST;
-        arrivePhaseRef.current = PHASE_AT_REST;
-        if (animFrameRef.current) {
-          cancelAnimationFrame(animFrameRef.current);
-          animFrameRef.current = 0;
-        }
-        renderPhase(0, 0, 0);
-        return;
-      }
-    }
-
     const aboutEl = readAbout();
-
-    // Check contrary background state
-    const isGreen = checkIsGreen();
-    if (isGreen) {
-      if (el.dataset.contrary !== 'true') el.dataset.contrary = 'true';
-    } else {
-      if (el.dataset.contrary !== 'false') el.dataset.contrary = 'false';
-    }
-
-    /*
-     * The handover is triggered by reaching it, and then plays on its own clock.
-     *
-     * This beat had no position gate at all: it was armed purely by a scroll
-     * gesture anywhere inside the pin, which is why one notch at the very top
-     * of the section could fire the swap before either statement had been read
-     * -- and, because the two downstream stages keyed off the attribute it sets,
-     * why the whole chain could arm itself hundreds of pixels early and then
-     * fight the position thresholds it was handing over to.
-     *
-     * `advancePhase` still owns the pace, so the 800ms cross-fade cannot be
-     * scrubbed or rushed, and reversing back up re-treads it from wherever it
-     * got to.
-     */
-    /*
-     * Nothing arrives until the heading has finished travelling.
-     *
-     * Serialised on the heading's completion rather than on a threshold of its
-     * own: the reader picks the speed, so no gap between two positions is wide
-     * enough to keep two movements apart.
-     */
+    const now = performance.now();
     const headSettled = aboutEl?.getAttribute('data-head-settled') === 'true';
-    wasArrivingRef.current =
-      headSettled &&
-      phaseGate(
-        seq,
-        wasArrivingRef.current,
-        STATEMENT_ARRIVE.enter,
-        STATEMENT_ARRIVE.exit
-      );
-
-    wasActiveRef.current = phaseGate(
-      seq,
-      wasActiveRef.current,
-      STATEMENT_SWAP.enter,
-      STATEMENT_SWAP.exit
-    );
-    /*
-     * Coming back up, the order has to be the way down played backwards.
-     *
-     * Position alone gives the opposite: this beat's threshold is at 0.70 and
-     * the background's is at 0.78, so scrolling up releases THIS one first and
-     * statement two walks back in over a screen that is still solid green,
-     * while the wall is only starting to retreat behind it. Going down, the
-     * statement leaves and then the green arrives; going up you would get both
-     * at once.
-     *
-     * So the exit is held shut for as long as the background is anything other
-     * than fully at rest. The green retreats first, uncovers the empty screen it
-     * rose onto, and only then does statement two come back to it.
-     */
     const backgroundBusy =
       aboutEl?.getAttribute('data-bg-active') === 'true' ||
       aboutEl?.getAttribute('data-bg-settled') === 'true';
+    const arrive = arrivePhaseRef.current.t;
+    const swap = phaseRef.current.t;
+    const clear = clearPhaseRef.current.t;
+    const spent = seq >= 0.995;
+    const before = seq <= BEAT_DEADBAND;
+    const arriveReached = phaseGate(seq, wasArrivingRef.current, STATEMENT_ARRIVE.enter, STATEMENT_ARRIVE.exit);
+    const swapReached = phaseGate(seq, wasActiveRef.current, STATEMENT_SWAP.enter, STATEMENT_SWAP.exit);
+    const clearReached = phaseGate(seq, wasClearingRef.current, STATEMENT_CLEAR.enter, STATEMENT_CLEAR.exit);
 
-    /*
-     * And having waited for the wall, it waits to be asked, like every other
-     * beat -- because on the way up it was the only one that did not.
-     *
-     * Ordering was already right: `backgroundBusy` holds this shut until the
-     * green has gone. What it did not give was a pause. Measured coming back up,
-     * the wall finished retreating and the statements began walking in 10ms
-     * later, against a forward pass where the same two beats sat 3131ms apart.
-     * The way down is a sequence of separate movements the reader calls for one
-     * at a time; the way up ran the last two together.
-     *
-     * So the mirror of rule 5: the wall lands, a rest is served, and the reader
-     * has to ask again. A gesture during the rest is discarded rather than
-     * queued, so spamming the wheel upward buys nothing.
-     */
-    const now = typeof performance !== 'undefined' ? performance.now() : 0;
-    if (backgroundBusy || !wasClearingRef.current) {
-      groundRestedAtRef.current = 0;
-      returnArmedRef.current = false;
-    } else if (groundRestedAtRef.current === 0) {
-      groundRestedAtRef.current = now;
-    }
+    if (!headSettled || !arriveReached) arriveRestRef.current = 0;
+    arriveWaitingRef.current = headSettled && arriveReached && !wasArrivingRef.current;
+    swapRequestRef.current = prepareBeatRequest(swapRequestRef.current, arrive >= 1 && swap < 1, now);
+    clearRequestRef.current = prepareBeatRequest(clearRequestRef.current, swap >= 1 && clear < 1, now);
+    returnRequestRef.current = prepareBeatRequest(returnRequestRef.current, !backgroundBusy && clear > 0, now);
+    unswapRequestRef.current = prepareBeatRequest(unswapRequestRef.current, clear <= 0 && !wasClearingRef.current && swap > 0, now);
+    leaveRequestRef.current = prepareBeatRequest(leaveRequestRef.current, swap <= 0 && !wasActiveRef.current && arrive > 0, now);
 
-    wasClearingRef.current = statementsHeldClear({
-      positionWants: phaseGate(
-        seq,
-        wasClearingRef.current,
-        STATEMENT_CLEAR.enter,
-        STATEMENT_CLEAR.exit
-      ),
-      backgroundBusy,
-      wasClear: wasClearingRef.current,
-      seq,
-      armed: returnArmedRef.current,
-      restedAt: groundRestedAtRef.current,
-      now,
-    });
+    // Read completion, not threshold distance. Later beats hold earlier ones
+    // through their reverse, including the stopped-reader pauses between them.
+    wasClearingRef.current = backgroundBusy || (clearReached
+      ? wasClearingRef.current || (swap >= 1 && beatRequested(clearRequestRef.current, spent, now))
+      : statementsHeldClear({
+        positionWants: false, backgroundBusy, wasClear: wasClearingRef.current,
+        seq, armed: returnRequestRef.current.armed,
+        restedAt: returnRequestRef.current.readyAt ?? 0, now,
+      }));
+    const clearBusy = clear > 0 || wasClearingRef.current;
+    wasActiveRef.current = clearBusy || (swapReached
+      ? wasActiveRef.current || (arrive >= 1 && beatRequested(swapRequestRef.current, spent, now))
+      : wasActiveRef.current && !beatRequested(unswapRequestRef.current, before, now));
+    const swapBusy = swap > 0 || wasActiveRef.current;
+    wasArrivingRef.current = swapBusy || (arriveReached
+      ? wasArrivingRef.current || (headSettled && arriveRestRef.current >= BEAT_REST_MS)
+      : wasArrivingRef.current && !beatRequested(leaveRequestRef.current, before, now));
+
+    const delay = beatWakeDelay([
+      { request: swapRequestRef.current }, { request: clearRequestRef.current },
+      { request: returnRequestRef.current }, { request: unswapRequestRef.current },
+      { request: leaveRequestRef.current },
+    ], now);
+    if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
+    cooldownTimerRef.current = delay === null ? null : setTimeout(() => {
+      cooldownTimerRef.current = null;
+      update();
+    }, delay);
 
     const running =
+      (arriveWaitingRef.current && arriveRestRef.current < BEAT_REST_MS) ||
       !isPhaseAtTarget(phaseRef.current, wasActiveRef.current) ||
       !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current) ||
       !isPhaseAtTarget(arrivePhaseRef.current, wasArrivingRef.current);
@@ -675,30 +628,23 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         arrivePhaseRef.current.t
       );
     }
-  }, [checkIsGreen, readAbout, readSeq, reducedMotion, renderPhase, step]);
+  }, [readAbout, readSeq, reducedMotion, renderPhase, step]);
 
   useEffect(() => {
+    updateRef.current = update;
     update();
     const unsubProgress = subscribeScrollProgress(update);
 
-    /*
-     * The ask for the statements to come back.
-     *
-     * Upward only, and only once the wall has been down long enough. The
-     * gesture is an intention and never a permission -- `scrollGesture` is
-     * strictly passive and cannot cancel anything, so this holds the reader's
-     * attention without ever holding their scroll.
-     */
     const unsubGesture = subscribeScrollGesture((direction) => {
-      if (direction !== 'up') return;
-      if (!wasClearingRef.current || returnArmedRef.current) return;
-      const since =
-        (typeof performance !== 'undefined' ? performance.now() : 0) -
-        groundRestedAtRef.current;
-      // Discarded, not queued: arriving early must not pay off once the rest
-      // is over, or spamming the wheel works simply by being early.
-      if (groundRestedAtRef.current === 0 || since < BEAT_COOLDOWN_MS) return;
-      returnArmedRef.current = true;
+      const now = performance.now();
+      if (direction === 'down') {
+        swapRequestRef.current = askBeat(swapRequestRef.current, now);
+        clearRequestRef.current = askBeat(clearRequestRef.current, now);
+      } else {
+        returnRequestRef.current = askBeat(returnRequestRef.current, now);
+        unswapRequestRef.current = askBeat(unswapRequestRef.current, now);
+        leaveRequestRef.current = askBeat(leaveRequestRef.current, now);
+      }
       update();
     });
 
@@ -751,6 +697,8 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       observer?.disconnect();
+      if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;

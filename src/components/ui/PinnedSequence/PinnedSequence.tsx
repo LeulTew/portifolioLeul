@@ -102,6 +102,8 @@ export function PinnedSequence({
        */
       if (flag('data-head-travelling')) return true;
       const started =
+        flag('data-statements-present') ||
+        flag('data-head-settled') ||
         flag('data-statements-cleared') ||
         flag('data-bg-active') ||
         flag('data-bg-settled') ||
@@ -214,7 +216,8 @@ export function PinnedSequence({
        * IntersectionObserver above already stops this reaching beyond a screen
        * either side of the stretch.
        */
-      const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || chapterBusy();
+      const busy = chapterBusy();
+      const pinned = (rect.top <= 0 && rect.bottom >= rootHeight) || busy;
       // Guarded: a data attribute set to the value it already holds still
       // marks the subtree dirty, and this overlay holds the whole section.
       const active = String(pinned);
@@ -248,8 +251,16 @@ export function PinnedSequence({
       writeStyleProperty(overlay, '--seq', progress.toFixed(PRECISION));
 
       for (const layer of layers) {
+        // The real position still requests beats. Their stage must not fade
+        // away at either boundary while an owed movement is on screen.
+        const visibleProgress = busy && (layer.name === 'head' || layer.name === 'ground')
+          ? Math.min(
+            layer.end - (layer.feather ?? DEFAULT_FEATHER),
+            Math.max(layer.start + (layer.feather ?? DEFAULT_FEATHER), progress)
+          )
+          : progress;
         const presence = windowPresence(
-          progress,
+          visibleProgress,
           layer.start,
           layer.end,
           layer.feather ?? DEFAULT_FEATHER
@@ -275,6 +286,8 @@ export function PinnedSequence({
         attributes: true,
         attributeFilter: [
           'data-head-travelling',
+          'data-head-settled',
+          'data-statements-present',
           'data-statements-cleared',
           'data-bg-active',
           'data-bg-settled',

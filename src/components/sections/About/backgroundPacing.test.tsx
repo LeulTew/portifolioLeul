@@ -72,6 +72,10 @@ describe('the mounted background beat after a suspended frame', () => {
       screen.getByTestId('bg-pixel-transition').style.setProperty('--seq', '0.6');
       window.dispatchEvent(new Event('scroll'));
     });
+    clock.wait(BEAT_COOLDOWN_MS + 1);
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent('wheel', { deltaY: -3 }));
+    });
     await clock.frame(9000);
 
     expect(about).toHaveAttribute('data-bg-active', 'true');
