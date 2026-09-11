@@ -266,6 +266,24 @@ export function PinnedSequence({
     apply();
     const unsubscribe = subscribeScrollProgress(apply);
     window.addEventListener('resize', apply);
+    const about = document.getElementById('about');
+    const completionObserver = about && typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(apply)
+      : null;
+    if (about) {
+      completionObserver?.observe(about, {
+        attributes: true,
+        attributeFilter: [
+          'data-head-travelling',
+          'data-statements-cleared',
+          'data-bg-active',
+          'data-bg-settled',
+          'data-title-active',
+          'data-title-settled',
+          'data-reverse-transition-active',
+        ],
+      });
+    }
 
     /*
      * Native scroll as well as the canvas's.
@@ -284,6 +302,7 @@ export function PinnedSequence({
     return () => {
       unsubscribe();
       observer?.disconnect();
+      completionObserver?.disconnect();
       window.removeEventListener('resize', apply);
       window.removeEventListener('scroll', apply);
     };

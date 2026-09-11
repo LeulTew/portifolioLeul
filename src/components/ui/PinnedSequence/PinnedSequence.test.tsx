@@ -359,6 +359,19 @@ describe('PinnedSequence pin extension', () => {
     }
   });
 
+  it('releases after the final completion without another scroll publication', async () => {
+    const { about, spacer } = mountWithAbout();
+    spacer.getBoundingClientRect = () => SPENT as DOMRect;
+    about.setAttribute('data-statements-cleared', 'true');
+    act(() => setScrollProgress(0.9));
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    expect(overlay.dataset.active).toBe('true');
+    await act(async () => {
+      about.setAttribute('data-title-settled', 'true');
+    });
+    expect(overlay.dataset.active).toBe('false');
+  });
+
   it('does not publish a position from a spacer it cannot measure', () => {
     /*
      * `localProgress` answers 0 for a zero-height spacer, and 0 is also a real

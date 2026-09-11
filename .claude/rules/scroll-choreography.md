@@ -116,6 +116,8 @@ delay. The reader has to ask again.
   playing.
 - Past the end of the stretch a beat **stops waiting to be asked**. Reaching the
   end is the request; there is nobody left to ask.
+- Cooldowns wake themselves when they expire; pin release observes completion.
+  Neither may depend on another scroll publication after the reader stops.
 
 *Why:* beats serialised by §4 leave gaps where the chapter is unfinished and
 nothing is animating. A flick crosses the whole spacer inside the first gap, the

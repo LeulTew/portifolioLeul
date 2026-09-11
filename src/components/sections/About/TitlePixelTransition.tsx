@@ -90,6 +90,7 @@ export function TitlePixelTransition({
   const animFrameRef = useRef(0);
   const armedRef = useRef(false);
   const readyAtRef = useRef(0);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reducedMotion = getPrefersReducedMotion();
 
   const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
@@ -391,7 +392,7 @@ export function TitlePixelTransition({
     [checkIsGreenBg, durationMs, renderPhase]
   );
 
-  const update = useCallback(() => {
+  const update = useCallback((): void => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -521,6 +522,8 @@ export function TitlePixelTransition({
     if (!isBackgroundSettled) {
       armedRef.current = false;
       readyAtRef.current = 0;
+      if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
     } else if (readyAtRef.current === 0) {
       readyAtRef.current =
         typeof performance !== 'undefined' ? performance.now() : 0;
@@ -530,6 +533,12 @@ export function TitlePixelTransition({
       (typeof performance !== 'undefined' ? performance.now() : 0) -
         readyAtRef.current >=
         BEAT_COOLDOWN_MS;
+    if (readyAtRef.current > 0 && !rested && cooldownTimerRef.current === null) {
+      cooldownTimerRef.current = setTimeout(() => {
+        cooldownTimerRef.current = null;
+        update();
+      }, Math.max(1, BEAT_COOLDOWN_MS - (performance.now() - readyAtRef.current)));
+    }
 
     /*
      * Past the end of the stretch, the beat stops waiting to be asked.
@@ -643,6 +652,8 @@ export function TitlePixelTransition({
       unsubscribeScroll();
       unsubscribeGesture();
       gateObserver?.disconnect();
+      if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       if (animFrameRef.current) {
