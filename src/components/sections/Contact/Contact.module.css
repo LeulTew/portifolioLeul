@@ -60,7 +60,9 @@
     0% 100%, 
     0% 18px
   );
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition:
+    border-color 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .formContainer:hover {
