@@ -78,7 +78,10 @@
  */
 .plate {
   position: absolute;
-  inset: -4rem -8rem -4rem -8rem;
+  left: var(--cloud-left, 0px);
+  top: var(--cloud-top, -4rem);
+  width: var(--cloud-width, min(80vw, 52rem));
+  height: var(--cloud-height, calc(100% + 8rem));
   z-index: -1;
   pointer-events: none;
   opacity: 0;
@@ -91,17 +94,15 @@
 @keyframes cloudCondense {
   from {
     opacity: 0;
-    transform: translate3d(-1.5rem, 0.5rem, 0) scale(0.96);
   }
   to {
-    opacity: 1;
-    transform: none;
+    opacity: 0.84;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .plate {
-    opacity: 1;
+    opacity: 0.84;
   }
 
   .plateDrawn {
@@ -179,7 +180,7 @@
   font-weight: 500;
   line-height: 0.85;
   letter-spacing: -0.03em;
-  color: var(--strong-text);
+  color: #111827;
   margin: 0 0 clamp(0.75rem, 1.5vw, 1.5rem) -0.06em;
   mix-blend-mode: normal;
   will-change: transform;
@@ -200,7 +201,7 @@
   display: flex;
   gap: 0.75rem;
   font-size: clamp(0.875rem, 1vw, 1rem);
-  color: var(--muted-text);
+  color: #1f2937;
   font-weight: 500;
   mix-blend-mode: normal;
   flex-wrap: wrap;
@@ -209,6 +210,11 @@
 
 :global([data-theme='light']) .info {
   color: #1f2937;
+}
+
+/* The white cloud is a light surface in both themes. */
+.info :global(.text-emerald-400) {
+  color: #035d45;
 }
 
 /*
@@ -233,7 +239,7 @@
   max-width: 480px;
   font-size: clamp(1rem, 1.25vw, 1.25rem);
   line-height: 1.45;
-  color: var(--muted-text);
+  color: #1f2937;
   font-weight: 400;
   margin: 0;
   text-align: left;
@@ -356,7 +362,12 @@
    */
   position: fixed;
   top: 0;
-  transform: translate3d(0, var(--cue-y, 100vh), 0);
+  transform: translate3d(
+    calc((var(--heading-rest-x, 0px) - var(--heading-origin-x, 0px)) * var(--cue-heading-progress, 0)),
+    calc(var(--cue-y, 100vh) +
+      (var(--heading-rest-y, 0px) - var(--heading-origin-y, 0px)) * var(--cue-heading-progress, 0)),
+    0
+  );
   bottom: auto;
   /*
    * Written from the heading's own inset, so the line stands on the same
@@ -365,7 +376,7 @@
    */
   left: var(--cue-x, 12rem);
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
-  width: 60px;
+  width: 64px;
   height: var(--cue-height, 300px);
   /*
    * Faded at both ends, never cut.
@@ -378,7 +389,8 @@
    * bright dot on the hero is worse than no mark at all.
    */
   opacity: calc(
-    var(--cue-presence, 1) * clamp(0, calc(var(--cue-drawn, 0) / 0.05), 1)
+    var(--cue-presence, 1) *
+    clamp(0, calc(var(--cue-drawn, 0) / 0.05), 1)
   );
   /* Above About's held overlay, which is the whole point of the portal. */
   z-index: 60;
@@ -636,33 +648,14 @@
 }
 
 /*
- * After the copy leaves, the cloud spreads and thins on its own phase.
+ * The fog front consumes the same progress as the departing copy.
  */
 .settled .plate {
   animation: none;
-
-  /* Spread the authored vapor intact; the arrow draws during this phase. */
-  transform-origin: 40% 46%;
-  transform: translate3d(0, calc(var(--shut, 0) * -1.75rem), 0)
-    scale3d(
-      calc(1 + var(--shut, 0) * 0.20),
-      calc(1 + var(--shut, 0) * 0.11),
-      1
-    );
-
-  /*
-   * Holds its form, then goes before the spread has finished.
-   *
-   * Full opacity until a fifth of the way through, so the cloud is seen to
-   * start moving as a body rather than beginning to fade the instant it is
-   * touched; then down to nothing by 0.82, which leaves the last visible
-   * frames still opening outwards. A shape that reaches zero opacity and zero
-   * movement on the same frame reads as having been switched off. One that is
-   * still spreading as it goes reads as having dispersed.
-   */
-  opacity: clamp(0, calc((0.82 - var(--shut, 0)) / 0.62), 1);
-
-  will-change: transform, opacity;
+  /* The vapor's own rolling mask dissolves it; the bank never slides away. */
+  transform: none;
+  opacity: 0.84;
+  will-change: auto;
 }
 
 .settled .plate[data-cloud-active='false'] {
@@ -677,7 +670,7 @@
    */
   .settled .plate {
     transform: none;
-    opacity: calc(1 - var(--shut, 0));
+    opacity: calc(0.84 * (1 - var(--shut, 0)));
   }
 }
 

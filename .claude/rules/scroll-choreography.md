@@ -50,16 +50,26 @@ lands as a visible step. No easing fixes that, because the input is lumpy.
 **Fixed speed is observable and must stay so:** the same beat driven by a slow
 scroll and by a hard flick takes the same wall-clock time. Measured, not assumed.
 
-**Home-to-About restoration (2026-09-13):** the user explicitly requested the
-version that was live two days earlier, `f46b247`, for this bridge only.
-Its arrow is the deliberate exception to time-paced beats: `cueDraw`,
-`cueRest` and `cuePresence` follow scroll directly in both directions. Do not
-reintroduce a separate drawing clock, gesture/cooldown, extended hero pin or
-centered-title climb. The title arrives at its original fixed `--head-lead`,
-and the arrow uses its original curve and 0.14/0.09-screen rest/fade windows.
-The cloud material, spatial chrome and later About/Education pacing are not
-part of this rollback. The fixed title still publishes readiness for those
-later beats. Reduced motion keeps a complete, visible cue.
+**Home-to-About refinement (2026-09-13):** after the scoped `f46b247` restoration,
+the user explicitly requested a whiter fog-wave cloud, a redesigned arrow and a
+large centered About title that moves to the top left. Copy and cloud now
+disappear together on the same 900ms exit, before the arrow starts. The stroke
+draws visibly toward its scroll-requested target; its upward movement is never
+interpolated independently. It follows the incoming section's actual rendered
+scroll transform at 1:1 speed. Use the measured line length to reach the title,
+not a different travel speed or an arbitrary shortening cap. Once pinned, its
+tip shares the title's two-axis displacement. The centered composition holds for
+500ms of visible time, then docks on one 1100ms beat without an extra gesture latch.
+Statements still wait for actual docking and their existing reading pause.
+Reverse waits for statements, retraces the same pose, then fades before releasing
+the pin. Reduced motion keeps the normal inset without a travel animation.
+Cloud dissolution belongs to the vapor's own mask/wisps, never a whole-bank slide.
+Keep that wave in view until it finishes before exposing About. On return, the
+cloud reforms only after About and the arrow have released the screen. Its
+neutral-white, translucent footprint follows the actual text and button bounds,
+not an empty full-width flex row. The arrow retains its original mint in both
+themes, including hover and the current pulse, with a non-scaling 2.4px stroke.
+Spatial chrome and Education pacing are unchanged.
 
 The fixed chrome uses a second, non-interactive white paint through the
 **same live SVG mask** as About Me. LT, navigation labels, Scroll to explore
@@ -180,8 +190,9 @@ painted on top of Skills, Projects and Contact.
   opposite case: there the transition *is* the animation.
 - **Reveal, don't relayout.** Move a mask's position, don't regenerate its
   image; animate transforms and opacity, never `top`/`width`/`height`.
-- Preserve fractional cue geometry and the authored 36px landing gap at the
-  fixed About-title inset. The restored bridge has no heading displacement.
+- Preserve fractional cue geometry and the authored 36px gap. Title and arrow
+  must share the same progress and measured center/rest coordinates, not chase
+  one another's previous-frame rectangles.
 
 *Why:* opacity jumping 0 → 0.6 at a phase edge flashed on scrolling down and off
 scrolling up. A clearing phase that restarted its own sweep relit every dot below

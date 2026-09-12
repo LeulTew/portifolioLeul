@@ -61,12 +61,11 @@ describe('the chapter has one author per flag', () => {
     expect(writesTo(read('About.tsx'), 'data-education-active')).toBe(false);
   });
 
-  it('About writes only the flags its own beats decide', () => {
-    /*
-     * Title readiness and statement clearing are About's to publish;
-     * everything the chapter paints belongs to the component that paints it.
-     */
-    const body = code(read('About.tsx'));
+  it.each([
+    { file: 'About.tsx', owned: ['data-statements-cleared', 'data-statements-present'] },
+    { file: 'AboutHeading.tsx', owned: ['data-head-pending', 'data-head-settled', 'data-head-travelling'] },
+  ])('$file writes only the flags its own beats decide', ({ file, owned }) => {
+    const body = code(read(file));
     const written = new Set(
       [...body.matchAll(/(?:set|remove)Attribute\(\s*'(data-[\w-]+)'/g)]
         .map((m) => m[1])
@@ -77,10 +76,6 @@ describe('the chapter has one author per flag', () => {
         )
     );
 
-    expect([...written].sort()).toEqual([
-      'data-head-settled',
-      'data-statements-cleared',
-      'data-statements-present',
-    ]);
+    expect([...written].sort()).toEqual(owned);
   });
 });

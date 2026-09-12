@@ -161,12 +161,10 @@
   text-align: left;
   pointer-events: none;
   z-index: 10;
+  opacity: var(--heading-presence, 1);
   /*
-   * The block itself neither fades nor slides.
-   *
-   * It used to do both, together, which is the one gesture every slide deck
-   * has: a whole heading arriving as a unit from somewhere off-position. The
-   * words are uncovered instead, below.
+   * Keep the resting layout stable. Child transforms supply the centered
+   * arrival; this wrapper fades only at the end of the return.
    */
   will-change: transform;
 
@@ -178,6 +176,27 @@
    */
   --title-in: clamp(0, calc(var(--head-in, 0) / 0.66), 1);
   --sub-in: clamp(0, calc((var(--head-in, 0) - 0.34) / 0.66), 1);
+}
+
+.heldHeader [data-heading-title] {
+  transform-origin: 0 0;
+  transform:
+    translate3d(
+      calc(var(--heading-enter-x, 0px) * (1 - var(--head-travel, 0))),
+      calc(var(--heading-enter-y, 0px) * (1 - var(--head-travel, 0))),
+      0
+    )
+    scale(calc(1 + (var(--heading-enter-scale, 1) - 1) * (1 - var(--head-travel, 0))));
+  will-change: transform;
+}
+
+.heldHeader [data-heading-subtitle] {
+  transform: translate3d(
+    calc(var(--heading-subtitle-x, 0px) * (1 - var(--head-travel, 0))),
+    calc(var(--heading-subtitle-y, 0px) * (1 - var(--head-travel, 0))),
+    0
+  );
+  will-change: transform;
 }
 
 /*
@@ -212,6 +231,12 @@
   /* Uncovered outright: the reveal is the motion being opted out of. */
   .heldHeader {
     transform: none;
+  }
+
+  .heldHeader [data-heading-title],
+  .heldHeader [data-heading-subtitle] {
+    transform: none;
+    will-change: auto;
   }
 
   .heldHeader .title,

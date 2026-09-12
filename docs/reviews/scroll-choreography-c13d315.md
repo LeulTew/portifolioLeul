@@ -497,3 +497,43 @@ Lint, application TypeScript, production build and whitespace checks passed.
 Evidence is retained as `restore-transition-gate.log`,
 `restored-bridge-1440.json`, `restored-bridge-1024.json` and corresponding bridge
 and landing screenshots in the review session's artifact directory.
+
+## Iterated hero refinement (2026-09-13)
+
+The subsequent live feedback supersedes the restoration's fixed-title request:
+the user wants a larger centered About title that docks top-left, a bolder mint
+arrow that moves with the incoming section, and a wider, translucent white
+cloud behind all hero text and buttons.
+
+The cloud now measures actual content and button bounds, excluding unused flex
+row space. Neutral-white density layers and feathered puffs transmit background
+light; the original opaque wash was removed. A scalloped fog front and trailing
+wisps dissolve on the **same 900ms progress as the copy**, without sliding the
+bank. The arrow starts only after both have cleared. Hero copy uses dark ink
+against that light surface in both themes.
+
+The S-shaped arrow retains mint in normal, hover and current-pulse states.
+Its non-scaling line/head strokes are 2.4px / 3px. The upward position follows
+the actual rendered scrolling layer, not the stroke's drawing clock; measured
+length supplies the reach to the centered title. Across 123 browser frames the
+arrow and incoming section moved 238.342px, with under **0.001px** relative
+drift. This is alignment evidence, not a GPU frame-rate claim.
+
+The title is centered horizontally and vertically as a title/subtitle group,
+at 1.45x its docked size. A 500ms visible hold precedes its single 1100ms move;
+the arrow shares its measured displacement. Production-browser journeys at
+1440x900 light and 1024x768 dark measured centers at 719.960px / 512.181px,
+identical cloud/copy exit progress, and under 0.007px deviation from the 36px
+title gap. Full forward/return, Education record-0 entry, a single advance per
+65-event wave, Previous and Home navigation passed without page errors.
+The Education entry probe supplies a fresh request if its existing reader
+controller is waiting after the title settles; it does not bypass that gate.
+
+The local gate passed **125 files / 1167 tests**, with the four existing skips,
+plus lint, application TypeScript, production build and whitespace checks.
+Navigation, background pixel timing, Education implementation, Skills,
+Projects, Contact and the mobile project remain unchanged.
+
+Evidence: `hero-fog-final-gate.log`, `arrow-linked-scroll.json`,
+`hero-fog-proof-light.json`, `hero-fog-proof-dark.json`, and the corresponding
+cloud/wave/centered/docked screenshots in the same session artifact directory.

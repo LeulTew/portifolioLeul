@@ -8,32 +8,30 @@
  */
 
 /** Width of the viewBox, and the base height of the drawing inside it. */
-export const CUE_VIEW_WIDTH = 67;
+export const CUE_VIEW_WIDTH = 112;
 
 /**
  * Base height of the drawing inside the viewBox.
  *
- * Grew with the curve. The sweep now runs 63.6 units further down before it
- * hands over to the straight run, and this carries the same 63.6 so the run
- * below the curve keeps the length it always had. Every measured mark still
- * comes out the height it was measured to be: `cueRunForHeight` subtracts this
- * number, so a bigger base simply asks for correspondingly less extra run.
+ * The curve keeps its proportions; only the final straight run lengthens.
  */
-export const CUE_BASE_HEIGHT = 397.6;
+export const CUE_BASE_HEIGHT = 360;
 
 /** Left edge of the viewBox, and the x the straight run falls down. */
-export const CUE_VIEW_X = -2;
-export const CUE_RUN_X = 52.3;
+export const CUE_VIEW_X = 0;
+export const CUE_VIEW_Y = 10;
+export const CUE_RUN_X = 24;
+export const CUE_START_X = 90;
 
 /**
- * Stroke width of the trace, in viewBox units, matching the stylesheet.
+ * Non-scaling stroke width in CSS pixels, matching the stylesheet.
  *
  * Needed out here because the run has to be placed by the edge the reader
  * sees, not by its centre line. Half a stroke is under a pixel, which is
  * exactly the sort of thing that reads as "not quite lined up" without ever
  * looking like a bug.
  */
-export const CUE_STROKE_WIDTH = 2;
+export const CUE_STROKE_WIDTH = 2.4;
 
 /**
  * How far the run's left edge sits from the left edge of the rendered box.
@@ -56,8 +54,11 @@ export function cueViewX(mirrored = false): number {
 
 export function cueRunOffset(widthPx: number, mirrored = false): number {
   if (!Number.isFinite(widthPx) || widthPx <= 0) return 0;
-  const runEdge = CUE_RUN_X - CUE_STROKE_WIDTH / 2;
-  return ((runEdge - cueViewX(mirrored)) / CUE_VIEW_WIDTH) * widthPx;
+  return ((CUE_RUN_X - cueViewX(mirrored)) / CUE_VIEW_WIDTH) * widthPx - CUE_STROKE_WIDTH / 2;
+}
+
+export function cueStartOffset(widthPx: number): number {
+  return (CUE_START_X - CUE_VIEW_X) * widthPx / CUE_VIEW_WIDTH - CUE_STROKE_WIDTH / 2;
 }
 
 /**

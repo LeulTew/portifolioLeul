@@ -9,9 +9,8 @@
  *
  * So the section is several screens tall and its contents are held at the
  * first of them. Scrolling advances a progress value rather than the copy's
- * position, and that value spends itself in order: the copy leaves, the plate
- * it stood on draws shut, and the cue is drawn and held pointing at what comes
- * next. Only then does the hold release and the next section rise.
+ * position. Copy and cloud clear together; the cue then draws the connection
+ * to About and follows the incoming section's actual movement.
  *
  * `position: sticky` cannot do this here. The page scrolls inside a
  * transformed element, which leaves sticky with no scrollport to stick to --
@@ -46,11 +45,8 @@ export const HERO_SCREENS = 1 + HERO_HOLD_SCREENS;
 /**
  * Share of the hold by which the copy has finished leaving.
  *
- * The copy goes first and completely, and only then does the plate move. The
- * two used to overlap -- the plate began shutting while the portrait was still
- * on its way out -- which reads as the floor being pulled from under something
- * that has not left yet. Sequential is the whole point of holding the reader
- * still: there is time to do one thing and then the other.
+ * Retained for the original scroll profile and the start of the cue's rail.
+ * Normal-motion copy and fog now share INNER_EXIT_MS rather than these offsets.
  */
 export const INNER_END = 0.42;
 
@@ -81,8 +77,9 @@ export const HOLD_CLOSE_END = 0.72;
 /** How long the copy takes to leave, once scroll has started it. */
 export const INNER_EXIT_MS = 900;
 
-/** How long the plate takes to shut, once the copy has gone. */
-export const PLATE_CLOSE_MS = 620;
+/** Cloud duration; normal motion uses the same phase as the copy, not a second beat. */
+export const PLATE_CLOSE_MS = 900;
+export const CUE_DRAW_MS = 950;
 
 /**
  * Hold progress that starts the copy leaving, and the lower point that lets it
@@ -291,6 +288,18 @@ export function cueDraw(
   return clamp01((scrolled - startsAt) / span);
 }
 
+/** A spent flick still draws visibly after the content and fog have cleared. */
+export function advanceCue(state: PhaseState, requested: number, dtMs: number): PhaseState {
+  const target = clamp01(requested);
+  const next = advancePhase(state, target > state.t, dtMs, CUE_DRAW_MS);
+  return { ...next, t: next.heading > 0 ? Math.min(next.t, target) : Math.max(next.t, target) };
+}
+
+export function cueTravel(railTop: number, heldTop: number, holdLength: number, drawn: number): number {
+  const start = holdLength * INNER_END;
+  return railTop - start - (heldTop - start) * clamp01(drawn);
+}
+
 /**
  * Screens of scroll the finished mark keeps its place before it goes.
  *
@@ -352,3 +361,4 @@ export function cuePresence(
   // Smoothstep: it eases out of rest rather than starting to go abruptly.
   return 1 - through * through * (3 - 2 * through);
 }
+import { advancePhase, type PhaseState } from './triggeredPhase';

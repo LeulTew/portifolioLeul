@@ -14,6 +14,8 @@ vi.mock('./EducationRail/EducationRail', () => ({ EducationRail: () => null }));
 vi.mock('../../ui/ParallaxPlate', () => ({ ParallaxPlate: () => null }));
 vi.mock('../../ui/FocusScrim', () => ({ FocusScrim: () => null }));
 
+const HEAD_INTRO_MS = 500 + HEAD_SETTLE.durationMs;
+
 describe('the mounted About chapter plays every movement in order', () => {
   beforeEach(() => {
     vi.stubEnv('NODE_ENV', 'development');
@@ -66,7 +68,7 @@ describe('the mounted About chapter plays every movement in order', () => {
     });
   };
 
-  it('shows the fixed title when the spatial bridge arrives, without another climb or gesture', async () => {
+  it('holds the centered title before docking, without requiring another gesture', async () => {
     const chapter = mount(true);
     await chapter.position(0.953);
     await chapter.wheel();
@@ -78,8 +80,12 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.overlay).toHaveAttribute('data-active', 'false');
     await handover(true);
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
+    expect(chapter.headReady()).toBe(false);
+    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('0.0000');
+    await chapter.run(480);
+    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('0.0000');
+    await chapter.run(HEAD_SETTLE.durationMs + 40);
     expect(chapter.headReady()).toBe(true);
-    expect(chapter.overlay.style.getPropertyValue('--head-travel')).toBe('');
     await chapter.run(BEAT_REST_MS - 20);
     expect(chapter.value('one-on')).toBe(0);
     await chapter.run(STATEMENT_ARRIVE.durationMs + 40);
@@ -98,6 +104,8 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.overlay.style.getPropertyValue('--seq')).toBe('1.000');
     await handover(true);
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
+    expect(chapter.headReady()).toBe(false);
+    await chapter.run(HEAD_INTRO_MS + 20);
     expect(chapter.headReady()).toBe(true);
     await chapter.run(14000);
     expect(chapter.about).toHaveAttribute('data-title-settled', 'true');
@@ -125,14 +133,18 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.clock.pending).toBe(0);
   });
 
-  it('restores the fixed-title arrival on reentry without asking for a climb gesture', async () => {
+  it('replays the centered arrival on reentry without a separate gesture latch', async () => {
     const chapter = mount(true);
     await chapter.position(0.06);
     await handover(true);
+    await chapter.run(HEAD_INTRO_MS + 20);
     expect(chapter.headReady()).toBe(true);
     await chapter.position(0);
+    await chapter.run(HEAD_SETTLE.durationMs + 320);
     expect(chapter.headReady()).toBe(false);
     await chapter.position(0.06);
+    expect(chapter.headReady()).toBe(false);
+    await chapter.run(HEAD_INTRO_MS + 20);
     expect(chapter.headReady()).toBe(true);
     expect(chapter.clock.pending).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
@@ -142,12 +154,14 @@ describe('the mounted About chapter plays every movement in order', () => {
     const chapter = mount();
     await chapter.position(0.953);
     await chapter.run(100);
-    expect(chapter.about).toHaveAttribute('data-head-settled', 'true');
+    expect(chapter.about).not.toHaveAttribute('data-head-settled');
     expect(chapter.about).not.toHaveAttribute('data-statements-cleared');
     expect(chapter.value('one-on')).toBe(0);
     expect(chapter.value('two-on')).toBe(0);
 
-    await chapter.run(BEAT_REST_MS - 120);
+    await chapter.run(HEAD_INTRO_MS - 80);
+    expect(chapter.about).toHaveAttribute('data-head-settled', 'true');
+    await chapter.run(BEAT_REST_MS - 50);
     expect(chapter.value('one-on')).toBe(0);
     await chapter.wheel();
     await chapter.run(STATEMENT_ARRIVE.durationMs + 40);
@@ -266,7 +280,7 @@ describe('the mounted About chapter plays every movement in order', () => {
   it('cancels the stopped-reader wake and frame work on unmount', async () => {
     const chapter = mount();
     await chapter.position(0.953);
-    await chapter.run(HEAD_SETTLE.durationMs + BEAT_REST_MS + STATEMENT_ARRIVE.durationMs + 50);
+    await chapter.run(HEAD_INTRO_MS + BEAT_REST_MS + STATEMENT_ARRIVE.durationMs + 50);
     expect(vi.getTimerCount()).toBeGreaterThan(0);
     chapter.unmount();
     expect(vi.getTimerCount()).toBe(0);
@@ -276,7 +290,7 @@ describe('the mounted About chapter plays every movement in order', () => {
   it('does not spend the authored heading-to-copy rest in a suspended frame', async () => {
     const chapter = mount();
     await chapter.position(0.953);
-    await chapter.run(20);
+    await chapter.run(HEAD_INTRO_MS + 20);
     await chapter.clock.frame(9000);
     await chapter.run(100);
     expect(chapter.value('one-on')).toBe(0);

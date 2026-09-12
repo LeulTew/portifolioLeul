@@ -245,22 +245,23 @@ describe('About introduces one thing at a time', () => {
   const headReady = () =>
     document.getElementById('about')?.getAttribute('data-head-settled') === 'true';
 
-  it('opens with the fixed heading and nothing else on screen', async () => {
+  it('opens with the centered heading and nothing else on screen', async () => {
     render(<About />);
     await seqTo('0.00');
 
     expect(headReady()).toBe(false);
+    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('0.0000');
     expect(header()).toBeInTheDocument();
     expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
     expect(statements().style.getPropertyValue('--two-in')).toBe('0.000');
   });
 
-  it('marks the fixed heading ready without introducing a climb', async () => {
+  it('publishes the docked endpoint in the static presentation', async () => {
     render(<About />);
     await seqTo('0.10');
 
     expect(headReady()).toBe(true);
-    expect(screen.getByTestId('about-sequence-overlay').style.getPropertyValue('--head-travel')).toBe('');
+    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('1.0000');
     expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
   });
 

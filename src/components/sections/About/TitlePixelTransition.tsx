@@ -670,7 +670,7 @@ export function TitlePixelTransition({
       }
       data-testid={testId}
     >
-      <div className={styles.titleBox}>
+      <div className={styles.titleBox} data-heading-title="">
         <h2
           ref={titleElRef}
           className={styles.title}
@@ -706,6 +706,7 @@ export function TitlePixelTransition({
       <p
         ref={subtitleElRef}
         className={styles.subtitle}
+        data-heading-subtitle=""
         data-testid={`${testId}-subtitle`}
       >
         {initialSubtitle}

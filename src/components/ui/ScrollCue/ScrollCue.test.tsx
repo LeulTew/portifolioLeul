@@ -2,20 +2,21 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ScrollCue } from './ScrollCue';
-import { cueRunOffset, CUE_RUN_X, CUE_VIEW_WIDTH, cueViewX } from './cueGeometry';
+import { cueRunOffset, CUE_RUN_X, CUE_STROKE_WIDTH, CUE_VIEW_WIDTH, cueViewX } from './cueGeometry';
 
 const cue = () => screen.getByTestId('scroll-cue');
 
 describe('ScrollCue', () => {
   it('keeps the full curve inside a narrow margin without moving the landing vertical', () => {
-    render(<ScrollCue mirrored progress={0.5} />);
-    expect(cue().querySelector('g')).toHaveAttribute('transform', 'translate(104.6 0) scale(-1 1)');
-    const left = 24 - cueRunOffset(60, true);
+    const { rerender } = render(<ScrollCue progress={0.5} />);
+    const left = 24 - cueRunOffset(76);
     expect(left).toBeGreaterThan(0);
-    expect(left + 60).toBeLessThan(1024);
-    const runLeft = left + (CUE_RUN_X - 1 - cueViewX(true)) * 60 / CUE_VIEW_WIDTH;
+    expect(left + 76).toBeLessThan(1024);
+    const runLeft = left + (CUE_RUN_X - cueViewX()) * 76 / CUE_VIEW_WIDTH - CUE_STROKE_WIDTH / 2;
     expect(runLeft).toBeCloseTo(24);
     expect(cue().querySelectorAll('path')).toHaveLength(3);
+    rerender(<ScrollCue mirrored progress={0.5} />);
+    expect(cue().querySelector('g')).toHaveAttribute('transform', `translate(${2 * CUE_RUN_X} 0) scale(-1 1)`);
   });
 
   it('renders a real path, not a styled box', () => {
@@ -91,31 +92,20 @@ describe('ScrollCue', () => {
     expect(cue()).toHaveAttribute('data-progress', '1.000');
   });
 
-  it('keeps the bulge the original mark was drawn with', () => {
-    /*
-     * Recovered from its border-radius: two arcs bulging left, radii 181.6 and
-     * 118.4. The sweep has since been drawn further down by scaling it
-     * vertically, which turns those circles into ellipses -- so the horizontal
-     * radii are the part that must not have moved. Checking those rather than
-     * the literal string is the difference between pinning the shape and
-     * pinning the last edit.
-     */
+  it('draws alternating S bends without kinks between their vertical tangents', () => {
     render(<ScrollCue />);
     const d = screen.getByTestId('scroll-cue-trace').getAttribute('d') ?? '';
 
-    const radii = [...d.matchAll(/A\s+(-?[\d.]+)\s+(-?[\d.]+)/g)].map((m) => ({
-      rx: Number(m[1]),
-      ry: Number(m[2]),
-    }));
-
-    expect(radii.map((r) => r.rx)).toEqual([181.6, 118.4, 60]);
-    // Stretched down, never squashed, and all by the same amount.
-    const stretch = radii.map((r) => r.ry / r.rx);
-    for (const factor of stretch) expect(factor).toBeCloseTo(stretch[0], 2);
-    expect(stretch[0]).toBeGreaterThan(1);
-    // Still bulges to the same place across.
-    expect(d).toContain(' 0 213.7');
-    expect(d).toContain('34.7 318.3');
+    const curves = [...d.matchAll(/C\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/g)]
+      .map(match => match.slice(1).map(Number));
+    expect(curves).toHaveLength(3);
+    expect(curves[0][4]).toBeLessThan(CUE_RUN_X);
+    expect(curves[1][4]).toBeGreaterThan(CUE_RUN_X);
+    for (let index = 0; index < curves.length - 1; index++) {
+      expect(curves[index][2]).toBe(curves[index][4]);
+      expect(curves[index + 1][0]).toBe(curves[index][4]);
+      expect(curves[index + 1][1]).toBeGreaterThan(curves[index][5]);
+    }
   });
 
   it('lands the head on the end of the line, pointing along it', () => {
@@ -154,15 +144,16 @@ describe('ScrollCue', () => {
      * keep holding whatever the radii become. It is the invariant that stops
      * the curve and the run kinking where they meet.
      */
-    const arcs = [...trace.matchAll(
-      /A\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[01]\s+[01]\s+(-?[\d.]+)\s+(-?[\d.]+)/g
+    const curves = [...trace.matchAll(
+      /C\s+[\d.]+\s+[\d.]+\s+([\d.]+)\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/g
     )];
-    const lastArcEnd = arcs.at(-1);
+    const lastCurve = curves.at(-1);
 
-    expect(lastArcEnd).toBeDefined();
-    expect(Number(lastArcEnd![1])).toBeCloseTo(Number(run![1]), 6);
+    expect(lastCurve).toBeDefined();
+    expect(Number(lastCurve![1])).toBeCloseTo(Number(run![1]), 6);
+    expect(Number(lastCurve![2])).toBeCloseTo(Number(run![1]), 6);
     // And it genuinely travels afterwards, rather than ending where it arrived.
-    expect(Number(run![2])).toBeGreaterThan(Number(lastArcEnd![2]));
+    expect(Number(run![2])).toBeGreaterThan(Number(lastCurve![3]));
   });
 
   it('normalises path length, so the dash maths is independent of geometry', () => {

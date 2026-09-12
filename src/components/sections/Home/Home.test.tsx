@@ -371,8 +371,10 @@ describe('Home choreography', () => {
 
     // The restored mark belongs to scroll, not an extra self-running beat.
     scrollIntoHold(aboutTop / hold);
+    playBeats(1000);
     expect(drawn()).toBe(1);
     scrollIntoHold(HOLD_CLOSE_END);
+    playBeats(1000);
     expect(drawn()).toBeGreaterThan(0);
     expect(drawn()).toBeLessThan(1);
   });
@@ -421,31 +423,34 @@ describe('Home choreography', () => {
     expect(parseFloat(origin)).toBeCloseTo(parseFloat(measured), 3);
   });
 
-  it('does not wait on the cloud clock before updating the restored arrow', () => {
+  it('finishes the synchronized content and cloud exit before drawing the arrow', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Home />);
     enterHero();
     layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
     scrollIntoHold(1.2);
-    const partial = Number(getByTestId('scroll-cue').dataset.progress);
-    expect(partial).toBeGreaterThan(0);
-    expect(partial).toBeLessThan(1);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
     playBeats(800);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(partial);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    const content = getByTestId('hero-content');
+    expect(Number(content.style.getPropertyValue('--shut'))).toBe(exitOf(content));
+    expect(exitOf(content)).toBeLessThan(1);
     playBeats(200);
     expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
     const cloudShut = Number(getByTestId('hero-content').style.getPropertyValue('--shut'));
-    expect(cloudShut).toBeGreaterThan(0);
-    expect(cloudShut).toBeLessThan(1);
+    expect(cloudShut).toBe(1);
     playBeats(2500);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(partial);
+    const partial = Number(getByTestId('scroll-cue').dataset.progress);
+    expect(partial).toBeGreaterThan(0);
+    expect(partial).toBeLessThan(1);
     expect(document.getElementById('home')).not.toHaveAttribute('data-hero-handover-settled', 'true');
     scrollIntoHold(8);
+    playBeats(1000);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
     expect(document.getElementById('home')).toHaveAttribute('data-hero-handover-settled', 'true');
   });
 
-  it('reverses the cue on scroll without waiting for a removed heading climb', () => {
+  it('keeps the completed cue beside the title during its return', async () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Home />);
     enterHero();
@@ -455,14 +460,18 @@ describe('Home choreography', () => {
     const about = document.getElementById('about')!;
     about.setAttribute('data-head-travelling', 'true');
     scrollIntoHold(0);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
     expect(exitOf(getByTestId('hero-content'))).toBe(1);
     playBeats(1600);
-    expect(exitOf(getByTestId('hero-content'))).toBe(0);
+    expect(exitOf(getByTestId('hero-content'))).toBe(1);
+    await act(async () => about.removeAttribute('data-head-travelling'));
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    playBeats(2000);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    expect(exitOf(getByTestId('hero-content'))).toBe(0);
   });
 
-  it('fades and restores the cue from the historical scroll window, not About flags', () => {
+  it('fades the escort for statements and restores it with the returning title', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Home />);
     enterHero();
@@ -474,13 +483,14 @@ describe('Home choreography', () => {
     about.setAttribute('data-statements-present', 'true');
     scrollIntoHold(8);
     playBeats(400);
-    expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('0.000');
+    expect(document.documentElement.style.getPropertyValue('--cue-chapter-opacity')).toBe('0');
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
     about.removeAttribute('data-statements-present');
     scrollIntoHold(0);
     playBeats(400);
     expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('1.000');
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    expect(document.documentElement.style.getPropertyValue('--cue-chapter-opacity')).toBe('1');
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
   });
 
   it('does not queue an extra cooldown before a reverse at the start boundary', async () => {
@@ -495,9 +505,12 @@ describe('Home choreography', () => {
     playBeats(3500);
     about.setAttribute('data-head-settled', 'true');
     scrollIntoHold(0);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
     await act(async () => about.removeAttribute('data-head-settled'));
-    playBeats(1800);
+    playBeats(120);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeLessThan(1);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
+    playBeats(2000);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
     expect(exitOf(getByTestId('hero-content'))).toBe(0);
   });
@@ -514,12 +527,18 @@ describe('Home choreography', () => {
     playBeats(3500);
     about.setAttribute('data-head-settled', 'true');
     scrollIntoHold(3);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    await act(async () => about.removeAttribute('data-head-settled'));
+    playBeats(200);
     const reversed = Number(getByTestId('scroll-cue').dataset.progress);
     expect(reversed).toBeGreaterThan(0);
     expect(reversed).toBeLessThan(1);
-    await act(async () => about.removeAttribute('data-head-settled'));
     playBeats(1500);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(reversed);
+    const rested = Number(getByTestId('scroll-cue').dataset.progress);
+    expect(rested).toBeLessThan(reversed);
+    expect(rested).toBeGreaterThan(0);
+    playBeats(1000);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(rested);
   });
 
   it('fills the title rather than sliding it in', () => {
@@ -632,7 +651,7 @@ describe('Home choreography', () => {
     ).toBeCloseTo(holdLength * 0.5, 0);
   });
 
-  it('releases at the historical hold limit without extending the pinned hero', () => {
+  it('keeps the fog wave in view before releasing the fully dispersed hero', () => {
     vi.useFakeTimers();
     const { container } = render(<Home />);
     enterHero();
@@ -645,7 +664,7 @@ describe('Home choreography', () => {
     const holdLength = window.innerHeight * (HERO_SCREENS - 1);
     expect(
       Number.parseFloat(pinned.style.getPropertyValue('--pin'))
-    ).toBeCloseTo(holdLength, 0);
+    ).toBeCloseTo(holdLength * 3, 0);
     playBeats(2200);
     expect(
       Number.parseFloat(pinned.style.getPropertyValue('--pin'))
@@ -787,12 +806,7 @@ describe('Home choreography', () => {
     }
   });
 
-  it('disperses the plate only once the copy has finished leaving', () => {
-    /*
-     * The order the whole handover is built on: the copy goes, and only then
-     * does the ground it stood on disperse. Shutting the plate under standing
-     * copy pulls the floor out from under it.
-     */
+  it('disperses the cloud on exactly the same progress as the content', () => {
     vi.useFakeTimers();
     try {
       const { container } = render(<Home />);
@@ -804,11 +818,11 @@ describe('Home choreography', () => {
       playBeats(120);
 
       expect(exitOf(content)).toBeLessThan(1);
-      expect(Number(content.style.getPropertyValue('--shut'))).toBe(0);
+      expect(Number(content.style.getPropertyValue('--shut'))).toBe(exitOf(content));
 
       playBeats(HANDOVER_MS);
       expect(exitOf(content)).toBe(1);
-      expect(Number(content.style.getPropertyValue('--shut'))).toBeGreaterThan(0);
+      expect(Number(content.style.getPropertyValue('--shut'))).toBe(1);
     } finally {
       vi.useRealTimers();
     }

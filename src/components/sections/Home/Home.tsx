@@ -4,13 +4,17 @@ import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
 import { KineticRotator } from '../../ui/KineticText';
 import { ScrollCue, cueRunForHeight, cueRunOffset } from '../../ui/ScrollCue';
+import { cueStartOffset } from '../../ui/ScrollCue/cueGeometry';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
-import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import {
   HERO_SCREENS,
+  CUE_START_GAP,
+  CUE_TIP_GAP,
+  advanceCue,
   cueDraw,
   cuePresence,
   cueRail,
@@ -19,13 +23,9 @@ import {
   holdProgress,
   innerExit,
   pinOffset,
-  plateShut,
   INNER_EXIT_MS,
-  PLATE_CLOSE_MS,
   INNER_ENTER,
   INNER_RELEASE,
-  PLATE_ENTER,
-  PLATE_RELEASE,
 } from '@/lib/motion/heroPin';
 import {
   advancePhase,
@@ -49,6 +49,7 @@ import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
 import { HeroCloud } from './HeroCloud';
+import { cloudBounds, measureHeroContent } from './heroContentBounds';
 
 /**
  * Rendered width of the cue, matching the stylesheet.
@@ -56,7 +57,12 @@ import { HeroCloud } from './HeroCloud';
  * The mark is drawn at a fixed aspect, so its width is what its length is
  * measured against; stated here because the run has to be computed from both.
  */
-const CUE_WIDTH_PX = 60;
+const CUE_WIDTH_PX = 64;
+
+const findAbout = cachedElement(() => document.getElementById('about'));
+const CUE_OWNERS = ['data-head-pending', 'data-head-travelling', 'data-head-settled',
+  'data-statements-present', 'data-bg-active', 'data-bg-settled', 'data-title-active',
+  'data-title-settled', 'data-reverse-transition-active'];
 
 /**
  * How long to wait for an entrance that never starts.
@@ -128,9 +134,9 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    * built to avoid.
    */
   const innerPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
-  const platePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const cuePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const cueTargetRef = useRef(0);
   const innerActiveRef = useRef(false);
-  const plateActiveRef = useRef(false);
   const frameRef = useRef(0);
   const applyRef = useRef<(() => void) | null>(null);
   const lastFrameRef = useRef(0);
@@ -158,6 +164,19 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    let observedAbout: HTMLElement | null = null;
+    let cueWasHeld = false;
+    const chapterObserver = new MutationObserver(() => apply());
+    let observedScrollLayer: HTMLElement | null = null;
+    const findScrollLayer = cachedElement(() => {
+      for (let node = sectionElement?.parentElement; node && node !== document.body; node = node.parentElement) {
+        if (node.style.transform && node.style.transform !== 'none') return node;
+      }
+      return null;
+    });
+    const scrollLayerObserver = new MutationObserver(() => {
+      if (innerPhaseRef.current.t < 1 || findAbout()?.dataset.statementsPresent !== 'true') apply();
+    });
 
     /*
      * One frame of the handover.
@@ -177,12 +196,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         dt,
         INNER_EXIT_MS
       );
-      platePhaseRef.current = advancePhase(
-        platePhaseRef.current,
-        plateActiveRef.current,
-        dt,
-        PLATE_CLOSE_MS
-      );
+      cuePhaseRef.current = advanceCue(cuePhaseRef.current, cueTargetRef.current, dt);
     };
 
     const frame = (now: number) => {
@@ -205,7 +219,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       if (frameRef.current !== 0) return;
       if (
         isPhaseAtTarget(innerPhaseRef.current, innerActiveRef.current) &&
-        isPhaseAtTarget(platePhaseRef.current, plateActiveRef.current)
+        cuePhaseRef.current.t === cueTargetRef.current
       ) {
         lastFrameRef.current = 0;
         return;
@@ -223,17 +237,36 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
       const top = section.getBoundingClientRect().top;
       const progress = holdProgress(top, holdLength);
-      const offset = `${Math.round(pinOffset(top, holdLength))}px`;
+      const about = findAbout();
+      const scrollLayer = findScrollLayer();
+      if (scrollLayer && scrollLayer !== observedScrollLayer) {
+        scrollLayerObserver.disconnect();
+        scrollLayerObserver.observe(scrollLayer, { attributes: true, attributeFilter: ['style'] });
+        observedScrollLayer = scrollLayer;
+      }
+      if (about && about !== observedAbout) {
+        chapterObserver.disconnect();
+        chapterObserver.observe(about, { attributes: true, attributeFilter: CUE_OWNERS });
+        observedAbout = about;
+      }
+      const chapterHoldsCue = held && getHeroCue() >= 1 &&
+        CUE_OWNERS.some(name => about?.getAttribute(name) === 'true');
+      if (chapterHoldsCue) cueWasHeld = true;
+      if (cuePhaseRef.current.t <= 0) cueWasHeld = false;
+      const heroStillLeaving = held && progress > INNER_ENTER &&
+        innerPhaseRef.current.t < 1;
+      const offset = `${Math.round(heroStillLeaving ? Math.max(-top, 0) : pinOffset(top, holdLength))}px`;
       if (pinned.style.getPropertyValue('--pin') !== offset) {
         pinned.style.setProperty('--pin', offset);
       }
 
-      // Restore f46b247's scroll-owned journey, including immediate reversal.
-      setHeroCue(!held ? 1 : cueDraw(top, holdLength, heldTopRef.current));
+      cueTargetRef.current = chapterHoldsCue ? 1 :
+        innerPhaseRef.current.t >= 1 ? cueDraw(top, holdLength, heldTopRef.current) : 0;
+      setHeroCue(!held ? 1 : cuePhaseRef.current.t);
       writeAttribute(
         section,
         'data-hero-handover-settled',
-        !held || getHeroCue() >= 1 ? 'true' : null
+        !held || (getHeroCue() >= 1 && !heroStillLeaving) ? 'true' : null
       );
 
       // The body-level portal needs viewport coordinates, including in reduced
@@ -242,30 +275,35 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       const heldTop = heldTopRef.current;
       const rail = railRef.current;
       const scrolled = Math.max(-top, 0);
-      const y = rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
+      const returningCue = cueWasHeld && !chapterHoldsCue && cueTargetRef.current < cuePhaseRef.current.t;
+      const restingCue = chapterHoldsCue || returningCue || (heroStillLeaving && getHeroCue() >= 1);
+      const y = restingCue ? rail.endY :
+        rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
       writeStyleProperty(root, '--cue-y', `${y.toFixed(3)}px`);
+      const arrowX = returningCue ? rail.endX :
+        rail.startX + (rail.endX - rail.startX) * easeInOutCubic(cuePhaseRef.current.t);
+      writeStyleProperty(root, '--cue-x', `${(!held ? rail.endX : arrowX).toFixed(3)}px`);
 
-      const presence = !held ? 1 : cuePresence(top, heldTop, window.innerHeight);
+      const presence = !held || restingCue ? 1 : cuePresence(top, heldTop, window.innerHeight);
       writeStyleProperty(root, '--cue-presence', presence.toFixed(3));
       writeStyleProperty(root, '--cue-drawn', getHeroCue().toFixed(3));
+      const muted = about?.getAttribute('data-statements-present') === 'true';
+      writeStyleProperty(root, '--cue-chapter-opacity', muted ? '0' : '1');
+      writeStyleProperty(root, '--cue-animation-state', muted ? 'paused' : 'running');
+      writeStyleProperty(root, '--cue-heading-progress', held ? 'var(--head-travel, 0)' : '0');
 
       if (!content) return;
 
       /*
-       * Two phases, in order: the copy leaves, and then the plate shuts around
-       * where it was. Published separately because they must not overlap --
-       * shutting the plate under copy that is still on it pulls the floor out
-       * from under it.
+       * Copy and fog share one exit clock. The arrow waits for their common
+       * hidden endpoint instead of overlapping the foreground.
        */
       /*
        * Scroll says *whether*, not *how far*.
        *
-       * Both numbers used to be read straight out of `progress`, which glued
-       * them to the wheel: a notch is a discrete hundred-pixel jump, so the
-       * copy left and the plate shut in the same lumps the input arrived in.
-       * Now scroll only flips two triggers and the beats run on their own
-       * clock. The custom properties are unchanged, so every layer's stagger
-       * and the eyelid itself carry on reading exactly what they always read.
+       * The foreground exit has one position trigger and runs on visible time.
+       * Separate custom properties let the copy masks and the fog front paint
+       * differently while still reaching their endpoints on the same frame.
        *
        * Reduced motion keeps the scrub. There is no hold to play across and no
        * self-running movement wanted, so the block simply tracks the scroll to
@@ -277,38 +315,22 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
       if (reducedMotion) {
         inner = innerExit(progress);
-        shut = plateShut(progress);
+        shut = inner;
       } else {
         innerActiveRef.current = phaseGate(
           progress,
           innerActiveRef.current,
           INNER_ENTER,
           INNER_RELEASE
-        );
-
-        /*
-         * The plate waits for the copy's beat to have *finished*, not merely
-         * for the scroll to have passed a mark. On a slow frame the reader can
-         * cross the threshold while a layer is still on its way out, and
-         * shutting the plate under standing copy pulls the floor from under it
-         * -- the exact thing the two-phase split exists to prevent.
-         */
-        plateActiveRef.current =
-          innerPhaseRef.current.t >= 1 &&
-          phaseGate(
-            progress,
-            plateActiveRef.current,
-            PLATE_ENTER,
-            PLATE_RELEASE
-          );
+        ) || chapterHoldsCue || cuePhaseRef.current.t > 0;
 
         startPhaseLoop();
 
         inner = innerPhaseRef.current.t;
-        shut = easeInOutCubic(platePhaseRef.current.t);
+        shut = inner;
       }
 
-      const cloudVisible = shut < (reducedMotion ? 1 : 0.82);
+      const cloudVisible = shut < 1;
       if (cloudVisible !== cloudActiveRef.current) {
         cloudActiveRef.current = cloudVisible;
         setCloudActive(cloudVisible);
@@ -376,7 +398,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         }
       }
 
-      const isVisible = shut < 0.995;
+      const isVisible = shut < 1;
 
       if (reducedMotion) {
         /*
@@ -433,6 +455,12 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
     return () => {
       unsubscribe();
       applyRef.current = null;
+      chapterObserver.disconnect();
+      scrollLayerObserver.disconnect();
+      for (const property of ['--cue-chapter-opacity', '--cue-animation-state',
+        '--cue-heading-progress']) {
+        document.documentElement.style.removeProperty(property);
+      }
       window.removeEventListener('resize', apply);
       if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
@@ -451,7 +479,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    * but one.
    */
   const [cueRun, setCueRun] = useState(0);
-  const railRef = useRef({ top: 0, height: 0 });
+  const railRef = useRef({ top: 0, height: 0, startX: 0, endX: 0, startY: 0, endY: 0 });
   const heldTopRef = useRef(0);
 
   useEffect(() => {
@@ -472,7 +500,16 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       const about = document.getElementById('about');
       const plate = section.querySelector<HTMLElement>('[data-cue-layer="backdrop"]');
       const pinned = pinRef.current;
-      if (!about || !plate || !pinned) return false;
+      const content = contentRef.current;
+      if (!about || !plate || !pinned || !content) return false;
+      const contentBounds = measureHeroContent(content);
+      if (contentBounds) {
+        const cloud = cloudBounds(contentBounds);
+        writeStyleProperty(plate, '--cloud-left', `${cloud.left}px`);
+        writeStyleProperty(plate, '--cloud-top', `${cloud.top}px`);
+        writeStyleProperty(plate, '--cloud-width', `${cloud.width}px`);
+        writeStyleProperty(plate, '--cloud-height', `${cloud.height}px`);
+      }
 
       /*
        * Looked up on the document, not inside About.
@@ -496,7 +533,9 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
        */
       const headingStyle = window.getComputedStyle(heading);
 
-      const headingTop = Number.parseFloat(headingStyle.top);
+      const rootStyle = document.documentElement.style;
+      const centerY = Number.parseFloat(rootStyle.getPropertyValue('--heading-origin-y'));
+      const headingTop = held && Number.isFinite(centerY) ? centerY : Number.parseFloat(headingStyle.top);
       if (!Number.isFinite(headingTop) || headingTop <= 0) return false;
 
       /*
@@ -532,7 +571,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         title.textContent ?? '',
         fontShorthand(window.getComputedStyle(title))
       );
-      const markLeft = headingLeft + inkOffset;
+      const centerX = Number.parseFloat(rootStyle.getPropertyValue('--heading-origin-x'));
+      const markLeft = held && Number.isFinite(centerX) ? centerX : headingLeft + inkOffset;
 
       /*
        * Where the held stretch begins, not where About's section does.
@@ -556,8 +596,9 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
        * pin as well, since the plate rides it: the answer is the same whether
        * the hold has pushed the block down or not.
        */
-      const plateBottom =
-        plate.getBoundingClientRect().bottom - pinned.getBoundingClientRect().top;
+      const plateBottom = contentBounds
+        ? content.getBoundingClientRect().top - pinned.getBoundingClientRect().top + contentBounds.bottom
+        : plate.getBoundingClientRect().bottom - pinned.getBoundingClientRect().top;
 
       const holdLength = held ? window.innerHeight * (HERO_SCREENS - 1) : 0;
       const rail = cueRail(
@@ -569,21 +610,23 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       );
       if (rail.height <= 0) return false;
 
-      railRef.current = rail;
+      const sourceLeft = contentBounds ? content.getBoundingClientRect().left + contentBounds.left : markLeft;
+      const height = rail.height;
+      railRef.current = {
+        ...rail,
+        height,
+        startX: sourceLeft - cueStartOffset(CUE_WIDTH_PX),
+        endX: markLeft - cueRunOffset(CUE_WIDTH_PX),
+        startY: plateBottom + CUE_START_GAP,
+        endY: headingTop - CUE_TIP_GAP - height,
+      };
       writeStyleProperty(section, '--cue-top', `${rail.top.toFixed(3)}px`);
-      writeStyleProperty(section, '--cue-height', `${rail.height.toFixed(3)}px`);
+      writeStyleProperty(section, '--cue-height', `${height.toFixed(3)}px`);
 
       // The portaled mark reads its geometry from the root, for the same reason.
       const root = document.documentElement;
-      writeStyleProperty(root, '--cue-height', `${rail.height.toFixed(3)}px`);
-      if (headingLeft > 0) {
-        writeStyleProperty(
-          root,
-          '--cue-x',
-          `${(markLeft - cueRunOffset(CUE_WIDTH_PX)).toFixed(3)}px`
-        );
-      }
-      setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
+      writeStyleProperty(root, '--cue-height', `${height.toFixed(3)}px`);
+      setCueRun(cueRunForHeight(height, CUE_WIDTH_PX));
       applyRef.current?.();
       return true;
     };
@@ -615,6 +658,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
     }
 
     window.addEventListener('resize', measure);
+    window.addEventListener('about-heading-layout', measure);
 
     /*
      * And once more when the fonts have settled.
@@ -665,6 +709,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       if (retry) clearInterval(retry);
       if (giveUp) clearTimeout(giveUp);
       window.removeEventListener('resize', measure);
+      window.removeEventListener('about-heading-layout', measure);
       observer?.disconnect();
     };
   }, [sectionElement, held]);

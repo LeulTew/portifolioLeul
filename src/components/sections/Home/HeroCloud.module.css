@@ -5,20 +5,30 @@
 }
 
 .cloud {
-  --cloud-core: #041d20;
-  --cloud-vapor: #91b5ad;
-  --cloud-light: #d7e9df;
-  --cloud-shade: #082e2b;
+  --cloud-core: #ffffff;
+  --cloud-body-shade: #f2f2f2;
+  --cloud-vapor: #ffffff;
+  --cloud-light: #ffffff;
+  --cloud-shade: #8c8c8c;
+  --cloud-density: 1;
+  --cloud-vapor-density: 0.55;
+  --cloud-light-density: 0.5;
+  --cloud-shut: clamp(0, var(--shut, 0), 1);
   pointer-events: none;
   user-select: none;
+  mix-blend-mode: normal;
 }
 
 .cloud[data-cloud-theme='light'],
 :global([data-theme='light']) .cloud:not([data-cloud-theme]) {
-  --cloud-core: #eef5f1;
-  --cloud-vapor: #b3c9c2;
+  --cloud-core: #ffffff;
+  --cloud-body-shade: #f4f4f4;
+  --cloud-vapor: #ffffff;
   --cloud-light: #ffffff;
-  --cloud-shade: #527a70;
+  --cloud-shade: #a0a0a0;
+  --cloud-density: 1;
+  --cloud-vapor-density: 0.8;
+  --cloud-light-density: 0.65;
 }
 
 .body,
@@ -33,6 +43,15 @@
   pointer-events: none;
 }
 
+.body {
+  opacity: var(--cloud-density);
+}
+
+/* SVG user units: at 0 the mask covers the bank; at 1 even its wisps are clear. */
+.dissolveFront {
+  transform: translate3d(calc(var(--cloud-shut) * 1880px), 0, 0);
+}
+
 .vapor,
 .shear {
   transform-origin: 46% 51%;
@@ -43,12 +62,13 @@
 }
 
 .vapor {
+  opacity: var(--cloud-vapor-density);
   animation-name: vaporDrift;
   animation-duration: 24s;
 }
 
 .shear {
-  opacity: 0.65;
+  opacity: var(--cloud-light-density);
   animation-name: lightShear;
   animation-duration: 31s;
 }
@@ -56,6 +76,10 @@
 .cloud[data-motion='running'] .vapor,
 .cloud[data-motion='running'] .shear {
   animation-play-state: running;
+  will-change: transform;
+}
+
+.cloud[data-motion='running'] .dissolveFront {
   will-change: transform;
 }
 
@@ -78,8 +102,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dissolving {
+    mask: none;
+    opacity: calc(1 - var(--cloud-shut));
+  }
+
   .cloud[data-motion] .vapor,
-  .cloud[data-motion] .shear {
+  .cloud[data-motion] .shear,
+  .cloud[data-motion] .dissolveFront {
     animation: none;
     transform: none;
     will-change: auto;

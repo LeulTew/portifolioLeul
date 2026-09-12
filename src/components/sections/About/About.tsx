@@ -9,6 +9,7 @@ import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
+import { AboutHeading } from './AboutHeading';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { createAboutReader, createSeqReader } from './seqReader';
@@ -16,7 +17,6 @@ import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import {
   BEAT_DEADBAND,
   BEAT_REST_MS,
-  HEAD_SETTLE,
   STATEMENT_ARRIVE,
   STATEMENT_CLEAR,
   STATEMENT_CLEAR_SPAN,
@@ -124,7 +124,7 @@ function TransitionMaskedOverlay() {
         * whatever the real one says, this says.
         */}
       <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
-        <div className={styles.titleBox}>
+        <div className={styles.titleBox} data-heading-title="">
           <div
             className={`${styles.title} ${styles.titleWhite}`}
             data-testid="about-masked-title"
@@ -133,6 +133,7 @@ function TransitionMaskedOverlay() {
         </div>
         <div
           className={`${styles.subtitle} ${styles.subtitleWhite}`}
+          data-heading-subtitle=""
           data-testid="about-masked-subtitle"
           data-text={cvData.about.subtitle}
         />
@@ -141,52 +142,6 @@ function TransitionMaskedOverlay() {
   );
 }
 
-
-/** The historical fixed title still publishes readiness for the later beats. */
-function HeldHeader({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const readSeq = createSeqReader(() => ref.current);
-    const readAbout = createAboutReader();
-    const home = document.getElementById('home');
-    const update = () => {
-      const about = readAbout();
-      if (!about) return;
-      const eligible = !home || home.getAttribute('data-hero-handover-settled') === 'true';
-      const ready = (eligible && readSeq() >= HEAD_SETTLE.enter) ||
-        about.getAttribute('data-statements-present') === 'true';
-      writeAttribute(about, 'data-head-settled', ready ? 'true' : null);
-    };
-    update();
-    const unsubscribe = subscribeScrollProgress(update);
-    window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, { passive: true });
-    const about = readAbout();
-    const observer = about || home ? new MutationObserver(update) : null;
-    if (about) observer?.observe(about, {
-      attributes: true,
-      attributeFilter: ['data-statements-present'],
-    });
-    if (home) observer?.observe(home, {
-      attributes: true,
-      attributeFilter: ['data-hero-handover-settled'],
-    });
-    return () => {
-      unsubscribe();
-      observer?.disconnect();
-      window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update);
-      if (about) writeAttribute(about, 'data-head-settled', null);
-    };
-  }, []);
-
-  return (
-    <div ref={ref} className={styles.heldHeader} data-testid="about-held-header">
-      {children}
-    </div>
-  );
-}
 
 interface StatementsContainerProps {
   children: React.ReactNode;
@@ -613,7 +568,7 @@ export function About({ onNavigate }: { onNavigate?: (section: string) => void }
             stretch and flips horizontally left-to-right into Education once the
             background transition finishes fully.
           */}
-          <HeldHeader>
+          <AboutHeading>
             <TitlePixelTransition
               start={0.86}
               end={0.94}
@@ -622,7 +577,7 @@ export function About({ onNavigate }: { onNavigate?: (section: string) => void }
               flippedTitle="Education"
               flippedSubtitle="Academic Foundations & Industry Certifications"
             />
-          </HeldHeader>
+          </AboutHeading>
 
           {/* Masked transition overlay: pure white text cutout over rising green transition background */}
           <TransitionMaskedOverlay />
