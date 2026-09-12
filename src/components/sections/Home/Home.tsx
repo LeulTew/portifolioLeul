@@ -6,14 +6,21 @@ import { KineticRotator } from '../../ui/KineticText';
 import { ScrollCue, cueRunForHeight, cueRunOffset } from '../../ui/ScrollCue';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
-import { cachedElement } from '@/lib/dom/cachedElement';
+import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
+import {
+  UNREQUESTED_BEAT,
+  prepareBeatRequest,
+  askBeat,
+  beatRequested,
+  beatWakeDelay,
+} from '../About/aboutBeats';
 import {
   HERO_SCREENS,
   cueDraw,
   cueHeld,
-  cuePresence,
   cueRail,
   cueRest,
   holdExit,
@@ -23,6 +30,8 @@ import {
   plateShut,
   INNER_EXIT_MS,
   PLATE_CLOSE_MS,
+  CUE_DRAW_MS,
+  CUE_FADE_MS,
   INNER_ENTER,
   INNER_RELEASE,
   PLATE_ENTER,
@@ -63,6 +72,17 @@ const findAboutOverlay = cachedElement(() =>
     : document.querySelector<HTMLElement>('[data-testid="about-sequence-overlay"]')
 );
 
+const ABOUT_CUE_FLAGS = [
+  'data-head-travelling',
+  'data-head-settled',
+  'data-statements-present',
+  'data-statements-cleared',
+  'data-bg-active',
+  'data-bg-settled',
+  'data-title-active',
+  'data-title-settled',
+  'data-reverse-transition-active',
+];
 
 /**
  * Rendered width of the cue, matching the stylesheet.
@@ -122,8 +142,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
   const screens = held ? HERO_SCREENS : 1;
 
   /*
-   * Shared focus lifecycle: a timed entry that plays once, and an exit that is
-   * scrubbed from scroll. See SECTION_CHOREOGRAPHY.md.
+   * Shared entry latch; departure is driven by the handover clock below.
    *
    * Only the entry latch comes back as a value. The exit is a transform, and
    * it is written straight to the element: as state it re-rendered the whole
@@ -135,7 +154,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
   const hasEntered = useSectionFocusEffect(sectionElement, () => {});
 
   /*
-   * The handover's two beats, and the frame loop that runs them.
+   * The handover's phases and their shared frame loop.
    *
    * Refs rather than state: these change every frame while a beat is running,
    * and re-rendering the hero -- the filling headline, the rotator, both
@@ -144,9 +163,14 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    */
   const innerPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const platePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const cuePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
+  const cueFadeRef = useRef<PhaseState>(PHASE_AT_REST);
   const innerActiveRef = useRef(false);
   const plateActiveRef = useRef(false);
+  const cueActiveRef = useRef(false);
+  const cueFadeActiveRef = useRef(false);
   const frameRef = useRef(0);
+  const applyRef = useRef<(() => void) | null>(null);
   const lastFrameRef = useRef(0);
   const settledRef = useRef(false);
   const [settled, setSettled] = useState(false);
@@ -170,9 +194,12 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    let cueHadChapter = false;
+    let cueReturn = UNREQUESTED_BEAT;
+    let cooldownTimer: ReturnType<typeof setTimeout> | null = null;
 
     /*
-     * One frame of both beats.
+     * One frame of the handover.
      *
      * The first frame after an idle stretch has no previous timestamp to
      * measure from, and a stale one would hand the beat a delta of however
@@ -195,6 +222,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         dt,
         PLATE_CLOSE_MS
       );
+      cuePhaseRef.current = advancePhase(cuePhaseRef.current, cueActiveRef.current, dt, CUE_DRAW_MS);
+      cueFadeRef.current = advancePhase(cueFadeRef.current, cueFadeActiveRef.current, dt, CUE_FADE_MS);
     };
 
     const frame = (now: number) => {
@@ -210,14 +239,16 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
     /*
      * Runs the loop only while a beat still has somewhere to be, and stops it
-     * the moment both have arrived. `apply` calls this on every scroll, so a
+     * the moment all have arrived. `apply` calls this on every scroll, so a
      * beat that is already finished costs one comparison rather than a frame.
      */
     const startPhaseLoop = () => {
       if (frameRef.current !== 0) return;
       if (
         isPhaseAtTarget(innerPhaseRef.current, innerActiveRef.current) &&
-        isPhaseAtTarget(platePhaseRef.current, plateActiveRef.current)
+        isPhaseAtTarget(platePhaseRef.current, plateActiveRef.current) &&
+        isPhaseAtTarget(cuePhaseRef.current, cueActiveRef.current) &&
+        isPhaseAtTarget(cueFadeRef.current, cueFadeActiveRef.current)
       ) {
         lastFrameRef.current = 0;
         return;
@@ -235,83 +266,66 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
       const top = section.getBoundingClientRect().top;
       const progress = holdProgress(top, holdLength);
+      const about = document.getElementById('about');
+      const aboutOwnsCue = cuePhaseRef.current.t >= 1 &&
+        ABOUT_CUE_FLAGS.some((flag) => about?.getAttribute(flag) === 'true');
+      if (aboutOwnsCue) cueHadChapter = true;
+      if (cuePhaseRef.current.t <= 0) cueHadChapter = false;
+      const now = performance.now();
+      cueReturn = prepareBeatRequest(cueReturn, cueHadChapter && !aboutOwnsCue, now);
+      const waitingForCueReturn = cueHadChapter &&
+        !beatRequested(cueReturn, progress <= INNER_RELEASE, now);
+      const wakeDelay = beatWakeDelay([{ request: cueReturn }], now);
+      if (wakeDelay === null && cooldownTimer !== null) {
+        clearTimeout(cooldownTimer);
+        cooldownTimer = null;
+      }
+      if (wakeDelay !== null && cooldownTimer === null) {
+        cooldownTimer = setTimeout(() => {
+          cooldownTimer = null;
+          apply();
+        }, wakeDelay);
+      }
 
-      const offset = `${Math.round(pinOffset(top, holdLength))}px`;
+      const heroStillLeaving = held && progress > INNER_ENTER &&
+        (innerPhaseRef.current.t < 1 || platePhaseRef.current.t < 1);
+      const offset = `${Math.round(heroStillLeaving ? Math.max(-top, 0) : pinOffset(top, holdLength))}px`;
       if (pinned.style.getPropertyValue('--pin') !== offset) {
         pinned.style.setProperty('--pin', offset);
       }
 
-      /*
-       * The cue is measured from the raw offset, not from `progress`: it keeps
-       * drawing after the release, across the boundary it exists to bridge.
-       *
-       * Reduced motion has no hold to draw across, so the mark is simply
-       * present rather than traced. Left to the measurement it would sit at
-       * zero forever -- the affordance vanishing for exactly the readers least
-       * able to infer it from the motion that is no longer there.
-       */
+      // Position requests the line only once its landing point is visible.
+      // Time traces it; flat and reduced-motion readers get the complete mark.
       setHeroCue(
-        reducedMotion
+        !held
           ? 1
-          : cueDraw(top, holdLength, heldTopRef.current)
+          : cuePhaseRef.current.t
+      );
+      writeAttribute(
+        section,
+        'data-hero-handover-settled',
+        !held || cuePhaseRef.current.t >= 1 ? 'true' : null
       );
 
-      /*
-       * The finished mark keeps its place until About's own copy arrives, then
-       * leaves as the copy takes over. Written to the section so the cue's own
-       * rule can read them without Home re-rendering.
-       */
-      if (!reducedMotion) {
-        /*
-         * Written to the root, because the mark is rendered through a portal.
-         *
-         * About's held stretch is a fixed, body-level overlay at z-index 40, so
-         * nothing nested inside the scrolling layer can paint over it -- the
-         * mark was at full opacity, in the right place, and behind the panel.
-         * It lives at body level too now, which means its position has to be a
-         * viewport coordinate rather than an offset inside the hero.
-         */
-        const root = document.documentElement.style;
-        const held = heldTopRef.current;
-        const rail = railRef.current;
-        const scrolled = Math.max(-top, 0);
+      // The body-level portal needs viewport coordinates, including in reduced
+      // motion. Its SVG progress alone cannot override a zero CSS opacity.
+      const root = document.documentElement;
+      const heldTop = heldTopRef.current;
+      const rail = railRef.current;
+      const scrolled = Math.max(-top, 0);
+      const holding = findAboutOverlay()?.dataset.active === 'true';
+      const y = holding || cuePhaseRef.current.t > 0
+        ? cueHeld(rail.top, heldTop)
+        : rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
+      writeStyleProperty(root, '--cue-y', `${y.toFixed(3)}px`);
 
-        /*
-         * The mark escorts About's heading rather than letting go of it, and
-         * the escort is not here: the heading publishes how far it has climbed
-         * and `.scrollCue` adds it in CSS. Reading the heading from this
-         * callback would put the mark a frame behind it. See `HeldHeader`.
-         */
-        const overlay = findAboutOverlay();
-        const holding = overlay?.dataset.active === 'true';
-
-        const y = `${Math.round(
-          holding
-            ? cueHeld(rail.top, held)
-            : rail.top - scrolled + cueRest(top, held, window.innerHeight)
-        )}px`;
-        if (root.getPropertyValue('--cue-y') !== y) root.setProperty('--cue-y', y);
-
-        const presence = cuePresence(top, held, window.innerHeight).toFixed(3);
-        if (root.getPropertyValue('--cue-presence') !== presence) {
-          root.setProperty('--cue-presence', presence);
-        }
-
-        /*
-         * How much of the line is down, so it can be faded rather than cut.
-         *
-         * The mark was hidden outright at zero progress, because an offset
-         * dash still paints its round cap and leaves a bright dot sitting on
-         * the hero. That is fine on the way in, where nothing has been drawn
-         * yet -- but on the way back up the line shrinks smoothly to nothing
-         * and then vanished on one frame, which reads as a glitch. Ramping it
-         * over the last of the drawing gets rid of the dot and the cut both.
-         */
-        const drawn = getHeroCue().toFixed(3);
-        if (root.getPropertyValue('--cue-drawn') !== drawn) {
-          root.setProperty('--cue-drawn', drawn);
-        }
-      }
+      // HeldHeader publishes its displacement on the frame that moves it.
+      // CSS composes that displacement; a second rect read would lag a frame.
+      const presence = reducedMotion
+        ? Number(about?.getAttribute('data-statements-present') !== 'true')
+        : 1 - easeInOutCubic(cueFadeRef.current.t);
+      writeStyleProperty(root, '--cue-presence', presence.toFixed(3));
+      writeStyleProperty(root, '--cue-drawn', getHeroCue().toFixed(3));
 
       if (!content) return;
 
@@ -348,7 +362,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
           innerActiveRef.current,
           INNER_ENTER,
           INNER_RELEASE
-        );
+        ) || platePhaseRef.current.t > 0 || aboutOwnsCue;
 
         /*
          * The plate waits for the copy's beat to have *finished*, not merely
@@ -358,13 +372,23 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
          * -- the exact thing the two-phase split exists to prevent.
          */
         plateActiveRef.current =
-          innerPhaseRef.current.t >= 1 &&
+          cuePhaseRef.current.t > 0 || aboutOwnsCue || (innerPhaseRef.current.t >= 1 &&
           phaseGate(
             progress,
             plateActiveRef.current,
             PLATE_ENTER,
             PLATE_RELEASE
-          );
+          ));
+        cueActiveRef.current = aboutOwnsCue || waitingForCueReturn || (
+          platePhaseRef.current.t >= 1 &&
+          phaseGate(
+            cueDraw(top, holdLength, heldTopRef.current),
+            cueActiveRef.current,
+            1,
+            0.95
+          )
+        );
+        cueFadeActiveRef.current = about?.getAttribute('data-statements-present') === 'true';
 
         startPhaseLoop();
 
@@ -485,10 +509,31 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
     apply();
     const unsubscribe = subscribeScrollProgress(apply);
+    applyRef.current = apply;
     window.addEventListener('resize', apply);
+    const unsubscribeGesture = subscribeScrollGesture((direction) => {
+      if (direction === 'up') {
+        cueReturn = askBeat(cueReturn, performance.now());
+        apply();
+      }
+    });
+    const about = document.getElementById('about');
+    const chapterObserver = about && typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(apply)
+      : null;
+    if (about) {
+      chapterObserver?.observe(about, {
+        attributes: true,
+        attributeFilter: ABOUT_CUE_FLAGS,
+      });
+    }
 
     return () => {
       unsubscribe();
+      applyRef.current = null;
+      unsubscribeGesture();
+      chapterObserver?.disconnect();
+      if (cooldownTimer !== null) clearTimeout(cooldownTimer);
       window.removeEventListener('resize', apply);
       if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
@@ -643,19 +688,21 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       if (rail.height <= 0) return false;
 
       railRef.current = rail;
-      section.style.setProperty('--cue-top', `${Math.round(rail.top)}px`);
-      section.style.setProperty('--cue-height', `${Math.round(rail.height)}px`);
+      writeStyleProperty(section, '--cue-top', `${rail.top.toFixed(3)}px`);
+      writeStyleProperty(section, '--cue-height', `${rail.height.toFixed(3)}px`);
 
       // The portaled mark reads its geometry from the root, for the same reason.
-      const root = document.documentElement.style;
-      root.setProperty('--cue-height', `${Math.round(rail.height)}px`);
+      const root = document.documentElement;
+      writeStyleProperty(root, '--cue-height', `${rail.height.toFixed(3)}px`);
       if (headingLeft > 0) {
-        root.setProperty(
+        writeStyleProperty(
+          root,
           '--cue-x',
-          `${Math.round(markLeft - cueRunOffset(CUE_WIDTH_PX))}px`
+          `${(markLeft - cueRunOffset(CUE_WIDTH_PX)).toFixed(3)}px`
         );
       }
       setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
+      applyRef.current?.();
       return true;
     };
 
@@ -962,25 +1009,12 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 /**
  * The scroll cue, and only the scroll cue, re-rendering as the hero leaves.
  *
- * The cue is genuinely a function of scroll progress -- it is a line traced by
- * the reader's own movement -- so it does need a render per step. Isolating it
- * here keeps that cost to three SVG paths instead of the entire hero.
+ * Only the cue's paths re-render as the handover clock advances.
  */
 function HeroScrollCue({ onActivate, run }: { onActivate: () => void; run: number }) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    /*
-     * Drawn across the boundary, starting just before the page comes unstuck.
-     *
-     * The cue is the handover, so it has nothing to hand over from until the
-     * copy has left and the plate has shut -- and nothing to hand over TO
-     * until About is on its way up. Tying it to the hold alone drew the whole
-     * line while it was still below the window; tying it to the hero's exit
-     * carried it off the top as soon as it was finished. It is measured from
-     * the scroll itself instead, so it begins a hair before the release and
-     * finishes over the screen that follows.
-     */
     const publish = (next: number) => {
       // Finer than the stroke can show, and it drops the steps a slow scroll
       // spends re-reporting a value the line already sits at.

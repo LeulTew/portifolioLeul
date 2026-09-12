@@ -84,6 +84,10 @@ export const INNER_EXIT_MS = 900;
 /** How long the plate takes to shut, once the copy has gone. */
 export const PLATE_CLOSE_MS = 620;
 
+/** The line is traced only after its landing point reaches the viewport. */
+export const CUE_DRAW_MS = 1200;
+export const CUE_FADE_MS = 360;
+
 /**
  * Hold progress that starts the copy leaving, and the lower point that lets it
  * come back. Barely off zero: the copy should commit the moment the reader

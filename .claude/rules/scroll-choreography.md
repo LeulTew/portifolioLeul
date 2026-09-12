@@ -50,6 +50,11 @@ lands as a visible step. No easing fixes that, because the input is lumpy.
 **Fixed speed is observable and must stay so:** the same beat driven by a slow
 scroll and by a hard flick takes the same wall-clock time. Measured, not assumed.
 
+The hero cue waits for its measured landing position and the closed plate,
+then traces on its own clock. Home publishes handover completion for About;
+the heading must not appear over unfinished hero movements. Reduced motion
+publishes the complete mark to both the SVG and its CSS visibility properties.
+
 Suspended frames are not visible time. `phaseFrameDelta` caps each movement
 and its post-movement rest at 50ms per paint; a hidden tab or long task must
 resume the remaining movement, never complete it in a single frame.
@@ -150,6 +155,9 @@ painted on top of Skills, Projects and Contact.
   opposite case: there the transition *is* the animation.
 - **Reveal, don't relayout.** Move a mask's position, don't regenerate its
   image; animate transforms and opacity, never `top`/`width`/`height`.
+- Preserve fractional cue geometry and compose the heading displacement in a
+  transform. Independently rounding the rail height, origin and displacement
+  makes the authored 36px escort gap vary during the journey.
 
 *Why:* opacity jumping 0 → 0.6 at a phase edge flashed on scrolling down and off
 scrolling up. A clearing phase that restarted its own sweep relit every dot below

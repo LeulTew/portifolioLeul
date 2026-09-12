@@ -400,14 +400,7 @@
  * html layer. Height is capped against the viewport so the tail of the curve
  * never runs off the bottom on a short screen.
  */
-/*
- * Absolute within the hero, not fixed. The html layer sits inside a transformed
- * ancestor, which makes position:fixed resolve against that ancestor anyway --
- * so `fixed` bought nothing and only made the placement hard to reason about.
- */
 .scrollCue {
-  position: absolute;
-  left: 15rem;
   /*
    * A viewport coordinate, because the mark is rendered at body level.
    *
@@ -429,7 +422,8 @@
    * heading from a different frame callback and is a frame behind it whenever
    * that callback runs second, which the gap shows as a breath.
    */
-  top: calc(var(--cue-y, 100vh) + var(--head-offset, 0px));
+  top: 0;
+  transform: translate3d(0, calc(var(--cue-y, 100vh) + var(--head-offset, 0px)), 0);
   bottom: auto;
   /*
    * Written from the heading's own inset, so the line stands on the same

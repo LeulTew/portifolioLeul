@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Home } from './Home';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
@@ -36,12 +37,11 @@ const layOutRail = ({
   const section = document.getElementById('home');
   if (!section) throw new Error('the hero section is not in the document');
 
-  document.getElementById('about')?.remove();
-  const about = document.createElement('div');
+  const about = document.getElementById('about') ?? document.createElement('div');
   about.id = 'about';
   const heading = document.createElement('div');
   heading.setAttribute('data-testid', 'about-held-header');
-  about.appendChild(heading);
+  about.replaceChildren(heading);
   document.body.appendChild(about);
 
   const rect = (el: Element, box: { top: number; bottom: number }) => {
@@ -135,7 +135,7 @@ describe('Home Section', () => {
     expect(onNavigate).toHaveBeenCalledWith('contact');
   });
 
-  it('handles scroll arrow click and keyboard activation', () => {
+  it('handles scroll arrow click and keyboard activation', async () => {
     const onNavigate = vi.fn();
     render(<Home onNavigate={onNavigate} />);
 
@@ -145,10 +145,11 @@ describe('Home Section', () => {
     fireEvent.click(scrollArrow);
     expect(onNavigate).toHaveBeenCalledWith('about');
 
-    fireEvent.keyDown(scrollArrow, { key: 'Enter' });
+    scrollArrow.focus();
+    await userEvent.keyboard('{Enter}');
     expect(onNavigate).toHaveBeenCalledTimes(2);
 
-    fireEvent.keyDown(scrollArrow, { key: ' ' });
+    await userEvent.keyboard(' ');
     expect(onNavigate).toHaveBeenCalledTimes(3);
   });
 
@@ -298,7 +299,8 @@ describe('Home choreography', () => {
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('draws the cue while About climbs, not across an empty hero', () => {
+  it('aims the timed cue at About and never scrubs it during the climb', () => {
+    vi.useFakeTimers();
     /*
      * Reported five times, and this is the shape that came out of it. The mark
      * is drawn from under the plate, over the stretch where the section
@@ -339,17 +341,22 @@ describe('Home choreography', () => {
     scrollIntoHold(INNER_END);
     expect(drawn()).toBe(0);
 
-    // Drawing from the moment the plate starts to shut.
+    // Crossing position thresholds cannot advance the line itself.
     scrollIntoHold(HOLD_CLOSE_END);
-    expect(drawn()).toBeGreaterThan(0);
-    expect(drawn()).toBeLessThan(1);
+    playBeats(2000);
+    expect(drawn()).toBe(0);
 
     // And the panel is already climbing well before it is finished.
     scrollIntoHold(1);
     expect(drawn()).toBeLessThan(1);
 
-    // Complete, head at rest above the heading, as the stretch takes over.
+    // Once the landing is visible, time traces the line to it.
     scrollIntoHold(aboutTop / hold);
+    expect(drawn()).toBe(0);
+    playBeats(600);
+    expect(drawn()).toBeGreaterThan(0);
+    expect(drawn()).toBeLessThan(1);
+    playBeats(700);
     expect(drawn()).toBe(1);
   });
 
@@ -361,11 +368,150 @@ describe('Home choreography', () => {
      * who is not being shown the movement that would otherwise imply it.
      */
     reducedMotion.mockReturnValue(true);
+    document.documentElement.style.removeProperty('--cue-drawn');
+    document.documentElement.style.removeProperty('--cue-presence');
 
     const { getByTestId } = render(<Home />);
     enterHero();
 
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    expect(document.documentElement.style.getPropertyValue('--cue-drawn')).toBe('1.000');
+    expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('1.000');
+  });
+
+  it('preserves the 36px landing gap for a fractional heading height', () => {
+    vi.useFakeTimers();
+    render(<Home />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    const heading = document.querySelector<HTMLElement>('[data-testid="about-held-header"]')!;
+    heading.getBoundingClientRect = () => ({ top: 0, bottom: 109.25, height: 109.25 }) as DOMRect;
+    fireEvent.resize(window);
+    scrollIntoHold(8);
+    playBeats(3500);
+    const root = document.documentElement.style;
+    const tip = parseFloat(root.getPropertyValue('--cue-y')) +
+      parseFloat(root.getPropertyValue('--cue-height'));
+    expect(window.innerHeight / 2 - 109.25 / 2 - tip).toBeCloseTo(36, 2);
+  });
+
+  it('positions a reduced-motion cue when its rail arrives without waiting for scroll', () => {
+    reducedMotion.mockReturnValue(true);
+    render(<Home />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight });
+    const origin = document.documentElement.style.getPropertyValue('--cue-y');
+    const measured = document.getElementById('home')!.style.getPropertyValue('--cue-top');
+    expect(parseFloat(origin)).toBeGreaterThan(0);
+    expect(parseFloat(origin)).toBeCloseTo(parseFloat(measured), 3);
+  });
+
+  it('waits for the landing position, then traces on time even after scroll stops', () => {
+    vi.useFakeTimers();
+    const { getByTestId } = render(<Home />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    scrollIntoHold(1.2);
+    playBeats(1000);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    playBeats(2500);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    scrollIntoHold(8);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    playBeats(1300);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    expect(document.getElementById('home')).toHaveAttribute('data-hero-handover-settled', 'true');
+  });
+
+  it('waits for About and retracts the cue before reopening the plate and copy', () => {
+    vi.useFakeTimers();
+    const { getByTestId } = render(<Home />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    scrollIntoHold(8);
+    playBeats(3500);
+    const about = document.getElementById('about')!;
+    about.setAttribute('data-head-travelling', 'true');
+    scrollIntoHold(0);
+    playBeats(1000);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    expect(exitOf(getByTestId('hero-content'))).toBe(1);
+
+    about.removeAttribute('data-head-travelling');
+    scrollIntoHold(0);
+    playBeats(1200);
+    playBeats(600);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeLessThan(1);
+    expect(exitOf(getByTestId('hero-content'))).toBe(1);
+    playBeats(3000);
+    expect(exitOf(getByTestId('hero-content'))).toBe(0);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+  });
+
+  it('fades the cue with statement presence and restores it before the heading returns', () => {
+    vi.useFakeTimers();
+    const { getByTestId } = render(<Home />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    scrollIntoHold(8);
+    playBeats(3500);
+    const about = document.getElementById('about')!;
+    about.setAttribute('data-head-settled', 'true');
+    about.setAttribute('data-statements-present', 'true');
+    scrollIntoHold(8);
+    playBeats(400);
+    expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('0.000');
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    about.removeAttribute('data-statements-present');
+    scrollIntoHold(0);
+    playBeats(400);
+    expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('1.000');
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+  });
+
+  it('rests after About returns before retracting the cue at the start boundary', async () => {
+    vi.useFakeTimers();
+    const about = document.createElement('div');
+    about.id = 'about';
+    document.body.appendChild(about);
+    const { getByTestId } = render(<Home />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    scrollIntoHold(8);
+    playBeats(3500);
+    about.setAttribute('data-head-settled', 'true');
+    scrollIntoHold(0);
+    playBeats(1300);
+    await act(async () => about.removeAttribute('data-head-settled'));
+    playBeats(1100);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    playBeats(700);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeLessThan(1);
+  });
+
+  it('discards an early cue-return gesture and waits for a fresh one away from the boundary', async () => {
+    vi.useFakeTimers();
+    const about = document.createElement('div');
+    about.id = 'about';
+    document.body.appendChild(about);
+    const { getByTestId } = render(<Home />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    scrollIntoHold(8);
+    playBeats(3500);
+    about.setAttribute('data-head-settled', 'true');
+    scrollIntoHold(3);
+    await act(async () => about.removeAttribute('data-head-settled'));
+    playBeats(1000);
+    fireEvent.wheel(window, { deltaY: -100 });
+    playBeats(500);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    fireEvent.wheel(window, { deltaY: -100 });
+    playBeats(500);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeLessThan(1);
   });
 
   it('fills the title rather than sliding it in', () => {
@@ -432,14 +578,15 @@ describe('Home choreography', () => {
     expect(h1?.className).not.toContain('titleReentering');
   });
 
-  it('scrolls to about when the cue is activated', () => {
+  it('scrolls to about when the cue is activated', async () => {
     const onNavigate = vi.fn();
     const { getByTestId } = render(<Home onNavigate={onNavigate} />);
 
     fireEvent.click(getByTestId('scroll-cue'));
     expect(onNavigate).toHaveBeenCalledWith('about');
 
-    fireEvent.keyDown(getByTestId('scroll-cue'), { key: 'Enter' });
+    getByTestId('scroll-cue').focus();
+    await userEvent.keyboard('{Enter}');
     expect(onNavigate).toHaveBeenCalledTimes(2);
   });
 
@@ -477,7 +624,8 @@ describe('Home choreography', () => {
     ).toBeCloseTo(holdLength * 0.5, 0);
   });
 
-  it('stops holding once the hold is spent, and lets the page carry it away', () => {
+  it('finishes the owed copy and plate before releasing a spent hold', () => {
+    vi.useFakeTimers();
     const { container } = render(<Home />);
     enterHero();
 
@@ -487,6 +635,10 @@ describe('Home choreography', () => {
     scrollIntoHold(3);
 
     const holdLength = window.innerHeight * (HERO_SCREENS - 1);
+    expect(
+      Number.parseFloat(pinned.style.getPropertyValue('--pin'))
+    ).toBeCloseTo(holdLength * 3, 0);
+    playBeats(2200);
     expect(
       Number.parseFloat(pinned.style.getPropertyValue('--pin'))
     ).toBeCloseTo(holdLength, 0);

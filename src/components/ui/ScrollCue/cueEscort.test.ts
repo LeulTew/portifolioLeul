@@ -91,13 +91,15 @@ describe('the mark aims at where the heading first appears', () => {
       'utf-8'
     );
     const cue = css.slice(css.indexOf('.scrollCue {'));
-    const decl = cue.slice(cue.indexOf('top:'));
-    const top = decl.slice(0, decl.indexOf(';'));
+    const block = cue.slice(0, cue.indexOf('\n}'));
+    const top = /^\s*top:\s*([^;]+);/m.exec(block)?.[1];
+    const transform = /^\s*transform:\s*([^;]+);/m.exec(block)?.[1];
 
-    expect(top).toContain('--cue-y');
-    expect(top).toContain('--head-offset');
+    expect(top).toBe('0');
+    expect(transform).toContain('--cue-y');
+    expect(transform).toContain('--head-offset');
     // Absent before About mounts, and zero while the heading is still centred.
-    expect(top).toContain('--head-offset, 0px');
+    expect(transform).toContain('--head-offset, 0px');
   });
 
   it('publishes that displacement from the heading that moved', () => {

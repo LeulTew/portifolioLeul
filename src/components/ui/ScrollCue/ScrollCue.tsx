@@ -123,24 +123,22 @@ export function ScrollCue({
   const headDrawn = clamp01((drawn - 0.75) / 0.25);
 
   return (
-    <svg
+    <button
+      type="button"
       className={[styles.cue, className].filter(Boolean).join(' ')}
-      viewBox={`${CUE_VIEW_X} 50 ${CUE_VIEW_WIDTH} ${CUE_BASE_HEIGHT + runUnits}`}
-      preserveAspectRatio="xMinYMin meet"
-      role="button"
-      tabIndex={0}
       aria-label={label}
       data-testid="scroll-cue"
       data-progress={drawn.toFixed(3)}
       data-drawing={drawn > 0}
       onClick={onActivate}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onActivate?.();
-        }
-      }}
     >
+      <svg
+        className={styles.drawing}
+        viewBox={`${CUE_VIEW_X} 50 ${CUE_VIEW_WIDTH} ${CUE_BASE_HEIGHT + runUnits}`}
+        preserveAspectRatio="xMinYMin meet"
+        aria-hidden="true"
+        focusable="false"
+      >
       <path
         className={`${styles.stroke} ${styles.trace}`}
         d={trace}
@@ -163,6 +161,7 @@ export function ScrollCue({
         data-testid="scroll-cue-current"
         data-flowing={drawn > 0.99}
       />
-    </svg>
+      </svg>
+    </button>
   );
 }

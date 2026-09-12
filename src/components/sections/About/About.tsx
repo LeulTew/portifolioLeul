@@ -224,7 +224,7 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
           writeStyleProperty(
             document.documentElement,
             '--head-offset',
-            `${Math.round(top - centred)}px`
+            `${(top - centred).toFixed(3)}px`
           );
         }
       }

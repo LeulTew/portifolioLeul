@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ScrollCue } from './ScrollCue';
 
@@ -21,7 +22,7 @@ describe('ScrollCue', () => {
     );
   });
 
-  it('traces in step with the reader, not on a clock of its own', () => {
+  it('renders the supplied progress without adding a second animation clock', () => {
     const { rerender } = render(<ScrollCue progress={0.25} />);
     expect(screen.getByTestId('scroll-cue-trace')).toHaveAttribute(
       'stroke-dashoffset',
@@ -168,18 +169,17 @@ describe('ScrollCue', () => {
 
   it('is reachable as a control', () => {
     render(<ScrollCue label="Scroll to about section" />);
-    expect(cue()).toHaveAttribute('role', 'button');
-    expect(cue()).toHaveAttribute('tabindex', '0');
+    expect(cue().tagName).toBe('BUTTON');
     expect(cue()).toHaveAccessibleName('Scroll to about section');
   });
 
-  it('activates on click and on keyboard', () => {
+  it('activates on click and on keyboard', async () => {
     const onActivate = vi.fn();
     render(<ScrollCue onActivate={onActivate} />);
 
     fireEvent.click(cue());
-    fireEvent.keyDown(cue(), { key: 'Enter' });
-    fireEvent.keyDown(cue(), { key: ' ' });
+    cue().focus();
+    await userEvent.keyboard('{Enter} ');
 
     expect(onActivate).toHaveBeenCalledTimes(3);
   });
@@ -190,6 +190,17 @@ describe('ScrollCue', () => {
 
     fireEvent.keyDown(cue(), { key: 'a' });
     expect(onActivate).not.toHaveBeenCalled();
+  });
+
+  it.each(['Enter', ' '])('leaves the activation key %j uncancelled', async (key) => {
+    const onActivate = vi.fn();
+    render(<ScrollCue onActivate={onActivate} />);
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    fireEvent(cue(), event);
+    expect(event.defaultPrevented).toBe(false);
+    cue().focus();
+    await userEvent.keyboard(key === 'Enter' ? '{Enter}' : ' ');
+    expect(onActivate).toHaveBeenCalledOnce();
   });
 
   it('does not blow up without a handler', () => {
