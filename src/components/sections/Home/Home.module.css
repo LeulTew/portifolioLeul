@@ -37,7 +37,9 @@
  */
 .home {
   position: relative;
-  overflow: visible;
+  /* Contain the plate's lateral bleed without creating another scrollport. */
+  overflow-x: clip;
+  overflow-y: visible;
   pointer-events: none;
   margin-bottom: 0;
 }
