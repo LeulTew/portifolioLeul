@@ -124,6 +124,9 @@ delay. The reader has to ask again.
 - Reconcile an idle Drei HTML layer with its settled, physical scroll position.
   A rebuilt track can have zero delta while retaining an old transform; that
   geometry repair must notify consumers even if normalized progress is unchanged.
+- Skip world draws while a fully opaque overlay remains pinned beyond its
+  physical range. Clear that coverage on release, hide, and unmount; a
+  translucent boundary must never suppress the world behind it.
 
 *Why:* beats serialised by §4 leave gaps where the chapter is unfinished and
 nothing is animating. A flick crosses the whole spacer inside the first gap, the

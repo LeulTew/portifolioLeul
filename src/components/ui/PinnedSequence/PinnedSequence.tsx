@@ -4,6 +4,7 @@ import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
 import { writeStyleProperty } from '@/lib/dom/cachedElement';
+import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import styles from './PinnedSequence.module.css';
 
 /**
@@ -46,6 +47,8 @@ export interface PinnedSequenceProps {
   className?: string;
   /** Marks the spacer, so a test can find the scroll it reserves. */
   testId?: string;
+  /** The ground layer fully covers the 3D world when its presence reaches one. */
+  occludesWorld?: boolean;
 }
 
 const DEFAULT_FEATHER = 0.09;
@@ -66,6 +69,7 @@ export function PinnedSequence({
   children,
   className,
   testId = 'pinned-sequence',
+  occludesWorld = false,
 }: PinnedSequenceProps) {
   const [spacer, setSpacer] = useState<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -136,7 +140,10 @@ export function PinnedSequence({
           if (!nearby && overlayRef.current && !chapterBusy()) {
             // An overlay is fixed to the viewport, so one left switched on
             // covers every section after it.
-            overlayRef.current.dataset.active = 'false';
+            if (overlayRef.current.dataset.active !== 'false') {
+              overlayRef.current.dataset.active = 'false';
+            }
+            if (occludesWorld) setOverlayOcclusion(false);
           }
         },
         { rootMargin: '100% 0px' }
@@ -147,6 +154,7 @@ export function PinnedSequence({
     const apply = () => {
       const overlay = overlayRef.current;
       if (!overlay) return;
+      if (occludesWorld) setOverlayOcclusion(false);
       // Flat/reduced-motion Home publishes ready immediately; standalone
       // sequences with no Home keep their existing eligibility.
       const eligible = !home || home.getAttribute('data-hero-handover-settled') === 'true';
@@ -281,6 +289,9 @@ export function PinnedSequence({
           layerOpacity(presence).toFixed(PRECISION)
         );
       }
+      if (occludesWorld) {
+        setOverlayOcclusion(Number(overlay.style.getPropertyValue('--ground-in')) >= 1);
+      }
     };
 
     apply();
@@ -334,8 +345,9 @@ export function PinnedSequence({
       completionObserver?.disconnect();
       window.removeEventListener('resize', apply);
       window.removeEventListener('scroll', apply);
+      if (occludesWorld) setOverlayOcclusion(false);
     };
-  }, [spacer, layers]);
+  }, [spacer, layers, occludesWorld]);
 
   return (
     <>

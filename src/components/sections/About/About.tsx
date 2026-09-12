@@ -804,6 +804,7 @@ export function About() {
       <FocusScrim variant="solid" />
       <div className={styles.content}>
         <PinnedSequence
+          occludesWorld
           screens={ABOUT_SCREENS}
           layers={STATEMENT_LAYERS}
           className={styles.aboutSequence}

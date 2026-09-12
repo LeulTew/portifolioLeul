@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PinnedSequence } from './PinnedSequence';
 import { localProgress } from './localProgress';
 import { setScrollProgress, resetScrollProgress, subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { resetCameraHold } from '@/lib/camera/cameraHold';
+import { isWorldOccluded, isFrameDrawn, resetFrameGate } from '@/lib/render/frameGate';
 
 describe('localProgress', () => {
   it('is nothing before the stretch reaches the top of the screen', () => {
@@ -37,6 +39,65 @@ const LAYERS = [
   { name: 'one', start: 0.1, end: 0.45 },
   { name: 'two', start: 0.55, end: 0.9 },
 ];
+
+describe('PinnedSequence world coverage', () => {
+  beforeEach(() => {
+    resetScrollProgress();
+    resetCameraHold();
+    resetFrameGate();
+  });
+  afterEach(() => resetCameraHold());
+  const layers = [{ name: 'ground', start: 0, end: 1, feather: 0.1 }];
+  const mount = () => {
+    const rendered = render(
+      <section id="about" data-head-travelling="true">
+        <PinnedSequence layers={layers} occludesWorld><p>held</p></PinnedSequence>
+      </section>
+    );
+    const spacer = screen.getByTestId('pinned-sequence');
+    spacer.getBoundingClientRect = () => ({ top: -4000, bottom: -1600, height: 2400 }) as DOMRect;
+    act(() => setScrollProgress(1));
+    return rendered;
+  };
+
+  it('occludes the world while an opaque owed movement extends beyond the measured range', () => {
+    mount();
+    expect(screen.getByTestId('pinned-sequence-overlay')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('pinned-sequence-overlay').style.getPropertyValue('--ground-in')).toBe('1.000');
+    expect(isWorldOccluded()).toBe(true);
+    expect(isFrameDrawn(1)).toBe(false);
+  });
+
+  it('releases world coverage when the chapter completes without more scrolling', async () => {
+    mount();
+    expect(isWorldOccluded()).toBe(true);
+    await act(async () => {
+      const about = document.getElementById('about')!;
+      about.removeAttribute('data-head-travelling');
+      about.setAttribute('data-title-settled', 'true');
+    });
+    expect(isWorldOccluded()).toBe(false);
+    expect(isFrameDrawn(2)).toBe(true);
+  });
+
+  it('releases world coverage on unmount', () => {
+    const { unmount } = mount();
+    expect(isWorldOccluded()).toBe(true);
+    unmount();
+    expect(isWorldOccluded()).toBe(false);
+  });
+
+  it('keeps drawing through a translucent boundary', () => {
+    render(<PinnedSequence layers={layers} occludesWorld><p>held</p></PinnedSequence>);
+    screen.getByTestId('pinned-sequence').getBoundingClientRect = () =>
+      ({ top: -15, bottom: 2385, height: 2400 }) as DOMRect;
+    act(() => setScrollProgress(0.1));
+    expect(Number(screen.getByTestId('pinned-sequence-overlay').style.getPropertyValue('--ground-in')))
+      .toBeLessThan(1);
+    expect(isWorldOccluded()).toBe(false);
+    expect(isFrameDrawn(1)).toBe(true);
+  });
+});
 
 describe('PinnedSequence', () => {
   beforeEach(() => resetScrollProgress());
