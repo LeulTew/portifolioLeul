@@ -2,7 +2,7 @@ import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PinnedSequence } from './PinnedSequence';
 import { localProgress } from './localProgress';
-import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
+import { setScrollProgress, resetScrollProgress, subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 
 describe('localProgress', () => {
   it('is nothing before the stretch reaches the top of the screen', () => {
@@ -127,6 +127,34 @@ describe('PinnedSequence', () => {
 
     expect(inValue).toBeGreaterThan(0);
     expect(on).toBeLessThan(0.1);
+  });
+
+  it('publishes a completed chapter return before consumers, even when a jump misses the pin', () => {
+    const seen: string[] = [];
+    const unsubscribe = subscribeScrollProgress(() => {
+      seen.push(overlay.style.getPropertyValue('--seq'));
+    });
+    render(
+      <section id="about" data-title-settled="true" data-head-settled="true">
+        <PinnedSequence layers={LAYERS}><p>held</p></PinnedSequence>
+      </section>
+    );
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    const spacer = screen.getByTestId('pinned-sequence');
+    const height = window.innerHeight * 3;
+    spacer.getBoundingClientRect = () => ({
+      top: window.innerHeight - height, bottom: window.innerHeight, height,
+    }) as DOMRect;
+    act(() => setScrollProgress(1));
+    expect(overlay.style.getPropertyValue('--seq')).toBe('1.000');
+    seen.length = 0;
+    spacer.getBoundingClientRect = () => ({
+      top: window.innerHeight * 1.35, bottom: window.innerHeight * 1.35 + height, height,
+    }) as DOMRect;
+    act(() => setScrollProgress(0));
+    unsubscribe();
+    expect(overlay.style.getPropertyValue('--seq')).toBe('0.000');
+    expect(seen).toEqual(['0.000']);
   });
 });
 

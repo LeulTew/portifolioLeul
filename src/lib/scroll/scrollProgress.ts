@@ -18,6 +18,7 @@ const EPSILON = 1e-4;
 
 let currentProgress = 0;
 const listeners = new Set<Listener>();
+const measurements = new Set<Listener>();
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -26,11 +27,12 @@ function clamp01(value: number): number {
   return value;
 }
 
-/** Publish a new progress value. Called once per frame from the R3F loop. */
-export function setScrollProgress(next: number): void {
+/** Geometry repairs need a fresh measurement even when progress is unchanged. */
+export function setScrollProgress(next: number, geometryChanged = false): void {
   const clamped = clamp01(next);
-  if (Math.abs(clamped - currentProgress) < EPSILON) return;
+  if (!geometryChanged && Math.abs(clamped - currentProgress) < EPSILON) return;
   currentProgress = clamped;
+  for (const measure of measurements) measure(clamped);
   for (const listener of listeners) listener(clamped);
 }
 
@@ -38,10 +40,15 @@ export function getScrollProgress(): number {
   return currentProgress;
 }
 
-export function subscribeScrollProgress(listener: Listener): () => void {
-  listeners.add(listener);
+/** Local sequence geometry must be published before its animation consumers. */
+export function subscribeScrollProgress(
+  listener: Listener,
+  phase: 'measure' | 'consume' = 'consume'
+): () => void {
+  const subscribers = phase === 'measure' ? measurements : listeners;
+  subscribers.add(listener);
   return () => {
-    listeners.delete(listener);
+    subscribers.delete(listener);
   };
 }
 
@@ -49,6 +56,7 @@ export function subscribeScrollProgress(listener: Listener): () => void {
 export function resetScrollProgress(): void {
   currentProgress = 0;
   listeners.clear();
+  measurements.clear();
 }
 
 /** Re-renders the calling component whenever page scroll progress changes. */

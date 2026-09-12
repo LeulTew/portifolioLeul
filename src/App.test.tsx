@@ -4,6 +4,7 @@ import * as ReactModule from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
+import { setScrollProgress, subscribeScrollProgress } from "./lib/scroll/scrollProgress";
 
 /*
  * These exercise the 3D path, so they say so.
@@ -131,7 +132,10 @@ vi.mock("@react-three/fiber", () => ({
     selector ? selector(threeState) : threeState,
 }));
 
-const mockScroll = { el: document.createElement("div"), offset: 0 };
+const mockScroll = {
+  el: document.createElement("div"), fixed: document.createElement("div"),
+  offset: 0, delta: 0, eps: 0.00001, pages: 1,
+};
 
 /**
  * The track's geometry, modelled on ScrollControls: it stacks a sticky
@@ -155,6 +159,7 @@ vi.mock("@react-three/drei", () => ({
     // that effect resizes the fill, and it resets scrollTop to 1 on every run.
     ReactModule.useEffect(() => {
       track.pages = pages;
+      mockScroll.pages = pages;
       track.rebuilds += 1;
       mockScroll.el.scrollTop = 1;
     }, [pages]);
@@ -162,7 +167,11 @@ vi.mock("@react-three/drei", () => ({
       <div data-testid="scroll-controls" data-pages={pages}>{children}</div>
     );
   },
-  Scroll: ({ children }: any) => <div>{children}</div>,
+  Scroll: ({ children }: { children: ReactModule.ReactNode }) => (
+    <div ref={node => { if (node) mockScroll.fixed = node; }}>
+      <div data-testid="scroll-html">{children}</div>
+    </div>
+  ),
   useScroll: () => mockScroll,
   Preload: () => null,
   useProgress: () => ({ active: false, progress: 100, loaded: 4, total: 4, errors: [] }),
@@ -517,6 +526,56 @@ describe("App scroll position across a track resize", () => {
     act(() => runFrames(3));
 
     expect(mockScroll.el.scrollTop).toBe(0);
+  });
+
+  it("reconciles a stale HTML translation when Drei has settled at zero delta", () => {
+    renderApp();
+    const html = screen.getByTestId("scroll-html");
+    html.style.transform = "translate3d(0px, -5585.37px, 0px)";
+    mockScroll.offset = 0;
+    mockScroll.delta = 0;
+    mockScroll.el.scrollTop = 0;
+    setScrollProgress(0);
+    const republished = vi.fn();
+    const unsubscribe = subscribeScrollProgress(republished);
+
+    act(() => runFrames(3));
+    unsubscribe();
+
+    expect(html.style.transform).toBe("translate3d(0px, 0px, 0px)");
+    expect(republished).toHaveBeenCalledExactlyOnceWith(0);
+  });
+
+  it("leaves moving and not-yet-restored translations to Drei", () => {
+    renderApp();
+    const html = screen.getByTestId("scroll-html");
+    const previous = "translate3d(0px, -1000px, 0px)";
+    html.style.transform = previous;
+    mockScroll.offset = 0;
+    mockScroll.delta = 0.1;
+    mockScroll.el.scrollTop = 0;
+    act(() => runFrames());
+    expect(html.style.transform).toBe(previous);
+
+    mockScroll.delta = 0;
+    mockScroll.el.scrollTop = 3000;
+    act(() => runFrames());
+    expect(html.style.transform).toBe(previous);
+  });
+
+  it("does not rewrite the reconciled HTML transform on idle frames", async () => {
+    renderApp();
+    const html = screen.getByTestId("scroll-html");
+    mockScroll.offset = 0;
+    mockScroll.delta = 0;
+    mockScroll.el.scrollTop = 0;
+    act(() => runFrames(3));
+    const writes: MutationRecord[] = [];
+    const observer = new MutationObserver(records => writes.push(...records));
+    observer.observe(html, { attributes: true, attributeFilter: ["style"] });
+    await act(async () => runFrames(30));
+    observer.disconnect();
+    expect(writes).toHaveLength(0);
   });
 });
 

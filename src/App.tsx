@@ -574,10 +574,23 @@ function ScrollManager({
   // The page scrolls inside the ScrollControls element, so this is the only
   // place that knows the real progress. Publish it for the DOM layer.
   useFrame(() => {
-    setScrollProgress(scroll?.offset ?? 0);
+    let geometryChanged = false;
+    const html = scroll?.fixed.firstElementChild;
+    // Drei 9 skips HTML transforms at zero delta, including a reset to zero
+    // after rebuilding pages. Reconcile only settled, physically agreed state;
+    // moving frames remain exclusively Drei's, and pending restores stay put.
+    if (scroll && html instanceof HTMLElement && scroll.delta <= scroll.eps &&
+        Math.abs(readScrollOffset(scroll.el) - scroll.offset) <= scroll.eps) {
+      const y = -scroll.el.clientHeight * (scroll.pages - 1) * scroll.offset;
+      const transform = `translate3d(0px, ${y}px, 0px)`;
+      if (html.style.transform !== transform) {
+        html.style.transform = transform;
+        geometryChanged = true;
+      }
+    }
+    setScrollProgress(scroll?.offset ?? 0, geometryChanged);
     onFrame();
   });
 
   return null;
 }
-

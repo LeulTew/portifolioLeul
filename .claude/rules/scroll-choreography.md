@@ -118,6 +118,12 @@ delay. The reader has to ask again.
   end is the request; there is nobody left to ask.
 - Cooldowns wake themselves when they expire; pin release observes completion.
   Neither may depend on another scroll publication after the reader stops.
+- Publish local sequence measurements before their animation consumers, even
+  when a return jumps across the entire spacer. A completed forward chapter
+  still needs its reverse request.
+- Reconcile an idle Drei HTML layer with its settled, physical scroll position.
+  A rebuilt track can have zero delta while retaining an old transform; that
+  geometry repair must notify consumers even if normalized progress is unchanged.
 
 *Why:* beats serialised by §4 leave gaps where the chapter is unfinished and
 nothing is animating. A flick crosses the whole spacer inside the first gap, the

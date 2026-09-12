@@ -169,7 +169,9 @@ export function PinnedSequence({
        * overhead and nothing is owed. One frame of work to close the leak, and
        * then this returns early again and an idle frame costs nothing.
        */
-      if (eligible && !nearby && !chapterBusy() && overlay.dataset.active !== 'true') return;
+      const completed = document.getElementById('about')?.getAttribute('data-title-settled') === 'true';
+      if (eligible && !nearby && !chapterBusy() && !completed &&
+          overlay.dataset.active !== 'true') return;
 
       const rect = spacer.getBoundingClientRect();
       const rootHeight = window.innerHeight;
@@ -226,7 +228,6 @@ export function PinnedSequence({
       // marks the subtree dirty, and this overlay holds the whole section.
       const active = String(pinned);
       if (overlay.dataset.active !== active) overlay.dataset.active = active;
-      if (!pinned && eligible) return;
 
       /*
        * Nothing is published from a spacer that has not been laid out.
@@ -283,7 +284,7 @@ export function PinnedSequence({
     };
 
     apply();
-    const unsubscribe = subscribeScrollProgress(apply);
+    const unsubscribe = subscribeScrollProgress(apply, 'measure');
     window.addEventListener('resize', apply);
     const about = document.getElementById('about');
     const completionObserver = (about || home) && typeof MutationObserver !== 'undefined'
