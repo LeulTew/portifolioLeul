@@ -314,7 +314,7 @@ describe('Home choreography', () => {
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('draws from the hero toward About before the landing arrives, without jumping on a flick', () => {
+  it('draws from the hero toward About at the historical scroll positions', () => {
     vi.useFakeTimers();
     /*
      * Reported five times, and this is the shape that came out of it. The mark
@@ -369,15 +369,12 @@ describe('Home choreography', () => {
     scrollIntoHold(1);
     expect(drawn()).toBeLessThan(1);
 
-    // A flick changes the destination, never the position in that same frame.
-    const beforeFlick = drawn();
+    // The restored mark belongs to scroll, not an extra self-running beat.
     scrollIntoHold(aboutTop / hold);
-    expect(drawn()).toBe(beforeFlick);
-    playBeats(600);
+    expect(drawn()).toBe(1);
+    scrollIntoHold(HOLD_CLOSE_END);
     expect(drawn()).toBeGreaterThan(0);
     expect(drawn()).toBeLessThan(1);
-    playBeats(700);
-    expect(drawn()).toBe(1);
   });
 
   it('shows the cue outright under reduced motion, rather than never', () => {
@@ -399,20 +396,18 @@ describe('Home choreography', () => {
     expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('1.000');
   });
 
-  it('preserves the 36px landing gap for a fractional heading height', () => {
+  it('preserves the 36px landing gap for a fractional fixed heading inset', () => {
     vi.useFakeTimers();
     render(<Home />);
     enterHero();
-    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
-    const heading = document.querySelector<HTMLElement>('[data-testid="about-held-header"]')!;
-    heading.getBoundingClientRect = () => ({ top: 0, bottom: 109.25, height: 109.25 }) as DOMRect;
-    fireEvent.resize(window);
-    scrollIntoHold(8);
+    const aboutTop = window.innerHeight * HERO_SCREENS;
+    layOutRail({ aboutTop, headingTop: 109.25 });
+    scrollIntoHold(HERO_SCREENS / (HERO_SCREENS - 1));
     playBeats(3500);
     const root = document.documentElement.style;
     const tip = parseFloat(root.getPropertyValue('--cue-y')) +
       parseFloat(root.getPropertyValue('--cue-height'));
-    expect(window.innerHeight / 2 - 109.25 / 2 - tip).toBeCloseTo(36, 2);
+    expect(109.25 - tip).toBeCloseTo(36, 2);
   });
 
   it('positions a reduced-motion cue when its rail arrives without waiting for scroll', () => {
@@ -426,32 +421,31 @@ describe('Home choreography', () => {
     expect(parseFloat(origin)).toBeCloseTo(parseFloat(measured), 3);
   });
 
-  it('keeps the original scroll-linked journey and finishes a fast handover on visible frames', () => {
+  it('does not wait on the cloud clock before updating the restored arrow', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Home />);
     enterHero();
     layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
     scrollIntoHold(1.2);
+    const partial = Number(getByTestId('scroll-cue').dataset.progress);
+    expect(partial).toBeGreaterThan(0);
+    expect(partial).toBeLessThan(1);
     playBeats(800);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(partial);
     playBeats(200);
     expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
     const cloudShut = Number(getByTestId('hero-content').style.getPropertyValue('--shut'));
     expect(cloudShut).toBeGreaterThan(0);
     expect(cloudShut).toBeLessThan(1);
     playBeats(2500);
-    const partial = Number(getByTestId('scroll-cue').dataset.progress);
-    expect(partial).toBeGreaterThan(0);
-    expect(partial).toBeLessThan(1);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(partial);
     expect(document.getElementById('home')).not.toHaveAttribute('data-hero-handover-settled', 'true');
     scrollIntoHold(8);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(partial);
-    playBeats(1300);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
     expect(document.getElementById('home')).toHaveAttribute('data-hero-handover-settled', 'true');
   });
 
-  it('waits for About and retracts the cue before reopening the plate and copy', () => {
+  it('reverses the cue on scroll without waiting for a removed heading climb', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Home />);
     enterHero();
@@ -461,23 +455,14 @@ describe('Home choreography', () => {
     const about = document.getElementById('about')!;
     about.setAttribute('data-head-travelling', 'true');
     scrollIntoHold(0);
-    playBeats(1000);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
     expect(exitOf(getByTestId('hero-content'))).toBe(1);
-
-    about.removeAttribute('data-head-travelling');
-    scrollIntoHold(0);
-    playBeats(1200);
-    playBeats(600);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeLessThan(1);
-    expect(exitOf(getByTestId('hero-content'))).toBe(1);
-    playBeats(3000);
+    playBeats(1600);
     expect(exitOf(getByTestId('hero-content'))).toBe(0);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('fades the cue with statement presence and restores it before the heading returns', () => {
+  it('fades and restores the cue from the historical scroll window, not About flags', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Home />);
     enterHero();
@@ -495,10 +480,10 @@ describe('Home choreography', () => {
     scrollIntoHold(0);
     playBeats(400);
     expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('1.000');
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('rests after About returns before retracting the cue at the start boundary', async () => {
+  it('does not queue an extra cooldown before a reverse at the start boundary', async () => {
     vi.useFakeTimers();
     const about = document.createElement('div');
     about.id = 'about';
@@ -510,16 +495,14 @@ describe('Home choreography', () => {
     playBeats(3500);
     about.setAttribute('data-head-settled', 'true');
     scrollIntoHold(0);
-    playBeats(1300);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
     await act(async () => about.removeAttribute('data-head-settled'));
-    playBeats(1100);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
-    playBeats(700);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeLessThan(1);
+    playBeats(1800);
+    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    expect(exitOf(getByTestId('hero-content'))).toBe(0);
   });
 
-  it('discards an early cue-return gesture and waits for a fresh one away from the boundary', async () => {
+  it('reverses within the bridge without asking for a second wheel gesture', async () => {
     vi.useFakeTimers();
     const about = document.createElement('div');
     about.id = 'about';
@@ -531,15 +514,12 @@ describe('Home choreography', () => {
     playBeats(3500);
     about.setAttribute('data-head-settled', 'true');
     scrollIntoHold(3);
+    const reversed = Number(getByTestId('scroll-cue').dataset.progress);
+    expect(reversed).toBeGreaterThan(0);
+    expect(reversed).toBeLessThan(1);
     await act(async () => about.removeAttribute('data-head-settled'));
-    playBeats(1000);
-    fireEvent.wheel(window, { deltaY: -100 });
-    playBeats(500);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
-    fireEvent.wheel(window, { deltaY: -100 });
-    playBeats(500);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
-    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeLessThan(1);
+    playBeats(1500);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(reversed);
   });
 
   it('fills the title rather than sliding it in', () => {
@@ -652,7 +632,7 @@ describe('Home choreography', () => {
     ).toBeCloseTo(holdLength * 0.5, 0);
   });
 
-  it('finishes the owed copy and plate before releasing a spent hold', () => {
+  it('releases at the historical hold limit without extending the pinned hero', () => {
     vi.useFakeTimers();
     const { container } = render(<Home />);
     enterHero();
@@ -665,7 +645,7 @@ describe('Home choreography', () => {
     const holdLength = window.innerHeight * (HERO_SCREENS - 1);
     expect(
       Number.parseFloat(pinned.style.getPropertyValue('--pin'))
-    ).toBeCloseTo(holdLength * 3, 0);
+    ).toBeCloseTo(holdLength, 0);
     playBeats(2200);
     expect(
       Number.parseFloat(pinned.style.getPropertyValue('--pin'))

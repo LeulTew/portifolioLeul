@@ -54,8 +54,8 @@ describe('the mounted About chapter plays every movement in order', () => {
       }
     };
     const value = (name: string) => Number(statements.style.getPropertyValue(`--${name}`));
-    const travel = () => Number(overlay.style.getPropertyValue('--head-travel'));
-    return { clock, about, overlay, position, wheel, run, value, travel, statements, unmount };
+    const headReady = () => about.getAttribute('data-head-settled') === 'true';
+    return { clock, about, overlay, position, wheel, run, value, headReady, statements, unmount };
   };
 
   const handover = async (complete: boolean) => {
@@ -66,43 +66,39 @@ describe('the mounted About chapter plays every movement in order', () => {
     });
   };
 
-  it('keeps the heading centered until the hero finishes and a fresh post-cooldown ask arrives', async () => {
+  it('shows the fixed title when the spatial bridge arrives, without another climb or gesture', async () => {
     const chapter = mount(true);
     await chapter.position(0.953);
     await chapter.wheel();
     await chapter.run(3000);
-    expect(chapter.travel()).toBe(0);
+    expect(chapter.headReady()).toBe(false);
     expect(chapter.value('one-on')).toBe(0);
     expect(chapter.clock.pending).toBe(0);
-    expect(chapter.about).toHaveAttribute('data-head-pending', 'true');
+    expect(chapter.about).not.toHaveAttribute('data-head-pending');
     expect(chapter.overlay).toHaveAttribute('data-active', 'false');
     await handover(true);
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
-    await chapter.wheel();
-    await chapter.run(BEAT_COOLDOWN_MS + 20);
-    expect(chapter.travel()).toBe(0);
-    expect(chapter.clock.pending).toBe(0);
-    await chapter.wheel();
-    await chapter.run(100);
-    expect(chapter.travel()).toBeGreaterThan(0);
+    expect(chapter.headReady()).toBe(true);
+    expect(chapter.overlay.style.getPropertyValue('--head-travel')).toBe('');
+    await chapter.run(BEAT_REST_MS - 20);
     expect(chapter.value('one-on')).toBe(0);
-    await chapter.run(HEAD_SETTLE.durationMs);
+    await chapter.run(STATEMENT_ARRIVE.durationMs + 40);
+    expect(chapter.value('one-on')).toBe(1);
     expect(chapter.about).toHaveAttribute('data-head-settled', 'true');
     expect(chapter.about).not.toHaveAttribute('data-head-pending');
   });
 
-  it('holds an end flick for the hero and wakes the heading after completion without another gesture', async () => {
+  it('keeps the later chapter intact after the bridge becomes ready', async () => {
     const chapter = mount(true);
     await chapter.position(0.1);
     await chapter.position(2);
     await chapter.run(3000);
     expect(chapter.overlay).toHaveAttribute('data-active', 'false');
-    expect(chapter.travel()).toBe(0);
+    expect(chapter.headReady()).toBe(false);
     expect(chapter.overlay.style.getPropertyValue('--seq')).toBe('1.000');
     await handover(true);
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
-    await chapter.run(BEAT_COOLDOWN_MS - 20);
-    expect(chapter.travel()).toBe(0);
+    expect(chapter.headReady()).toBe(true);
     await chapter.run(14000);
     expect(chapter.about).toHaveAttribute('data-title-settled', 'true');
     expect(chapter.overlay).toHaveAttribute('data-active', 'false');
@@ -111,9 +107,9 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('withdraws a pending climb on reverse and cancels its hero cooldown on unmount', async () => {
+  it('withdraws title readiness on reverse without leaving a handover timer', async () => {
     const chapter = mount(true);
-    await chapter.position(0.953);
+    await chapter.position(0.06);
     await handover(true);
     await chapter.run(100);
     await chapter.position(-1);
@@ -122,43 +118,36 @@ describe('the mounted About chapter plays every movement in order', () => {
     await handover(false);
     expect(vi.getTimerCount()).toBe(0);
     await handover(true);
-    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    expect(chapter.headReady()).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
     chapter.unmount();
     expect(vi.getTimerCount()).toBe(0);
     expect(chapter.clock.pending).toBe(0);
   });
 
-  it('does not reuse the first climb gesture when the heading returns under a still-complete cue', async () => {
+  it('restores the fixed-title arrival on reentry without asking for a climb gesture', async () => {
     const chapter = mount(true);
     await chapter.position(0.06);
     await handover(true);
-    await chapter.run(BEAT_COOLDOWN_MS + 20);
-    await chapter.wheel();
-    await chapter.run(HEAD_SETTLE.durationMs + 20);
-    expect(chapter.travel()).toBe(1);
+    expect(chapter.headReady()).toBe(true);
     await chapter.position(0);
-    await chapter.run(BEAT_REST_MS + HEAD_SETTLE.durationMs + 30);
-    expect(chapter.travel()).toBe(0);
+    expect(chapter.headReady()).toBe(false);
     await chapter.position(0.06);
-    await chapter.run(100);
-    expect(chapter.travel()).toBe(0);
-    await chapter.wheel();
-    await chapter.run(100);
-    expect(chapter.travel()).toBeGreaterThan(0);
+    expect(chapter.headReady()).toBe(true);
+    expect(chapter.clock.pending).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('a hard flick cannot clear the copy before the heading or skip statement one', async () => {
     const chapter = mount();
     await chapter.position(0.953);
-    await chapter.run(STATEMENT_CLEAR.durationMs + 100);
-    expect(chapter.about).not.toHaveAttribute('data-head-settled');
+    await chapter.run(100);
+    expect(chapter.about).toHaveAttribute('data-head-settled', 'true');
     expect(chapter.about).not.toHaveAttribute('data-statements-cleared');
     expect(chapter.value('one-on')).toBe(0);
     expect(chapter.value('two-on')).toBe(0);
 
-    await chapter.run(HEAD_SETTLE.durationMs - STATEMENT_CLEAR.durationMs - 80);
-    expect(chapter.about).toHaveAttribute('data-head-settled', 'true');
-    await chapter.run(BEAT_REST_MS - 20);
+    await chapter.run(BEAT_REST_MS - 120);
     expect(chapter.value('one-on')).toBe(0);
     await chapter.wheel();
     await chapter.run(STATEMENT_ARRIVE.durationMs + 40);
@@ -206,7 +195,7 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.run(10);
     await chapter.position(-1);
     await chapter.run(100);
-    expect(chapter.travel()).toBe(1);
+    expect(chapter.headReady()).toBe(true);
     expect(chapter.value('one-on')).toBe(0);
     expect(chapter.value('two-on')).toBe(0);
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
@@ -218,7 +207,7 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.run(900);
     expect(chapter.about).toHaveAttribute('data-bg-settled', 'true');
     await chapter.run(13000);
-    expect(chapter.travel()).toBe(0);
+    expect(chapter.headReady()).toBe(false);
     expect(chapter.value('one-on')).toBe(0);
     expect(chapter.value('two-on')).toBe(0);
     expect(chapter.overlay).toHaveAttribute('data-active', 'false');
@@ -234,7 +223,7 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.wheel(-3);
     await chapter.run(TITLE_WRITE.durationMs + 20);
     expect(chapter.about).not.toHaveAttribute('data-reverse-transition-active');
-    expect(chapter.travel()).toBe(1);
+    expect(chapter.headReady()).toBe(true);
     expect(chapter.value('two-on')).toBe(0);
     await chapter.wheel(-3);
     await chapter.run(BEAT_COOLDOWN_MS + 20);
@@ -253,7 +242,7 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.value('two-on')).toBeGreaterThan(0);
     expect(chapter.value('two-on')).toBeLessThan(1);
     expect(chapter.value('one-on')).toBe(0);
-    expect(chapter.travel()).toBe(1);
+    expect(chapter.headReady()).toBe(true);
     await chapter.position(0.2);
     await chapter.run(STATEMENT_CLEAR.durationMs / 2 + 20);
     expect(chapter.value('two-on')).toBe(1);
@@ -263,13 +252,13 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.wheel(-3);
     await chapter.run(STATEMENT_SWAP.durationMs + 20);
     expect(chapter.value('one-on')).toBe(1);
-    expect(chapter.travel()).toBe(1);
+    expect(chapter.headReady()).toBe(true);
     await chapter.position(-1);
     await chapter.run(BEAT_COOLDOWN_MS + 500);
     expect(chapter.value('one-on')).toBeGreaterThan(0);
-    expect(chapter.travel()).toBe(1);
+    expect(chapter.headReady()).toBe(true);
     await chapter.run(3000);
-    expect(chapter.travel()).toBe(0);
+    expect(chapter.headReady()).toBe(false);
     expect(chapter.clock.pending).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -287,7 +276,7 @@ describe('the mounted About chapter plays every movement in order', () => {
   it('does not spend the authored heading-to-copy rest in a suspended frame', async () => {
     const chapter = mount();
     await chapter.position(0.953);
-    await chapter.run(HEAD_SETTLE.durationMs + 20);
+    await chapter.run(20);
     await chapter.clock.frame(9000);
     await chapter.run(100);
     expect(chapter.value('one-on')).toBe(0);

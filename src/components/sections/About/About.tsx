@@ -12,7 +12,7 @@ import { TitlePixelTransition } from './TitlePixelTransition';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { createAboutReader, createSeqReader } from './seqReader';
-import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import {
   BEAT_DEADBAND,
   BEAT_REST_MS,
@@ -142,236 +142,27 @@ function TransitionMaskedOverlay() {
 }
 
 
-/**
- * The heading, and the one journey it makes.
- *
- * It arrives centred -- on the head of the line the hero draws down the page,
- * which is where the reader is already looking -- and stays there, alone, until
- * the reader scrolls. Then it climbs to the corner it occupies for the rest of
- * the chapter, and only once it has landed does anything else appear.
- *
- * `--head-travel` is 0 centred and 1 at rest. The CSS interpolates `top` and a
- * counter-translate between the two, so the centring is the browser's own and
- * nothing here has to measure the heading.
- */
+/** The historical fixed title still publishes readiness for the later beats. */
 function HeldHeader({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  /** Where the heading sits when it is centred, so its climb can be published. */
-  const centredTopRef = useRef<number | null>(null);
-  const phaseRef = useRef<PhaseState>(PHASE_AT_REST);
-  const wasActiveRef = useRef(false);
-  const animFrameRef = useRef(0);
-  const lastFrameRef = useRef(0);
-  const returnRestRef = useRef(0);
-  const returnWaitingRef = useRef(false);
-  const handoverRequestRef = useRef(UNREQUESTED_BEAT);
-  const handoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRef = useRef(false);
-  const reducedMotion = getPrefersReducedMotion();
-
-  const readSeq = useRef(createSeqReader(() => ref.current)).current;
-  const readAbout = useRef(createAboutReader()).current;
-  const readHome = useRef(cachedElement(() => document.getElementById('home'))).current;
-
-  const renderPhase = useCallback(
-    (t: number) => {
-      const el = ref.current;
-      if (!el) return;
-      /*
-       * Written on the overlay, not on this node.
-       *
-       * The masked mirror of the heading carries the same class from a
-       * different subtree and has to travel with it exactly, so the value has
-       * to live somewhere they both inherit from.
-       */
-      const overlay = el.closest<HTMLElement>('[data-active]') ?? el;
-      const eased = easeInOutCubic(t);
-      const next = eased.toFixed(3);
-      const moved = overlay.style.getPropertyValue('--head-travel') !== next;
-      writeStyleProperty(overlay, '--head-travel', next);
-
-      /*
-       * And how far that has actually moved it, in pixels, for the hero's mark.
-       *
-       * The mark keeps its head a fixed gap above these words for the whole
-       * climb, so it needs this number every frame -- and the two things it
-       * must not do are guess it and chase it.
-       *
-       * Guessing means interpolating towards the resting place, which is a
-       * `clamp()` in an unregistered custom property: its computed value is the
-       * `clamp(...)` token, so there is no number there to interpolate towards.
-       *
-       * Chasing means the hero reading this heading's rect from its own frame
-       * callback. That is a whole frame late whenever this one runs second, and
-       * a frame of this climb is several pixels: measured, the gap breathed
-       * between 19px and 41px on its way back down, which is a quarter of the
-       * gap itself.
-       *
-       * So the heading publishes, in the same breath as the write that moved
-       * it. The rect below is read after that write, so it is this frame's
-       * position, and the mark adds it in CSS -- which means the two are
-       * composited from one value on one frame and cannot disagree at all,
-       * whatever order their callbacks happen to run in.
-       *
-       * Only on frames that moved: `--head-travel` has a terminal state at both
-       * ends, so an idle frame does no layout work here.
-       */
-      if (moved) {
-        const top = el.getBoundingClientRect().top;
-        if (eased <= 0) centredTopRef.current = top;
-        const centred = centredTopRef.current;
-        if (centred !== null) {
-          writeStyleProperty(
-            document.documentElement,
-            '--head-offset',
-            `${(top - centred).toFixed(3)}px`
-          );
-        }
-      }
-
-      // Published for the statements, which may not arrive until it lands.
-      const aboutEl = readAbout();
-      if (aboutEl) {
-        writeAttribute(aboutEl, 'data-head-settled', t >= 1 ? 'true' : null);
-        writeAttribute(aboutEl, 'data-head-pending', pendingRef.current && t < 1 ? 'true' : null);
-        /*
-         * And separately: that the chapter still owes this movement.
-         *
-         * `data-head-settled` cannot say it. It is absent both before the climb
-         * and after it has fully reversed, so it cannot tell a heading that is
-         * mid-journey from one that is standing still at either end -- and the
-         * pin needs exactly that distinction.
-         *
-         * Without it the climb was only ever half-protected. Going down the
-         * later beats keep the chapter busy, so the pin holds; coming back up
-         * they finish reversing first, the chapter reads as done while the
-         * heading is still walking, and the overlay retires on top of it. The
-         * reader saw the words vanish outright at four-fifths of the way back
-         * and the rest of the movement played to a hidden element -- which is
-         * rule 6 in reverse, and rule 8 with it.
-         */
-        writeAttribute(
-          aboutEl,
-          'data-head-travelling',
-          t > 0 && t < 1 ? 'true' : null
-        );
-      }
-    },
-    [readAbout]
-  );
-
-  const step = useCallback(
-    (now: number) => {
-      animFrameRef.current = 0;
-      let dt = phaseFrameDelta(lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7);
-      lastFrameRef.current = now;
-
-      if (returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS) {
-        const remaining = BEAT_REST_MS - returnRestRef.current;
-        returnRestRef.current += dt;
-        if (returnRestRef.current < BEAT_REST_MS) {
-          animFrameRef.current = requestAnimationFrame(step);
-          return;
-        }
-        dt = Math.max(0, dt - remaining);
-        wasActiveRef.current = false;
-        handoverRequestRef.current = { ...handoverRequestRef.current, armed: false };
-      }
-      phaseRef.current = advancePhase(
-        phaseRef.current,
-        wasActiveRef.current,
-        dt,
-        HEAD_SETTLE.durationMs
-      );
-      renderPhase(phaseRef.current.t);
-
-      if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) {
-        animFrameRef.current = requestAnimationFrame(step);
-      } else {
-        lastFrameRef.current = 0;
-      }
-    },
-    [renderPhase]
-  );
-
-  const update = useCallback(() => {
-    if (!ref.current) return;
-    const seq = readSeq();
-
-    if (
-      (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
-      reducedMotion
-    ) {
-      // Static/reduced-motion rendering has no timed hero handover to await.
-      pendingRef.current = false;
-      renderPhase(seq >= HEAD_SETTLE.enter ? 1 : 0);
-      return;
-    }
-
-    /*
-     * Position still owns the trigger. With a hero, its completed cue and a
-     * fresh post-cooldown ask are prerequisites, so the reader first sees the
-     * heading centered under the completed line. Standalone/flat About with no
-     * #home retains its position-only entrance; there is no preceding cue.
-     */
-    const reached = phaseGate(
-      seq,
-      wasActiveRef.current,
-      HEAD_SETTLE.enter,
-      HEAD_SETTLE.exit
-    );
-    const about = readAbout();
-    const home = readHome();
-    const now = performance.now();
-    handoverRequestRef.current = prepareBeatRequest(
-      handoverRequestRef.current,
-      home?.getAttribute('data-hero-handover-settled') === 'true',
-      now
-    );
-    const delay = beatWakeDelay([{ request: handoverRequestRef.current }], now);
-    if (handoverTimerRef.current !== null) clearTimeout(handoverTimerRef.current);
-    handoverTimerRef.current = delay === null ? null : setTimeout(() => {
-      handoverTimerRef.current = null;
-      update();
-    }, delay);
-    pendingRef.current = reached && phaseRef.current.t < 1;
-    if (about) writeAttribute(about, 'data-head-pending', pendingRef.current ? 'true' : null);
-
-    const forward = reached && (
-      !home || wasActiveRef.current ||
-      beatRequested(handoverRequestRef.current, seq >= 0.995, now)
-    );
-    const statementsPresent = about?.getAttribute('data-statements-present') === 'true';
-    if (reached || statementsPresent) returnRestRef.current = 0;
-    returnWaitingRef.current = !reached && !statementsPresent && phaseRef.current.t > 0;
-    const active = forward || statementsPresent ||
-      (wasActiveRef.current && returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS);
-    if (wasActiveRef.current && !active) {
-      handoverRequestRef.current = { ...handoverRequestRef.current, armed: false };
-    }
-    wasActiveRef.current = active;
-
-    const resting = returnWaitingRef.current && returnRestRef.current < BEAT_REST_MS;
-    if ((resting || !isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) && animFrameRef.current === 0) {
-      lastFrameRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
-      animFrameRef.current = requestAnimationFrame(step);
-    } else if (animFrameRef.current === 0) {
-      renderPhase(phaseRef.current.t);
-    }
-  }, [readAbout, readHome, readSeq, reducedMotion, renderPhase, step]);
 
   useEffect(() => {
+    const readSeq = createSeqReader(() => ref.current);
+    const readAbout = createAboutReader();
+    const home = document.getElementById('home');
+    const update = () => {
+      const about = readAbout();
+      if (!about) return;
+      const eligible = !home || home.getAttribute('data-hero-handover-settled') === 'true';
+      const ready = (eligible && readSeq() >= HEAD_SETTLE.enter) ||
+        about.getAttribute('data-statements-present') === 'true';
+      writeAttribute(about, 'data-head-settled', ready ? 'true' : null);
+    };
     update();
     const unsubscribe = subscribeScrollProgress(update);
-    const unsubscribeGesture = subscribeScrollGesture(direction => {
-      if (direction !== 'down' || !readHome()) return;
-      handoverRequestRef.current = askBeat(handoverRequestRef.current, performance.now());
-      update();
-    });
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, { passive: true });
     const about = readAbout();
-    const home = readHome();
     const observer = about || home ? new MutationObserver(update) : null;
     if (about) observer?.observe(about, {
       attributes: true,
@@ -383,18 +174,12 @@ function HeldHeader({ children }: { children: React.ReactNode }) {
     });
     return () => {
       unsubscribe();
-      unsubscribeGesture();
       observer?.disconnect();
-      if (handoverTimerRef.current !== null) clearTimeout(handoverTimerRef.current);
-      handoverTimerRef.current = null;
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-        animFrameRef.current = 0;
-      }
+      if (about) writeAttribute(about, 'data-head-settled', null);
     };
-  }, [readAbout, readHome, update]);
+  }, []);
 
   return (
     <div ref={ref} className={styles.heldHeader} data-testid="about-held-header">

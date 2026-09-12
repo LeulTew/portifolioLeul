@@ -1,30 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { advanceCue, cueRail, cueTravel, CUE_DRAW_MS, CUE_TIP_GAP } from './heroPin';
-import { PHASE_AT_REST } from './triggeredPhase';
+import { cueDraw, cuePresence, cueRail, cueRest, CUE_TIP_GAP } from './heroPin';
 
 describe('the original hero-to-About journey', () => {
   it('starts below the hero and lands at the same measured heading gap', () => {
-    const rail = cueRail(700, 1080, 400, 280, 800);
-    expect(cueTravel(rail.top, 1080, 280, 0)).toBe(712);
-    expect(cueTravel(rail.top, 1080, 280, 1) + rail.height).toBeCloseTo(400 - CUE_TIP_GAP);
+    const rail = cueRail(700, 1080, 128, 280, 800);
+    expect(rail.top - 280 * 0.42).toBe(712);
+    expect(rail.top - 1080 + rail.height).toBeCloseTo(128 - CUE_TIP_GAP);
   });
 
-  it('does not spend a suspended frame or a flick in one paint', () => {
-    const next = advanceCue(PHASE_AT_REST, 1, 60000);
-    expect(next.t).toBeCloseTo(50 / CUE_DRAW_MS);
+  it('matches the historical scroll positions without an additional drawing clock', () => {
+    expect(cueDraw(-117.6, 280, 1080)).toBe(0);
+    expect(cueDraw(-598.8, 280, 1080)).toBeCloseTo(0.5);
+    expect(cueDraw(-1080, 280, 1080)).toBe(1);
   });
 
   it('stops at the requested spatial position rather than drawing into an unseen section', () => {
-    let phase = PHASE_AT_REST;
-    for (let frame = 0; frame < 80; frame++) phase = advanceCue(phase, 0.25, 16.7);
-    expect(phase.t).toBe(0.25);
-    expect(advanceCue(phase, 0.25, 16.7).t).toBe(0.25);
+    for (let frame = 0; frame < 80; frame++) {
+      expect(cueDraw(-358.2, 280, 1080)).toBeCloseTo(0.25);
+    }
   });
 
-  it('retracts through the same positions without snapping to the current scroll offset', () => {
-    const forward = advanceCue({ t: 0.5, heading: 1 }, 1, 50);
-    const reverse = advanceCue(forward, 0, 50);
-    expect(reverse.t).toBeCloseTo(0.5);
-    expect(cueTravel(900, 1200, 315, reverse.t)).toBeCloseTo(cueTravel(900, 1200, 315, 0.5));
+  it('reverses the original hold and fade windows at identical scroll positions', () => {
+    expect(cueRest(-1192, 1080, 800)).toBe(112);
+    expect(cuePresence(-1192, 1080, 800)).toBe(1);
+    expect(cuePresence(-1228, 1080, 800)).toBeCloseTo(0.5);
+    expect(cuePresence(-1264, 1080, 800)).toBe(0);
+    expect(cuePresence(-1192, 1080, 800)).toBe(1);
+    expect(cueDraw(-598.8, 280, 1080)).toBeCloseTo(0.5);
   });
 });

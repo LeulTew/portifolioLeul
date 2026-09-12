@@ -50,17 +50,16 @@ lands as a visible step. No easing fixes that, because the input is lumpy.
 **Fixed speed is observable and must stay so:** the same beat driven by a slow
 scroll and by a hard flick takes the same wall-clock time. Measured, not assumed.
 
-The hero cue is intentionally a spatial connection, restoring its original
-journey from below the hero into About. Scroll requests a point on that path;
-`advanceCue` bounds its drawing speed and `cueTravel` moves the origin through
-the matching path, so even a flick cannot skip the visible journey. It starts
-as soon as the copy has left, while the cloud disperses, not only after
-About's landing arrives.
-On a tight heading margin, the same tangent-continuous curve bends inward
-instead of being clipped by the viewport; its landing vertical stays unchanged.
-Home publishes handover completion for About;
-the heading must not appear over unfinished hero movements. Reduced motion
-publishes the complete mark to both the SVG and its CSS visibility properties.
+**Home-to-About restoration (2026-09-13):** the user explicitly requested the
+version that was live two days earlier, `f46b247`, for this bridge only.
+Its arrow is the deliberate exception to time-paced beats: `cueDraw`,
+`cueRest` and `cuePresence` follow scroll directly in both directions. Do not
+reintroduce a separate drawing clock, gesture/cooldown, extended hero pin or
+centered-title climb. The title arrives at its original fixed `--head-lead`,
+and the arrow uses its original curve and 0.14/0.09-screen rest/fade windows.
+The cloud material, spatial chrome and later About/Education pacing are not
+part of this rollback. The fixed title still publishes readiness for those
+later beats. Reduced motion keeps a complete, visible cue.
 
 The fixed chrome uses a second, non-interactive white paint through the
 **same live SVG mask** as About Me. LT, navigation labels, Scroll to explore
@@ -181,9 +180,8 @@ painted on top of Skills, Projects and Contact.
   opposite case: there the transition *is* the animation.
 - **Reveal, don't relayout.** Move a mask's position, don't regenerate its
   image; animate transforms and opacity, never `top`/`width`/`height`.
-- Preserve fractional cue geometry and compose the heading displacement in a
-  transform. Independently rounding the rail height, origin and displacement
-  makes the authored 36px escort gap vary during the journey.
+- Preserve fractional cue geometry and the authored 36px landing gap at the
+  fixed About-title inset. The restored bridge has no heading displacement.
 
 *Why:* opacity jumping 0 → 0.6 at a phase edge flashed on scrolling down and off
 scrolling up. A clearing phase that restarted its own sweep relit every dot below

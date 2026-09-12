@@ -6,25 +6,15 @@ import { KineticRotator } from '../../ui/KineticText';
 import { ScrollCue, cueRunForHeight, cueRunOffset } from '../../ui/ScrollCue';
 import { LiquidFillText } from '../../ui/LiquidFillText';
 import styles from './Home.module.css';
-import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
-import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
-import {
-  UNREQUESTED_BEAT,
-  prepareBeatRequest,
-  askBeat,
-  beatRequested,
-  beatWakeDelay,
-} from '../About/aboutBeats';
 import {
   HERO_SCREENS,
-  advanceCue,
   cueDraw,
-  cueHeld,
+  cuePresence,
   cueRail,
   cueRest,
-  cueTravel,
   holdExit,
   holdProgress,
   innerExit,
@@ -32,7 +22,6 @@ import {
   plateShut,
   INNER_EXIT_MS,
   PLATE_CLOSE_MS,
-  CUE_FADE_MS,
   INNER_ENTER,
   INNER_RELEASE,
   PLATE_ENTER,
@@ -60,31 +49,6 @@ import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
 import { HeroCloud } from './HeroCloud';
-
-/*
- * About's pinned overlay, which says whether the chapter has the mark.
- *
- * Resolved once: this is read on every frame of the hold, and the overlay is
- * portalled to the body, so a query per frame would be a document scan for a
- * node that does not move.
- */
-const findAboutOverlay = cachedElement(() =>
-  typeof document === 'undefined'
-    ? null
-    : document.querySelector<HTMLElement>('[data-testid="about-sequence-overlay"]')
-);
-
-const ABOUT_CUE_FLAGS = [
-  'data-head-travelling',
-  'data-head-settled',
-  'data-statements-present',
-  'data-statements-cleared',
-  'data-bg-active',
-  'data-bg-settled',
-  'data-title-active',
-  'data-title-settled',
-  'data-reverse-transition-active',
-];
 
 /**
  * Rendered width of the cue, matching the stylesheet.
@@ -165,12 +129,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    */
   const innerPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const platePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
-  const cuePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
-  const cueFadeRef = useRef<PhaseState>(PHASE_AT_REST);
   const innerActiveRef = useRef(false);
   const plateActiveRef = useRef(false);
-  const cueTargetRef = useRef(0);
-  const cueFadeActiveRef = useRef(false);
   const frameRef = useRef(0);
   const applyRef = useRef<(() => void) | null>(null);
   const lastFrameRef = useRef(0);
@@ -198,9 +158,6 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    let cueHadChapter = false;
-    let cueReturn = UNREQUESTED_BEAT;
-    let cooldownTimer: ReturnType<typeof setTimeout> | null = null;
 
     /*
      * One frame of the handover.
@@ -226,8 +183,6 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         dt,
         PLATE_CLOSE_MS
       );
-      cuePhaseRef.current = advanceCue(cuePhaseRef.current, cueTargetRef.current, dt);
-      cueFadeRef.current = advancePhase(cueFadeRef.current, cueFadeActiveRef.current, dt, CUE_FADE_MS);
     };
 
     const frame = (now: number) => {
@@ -250,9 +205,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       if (frameRef.current !== 0) return;
       if (
         isPhaseAtTarget(innerPhaseRef.current, innerActiveRef.current) &&
-        isPhaseAtTarget(platePhaseRef.current, plateActiveRef.current) &&
-        cuePhaseRef.current.t === cueTargetRef.current &&
-        isPhaseAtTarget(cueFadeRef.current, cueFadeActiveRef.current)
+        isPhaseAtTarget(platePhaseRef.current, plateActiveRef.current)
       ) {
         lastFrameRef.current = 0;
         return;
@@ -270,45 +223,17 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
       const top = section.getBoundingClientRect().top;
       const progress = holdProgress(top, holdLength);
-      const about = document.getElementById('about');
-      const aboutOwnsCue = cuePhaseRef.current.t >= 1 &&
-        ABOUT_CUE_FLAGS.some((flag) => about?.getAttribute(flag) === 'true');
-      if (aboutOwnsCue) cueHadChapter = true;
-      if (cuePhaseRef.current.t <= 0) cueHadChapter = false;
-      const now = performance.now();
-      cueReturn = prepareBeatRequest(cueReturn, cueHadChapter && !aboutOwnsCue, now);
-      const waitingForCueReturn = cueHadChapter &&
-        !beatRequested(cueReturn, progress <= INNER_RELEASE, now);
-      const wakeDelay = beatWakeDelay([{ request: cueReturn }], now);
-      if (wakeDelay === null && cooldownTimer !== null) {
-        clearTimeout(cooldownTimer);
-        cooldownTimer = null;
-      }
-      if (wakeDelay !== null && cooldownTimer === null) {
-        cooldownTimer = setTimeout(() => {
-          cooldownTimer = null;
-          apply();
-        }, wakeDelay);
-      }
-
-      const heroStillLeaving = held && progress > INNER_ENTER &&
-        (innerPhaseRef.current.t < 1 || platePhaseRef.current.t < 1);
-      const offset = `${Math.round(heroStillLeaving ? Math.max(-top, 0) : pinOffset(top, holdLength))}px`;
+      const offset = `${Math.round(pinOffset(top, holdLength))}px`;
       if (pinned.style.getPropertyValue('--pin') !== offset) {
         pinned.style.setProperty('--pin', offset);
       }
 
-      // The line follows the original hero-to-About path, with a capped drawing
-      // speed so a flick cannot move its unfinished tail offscreen.
-      setHeroCue(
-        !held
-          ? 1
-          : cuePhaseRef.current.t
-      );
+      // Restore f46b247's scroll-owned journey, including immediate reversal.
+      setHeroCue(!held ? 1 : cueDraw(top, holdLength, heldTopRef.current));
       writeAttribute(
         section,
         'data-hero-handover-settled',
-        !held || cuePhaseRef.current.t >= 1 ? 'true' : null
+        !held || getHeroCue() >= 1 ? 'true' : null
       );
 
       // The body-level portal needs viewport coordinates, including in reduced
@@ -317,19 +242,10 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       const heldTop = heldTopRef.current;
       const rail = railRef.current;
       const scrolled = Math.max(-top, 0);
-      const holding = findAboutOverlay()?.dataset.active === 'true';
-      const y = held && cuePhaseRef.current.t > 0
-        ? cueTravel(rail.top, heldTop, holdLength, cuePhaseRef.current.t)
-        : holding
-          ? cueHeld(rail.top, heldTop)
-          : rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
+      const y = rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
       writeStyleProperty(root, '--cue-y', `${y.toFixed(3)}px`);
 
-      // HeldHeader publishes its displacement on the frame that moves it.
-      // CSS composes that displacement; a second rect read would lag a frame.
-      const presence = reducedMotion
-        ? Number(about?.getAttribute('data-statements-present') !== 'true')
-        : 1 - easeInOutCubic(cueFadeRef.current.t);
+      const presence = !held ? 1 : cuePresence(top, heldTop, window.innerHeight);
       writeStyleProperty(root, '--cue-presence', presence.toFixed(3));
       writeStyleProperty(root, '--cue-drawn', getHeroCue().toFixed(3));
 
@@ -368,7 +284,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
           innerActiveRef.current,
           INNER_ENTER,
           INNER_RELEASE
-        ) || platePhaseRef.current.t > 0 || aboutOwnsCue;
+        );
 
         /*
          * The plate waits for the copy's beat to have *finished*, not merely
@@ -378,19 +294,13 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
          * -- the exact thing the two-phase split exists to prevent.
          */
         plateActiveRef.current =
-          cuePhaseRef.current.t > 0 || aboutOwnsCue || (innerPhaseRef.current.t >= 1 &&
+          innerPhaseRef.current.t >= 1 &&
           phaseGate(
             progress,
             plateActiveRef.current,
             PLATE_ENTER,
             PLATE_RELEASE
-          ));
-        cueTargetRef.current = aboutOwnsCue || waitingForCueReturn
-          ? 1
-          : innerPhaseRef.current.t >= 1 && plateActiveRef.current
-            ? cueDraw(top, holdLength, heldTop)
-            : 0;
-        cueFadeActiveRef.current = about?.getAttribute('data-statements-present') === 'true';
+          );
 
         startPhaseLoop();
 
@@ -519,29 +429,10 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
     const unsubscribe = subscribeScrollProgress(apply);
     applyRef.current = apply;
     window.addEventListener('resize', apply);
-    const unsubscribeGesture = subscribeScrollGesture((direction) => {
-      if (direction === 'up') {
-        cueReturn = askBeat(cueReturn, performance.now());
-        apply();
-      }
-    });
-    const about = document.getElementById('about');
-    const chapterObserver = about && typeof MutationObserver !== 'undefined'
-      ? new MutationObserver(apply)
-      : null;
-    if (about) {
-      chapterObserver?.observe(about, {
-        attributes: true,
-        attributeFilter: ABOUT_CUE_FLAGS,
-      });
-    }
 
     return () => {
       unsubscribe();
       applyRef.current = null;
-      unsubscribeGesture();
-      chapterObserver?.disconnect();
-      if (cooldownTimer !== null) clearTimeout(cooldownTimer);
       window.removeEventListener('resize', apply);
       if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
@@ -560,7 +451,6 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    * but one.
    */
   const [cueRun, setCueRun] = useState(0);
-  const [cueMirrored, setCueMirrored] = useState(false);
   const railRef = useRef({ top: 0, height: 0 });
   const heldTopRef = useRef(0);
 
@@ -606,24 +496,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
        */
       const headingStyle = window.getComputedStyle(heading);
 
-      /*
-       * Aimed at where the heading FIRST appears, which is the middle of the
-       * screen, not at the corner it ends up in.
-       *
-       * The heading now makes a journey: it arrives centred -- on the head of
-       * this very line -- holds there alone, and climbs to its resting corner
-       * when the reader scrolls. Its resolved `top` is therefore not one
-       * number any more; it is wherever the travel happens to have got to, and
-       * reading it here aimed the mark at whatever the heading was doing on the
-       * frame this ran.
-       *
-       * So the arrival is computed instead of read: the browser's own centring
-       * restated, `top: 50%` with a counter-translate of half the heading's
-       * height. The mark is drawn to that. Where the heading goes afterwards is
-       * not computed anywhere -- the heading publishes it. See `HeldHeader`.
-       */
-      const headingHeight = heading.getBoundingClientRect().height;
-      const headingTop = window.innerHeight / 2 - headingHeight / 2;
+      const headingTop = Number.parseFloat(headingStyle.top);
       if (!Number.isFinite(headingTop) || headingTop <= 0) return false;
 
       /*
@@ -704,12 +577,10 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       const root = document.documentElement;
       writeStyleProperty(root, '--cue-height', `${rail.height.toFixed(3)}px`);
       if (headingLeft > 0) {
-        const mirrored = markLeft - cueRunOffset(CUE_WIDTH_PX) < 8;
-        setCueMirrored(mirrored);
         writeStyleProperty(
           root,
           '--cue-x',
-          `${(markLeft - cueRunOffset(CUE_WIDTH_PX, mirrored)).toFixed(3)}px`
+          `${(markLeft - cueRunOffset(CUE_WIDTH_PX)).toFixed(3)}px`
         );
       }
       setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
@@ -1015,19 +886,18 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       */}
       </div>
 
-      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} mirrored={cueMirrored} />
+      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} />
     </section>
   );
 }
 /**
  * The scroll cue, and only the scroll cue, re-rendering as the hero leaves.
  *
- * Only the cue's paths re-render as the handover clock advances.
+ * Only the cue's paths re-render as scroll draws the connection.
  */
-function HeroScrollCue({ onActivate, run, mirrored }: {
+function HeroScrollCue({ onActivate, run }: {
   onActivate: () => void;
   run: number;
-  mirrored: boolean;
 }) {
   const [progress, setProgress] = useState(0);
 
@@ -1047,7 +917,6 @@ function HeroScrollCue({ onActivate, run, mirrored }: {
       className={styles.scrollCue}
       progress={progress}
       run={run}
-      mirrored={mirrored}
       onActivate={onActivate}
       label="Scroll to about section"
     />

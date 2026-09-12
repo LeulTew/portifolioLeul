@@ -63,7 +63,7 @@ describe('the chapter has one author per flag', () => {
 
   it('About writes only the flags its own beats decide', () => {
     /*
-     * The heading's journey and the statements clearing are About's to publish;
+     * Title readiness and statement clearing are About's to publish;
      * everything the chapter paints belongs to the component that paints it.
      */
     const body = code(read('About.tsx'));
@@ -78,9 +78,7 @@ describe('the chapter has one author per flag', () => {
     );
 
     expect([...written].sort()).toEqual([
-      'data-head-pending',
       'data-head-settled',
-      'data-head-travelling',
       'data-statements-cleared',
       'data-statements-present',
     ]);

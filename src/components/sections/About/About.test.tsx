@@ -242,29 +242,25 @@ describe('About introduces one thing at a time', () => {
   const header = () => screen.getByTestId('about-held-header');
   const statements = () =>
     screen.getByTestId('about-left-column').closest<HTMLElement>('[data-contrary]')!;
-  const travel = () =>
-    Number.parseFloat(
-      screen
-        .getByTestId('about-sequence-overlay')
-        .style.getPropertyValue('--head-travel') || '0'
-    );
+  const headReady = () =>
+    document.getElementById('about')?.getAttribute('data-head-settled') === 'true';
 
-  it('opens with the heading centred and nothing else on screen', async () => {
+  it('opens with the fixed heading and nothing else on screen', async () => {
     render(<About />);
     await seqTo('0.00');
 
-    expect(travel()).toBe(0);
+    expect(headReady()).toBe(false);
     expect(header()).toBeInTheDocument();
     expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
     expect(statements().style.getPropertyValue('--two-in')).toBe('0.000');
   });
 
-  it('travels the heading to its resting corner before anything joins it', async () => {
+  it('marks the fixed heading ready without introducing a climb', async () => {
     render(<About />);
     await seqTo('0.10');
 
-    expect(travel()).toBe(1);
-    // Landed, but the copy has not started yet: its own window opens later.
+    expect(headReady()).toBe(true);
+    expect(screen.getByTestId('about-sequence-overlay').style.getPropertyValue('--head-travel')).toBe('');
     expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
   });
 
@@ -272,22 +268,16 @@ describe('About introduces one thing at a time', () => {
     render(<About />);
     await seqTo('0.30');
 
-    expect(travel()).toBe(1);
+    expect(headReady()).toBe(true);
     expect(Number.parseFloat(statements().style.getPropertyValue('--one-in'))).toBe(1);
   });
 
-  it('never has the heading travelling while the copy is arriving', async () => {
-    /*
-     * The regression this whole beat exists to prevent: two things introducing
-     * themselves at once. Wherever the heading is still moving, the copy must
-     * be at nothing.
-     */
+  it('keeps the existing quiet title-only interval before statement one', async () => {
     render(<About />);
     for (const seq of ['0.00', '0.02', '0.04', '0.06', '0.08']) {
       await seqTo(seq);
-      if (travel() < 1) {
-        expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
-      }
+      expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
+      expect(screen.getByTestId('about-sequence-overlay').style.getPropertyValue('--head-travel')).toBe('');
     }
   });
 

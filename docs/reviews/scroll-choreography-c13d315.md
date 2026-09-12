@@ -467,3 +467,33 @@ The requested behavior is verified for this release scope. The historical
 baseline verdict and device/provider limitations above are not rewritten into
 an unsupported all-10/10 guarantee. Main integration and the actual deployed
 bundle must still be confirmed separately.
+
+## User-requested Home-to-About restoration (2026-09-13)
+
+The user rejected the newer Home-to-About interaction and requested the version
+from two days earlier, for this part only. Git's main history and deployment
+history identify `f46b247` as the live version on 2026-09-11.
+
+The bridge again follows the original scroll-owned drawing, position, hold and
+fade functions. Its original curve points to the fixed About-title inset;
+the later centered-title climb, extra cue clock, extended hero pin and reverse
+gesture/cooldown are removed. This intentionally supersedes their earlier
+acceptance above, rather than adding another interpretation of the animation.
+
+The cloud material, spatial navbar/footer, later About statements and pixel
+transitions, Education reader, Skills, Projects, Contact and mobile project are
+preserved. Git confirms no source changes to those components. A small title
+readiness publisher keeps the existing downstream sequencing contract intact.
+
+Production-browser checks at 1440x900 light and 1024x768 dark match the original
+scroll equations forward and backward, with fixed title tops of 99px / 84.48px
+and landing gaps of 36.013px / 35.995px. Education still starts on record 0,
+advances only once during a 65-event wave, and retains Next/Previous and Home
+return. No page errors occurred. The local suite passed 1147 tests with one
+obsolete flag-ownership expectation; updating that expectation for the removed
+climb passed all six tests in its file. The other four skips are unchanged.
+Lint, application TypeScript, production build and whitespace checks passed.
+
+Evidence is retained as `restore-transition-gate.log`,
+`restored-bridge-1440.json`, `restored-bridge-1024.json` and corresponding bridge
+and landing screenshots in the review session's artifact directory.
