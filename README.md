@@ -83,6 +83,10 @@ pnpm install
 pnpm dev
 ```
 
+All three EmailJS settings are required for contact-form delivery. Missing or
+incomplete configuration shows the existing send-error message and preserves
+the entered fields; the form does not simulate successful delivery.
+
 ---
 
 <div align="center">

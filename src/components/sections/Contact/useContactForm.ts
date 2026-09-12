@@ -61,8 +61,7 @@ export function useContactForm(submitFn?: () => Promise<void>) {
             PUBLIC_KEY
           );
         } else {
-          // Fallback simulation for dev/testing when environment variables are not populated
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          throw new Error('EmailJS configuration is incomplete.');
         }
       }
       setSubmitStatus('success');
