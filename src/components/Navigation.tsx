@@ -167,21 +167,14 @@ export function Navigation({ scrollToSection }: NavigationProps) {
       data-contrary={isContrary ? 'true' : undefined}
     >
       <nav className={styles.nav}>
-        <div 
+        <button
+          type="button"
           className={styles.logo}
-          role="button"
-          tabIndex={0}
           aria-label="Home logo link"
           onClick={() => handleNavClick('home', 0)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleNavClick('home', 0);
-            }
-          }}
         >
           LT
-        </div>
+        </button>
 
         {/* Desktop Navigation - Unified Toolbar Cut Out */}
         <div className={styles.desktopNav}>

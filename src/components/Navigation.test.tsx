@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Navigation } from './Navigation';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ThemeContext } from './sections/theme/ThemeContext';
@@ -99,6 +100,22 @@ describe('Navigation', () => {
     const logo = screen.getByText('LT');
     fireEvent.click(logo);
 
+    expect(mockScrollToSection).toHaveBeenCalledWith('home');
+  });
+
+  it.each(['Enter', ' '])('leaves the logo activation key %j uncancelled', async (key) => {
+    render(
+      <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
+        <Navigation scrollToSection={mockScrollToSection} />
+      </ThemeContext.Provider>
+    );
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    const logo = screen.getByRole('button', { name: 'Home logo link' });
+    fireEvent(logo, event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(logo.tagName).toBe('BUTTON');
+    logo.focus();
+    await userEvent.keyboard(key === 'Enter' ? '{Enter}' : ' ');
     expect(mockScrollToSection).toHaveBeenCalledWith('home');
   });
 
