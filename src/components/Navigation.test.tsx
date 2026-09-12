@@ -114,7 +114,7 @@ describe('Navigation', () => {
     fireEvent(logo, event);
     expect(event.defaultPrevented).toBe(false);
     expect(logo.tagName).toBe('BUTTON');
-    logo.focus();
+    act(() => { logo.focus(); });
     await userEvent.keyboard(key === 'Enter' ? '{Enter}' : ' ');
     expect(mockScrollToSection).toHaveBeenCalledWith('home');
   });
@@ -382,16 +382,24 @@ describe('Navigation', () => {
     document.body.removeChild(section);
   });
 
-  describe('contrary navigation in light mode', () => {
+  describe('spatial navigation ink', () => {
+    it('mirrors keyboard focus without focusing the decorative controls', () => {
+      render(<Navigation scrollToSection={vi.fn()} />);
+      const home = screen.getByRole('button', { name: 'Home' });
+      vi.spyOn(home, 'matches').mockImplementation(selector => selector === ':focus-visible');
+      fireEvent.focus(home);
+      const painted = document.querySelector('[data-chapter-ink-layer] [data-ink-control="home"]');
+      expect(painted).toHaveAttribute('data-focus-visible', 'true');
+      expect(painted).toHaveAttribute('tabindex', '-1');
+      fireEvent.pointerDown(home);
+      expect(painted).not.toHaveAttribute('data-focus-visible');
+      fireEvent.focus(home);
+      fireEvent.blur(home);
+      expect(painted).not.toHaveAttribute('data-focus-visible');
+    });
+
     it('stays dark while the rise is under way but has not reached the bar', () => {
-      /*
-       * The bar sits at the very top of the screen, which is the LAST place a
-       * wall climbing from the bottom reaches. It used to take its cue from
-       * `data-bg-transition`, published when the rise is 95% done, so it spent
-       * almost the whole climb dark on green. `data-nav-contrast` is measured
-       * against the pixel grid instead, and is absent until the green is
-       * actually up there.
-       */
+      // Legacy phase flags must not recolor the underlying controls.
       const aboutEl = document.createElement('section');
       aboutEl.id = 'about';
       aboutEl.setAttribute('data-bg-transition', 'true');
@@ -419,7 +427,7 @@ describe('Navigation', () => {
       document.body.removeChild(aboutEl);
     });
 
-    it('applies contrary styles in light mode once the green has reached the bar', async () => {
+    it('keeps the real controls unchanged and adds only a non-interactive masked paint', async () => {
       document.documentElement.setAttribute('data-nav-contrast', 'true');
       const aboutEl = document.createElement('section');
       aboutEl.id = 'about';
@@ -440,7 +448,14 @@ describe('Navigation', () => {
       );
 
       const header = document.querySelector('header');
-      expect(header).toHaveAttribute('data-contrary', 'true');
+      expect(header).not.toHaveAttribute('data-contrary');
+      const layer = document.querySelector('[data-chapter-ink-layer]')!;
+      expect(layer).toHaveAttribute('aria-hidden', 'true');
+      expect(layer.querySelector('[data-ink-text="LT"]')).toBeInTheDocument();
+      expect(layer.querySelector('[data-ink-text="About"]')).toBeInTheDocument();
+      for (const button of layer.querySelectorAll('button')) expect(button.tabIndex).toBe(-1);
+      expect(screen.getAllByRole('button', { name: 'About' })).toHaveLength(1);
+      expect(screen.getAllByText('LT')).toHaveLength(1);
 
       await act(async () => {
         document.body.removeChild(aboutEl);

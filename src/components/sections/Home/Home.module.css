@@ -73,92 +73,35 @@
 }
 
 /*
- * The plate the hero copy sits on.
- *
- * A real element rather than a ::before, because it is the first beat of the
- * sequence and a pseudo-element cannot be animated independently of its host.
- * The wipe is a CSS animation so it runs on the compositor and cannot be left
- * half-open by a throttled main thread.
+ * The measured cloud wrapper retains the hero's existing choreography.
+ * Its child supplies the mist material, not a rectangular backdrop filter.
  */
 .plate {
   position: absolute;
   inset: -4rem -8rem -4rem -8rem;
   z-index: -1;
   pointer-events: none;
-  clip-path: inset(0 100% 0 0);
-
-  /*
-   * A flat tint, not a gradient.
-   *
-   * The shape of this plate lives entirely in `--plate-shape` below. Two
-   * falloffs -- one in the background, one in the mask -- interfere with each
-   * other and the composite develops a shoulder neither curve has on its own.
-   * One curve, applied once, is the only way the edge is provably clean.
-   */
-  background: rgba(0, 14, 18, 0.72);
-
-  -webkit-backdrop-filter: blur(20px) saturate(158%);
-  backdrop-filter: blur(20px) saturate(158%);
-
-  /*
-   * The mask is what stops the frost, and it is not optional.
-   *
-   * A backdrop-filter is clipped to the element's border box no matter how
-   * transparent the background over it is, so a background that fades to zero
-   * still leaves the blur terminating on a hard straight line. Masking the
-   * element feathers the filtered backdrop along with the tint, so both reach
-   * nothing at the same place.
-   *
-   * Radii are chosen so the mask closes inside every visible edge:
-   *   right  40% + 58% = 98%  <  100%
-   *   top    46% - 44% =  2%  >  0%
-   *   bottom 46% + 44% = 90%  < 100%
-   * The left edge sits 8rem outside the content box and off-screen, which is
-   * why it is the one direction allowed to overrun.
-   */
-  -webkit-mask-image: var(--plate-shape);
-  mask-image: var(--plate-shape);
-}
-
-.plate {
-  --plate-shape: radial-gradient(
-    ellipse 58% 44% at 40% 46%,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 1) 36%,
-    rgba(0, 0, 0, 0.62) 64%,
-    rgba(0, 0, 0, 0.22) 85%,
-    rgba(0, 0, 0, 0) 100%
-  );
-}
-
-/*
- * Light theme has to earn its keep.
- *
- * The page is pure white, so a white plate over a pale scene separates from
- * nothing and pays for the privilege in blur artefacts. A faint cool cast
- * gives it an actual tonal job: it reads as the page surface continuing out
- * over the water rather than as a panel laid on top of it.
- */
-:global([data-theme='light']) .plate {
-  background: rgba(238, 243, 250, 0.86);
-  -webkit-backdrop-filter: blur(26px) saturate(126%) brightness(1.04);
-  backdrop-filter: blur(26px) saturate(126%) brightness(1.04);
+  opacity: 0;
 }
 
 .plateDrawn {
-  animation: plateWipe 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: cloudCondense 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes plateWipe {
+@keyframes cloudCondense {
+  from {
+    opacity: 0;
+    transform: translate3d(-1.5rem, 0.5rem, 0) scale(0.96);
+  }
   to {
-    clip-path: inset(0 0% 0 0);
+    opacity: 1;
+    transform: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The plate carries text contrast, so it must be present, only not wiped. */
   .plate {
-    clip-path: inset(0 0% 0 0);
+    opacity: 1;
   }
 
   .plateDrawn {
@@ -238,7 +181,7 @@
   letter-spacing: -0.03em;
   color: var(--strong-text);
   margin: 0 0 clamp(0.75rem, 1.5vw, 1.5rem) -0.06em;
-  mix-blend-mode: difference;
+  mix-blend-mode: normal;
   will-change: transform;
 }
 
@@ -259,7 +202,7 @@
   font-size: clamp(0.875rem, 1vw, 1rem);
   color: var(--muted-text);
   font-weight: 500;
-  mix-blend-mode: difference;
+  mix-blend-mode: normal;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -294,7 +237,7 @@
   font-weight: 400;
   margin: 0;
   text-align: left;
-  mix-blend-mode: difference;
+  mix-blend-mode: normal;
   will-change: transform;
 }
 
@@ -703,48 +646,12 @@
 }
 
 /*
- * The plate shuts, rather than fading.
- *
- * It is the ground the copy stood on, so it outlasts the copy -- and once the
- * copy has gone, closing it vertically is the exit. This is the thing that
- * reads as the hero being put away: the inner background that carried the name
- * draws shut around where the name was, like an eyelid. A fade would just have
- * been one more thing dimming.
- *
- * The wipe that opened it is an animation with a forwards fill, which would
- * otherwise keep hold of clip-path and ignore everything below.
+ * After the copy leaves, the cloud spreads and thins on its own phase.
  */
 .settled .plate {
-  /*
-   * The wipe that opened it has a forwards fill, which would otherwise keep
-   * hold of clip-path and ignore everything here.
-   */
   animation: none;
-  clip-path: none;
 
-  /*
-   * It disperses, rather than being cut shut.
-   *
-   * This used to close as `inset(shut*50% 0 shut*50% 0)` -- two straight
-   * horizontal lines meeting in the middle. That is an eyelid, and an eyelid
-   * is a rectangle: it worked when the plate was a hard-edged panel, but the
-   * plate is now a feathered ellipse with no straight edge anywhere on it, so
-   * a rectangular close read as a guillotine coming down through a cloud. The
-   * exit has to be made of the same stuff the shape is.
-   *
-   * So it puffs. The mask is left exactly as it is and the whole soft form is
-   * pushed outwards and up while it thins -- which is what vapour does, and
-   * what a shape with no edges can do that a panel cannot. Transform and
-   * opacity only: both are compositor properties, so a beat that runs on its
-   * own clock is not paying for a repaint on every frame of it. Nothing here
-   * touches the backdrop-filter, deliberately -- re-rasterising a blurred
-   * sample of a live WebGL canvas per frame is the exact cost that made the
-   * portrait's exit stutter.
-   *
-   * Its own number, not the layers'. `--shut` does not begin until every layer
-   * inside the plate has gone, so the dispersal is a beat of its own rather
-   * than the tail of theirs.
-   */
+  /* Spread the authored vapor intact; the arrow draws during this phase. */
   transform-origin: 40% 46%;
   transform: translate3d(0, calc(var(--shut, 0) * -1.75rem), 0)
     scale3d(
@@ -766,6 +673,10 @@
   opacity: clamp(0, calc((0.82 - var(--shut, 0)) / 0.62), 1);
 
   will-change: transform, opacity;
+}
+
+.settled .plate[data-cloud-active='false'] {
+  will-change: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

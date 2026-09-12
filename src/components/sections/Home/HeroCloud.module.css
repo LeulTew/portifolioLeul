@@ -1,0 +1,87 @@
+/* Home's .plate wins positioning and owns every root-level phase property. */
+:where(.cloud) {
+  position: absolute;
+  inset: 0;
+}
+
+.cloud {
+  --cloud-core: #041d20;
+  --cloud-vapor: #91b5ad;
+  --cloud-light: #d7e9df;
+  --cloud-shade: #082e2b;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cloud[data-cloud-theme='light'],
+:global([data-theme='light']) .cloud:not([data-cloud-theme]) {
+  --cloud-core: #eef5f1;
+  --cloud-vapor: #b3c9c2;
+  --cloud-light: #ffffff;
+  --cloud-shade: #527a70;
+}
+
+.body,
+.vapor,
+.shear,
+.cloud svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.vapor,
+.shear {
+  transform-origin: 46% 51%;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-play-state: paused;
+}
+
+.vapor {
+  animation-name: vaporDrift;
+  animation-duration: 24s;
+}
+
+.shear {
+  opacity: 0.65;
+  animation-name: lightShear;
+  animation-duration: 31s;
+}
+
+.cloud[data-motion='running'] .vapor,
+.cloud[data-motion='running'] .shear {
+  animation-play-state: running;
+  will-change: transform;
+}
+
+@keyframes vaporDrift {
+  from {
+    transform: translate3d(-3px, 2px, 0) scale3d(1, 1, 1);
+  }
+  to {
+    transform: translate3d(5px, -3px, 0) scale3d(1.012, 1.008, 1);
+  }
+}
+
+@keyframes lightShear {
+  from {
+    transform: translate3d(2px, 1px, 0);
+  }
+  to {
+    transform: translate3d(-4px, -2px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud[data-motion] .vapor,
+  .cloud[data-motion] .shear {
+    animation: none;
+    transform: none;
+    will-change: auto;
+  }
+}

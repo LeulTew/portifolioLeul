@@ -411,3 +411,59 @@ Evidence includes `education-before.json`, `education-pacing-before-clean.log`,
 **Integration remains pending:** the requested animated hero cloud has not yet
 been integrated or verified. No main push, merge or redeployment is represented
 by this follow-up gate.
+
+## Follow-up: cloud, overlapping arrow and spatial chrome
+
+The cloud is now integrated behind the hero copy in both themes. Its authored
+SVG vapor has subtle ambient drift and a simulated light shear, not physical
+volumetric refraction. Home owns condensation, dispersion and upward return;
+the child pauses when dispersed, hidden, offscreen or reduced motion is enabled.
+The arrow begins once the copy has disappeared, while the cloud is dispersing.
+The existing About Me mask, title and background implementation are unchanged.
+
+The rejected binary navbar treatment is removed. LT, navigation, Scroll to
+explore and the year have their ordinary light/dark paint plus a noninteractive
+white paint through the **same live About mask**. Education and static green
+clip it to their actual visible bounds. There is one accessible set of controls;
+keyboard focus is mirrored visibly without focusing the decorative buttons.
+Hero text no longer difference-blends with the new vapor; light footer text
+uses a dark foreground instead of the previous translucent gray.
+
+Release acceptance on the production bundle:
+
+- Full local gate: **122 files / 1148 passing / four existing skips**, ESLint,
+  application TypeScript, Vite build and CRLF-aware whitespace check passed.
+- At 1440x900 dark and 1024x768 light, the first arrow sample has copy exit 1
+  and cloud phase 0.0001 / 0. There are 21 / 25 visible overlap frames before
+  cloud phase 0.82, and 42 / 64 visible re-forming frames on return.
+- Real and painted navigation button geometry agrees exactly at both sizes.
+  Natural scrolling screenshots show a split-color Scroll to explore, followed
+  by white LT over green while the unreached navbar remains dark.
+- A controlled, isolated SVG boundary fixture verifies both halves of all
+  eight labels: **139 dark and 477 white interior glyph pixels** have the
+  expected color. The fixture exposes the mask definition outside the inactive
+  About ancestor; the separate natural journey confirms its ordinary visible
+  lifecycle and exact mask URL. It does not modify application source.
+- Education still opens at record 0 after a +12000 flick. A continuous 65-event
+  wheel wave advances exactly once. Full Next/Previous journeys, final release,
+  record-3 reverse entry and Home return pass without page errors.
+- The final full forward/reverse journeys retain **36.004px / 36.002px**
+  arrow escort gaps. Across the cloud and full Education probes, heading rAF
+  p95 ranges from 11.2ms to 21.8ms; worst observed interval is 33.4ms.
+  This is delivered callback cadence, not GPU presentation or a claim of
+  perfect 60fps on every device. The old heavily instrumented tablet p95
+  was not reproduced; its original causal attribution remains unknown.
+- At 768x900 with reduced motion, the cloud stays visible and still, and the
+  document has zero horizontal overflow. Native keyboard focus remains on the
+  real controls, with a visible 2px mirrored outline over green.
+
+Evidence: `cloud-chrome-final-gate.log`, `cloud-chrome-dark.json`,
+`cloud-chrome-light.json`, the updated `education-arrow-*.json`,
+`chrome-boundary-pixels.json`, `chrome-natural-footer.png`,
+`chrome-natural-navbar.png`, `cloud-final-*.png`, `cloud-return-*.png` and
+`cloud-reduced-768.png` in the same session artifact directory.
+
+The requested behavior is verified for this release scope. The historical
+baseline verdict and device/provider limitations above are not rewritten into
+an unsupported all-10/10 guarantee. Main integration and the actual deployed
+bundle must still be confirmed separately.

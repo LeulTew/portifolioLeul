@@ -1,0 +1,18 @@
+.paint {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  visibility: var(--chapter-ink-visibility, hidden);
+  opacity: var(--chapter-ink-opacity, 1);
+  clip-path: var(--chapter-ink-clip, inset(0));
+  -webkit-mask: var(--chapter-ink-mask, none);
+  mask: var(--chapter-ink-mask, none);
+}
+
+.paint * {
+  pointer-events: none;
+}
+
+.label::before {
+  content: attr(data-ink-text);
+}

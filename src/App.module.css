@@ -28,6 +28,7 @@
 }
 
 .footer {
+  --footer-text-color: rgba(255, 255, 255, 0.82);
   position: fixed;
   bottom: max(2rem, 3vw);
   left: max(2rem, 5vw);
@@ -36,11 +37,15 @@
   justify-content: space-between;
   align-items: center;
   z-index: 1000;
-  mix-blend-mode: var(--footer-blend-mode);
+  mix-blend-mode: normal;
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
   transition: opacity 0.4s ease;
+}
+
+:global([data-theme='light']) .footer {
+  --footer-text-color: #334155;
 }
 
 .scroll {
@@ -87,38 +92,24 @@
   transition: color 0.4s ease;
 }
 
-/* --------------------------------------------------------------------------
-   Contrast background state (e.g. emerald/pine background in About & Education)
-   Switches footer copy and accents to crisp high-contrast white.
-   Reverts to light/dark theme colors on normal background.
-   -------------------------------------------------------------------------- */
-
-.footer[data-contrast='true'],
-:global(html[data-footer-contrast='true']) .footer {
-  mix-blend-mode: normal;
+.footerInk {
+  z-index: 1001;
 }
 
-.footer[data-contrast='true'] .scroll,
-:global(html[data-footer-contrast='true']) .footer .scroll {
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+.paintedFooter .scroll,
+.paintedFooter .year {
+  color: #ffffff;
+  transition: none;
 }
 
-.footer[data-contrast='true'] .scrollLine,
-:global(html[data-footer-contrast='true']) .footer .scrollLine {
+.paintedFooter .scrollLine {
   background: rgba(255, 255, 255, 0.35);
+  transition: none;
 }
 
-.footer[data-contrast='true'] .scrollLine::after,
-:global(html[data-footer-contrast='true']) .footer .scrollLine::after {
+.paintedFooter .scrollLine::after {
   background: #00ff9d;
-  box-shadow: 0 0 8px rgba(0, 255, 157, 0.65);
-}
-
-.footer[data-contrast='true'] .year,
-:global(html[data-footer-contrast='true']) .footer .year {
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: none;
 }
 
 @keyframes scroll {

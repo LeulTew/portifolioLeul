@@ -59,6 +59,7 @@ import {
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
+import { HeroCloud } from './HeroCloud';
 
 /*
  * About's pinned overlay, which says whether the chapter has the mark.
@@ -175,6 +176,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
   const lastFrameRef = useRef(0);
   const settledRef = useRef(false);
   const [settled, setSettled] = useState(false);
+  const cloudActiveRef = useRef(true);
+  const [cloudActive, setCloudActive] = useState(true);
   const [reentryCount, setReentryCount] = useState(0);
   const [isReentering, setIsReentering] = useState(false);
   const [reentrySettled, setReentrySettled] = useState(false);
@@ -384,7 +387,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
           ));
         cueTargetRef.current = aboutOwnsCue || waitingForCueReturn
           ? 1
-          : platePhaseRef.current.t >= 1
+          : innerPhaseRef.current.t >= 1 && plateActiveRef.current
             ? cueDraw(top, holdLength, heldTop)
             : 0;
         cueFadeActiveRef.current = about?.getAttribute('data-statements-present') === 'true';
@@ -393,6 +396,12 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
         inner = innerPhaseRef.current.t;
         shut = easeInOutCubic(platePhaseRef.current.t);
+      }
+
+      const cloudVisible = shut < (reducedMotion ? 1 : 0.82);
+      if (cloudVisible !== cloudActiveRef.current) {
+        cloudActiveRef.current = cloudVisible;
+        setCloudActive(cloudVisible);
       }
 
       /*
@@ -883,14 +892,16 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         style={{ opacity: 1 }}
         data-testid="hero-content"
       >
-        {/* First beat: the plate wipes in under the copy, before any of it
-            arrives. It is a real element so it can be sequenced at all. */}
+        {/* The wrapper owns arrival/dispersion; the cloud owns only its internal drift. */}
         <div
           className={`${styles.plate} ${hasEntered ? styles.plateDrawn : ''}`}
           style={at('backdrop')}
           aria-hidden="true"
           data-cue-layer="backdrop"
-        />
+          data-cloud-active={cloudActive}
+        >
+          <HeroCloud active={cloudActive} theme={theme} />
+        </div>
 
         {/* Always present: it is the frame the sequenced layers arrive into. */}
         <div className={styles.header}>

@@ -289,6 +289,21 @@ describe('Home choreography', () => {
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
+  it('stops cloud drift once dispersed and resumes it with the returning hero', () => {
+    vi.useFakeTimers();
+    const { getByTestId } = render(<Home />);
+    enterHero();
+    layOutRail();
+    const cloud = getByTestId('hero-content').querySelector('[data-cue-layer="backdrop"]')!;
+    expect(cloud).toHaveAttribute('data-cloud-active', 'true');
+    scrollIntoHold(8);
+    playBeats(3500);
+    expect(cloud).toHaveAttribute('data-cloud-active', 'false');
+    scrollIntoHold(0);
+    playBeats(4500);
+    expect(cloud).toHaveAttribute('data-cloud-active', 'true');
+  });
+
   it('draws nothing at all until the rail has been measured', () => {
     // About's offset is a measurement, and it is zero before the first one
     // lands. That has to read as "not known yet", not as a finished line.
@@ -417,8 +432,13 @@ describe('Home choreography', () => {
     enterHero();
     layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
     scrollIntoHold(1.2);
-    playBeats(1000);
+    playBeats(800);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    playBeats(200);
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBeGreaterThan(0);
+    const cloudShut = Number(getByTestId('hero-content').style.getPropertyValue('--shut'));
+    expect(cloudShut).toBeGreaterThan(0);
+    expect(cloudShut).toBeLessThan(1);
     playBeats(2500);
     const partial = Number(getByTestId('scroll-cue').dataset.progress);
     expect(partial).toBeGreaterThan(0);

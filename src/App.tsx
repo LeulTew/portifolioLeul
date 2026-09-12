@@ -25,7 +25,8 @@ import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
 import { watchContentSettled, type ContentSettleWatcher } from './lib/render/contentSettled';
-import { useFooterContrast } from './lib/scroll/useFooterContrast';
+import { useChapterInk } from './lib/scroll/chapterInk';
+import { ChapterInkLayer, InkLabel } from './components/ui/ChapterInkLayer/ChapterInkLayer';
 import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation } from './lib/scroll/sectionNavigation';
 
@@ -91,7 +92,7 @@ function App() {
   // hook is the project's existing way of asserting the provider is there.
   const { theme, toggleTheme } = useTheme();
   const gpuConfig = useGpuTier();
-  const isFooterContrast = useFooterContrast();
+  useChapterInk();
 
   /*
    * Asked once, before anything tries to mount a canvas.
@@ -533,31 +534,33 @@ function App() {
       </ErrorBoundary>
       )}
 
-      {!isLoading && (
-        <motion.div 
-          className={styles.footer}
-          data-contrast={isFooterContrast ? 'true' : undefined}
-          data-testid="page-footer"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ 
-            duration: 1,
-            ease: [0.76, 0, 0.24, 1],
-            delay: 0.4
-          }}
-        >
-          <div className={styles.scroll}>
-            <div className={styles.scrollText}>Scroll to explore</div>
-            <div className={styles.scrollLine} />
-          </div>
-          <div className={styles.year}>© {new Date().getFullYear()}</div>
-        </motion.div>
-      )}
+      {!isLoading && <>
+        <PageFooter />
+        <ChapterInkLayer className={styles.footerInk}><PageFooter painted /></ChapterInkLayer>
+      </>}
     </div>
   );
 }
 
 export default App;
+
+function PageFooter({ painted = false }: { painted?: boolean }) {
+  return (
+    <motion.div
+      className={`${styles.footer} ${painted ? styles.paintedFooter : ''}`}
+      data-testid={painted ? undefined : 'page-footer'}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1, ease: [0.76, 0, 0.24, 1], delay: 0.4 }}
+    >
+      <div className={styles.scroll}>
+        <div className={styles.scrollText}><InkLabel text="Scroll to explore" painted={painted} /></div>
+        <div className={styles.scrollLine} />
+      </div>
+      <div className={styles.year}><InkLabel text={`© ${new Date().getFullYear()}`} painted={painted} /></div>
+    </motion.div>
+  );
+}
 
 function ScrollManager({
   onReady,

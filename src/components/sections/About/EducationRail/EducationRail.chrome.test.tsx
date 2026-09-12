@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Navigation } from '@/components/Navigation';
 import { ThemeContext } from '../../theme/ThemeContext';
-import { useFooterContrast } from '@/lib/scroll/useFooterContrast';
+import { useChapterInk } from '@/lib/scroll/chapterInk';
 
 class FocusObserver implements IntersectionObserver {
   static instances: FocusObserver[] = [];
@@ -20,7 +20,8 @@ class FocusObserver implements IntersectionObserver {
 }
 
 function Footer() {
-  return <span data-testid="footer-contrast">{String(useFooterContrast())}</span>;
+  useChapterInk();
+  return null;
 }
 
 afterEach(() => {
@@ -66,13 +67,14 @@ describe('chrome over the held Education reader', () => {
       document.getElementById('about')!.dataset.educationActive = 'true';
     });
     expect(screen.getByRole('button', { name: 'About' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByTestId('footer-contrast')).toHaveTextContent('true');
-    expect(screen.getByRole('banner')).toHaveAttribute('data-contrary', 'true');
+    expect(document.documentElement).toHaveAttribute('data-chapter-ink', 'solid');
+    expect(document.documentElement.style.getPropertyValue('--chapter-ink-clip')).toBe('inset(0px 0px 0px 0px)');
+    expect(screen.getByRole('banner')).not.toHaveAttribute('data-contrary');
     await act(async () => {
       screen.getByTestId('education-stage').removeAttribute('data-visible');
       document.getElementById('about')!.removeAttribute('data-education-active');
     });
     expect(screen.getByRole('button', { name: 'Contact' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByTestId('footer-contrast')).toHaveTextContent('false');
+    expect(document.documentElement).toHaveAttribute('data-chapter-ink', 'none');
   });
 });

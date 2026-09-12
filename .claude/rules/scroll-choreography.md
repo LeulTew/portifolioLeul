@@ -54,12 +54,19 @@ The hero cue is intentionally a spatial connection, restoring its original
 journey from below the hero into About. Scroll requests a point on that path;
 `advanceCue` bounds its drawing speed and `cueTravel` moves the origin through
 the matching path, so even a flick cannot skip the visible journey. It starts
-after the copy and cloud have left, not only after About's landing arrives.
+as soon as the copy has left, while the cloud disperses, not only after
+About's landing arrives.
 On a tight heading margin, the same tangent-continuous curve bends inward
 instead of being clipped by the viewport; its landing vertical stays unchanged.
 Home publishes handover completion for About;
 the heading must not appear over unfinished hero movements. Reduced motion
 publishes the complete mark to both the SVG and its CSS visibility properties.
+
+The fixed chrome uses a second, non-interactive white paint through the
+**same live SVG mask** as About Me. LT, navigation labels, Scroll to explore
+and the year are not recolored by row majorities, scroll thresholds or a timed
+whole-element fade. Education/static green edges clip this viewport-sized
+paint to their actual bounds. About Me's existing mask and timing are unchanged.
 
 Suspended frames are not visible time. `phaseFrameDelta` caps each movement
 and its post-movement rest at 50ms per paint; a hidden tab or long task must

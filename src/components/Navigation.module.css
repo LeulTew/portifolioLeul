@@ -271,79 +271,44 @@
   }
 }
 
-/*
- * High-contrast navigation bar over green transition background (#0a5c40).
- * Strictly scoped to .contraryHeader and .header[data-contrary="true"].
- */
-.contraryHeader .logo,
-:global([data-theme="light"]) .contraryHeader .logo,
-:global([data-theme="light"]) .header[data-contrary="true"] .logo {
-  color: #ffffff !important;
+.inkLayer {
+  z-index: 10000;
 }
 
-.contraryHeader .navBar,
-:global([data-theme="light"]) .contraryHeader .navBar,
-:global([data-theme="light"]) .header[data-contrary="true"] .navBar {
-  background: rgba(255, 255, 255, 0.25) !important;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15) !important;
+.painted,
+.painted * {
+  pointer-events: none;
 }
 
-.contraryHeader .navBarInner,
-:global([data-theme="light"]) .contraryHeader .navBarInner,
-:global([data-theme="light"]) .header[data-contrary="true"] .navBarInner {
-  background: rgba(6, 45, 33, 0.94) !important;
-  backdrop-filter: blur(16px) !important;
+.header.painted .logo,
+.header.painted .navItem,
+.header.painted .themeToggle,
+.header.painted .soundMutedIcon {
+  color: #ffffff;
+  transition: none;
 }
 
-.contraryHeader .navItem,
-:global([data-theme="light"]) .contraryHeader .navItem,
-:global([data-theme="light"]) .header[data-contrary="true"] .navItem {
-  color: rgba(255, 255, 255, 0.85) !important;
+.header.painted .navBar {
+  background: rgba(255, 255, 255, 0.18);
+  transition: none;
 }
 
-.contraryHeader .navItem:hover,
-.contraryHeader .navItem.active,
-:global([data-theme="light"]) .contraryHeader .navItem:hover,
-:global([data-theme="light"]) .contraryHeader .navItem.active,
-:global([data-theme="light"]) .header[data-contrary="true"] .navItem:hover,
-:global([data-theme="light"]) .header[data-contrary="true"] .navItem.active {
-  color: #ffffff !important;
+.header.painted .navBarInner {
+  background: var(--about-chapter-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.contraryHeader .activeIndicator,
-:global([data-theme="light"]) .contraryHeader .activeIndicator,
-:global([data-theme="light"]) .header[data-contrary="true"] .activeIndicator {
-  background: #00ffc8 !important;
-  box-shadow: 0 0 10px #00ffc8 !important;
+.header.painted .divider {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-.contraryHeader .divider,
-:global([data-theme="light"]) .contraryHeader .divider,
-:global([data-theme="light"]) .header[data-contrary="true"] .divider {
-  background: rgba(255, 255, 255, 0.25) !important;
+.header.painted .activeIndicator {
+  background: #00ffc8;
+  box-shadow: none;
 }
 
-.contraryHeader .themeToggle,
-:global([data-theme="light"]) .contraryHeader .themeToggle,
-:global([data-theme="light"]) .header[data-contrary="true"] .themeToggle {
-  color: #ffffff !important;
-}
-
-.contraryHeader .themeToggle:hover,
-:global([data-theme="light"]) .contraryHeader .themeToggle:hover,
-:global([data-theme="light"]) .header[data-contrary="true"] .themeToggle:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: #00ffc8 !important;
-}
-
-.contraryHeader .soundMutedIcon,
-:global([data-theme="light"]) .contraryHeader .soundMutedIcon,
-:global([data-theme="light"]) .header[data-contrary="true"] .soundMutedIcon {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-.contraryHeader .soundActiveIcon,
-:global([data-theme="light"]) .contraryHeader .soundActiveIcon,
-:global([data-theme="light"]) .header[data-contrary="true"] .soundActiveIcon {
-  color: #00ffc8 !important;
+.header.painted [data-focus-visible='true'] {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
