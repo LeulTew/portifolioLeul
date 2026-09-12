@@ -7,7 +7,18 @@ import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { KineticHeading } from '../../ui/KineticText';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { StripReveal } from '../../ui/StripReveal';
-import { focusStrength, useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
+import { useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
+import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import {
+  advancePhase,
+  easeInOutCubic,
+  isPhaseAtTarget,
+  phaseGate,
+  PHASE_AT_REST,
+  type PhaseState,
+} from '@/lib/motion/triggeredPhase';
+
+const FOCUS_DURATION_MS = 500;
 
 const categories = [
   { title: 'All', icon: Grid3x3 },
@@ -23,6 +34,11 @@ export function Projects({ theme }: { theme?: string }) {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isContactInView, setIsContactInView] = useState(false);
+  const reducedMotion = getPrefersReducedMotion();
+  const focusPhase = useRef<PhaseState>(PHASE_AT_REST);
+  const focusActive = useRef(false);
+  const focusFrame = useRef(0);
+  const focusLastTime = useRef<number | null>(null);
 
   // The page scrolls inside the ScrollControls element, so window.scrollY is
   // always 0 here; section visibility has to come from IntersectionObserver,
@@ -106,25 +122,44 @@ export function Projects({ theme }: { theme?: string }) {
     [filteredProjects]
   );
 
-  /*
-   * Was driven by framer-motion's useScroll, which tracks the viewport's own
-   * scroll. This page scrolls inside the ScrollControls element, so that
-   * progress was pinned at 0 and the section rendered permanently at its
-   * starting values: opacity 0.3 and scale 0.97.
-   *
-   * Written to the element rather than held in state, for the reason given on
-   * the rail items above: this is a style, and React has no reason to see it.
-   */
-  useViewportShareEffect(sectionElement, (share) => {
+  const paintFocus = (progress: number) => {
     const content = contentRef.current;
     if (!content) return;
-
-    const coverage = focusStrength(share, 1);
-    const opacity = (0.35 + coverage * 0.65).toFixed(3);
-    const transform = `scale(${(0.97 + coverage * 0.03).toFixed(4)})`;
-
+    const eased = easeInOutCubic(progress);
+    const opacity = (0.35 + eased * 0.65).toFixed(3);
+    const transform = reducedMotion ? 'none' : `scale(${(0.97 + eased * 0.03).toFixed(4)})`;
     if (content.style.opacity !== opacity) content.style.opacity = opacity;
     if (content.style.transform !== transform) content.style.transform = transform;
+  };
+
+  const animateFocus = (now: number) => {
+    focusFrame.current = 0;
+    const dt = focusLastTime.current === null ? 16.7 : now - focusLastTime.current;
+    focusLastTime.current = now;
+    focusPhase.current = advancePhase(focusPhase.current, focusActive.current, dt, FOCUS_DURATION_MS);
+    paintFocus(focusPhase.current.t);
+    if (isPhaseAtTarget(focusPhase.current, focusActive.current)) {
+      focusLastTime.current = null;
+    } else {
+      focusFrame.current = requestAnimationFrame(animateFocus);
+    }
+  };
+
+  useEffect(() => () => {
+    cancelAnimationFrame(focusFrame.current);
+    focusFrame.current = 0;
+    focusLastTime.current = null;
+  }, []);
+
+  useViewportShareEffect(sectionElement, (share) => {
+    if (reducedMotion) {
+      paintFocus(1);
+      return;
+    }
+    focusActive.current = phaseGate(share, focusActive.current, 0.2, 0.1);
+    if (focusFrame.current === 0 && !isPhaseAtTarget(focusPhase.current, focusActive.current)) {
+      focusFrame.current = requestAnimationFrame(animateFocus);
+    }
   });
 
   return (
@@ -134,7 +169,11 @@ export function Projects({ theme }: { theme?: string }) {
       <div
         ref={contentRef}
         className={styles.content}
-        style={{ opacity: 0.35, transform: 'scale(0.97)', willChange: 'opacity, transform' }}
+        style={{
+          opacity: reducedMotion ? 1 : 0.35,
+          transform: reducedMotion ? 'none' : 'scale(0.97)',
+          willChange: reducedMotion ? 'auto' : 'opacity, transform',
+        }}
       >
         <header className={styles.header}>
           <KineticHeading 
