@@ -291,7 +291,7 @@
 .contraryHeader .navBarInner,
 :global([data-theme="light"]) .contraryHeader .navBarInner,
 :global([data-theme="light"]) .header[data-contrary="true"] .navBarInner {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(6, 45, 33, 0.94) !important;
   backdrop-filter: blur(16px) !important;
 }
 

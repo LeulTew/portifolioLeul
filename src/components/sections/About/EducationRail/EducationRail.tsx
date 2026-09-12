@@ -1,45 +1,29 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useRef, type CSSProperties } from 'react';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import gsap from 'gsap';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { HilcoeMark } from './HilcoeMark';
 import { SaintJosephMark } from './SaintJosephMark';
 import { EDUCATION_RECORDS, type EducationRecord } from './educationRecords';
-import {
-  pinOffset,
-  pinProgress,
-  recordAt,
-  recordWindow,
-  releaseOffset,
-  stageVisible,
-  stepDistance,
-  trackOffset,
-} from './railTransit';
 import { useRailStaged } from './useRailStaging';
+import { useEducationPlayback } from './useEducationPlayback';
 import { findScrollContainer, scrollContainerBy } from './scrollContainer';
-import { writeAttribute } from '@/lib/dom/cachedElement';
 import styles from './EducationRail.module.css';
 
 /** Past this many, the list reads as a wall and is set in two columns. */
 const DENSE_ITEMS = 6;
 
-/**
- * How far the rail's top has to have climbed for the section to count as
- * having taken the screen. Zero is the line the pin itself engages on.
- */
-const OPEN_LINE = 0;
-
 function Record({
   record,
   position,
   onWheel,
+  inactive,
 }: {
   record: EducationRecord;
   position: number;
   /** Hands the wheel back to the page; see `forwardWheel`. */
   onWheel: (event: React.WheelEvent) => void;
+  inactive: boolean;
 }) {
   return (
     <article
@@ -47,6 +31,7 @@ function Record({
       data-record={position}
       data-has-mark={record.logo ? 'true' : undefined}
       data-mark-side={record.markSide}
+      aria-hidden={inactive || undefined}
       aria-label={`${record.kind}: ${record.title}`}
     >
       <div className={styles.plate}>
@@ -135,317 +120,28 @@ function Record({
  * against -- and against a damped scroll, one frame behind reads as the frame
  * vibrating rather than as the frame being still.
  *
- * Scroll picks the record; it does not drag the track. The crossing is a fixed
- * timeline, so a flick and a slow scroll produce exactly the same animation --
- * which is the difference between a designed transition and a scrub.
+ * Position requests the stage, never the record index. A completed crossing,
+ * reading pause and fresh scroll wave (or a control click) select one record.
  */
-export function EducationRail() {
+export function EducationRail({ onNavigate }: { onNavigate?: (section: string) => void } = {}) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const pinnedRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const headRef = useRef<HTMLDivElement | null>(null);
-  const openCtxRef = useRef<gsap.Context | null>(null);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const [active, setActive] = useState(0);
-  const activeRef = useRef(0);
-  const isFirstCrossingRef = useRef(true);
   const staged = useRailStaged();
 
   const total = EDUCATION_RECORDS.length;
-
-  /*
-   * The hold, the opening, and the record being read -- all off one tick,
-   * because all three are answers to the same question: where is the rail.
-   */
-  useEffect(() => {
-    if (!staged) return;
-
-    const rail = railRef.current;
-    const pinned = pinnedRef.current;
-    const stage = stageRef.current;
-    const frame = frameRef.current;
-    const head = headRef.current;
-    if (!rail || !pinned || !stage || !frame || !head) return;
-
-    let openTimeline: gsap.core.Timeline | null = null;
-
-    /*
-     * The opening and closing timeline.
-     *
-     * Bidirectional and replayable:
-     * - When entering Education (rect.top <= OPEN_LINE): heading eases down in scale
-     *   and up towards the corner, horizontal and vertical edges draw out, and inner contents fade up.
-     * - When scrolling back up into About (rect.top > OPEN_LINE): the frame collapses and the
-     *   heading expands back to its full resting size, replaying in reverse cleanly every time.
-     */
-    openCtxRef.current = gsap.context(() => {
-      openTimeline = gsap
-        .timeline({
-          paused: true,
-          defaults: { ease: 'power2.inOut' },
-          onReverseComplete: () => {
-            head.removeAttribute('data-settled');
-            frame.removeAttribute('data-open');
-            const r = rail.getBoundingClientRect();
-            if (r.top > OPEN_LINE) {
-              stage.removeAttribute('data-visible');
-              const aboutEl = rail.closest('#about') || document.getElementById('about');
-              aboutEl?.removeAttribute('data-education-active');
-            }
-          },
-        })
-        .to(head, {
-          scale: 0.72,
-          x: '-0.5rem',
-          y: '-1.5rem',
-          duration: 0.85,
-        }, 0)
-        .fromTo(
-          `.${styles.edgeH}`,
-          { scaleX: 0 },
-          { scaleX: 1, duration: 0.75, stagger: 0.04 },
-          0.06
-        )
-        .fromTo(
-          `.${styles.edgeV}`,
-          { scaleY: 0 },
-          { scaleY: 1, duration: 0.65, stagger: 0.04 },
-          0.18
-        )
-        .fromTo(
-          `.${styles.opening}`,
-          { opacity: 0, y: 16 },
-          { opacity: 1, y: 0, duration: 0.55, stagger: 0.05 },
-          0.32
-        );
-    }, pinned);
-
-    /*
-     * The section this rail lives in, walked to once.
-     *
-     * `rail` is fixed for the life of this effect, so its ancestor is too --
-     * and `closest` per frame is a tree walk for an answer that cannot change.
-     */
-    const aboutSection =
-      rail.closest<HTMLElement>('#about') ||
-      (typeof document !== 'undefined' ? document.getElementById('about') : null);
-
-    const apply = () => {
-      const rect = rail.getBoundingClientRect();
-      const frameHeight = pinned.offsetHeight;
-      const pin = pinOffset(rect.top, rect.height, frameHeight);
-
-      /*
-       * Zero for the whole hold. The frame is held by the browser, not by
-       * arithmetic: offsetting a fixed overlay to chase a layer that is itself
-       * being translated puts the two a frame apart, and a frame apart on a
-       * damped scroll is exactly the vibration this replaced.
-       *
-       * Written only when it changes. The stage is a fixed overlay holding
-       * every record in the set, and setting a custom property on it
-       * invalidates style for all of them whether or not the value differs --
-       * and for most of the hold this value is the same zero every frame.
-       */
-      const release = releaseOffset(rect.top, rect.height, frameHeight);
-      const releasePx = `${release}px`;
-      if (stage.style.getPropertyValue('--release') !== releasePx) {
-        stage.style.setProperty('--release', releasePx);
-      }
-
-      // Bidirectional animation trigger
-      const aboutEl = aboutSection;
-      const isTitleSettled = aboutEl?.getAttribute('data-title-settled') === 'true';
-      const isTransitionActive =
-        aboutEl?.getAttribute('data-title-active') === 'true' ||
-        aboutEl?.getAttribute('data-bg-active') === 'true';
-
-      const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-      const canOpen = isTestEnv || (isTitleSettled && !isTransitionActive);
-      const shouldOpen = rect.top <= OPEN_LINE && canOpen;
-
-      if (shouldOpen) {
-        if (openTimeline && (openTimeline.reversed() || openTimeline.progress() < 1)) {
-          // Guarded: `apply` runs on every frame the rail is open, and these
-          // were re-declaring the values they already held each time.
-          writeAttribute(head, 'data-settled', 'true');
-          writeAttribute(frame, 'data-open', 'true');
-          openTimeline.play();
-        }
-      } else {
-        // Scrolling back up into About: reverse timeline and restore heading size only if open
-        if (openTimeline && openTimeline.progress() > 0) {
-          openTimeline.reverse();
-        }
-      }
-
-      const pastEnd = releaseOffset(rect.top, rect.height, frameHeight) >= frameHeight;
-      const isReversingToAbout = rect.top > OPEN_LINE && (openTimeline ? openTimeline.progress() > 0.005 : false);
-      const visible = !pastEnd && ((stageVisible(rect.top, rect.height, frameHeight) && canOpen) || isReversingToAbout);
-
-      /*
-       * Both guarded. `setAttribute` invalidates style for the element's
-       * subtree whether or not the value differs -- and these two subtrees are
-       * the entire record set and the entire About section, restyled on every
-       * frame of the hold for an attribute that had not changed since it
-       * engaged.
-       */
-      writeAttribute(stage, 'data-visible', visible ? 'true' : null);
-      if (aboutEl) {
-        writeAttribute(aboutEl, 'data-education-active', visible ? 'true' : null);
-      }
-
-      const progress = recordWindow(pinProgress(pin, rect.height, frameHeight));
-      const next = recordAt(progress, total);
-      if (next !== activeRef.current) {
-        activeRef.current = next;
-        setActive(next);
-      }
-    };
-
-    apply();
-    const unsubscribe = subscribeScrollProgress(apply);
-    window.addEventListener('scroll', apply, { passive: true });
-    window.addEventListener('resize', apply);
-
-    return () => {
-      unsubscribe();
-      window.removeEventListener('scroll', apply);
-      window.removeEventListener('resize', apply);
-      const aboutEl = rail.closest('#about') || document.getElementById('about');
-      aboutEl?.removeAttribute('data-education-active');
-      openCtxRef.current?.revert();
-      openCtxRef.current = null;
-    };
-  }, [staged, total]);
-
-  /*
-   * The crossing.
-   *
-   * Not a slide. The track carries the record into place while that record's
-   * own contents are laid out on arrival: the label arrives, the title is
-   * uncovered from behind its edge, and the rows come up under it in order.
-   * What the reader sees is a record being set, not a panel going past.
-   *
-   * One timeline, one set of durations, whatever the scroll did to get here.
-   */
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track || !staged) return;
-
-    if (isFirstCrossingRef.current) {
-      isFirstCrossingRef.current = false;
-      gsap.set(track, { xPercent: trackOffset(active, total) });
-      return;
-    }
-
-    const ctx = gsap.context(() => {
-      const arriving = track.querySelector<HTMLElement>(`[data-record="${active}"]`);
-      const timeline = gsap.timeline();
-
-      timeline.to(track, {
-        xPercent: trackOffset(active, total),
-        duration: 1.15,
-        // Leaves and lands at rest, with the speed in the middle. A plain
-        // ease-out starts at full pace, which is what makes a carousel read as
-        // a jump rather than as travel.
-        ease: 'power4.inOut',
-      });
-
-      if (!arriving) return;
-
-      /*
-       * The badge, where the record has one, is uncovered from its centre
-       * while its rim draws round it. The artwork itself never moves or
-       * scales: it is someone else's identity, and animating its geometry
-       * would be redrawing it. Guarded rather than run against an empty
-       * selection, so the records with no artwork stay silent.
-       */
-      /*
-       * Saint Joseph's seal has an astrolabe orbital ring and circular disc.
-       * Deliberately animated as a compass aligning into place: the seal disc
-       * rotates and settles with a spring-back ease, while the outer orbital
-       * ring rotates counter-directionally into place.
-       */
-      const sealDisc = arriving.querySelector<HTMLElement>(`.${styles.sealDisc}`);
-      const sealRing = arriving.querySelector<HTMLElement>(`.${styles.sealRing}`);
-      if (sealDisc) {
-        timeline.fromTo(
-          sealDisc,
-          { opacity: 0, scale: 0.82, rotate: -24 },
-          { opacity: 1, scale: 1, rotate: 0, duration: 1.15, ease: 'back.out(1.2)' },
-          0.22
-        );
-      }
-      if (sealRing) {
-        timeline.fromTo(
-          sealRing,
-          { opacity: 0, scale: 0.9, rotate: 36 },
-          { opacity: 1, scale: 1, rotate: 0, duration: 1.3, ease: 'expo.out' },
-          0.26
-        );
-      }
-
-      const reveal = arriving.querySelector(`.${styles.markReveal}`);
-      const rim = arriving.querySelector(`.${styles.markRim}`);
-      if (reveal && rim) {
-        timeline
-          .fromTo(reveal, { attr: { r: 0 } }, { attr: { r: 172 }, duration: 1.25, ease: 'expo.out' }, 0.24)
-          .fromTo(
-            rim,
-            { strokeDasharray: 1, strokeDashoffset: 1 },
-            { strokeDashoffset: 0, duration: 1.35, ease: 'expo.out' },
-            0.24
-          );
-      }
-
-      timeline
-        .fromTo(
-          arriving.querySelectorAll('[data-part="kind"]'),
-          { opacity: 0, x: 14 },
-          { opacity: 1, x: 0, duration: 0.7, ease: 'power3.out' },
-          0.28
-        )
-        .fromTo(
-          arriving.querySelectorAll('[data-part="title"]'),
-          { yPercent: 108 },
-          { yPercent: 0, duration: 1.05, ease: 'expo.out' },
-          0.34
-        )
-        .fromTo(
-          arriving.querySelectorAll('[data-part="row"]'),
-          { opacity: 0, y: 16 },
-          { opacity: 1, y: 0, duration: 0.75, ease: 'power3.out', stagger: 0.045 },
-          0.44
-        );
-    }, track);
-
-    return () => {
-      /*
-       * Killed, not reverted.
-       *
-       * `revert()` puts every value back to where it was when the context was
-       * created -- which for an interrupted crossing means snapping the track
-       * back to the record it was leaving, and starting the next crossing from
-       * there. Scroll fast enough to change record mid-crossing and the track
-       * ends up parked between two records, showing half of each. Killing
-       * leaves the track where it actually is, so the next crossing picks it
-       * up and carries it the rest of the way.
-       */
-      ctx.kill();
-    };
-  }, [active, total, staged]);
-
-  /*
-   * Nothing is held, drawn or crossed on a narrow screen, or for a reader who
-   * asked for less motion. Everything is simply already open and laid out.
-   */
-  useEffect(() => {
-    if (staged) return;
-    frameRef.current?.setAttribute('data-open', 'true');
-    headRef.current?.setAttribute('data-settled', 'true');
-  }, [staged]);
+  const { active, phase, ready, step } = useEducationPlayback({
+    rail: railRef,
+    stage: stageRef,
+    pinned: pinnedRef,
+    frame: frameRef,
+    head: headRef,
+    track: trackRef,
+  }, staged, total, onNavigate);
 
   /*
    * The controls are the only thing on the stage that takes pointer events,
@@ -457,23 +153,8 @@ export function EducationRail() {
   const forwardWheel = useCallback((event: React.WheelEvent) => {
     const rail = railRef.current;
     if (!rail) return;
-    scrollContainerBy(findScrollContainer(rail), event.deltaY, false);
+    scrollContainerBy(findScrollContainer(rail), event.deltaY);
   }, []);
-
-  /* Prev and next spend the scroll a record costs, so the two stay in step. */
-  const step = useCallback(
-    (direction: -1 | 1) => {
-      const rail = railRef.current;
-      const pinned = pinnedRef.current;
-      if (!rail || !pinned) return;
-
-      const distance = stepDistance(rail.offsetHeight, pinned.offsetHeight, total);
-      if (distance <= 0) return;
-
-      scrollContainerBy(findScrollContainer(rail), direction * distance);
-    },
-    [total]
-  );
 
   const activeRecord = EDUCATION_RECORDS[active] ?? EDUCATION_RECORDS[0];
 
@@ -493,6 +174,9 @@ export function EducationRail() {
       ref={stageRef}
       className={styles.stage}
       data-testid="education-stage"
+      data-phase={phase}
+      data-active-record={active}
+      aria-busy={staged && phase !== 'reading' && phase !== 'outside'}
       /* Set here as well as on the rail: the stage is portalled to the body,
          so it inherits nothing from the section the rail lives in, and the
          track is sized in records. */
@@ -536,6 +220,7 @@ export function EducationRail() {
                     record={record}
                     position={index}
                     onWheel={forwardWheel}
+                    inactive={staged && index !== active}
                   />
                 ))}
               </div>
@@ -546,7 +231,7 @@ export function EducationRail() {
                 type="button"
                 className={styles.control}
                 onClick={() => step(-1)}
-                disabled={active === 0}
+                disabled={active === 0 || (staged && !ready)}
                 aria-label="Previous record"
               >
                 <ChevronLeft size={20} strokeWidth={1.5} aria-hidden="true" />
@@ -572,7 +257,7 @@ export function EducationRail() {
                 type="button"
                 className={styles.control}
                 onClick={() => step(1)}
-                disabled={active === total - 1}
+                disabled={active === total - 1 || (staged && !ready)}
                 aria-label="Next record"
               >
                 <ChevronRight size={20} strokeWidth={1.5} aria-hidden="true" />

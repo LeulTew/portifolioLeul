@@ -27,6 +27,7 @@ import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
 import { watchContentSettled, type ContentSettleWatcher } from './lib/render/contentSettled';
 import { useFooterContrast } from './lib/scroll/useFooterContrast';
 import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
+import { publishSectionNavigation } from './lib/scroll/sectionNavigation';
 
 import './index.css';
 import styles from './App.module.css';
@@ -382,6 +383,7 @@ function App() {
   const scrollToSection = useCallback((id: string) => {
     const target = document.getElementById(id);
     if (!target) return;
+    publishSectionNavigation(id);
 
     if (scrollElement && mainRef.current) {
       const container = scrollElement;
@@ -450,7 +452,7 @@ function App() {
   const sections = (
     <main ref={attachMain} className={styles.main}>
       <Home onNavigate={scrollToSection} theme={theme} flat={!show3D} />
-      <About />
+      <About onNavigate={scrollToSection} />
       <Skills />
       <Projects theme={theme} />
       <div className={styles.spacer} />

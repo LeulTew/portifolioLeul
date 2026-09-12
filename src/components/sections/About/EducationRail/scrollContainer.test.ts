@@ -50,7 +50,7 @@ describe('scrollContainerBy', () => {
     outer.scrollBy = scrollBy;
 
     scrollContainerBy(outer, 320);
-    expect(scrollBy).toHaveBeenCalledWith({ top: 320, behavior: 'smooth' });
+    expect(scrollBy).toHaveBeenCalledWith({ top: 320, behavior: 'auto' });
   });
 
   it('falls back to setting scrollTop where scrollBy is unavailable', () => {
@@ -68,7 +68,7 @@ describe('scrollContainerBy', () => {
     window.scrollBy = scrollBy;
 
     scrollContainerBy(null, -200);
-    expect(scrollBy).toHaveBeenCalledWith({ top: -200, behavior: 'smooth' });
+    expect(scrollBy).toHaveBeenCalledWith({ top: -200, behavior: 'auto' });
   });
 
   it('does nothing for a step of nowhere', () => {

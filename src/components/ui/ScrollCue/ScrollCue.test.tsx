@@ -2,10 +2,22 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ScrollCue } from './ScrollCue';
+import { cueRunOffset, CUE_RUN_X, CUE_VIEW_WIDTH, cueViewX } from './cueGeometry';
 
 const cue = () => screen.getByTestId('scroll-cue');
 
 describe('ScrollCue', () => {
+  it('keeps the full curve inside a narrow margin without moving the landing vertical', () => {
+    render(<ScrollCue mirrored progress={0.5} />);
+    expect(cue().querySelector('g')).toHaveAttribute('transform', 'translate(104.6 0) scale(-1 1)');
+    const left = 24 - cueRunOffset(60, true);
+    expect(left).toBeGreaterThan(0);
+    expect(left + 60).toBeLessThan(1024);
+    const runLeft = left + (CUE_RUN_X - 1 - cueViewX(true)) * 60 / CUE_VIEW_WIDTH;
+    expect(runLeft).toBeCloseTo(24);
+    expect(cue().querySelectorAll('path')).toHaveLength(3);
+  });
+
   it('renders a real path, not a styled box', () => {
     // A border-radius div cannot be drawn on; a path can.
     render(<ScrollCue />);

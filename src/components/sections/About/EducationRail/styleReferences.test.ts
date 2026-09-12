@@ -13,7 +13,7 @@ describe('education artwork styling', () => {
         }
       });
     const missing: string[] = [];
-    for (const file of ['EducationRail.tsx', 'SaintJosephMark.tsx', 'HilcoeMark.tsx']) {
+    for (const file of ['EducationRail.tsx', 'educationMotion.ts', 'SaintJosephMark.tsx', 'HilcoeMark.tsx']) {
       const source = readFileSync(join(__dirname, file), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       for (const match of source.matchAll(/styles\.(\w+)/g)) {

@@ -419,7 +419,7 @@ describe('Navigation', () => {
       document.body.removeChild(aboutEl);
     });
 
-    it('applies contrary styles in light mode once the green has reached the bar', () => {
+    it('applies contrary styles in light mode once the green has reached the bar', async () => {
       document.documentElement.setAttribute('data-nav-contrast', 'true');
       const aboutEl = document.createElement('section');
       aboutEl.id = 'about';
@@ -442,8 +442,10 @@ describe('Navigation', () => {
       const header = document.querySelector('header');
       expect(header).toHaveAttribute('data-contrary', 'true');
 
-      document.body.removeChild(aboutEl);
-      document.documentElement.removeAttribute('data-nav-contrast');
+      await act(async () => {
+        document.body.removeChild(aboutEl);
+        document.documentElement.removeAttribute('data-nav-contrast');
+      });
     });
 
     it('does not apply contrary styles in dark mode even if about has transitioned', () => {

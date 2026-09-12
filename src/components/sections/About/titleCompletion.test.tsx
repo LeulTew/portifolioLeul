@@ -56,4 +56,22 @@ describe('the mounted title completion publisher', () => {
     expect(about).toHaveAttribute('data-title-settled', 'true');
     expect(about).not.toHaveAttribute('data-title-active');
   });
+
+  it('holds the completed title until Education releases its own reverse sequence', async () => {
+    const { clock, about } = await start();
+    await clock.run(TITLE_WRITE.durationMs + 10);
+    await act(async () => {
+      about.setAttribute('data-education-owned', 'true');
+      const sequence = about.querySelector<HTMLElement>('[data-active]')!;
+      sequence.style.setProperty('--seq', '0');
+      window.dispatchEvent(new Event('scroll'));
+    });
+    await clock.run(TITLE_WRITE.durationMs + 10);
+    expect(about).toHaveAttribute('data-title-settled', 'true');
+    expect(about).not.toHaveAttribute('data-reverse-transition-active');
+    await act(async () => { about.removeAttribute('data-education-owned'); });
+    await clock.run(TITLE_WRITE.durationMs + 10);
+    expect(about).not.toHaveAttribute('data-title-settled');
+    expect(about).not.toHaveAttribute('data-reverse-transition-active');
+  });
 });

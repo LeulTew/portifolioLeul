@@ -542,10 +542,12 @@ export function TitlePixelTransition({
      * each still at its own fixed speed, and the chapter closes.
      */
     const spent = seq >= 0.995;
-    const active =
+    const educationOwnsTitle = phaseRef.current.t >= 1 &&
+      readAbout()?.getAttribute('data-education-owned') === 'true';
+    const active = educationOwnsTitle || (
       reached &&
       isBackgroundSettled &&
-      (armedRef.current || wasActiveRef.current || (spent && rested));
+      (armedRef.current || wasActiveRef.current || (spent && rested)));
 
     /*
      * Disarmed only on the way OUT, never merely for not having started.
@@ -628,7 +630,7 @@ export function TitlePixelTransition({
         gateObserver = new MutationObserver(update);
         gateObserver.observe(aboutEl, {
           attributes: true,
-          attributeFilter: ['data-bg-settled'],
+          attributeFilter: ['data-bg-settled', 'data-education-owned'],
         });
       }
     }

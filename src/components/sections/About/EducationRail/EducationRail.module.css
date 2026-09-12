@@ -63,6 +63,7 @@
 .stage {
   position: fixed;
   inset: 0;
+  background: var(--about-chapter-bg);
   /* Under the About sequence's own overlay (40), which is still covering this
      while the two hand over; above the section background it sits on. */
   z-index: 30;

@@ -37,6 +37,7 @@ const writesTo = (src: string, attribute: string) => {
   return (
     body.includes(`setAttribute(${quoted}`) ||
     body.includes(`removeAttribute(${quoted}`) ||
+    body.includes(`writeAttribute(about, ${quoted}`) ||
     body.includes(`writeAttribute(aboutEl, ${quoted}`) ||
     body.includes(`writeAttribute(aboutSection, ${quoted}`)
   );
@@ -55,7 +56,7 @@ describe('the chapter has one author per flag', () => {
 
   it('data-education-active is the rail\u2019s, not About\u2019s', () => {
     expect(
-      writesTo(read('EducationRail', 'EducationRail.tsx'), 'data-education-active')
+      writesTo(read('EducationRail', 'useEducationPlayback.ts'), 'data-education-active')
     ).toBe(true);
     expect(writesTo(read('About.tsx'), 'data-education-active')).toBe(false);
   });

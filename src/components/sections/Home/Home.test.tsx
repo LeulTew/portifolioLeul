@@ -299,7 +299,7 @@ describe('Home choreography', () => {
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
   });
 
-  it('aims the timed cue at About and never scrubs it during the climb', () => {
+  it('draws from the hero toward About before the landing arrives, without jumping on a flick', () => {
     vi.useFakeTimers();
     /*
      * Reported five times, and this is the shape that came out of it. The mark
@@ -341,18 +341,23 @@ describe('Home choreography', () => {
     scrollIntoHold(INNER_END);
     expect(drawn()).toBe(0);
 
-    // Crossing position thresholds cannot advance the line itself.
+    // The line starts under the departed hero, not at its final About anchor.
     scrollIntoHold(HOLD_CLOSE_END);
     playBeats(2000);
-    expect(drawn()).toBe(0);
+    expect(drawn()).toBeGreaterThan(0);
+    expect(drawn()).toBeLessThan(1);
+    const origin = parseFloat(document.documentElement.style.getPropertyValue('--cue-y'));
+    expect(origin).toBeGreaterThan(0);
+    expect(origin).toBeLessThan(vh);
 
     // And the panel is already climbing well before it is finished.
     scrollIntoHold(1);
     expect(drawn()).toBeLessThan(1);
 
-    // Once the landing is visible, time traces the line to it.
+    // A flick changes the destination, never the position in that same frame.
+    const beforeFlick = drawn();
     scrollIntoHold(aboutTop / hold);
-    expect(drawn()).toBe(0);
+    expect(drawn()).toBe(beforeFlick);
     playBeats(600);
     expect(drawn()).toBeGreaterThan(0);
     expect(drawn()).toBeLessThan(1);
@@ -406,7 +411,7 @@ describe('Home choreography', () => {
     expect(parseFloat(origin)).toBeCloseTo(parseFloat(measured), 3);
   });
 
-  it('waits for the landing position, then traces on time even after scroll stops', () => {
+  it('keeps the original scroll-linked journey and finishes a fast handover on visible frames', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Home />);
     enterHero();
@@ -415,9 +420,12 @@ describe('Home choreography', () => {
     playBeats(1000);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
     playBeats(2500);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    const partial = Number(getByTestId('scroll-cue').dataset.progress);
+    expect(partial).toBeGreaterThan(0);
+    expect(partial).toBeLessThan(1);
+    expect(document.getElementById('home')).not.toHaveAttribute('data-hero-handover-settled', 'true');
     scrollIntoHold(8);
-    expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '0.000');
+    expect(Number(getByTestId('scroll-cue').dataset.progress)).toBe(partial);
     playBeats(1300);
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
     expect(document.getElementById('home')).toHaveAttribute('data-hero-handover-settled', 'true');

@@ -461,6 +461,19 @@ describe('PinnedSequence pin extension', () => {
     expect(overlay.dataset.active).toBe('false');
   });
 
+  it('keeps an underlay through the Education-to-About handoff before title reversal starts', async () => {
+    const { about, spacer } = mountWithAbout();
+    spacer.getBoundingClientRect = () => ({ top: 2000, bottom: 4400, height: 2400 }) as DOMRect;
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    await act(async () => {
+      about.setAttribute('data-title-settled', 'true');
+      about.setAttribute('data-education-returning', 'true');
+    });
+    expect(overlay.dataset.active).toBe('true');
+    await act(async () => { about.removeAttribute('data-education-returning'); });
+    expect(overlay.dataset.active).toBe('false');
+  });
+
   it('tracks a spent position without covering an unfinished hero, then observes eligibility', async () => {
     render(<section id="home" />);
     const home = document.getElementById('home')!;

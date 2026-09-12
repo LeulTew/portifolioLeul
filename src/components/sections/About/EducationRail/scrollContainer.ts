@@ -26,17 +26,15 @@ export function findScrollContainer(element: Element | null): HTMLElement | null
 /**
  * Moves the given scroller by `delta` pixels.
  *
- * `smooth` for a control the reader clicked, which should read as travel; not
- * for a wheel being forwarded, where anything but the raw delta feels like the
- * page fighting the reader's hand.
+ * Only forwards wheel input from the body-level portal. Native smooth scrolling
+ * is incompatible with Drei; the record controls never move this scrollport.
  */
 export function scrollContainerBy(
   container: HTMLElement | null,
-  delta: number,
-  smooth = true
+  delta: number
 ): void {
   if (!Number.isFinite(delta) || delta === 0) return;
-  const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto';
+  const behavior: ScrollBehavior = 'auto';
 
   if (container) {
     if (typeof container.scrollBy === 'function') {

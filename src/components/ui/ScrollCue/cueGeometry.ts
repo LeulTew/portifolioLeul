@@ -50,10 +50,14 @@ export const CUE_STROKE_WIDTH = 2;
  * So a run centred on that origin hangs half a stroke into the margin, and
  * the line and the letter visibly do not start together.
  */
-export function cueRunOffset(widthPx: number): number {
+export function cueViewX(mirrored = false): number {
+  return mirrored ? 2 * CUE_RUN_X - CUE_VIEW_X - CUE_VIEW_WIDTH : CUE_VIEW_X;
+}
+
+export function cueRunOffset(widthPx: number, mirrored = false): number {
   if (!Number.isFinite(widthPx) || widthPx <= 0) return 0;
   const runEdge = CUE_RUN_X - CUE_STROKE_WIDTH / 2;
-  return ((runEdge - CUE_VIEW_X) / CUE_VIEW_WIDTH) * widthPx;
+  return ((runEdge - cueViewX(mirrored)) / CUE_VIEW_WIDTH) * widthPx;
 }
 
 /**

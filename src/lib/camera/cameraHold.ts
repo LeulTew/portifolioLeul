@@ -21,7 +21,7 @@ let freezes: ArcHolds = NO_HOLDS;
 
 /** The span during which nothing is drawn at all. About only. */
 let occlusion: ArcHold = NO_HOLD;
-let overlayOcclusion = false;
+const overlayOcclusion = new Set<'about' | 'education'>();
 
 export function setCameraFreezes(next: ArcHolds): void {
   freezes = next;
@@ -40,17 +40,18 @@ export function getWorldOcclusion(): ArcHold {
 }
 
 /** A time-paced opaque panel can remain pinned beyond its physical range. */
-export function setOverlayOcclusion(covered: boolean): void {
-  overlayOcclusion = covered;
+export function setOverlayOcclusion(covered: boolean, owner: 'about' | 'education' = 'about'): void {
+  if (covered) overlayOcclusion.add(owner);
+  else overlayOcclusion.delete(owner);
 }
 
 export function getOverlayOcclusion(): boolean {
-  return overlayOcclusion;
+  return overlayOcclusion.size > 0;
 }
 
 /** Test-only: forget every measured hold. */
 export function resetCameraHold(): void {
   freezes = NO_HOLDS;
   occlusion = NO_HOLD;
-  overlayOcclusion = false;
+  overlayOcclusion.clear();
 }

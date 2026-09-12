@@ -26,6 +26,7 @@ export function useActiveSection(sectionIds: readonly string[]): string {
     if (ids.length === 0 || typeof IntersectionObserver === 'undefined') return;
 
     let observer: IntersectionObserver | null = null;
+    let ownership: MutationObserver | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
 
     /** Remembered per section: a callback only reports what changed. */
@@ -42,6 +43,21 @@ export function useActiveSection(sectionIds: readonly string[]): string {
         return;
       }
 
+      const update = () => {
+        const reading = sections.find(section => section.dataset.educationActive === 'true');
+        let bestId = reading?.id ?? '';
+        let bestHeight = 0;
+        if (!reading) {
+          for (const [id, height] of visible) {
+            if (height > bestHeight) {
+              bestHeight = height;
+              bestId = id;
+            }
+          }
+        }
+        if (bestId) setActive(previous => previous === bestId ? previous : bestId);
+      };
+
       observer = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
@@ -49,23 +65,18 @@ export function useActiveSection(sectionIds: readonly string[]): string {
             visible.set(id, entry.isIntersecting ? (entry.intersectionRect?.height ?? 0) : 0);
           }
 
-          let bestId = '';
-          let bestHeight = 0;
-          for (const [id, height] of visible) {
-            if (height > bestHeight) {
-              bestHeight = height;
-              bestId = id;
-            }
-          }
-
-          if (bestHeight > 0 && bestId) {
-            setActive((previous) => (previous === bestId ? previous : bestId));
-          }
+          update();
         },
         { rootMargin: `${BAND_INSET} 0px ${BAND_INSET} 0px`, threshold: 0 }
       );
 
       sections.forEach((section) => observer?.observe(section));
+      ownership = new MutationObserver(update);
+      sections.forEach(section => ownership?.observe(section, {
+        attributes: true,
+        attributeFilter: ['data-education-active'],
+      }));
+      update();
     };
 
     attach();
@@ -73,6 +84,7 @@ export function useActiveSection(sectionIds: readonly string[]): string {
     return () => {
       if (retry) clearTimeout(retry);
       observer?.disconnect();
+      ownership?.disconnect();
     };
   }, [key]);
 

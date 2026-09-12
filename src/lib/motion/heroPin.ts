@@ -1,3 +1,5 @@
+import { advancePhase, type PhaseState } from './triggeredPhase';
+
 /**
  * The hero holds still while the reader scrolls, and the scroll drives what
  * happens instead of moving the page.
@@ -84,7 +86,7 @@ export const INNER_EXIT_MS = 900;
 /** How long the plate takes to shut, once the copy has gone. */
 export const PLATE_CLOSE_MS = 620;
 
-/** The line is traced only after its landing point reaches the viewport. */
+/** Maximum drawing speed; a flick cannot skip the hero-to-title journey. */
 export const CUE_DRAW_MS = 1200;
 export const CUE_FADE_MS = 360;
 
@@ -293,6 +295,28 @@ export function cueDraw(
 
   const scrolled = Math.max(-sectionTop, 0);
   return clamp01((scrolled - startsAt) / span);
+}
+
+/** Follow the original spatial path, spending only frames the reader can see. */
+export function advanceCue(state: PhaseState, requested: number, dtMs: number): PhaseState {
+  const target = clamp01(requested);
+  const next = advancePhase(state, target > state.t, dtMs, CUE_DRAW_MS);
+  return {
+    ...next,
+    t: next.heading > 0 ? Math.min(next.t, target) : Math.max(next.t, target),
+  };
+}
+
+/** The matching page position keeps the tail visible even after a large flick. */
+export function cueTravel(
+  railTop: number,
+  heldTop: number,
+  holdLength: number,
+  drawn: number
+): number {
+  if (![railTop, heldTop, holdLength].every(Number.isFinite)) return 0;
+  const start = holdLength * INNER_END;
+  return railTop - start - (heldTop - start) * clamp01(drawn);
 }
 
 /**

@@ -42,11 +42,11 @@ describe("About Section", () => {
     render(<About />);
     expect(screen.getByRole("heading", { level: 2, name: "Education" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /HiLCoE School of Computer Science/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Saint Joseph School/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Saint Joseph School/i, hidden: true })).toBeInTheDocument();
     // Certifications used to be a second grid below the degrees, which read as
     // an afterthought. They are records on the same rail now.
-    expect(screen.getByRole("heading", { name: "Bootdev" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "freeCodeCamp" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Bootdev", hidden: true })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "freeCodeCamp", hidden: true })).toBeInTheDocument();
   });
 });
 
@@ -440,4 +440,3 @@ describe('About statements contrast reactivity', () => {
     expect(aboutSection?.getAttribute('data-statements-cleared')).toBeNull();
   });
 });
-

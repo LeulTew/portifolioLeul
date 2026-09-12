@@ -17,7 +17,11 @@ import {
  */
 describe('scrollGesture', () => {
   beforeEach(() => resetScrollGesture());
-  afterEach(() => resetScrollGesture());
+  afterEach(() => {
+    resetScrollGesture();
+    document.body.replaceChildren();
+    vi.restoreAllMocks();
+  });
 
   const seen: ScrollDirection[] = [];
   const listen = () => {
@@ -88,5 +92,62 @@ describe('scrollGesture', () => {
     off();
     window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120 }));
     expect(seen).toEqual([]);
+  });
+
+  it('reports only one start for an uninterrupted wheel wave', () => {
+    const starts: ScrollDirection[] = [];
+    let now = 1000;
+    const time = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const off = subscribeScrollGesture(direction => starts.push(direction), { startsOnly: true });
+    for (let i = 0; i < 80; i++) {
+      window.dispatchEvent(new WheelEvent('wheel', { deltaY: 200 }));
+      now += 50;
+    }
+    expect(starts).toEqual(['down']);
+    now += 300;
+    window.dispatchEvent(new WheelEvent('wheel', { deltaY: -200 }));
+    expect(starts).toEqual(['down', 'up']);
+    off();
+    time.mockRestore();
+  });
+
+  it('does not treat held scroll keys as fresh requests', () => {
+    const starts: ScrollDirection[] = [];
+    const off = subscribeScrollGesture(direction => starts.push(direction), { startsOnly: true });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', repeat: true }));
+    expect(starts).toEqual(['down']);
+    off();
+  });
+
+  it('does not spend a wave start on sub-threshold trackpad motion', () => {
+    const starts: ScrollDirection[] = [];
+    const off = subscribeScrollGesture(direction => starts.push(direction), { startsOnly: true });
+    window.dispatchEvent(new WheelEvent('wheel', { deltaY: 1 }));
+    window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120 }));
+    window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120 }));
+    expect(starts).toEqual(['down']);
+    off();
+  });
+
+  it('recognizes page-scroll keys while a navigation button has focus', () => {
+    const off = listen();
+    const button = document.createElement('button');
+    document.body.append(button);
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }));
+    expect(seen).toEqual(['down']);
+    off();
+  });
+
+  it.each(['button', 'input', 'textarea', 'select'])('leaves %s keyboard interaction to the native control', (tag) => {
+    const off = listen();
+    const control = document.createElement(tag);
+    document.body.append(control);
+    const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    control.dispatchEvent(event);
+    expect(seen).toEqual([]);
+    expect(event.defaultPrevented).toBe(false);
+    control.remove();
+    off();
   });
 });

@@ -34,6 +34,8 @@ function checkIsContrary(theme: string): boolean {
     return false;
   }
 
+  if (document.documentElement.getAttribute('data-nav-contrast') === 'true') return true;
+
   // If Skills section has reached or passed under the navbar,
   // we are no longer over About.
   const skillsEl = findSkills();

@@ -19,10 +19,12 @@ import {
 } from '../About/aboutBeats';
 import {
   HERO_SCREENS,
+  advanceCue,
   cueDraw,
   cueHeld,
   cueRail,
   cueRest,
+  cueTravel,
   holdExit,
   holdProgress,
   innerExit,
@@ -30,7 +32,6 @@ import {
   plateShut,
   INNER_EXIT_MS,
   PLATE_CLOSE_MS,
-  CUE_DRAW_MS,
   CUE_FADE_MS,
   INNER_ENTER,
   INNER_RELEASE,
@@ -167,7 +168,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
   const cueFadeRef = useRef<PhaseState>(PHASE_AT_REST);
   const innerActiveRef = useRef(false);
   const plateActiveRef = useRef(false);
-  const cueActiveRef = useRef(false);
+  const cueTargetRef = useRef(0);
   const cueFadeActiveRef = useRef(false);
   const frameRef = useRef(0);
   const applyRef = useRef<(() => void) | null>(null);
@@ -222,7 +223,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         dt,
         PLATE_CLOSE_MS
       );
-      cuePhaseRef.current = advancePhase(cuePhaseRef.current, cueActiveRef.current, dt, CUE_DRAW_MS);
+      cuePhaseRef.current = advanceCue(cuePhaseRef.current, cueTargetRef.current, dt);
       cueFadeRef.current = advancePhase(cueFadeRef.current, cueFadeActiveRef.current, dt, CUE_FADE_MS);
     };
 
@@ -247,7 +248,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       if (
         isPhaseAtTarget(innerPhaseRef.current, innerActiveRef.current) &&
         isPhaseAtTarget(platePhaseRef.current, plateActiveRef.current) &&
-        isPhaseAtTarget(cuePhaseRef.current, cueActiveRef.current) &&
+        cuePhaseRef.current.t === cueTargetRef.current &&
         isPhaseAtTarget(cueFadeRef.current, cueFadeActiveRef.current)
       ) {
         lastFrameRef.current = 0;
@@ -294,8 +295,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         pinned.style.setProperty('--pin', offset);
       }
 
-      // Position requests the line only once its landing point is visible.
-      // Time traces it; flat and reduced-motion readers get the complete mark.
+      // The line follows the original hero-to-About path, with a capped drawing
+      // speed so a flick cannot move its unfinished tail offscreen.
       setHeroCue(
         !held
           ? 1
@@ -314,9 +315,11 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       const rail = railRef.current;
       const scrolled = Math.max(-top, 0);
       const holding = findAboutOverlay()?.dataset.active === 'true';
-      const y = holding || cuePhaseRef.current.t > 0
-        ? cueHeld(rail.top, heldTop)
-        : rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
+      const y = held && cuePhaseRef.current.t > 0
+        ? cueTravel(rail.top, heldTop, holdLength, cuePhaseRef.current.t)
+        : holding
+          ? cueHeld(rail.top, heldTop)
+          : rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
       writeStyleProperty(root, '--cue-y', `${y.toFixed(3)}px`);
 
       // HeldHeader publishes its displacement on the frame that moves it.
@@ -379,15 +382,11 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
             PLATE_ENTER,
             PLATE_RELEASE
           ));
-        cueActiveRef.current = aboutOwnsCue || waitingForCueReturn || (
-          platePhaseRef.current.t >= 1 &&
-          phaseGate(
-            cueDraw(top, holdLength, heldTopRef.current),
-            cueActiveRef.current,
-            1,
-            0.95
-          )
-        );
+        cueTargetRef.current = aboutOwnsCue || waitingForCueReturn
+          ? 1
+          : platePhaseRef.current.t >= 1
+            ? cueDraw(top, holdLength, heldTop)
+            : 0;
         cueFadeActiveRef.current = about?.getAttribute('data-statements-present') === 'true';
 
         startPhaseLoop();
@@ -552,6 +551,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    * but one.
    */
   const [cueRun, setCueRun] = useState(0);
+  const [cueMirrored, setCueMirrored] = useState(false);
   const railRef = useRef({ top: 0, height: 0 });
   const heldTopRef = useRef(0);
 
@@ -695,10 +695,12 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       const root = document.documentElement;
       writeStyleProperty(root, '--cue-height', `${rail.height.toFixed(3)}px`);
       if (headingLeft > 0) {
+        const mirrored = markLeft - cueRunOffset(CUE_WIDTH_PX) < 8;
+        setCueMirrored(mirrored);
         writeStyleProperty(
           root,
           '--cue-x',
-          `${(markLeft - cueRunOffset(CUE_WIDTH_PX)).toFixed(3)}px`
+          `${(markLeft - cueRunOffset(CUE_WIDTH_PX, mirrored)).toFixed(3)}px`
         );
       }
       setCueRun(cueRunForHeight(rail.height, CUE_WIDTH_PX));
@@ -1002,7 +1004,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       */}
       </div>
 
-      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} />
+      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} mirrored={cueMirrored} />
     </section>
   );
 }
@@ -1011,7 +1013,11 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
  *
  * Only the cue's paths re-render as the handover clock advances.
  */
-function HeroScrollCue({ onActivate, run }: { onActivate: () => void; run: number }) {
+function HeroScrollCue({ onActivate, run, mirrored }: {
+  onActivate: () => void;
+  run: number;
+  mirrored: boolean;
+}) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -1030,6 +1036,7 @@ function HeroScrollCue({ onActivate, run }: { onActivate: () => void; run: numbe
       className={styles.scrollCue}
       progress={progress}
       run={run}
+      mirrored={mirrored}
       onActivate={onActivate}
       label="Scroll to about section"
     />

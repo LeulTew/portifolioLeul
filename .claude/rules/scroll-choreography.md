@@ -50,8 +50,14 @@ lands as a visible step. No easing fixes that, because the input is lumpy.
 **Fixed speed is observable and must stay so:** the same beat driven by a slow
 scroll and by a hard flick takes the same wall-clock time. Measured, not assumed.
 
-The hero cue waits for its measured landing position and the closed plate,
-then traces on its own clock. Home publishes handover completion for About;
+The hero cue is intentionally a spatial connection, restoring its original
+journey from below the hero into About. Scroll requests a point on that path;
+`advanceCue` bounds its drawing speed and `cueTravel` moves the origin through
+the matching path, so even a flick cannot skip the visible journey. It starts
+after the copy and cloud have left, not only after About's landing arrives.
+On a tight heading margin, the same tangent-continuous curve bends inward
+instead of being clipped by the viewport; its landing vertical stays unchanged.
+Home publishes handover completion for About;
 the heading must not appear over unfinished hero movements. Reduced motion
 publishes the complete mark to both the SVG and its CSS visibility properties.
 
@@ -110,6 +116,13 @@ delay. The reader has to ask again.
 
 `BEAT_COOLDOWN_MS` in `aboutBeats.ts` is the knob.
 
+Education records require a **new input wave** after their complete GSAP
+timeline (including seal and rows) and a 1200ms visible reading pause. A wave
+ends after 250ms without wheel input; sub-threshold motion cannot consume its
+start. Touch momentum and repeated keys cannot become additional requests.
+Next/Previous use the same completion and reading gate, without spending
+scroll distance. Native control activation remains native.
+
 ---
 
 ## 6. A movement is never skippable, and never plays to an empty room
@@ -119,8 +132,14 @@ delay. The reader has to ask again.
 - The terminal state must exist at **both** ends, so the hold always releases.
 - An `IntersectionObserver` may not hide a section whose chapter is still
   playing.
-- Past the end of the stretch a beat **stops waiting to be asked**. Reaching the
-  end is the request; there is nobody left to ask.
+- Past the end of the stretch a transition beat **stops waiting to be asked**.
+  Education may open this way, but its readable records are an explicit
+  exception: they never auto-advance from a spent scroll position. A fresh
+  wave or Next/Previous activation is still required for every record.
+- Education keeps the completed About title owned through its handoff and
+  reverse, and resumes the About underlay before disappearing. Explicit global
+  navigation may leave after the current movement and reading pause. A natural
+  exit aligns the next section only if the reader has not already left the rail.
 - Cooldowns wake themselves when they expire; pin release observes completion.
   Neither may depend on another scroll publication after the reader stops.
 - Publish local sequence measurements before their animation consumers, even

@@ -1,75 +1,24 @@
-import { render, screen, act, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EducationRail } from './EducationRail';
 import { EDUCATION_RECORDS } from './educationRecords';
-import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
+import { BEAT_COOLDOWN_MS } from '../aboutBeats';
+import {
+  RAIL_HEIGHT, FRAME_HEIGHT, placeEducation as placeRail,
+  advanceEducation as advance, wheelEducation as wheel,
+  finishEducation as finish, setupEducationClock, cleanupEducationClock,
+} from '@/test/educationClock';
 
-const RAIL_HEIGHT = 3000;
-const FRAME_HEIGHT = 800;
+beforeEach(setupEducationClock);
+afterEach(cleanupEducationClock);
 
-/**
- * Where the rail currently sits, in viewport coordinates.
- *
- * Installed on the prototype rather than on the element, because the rail
- * reads its own rect on the very first tick of its effect -- before a test
- * could get hold of the node. jsdom reports every rect as zeros, and zero is
- * on the far side of the line the frame opens on, so a rail left unmocked
- * would already be open by the time the first assertion ran.
- */
-let railTop = 400;
-
-/** Moves the rail and ticks the scroll store, as a scroll would. */
-async function placeRail(top: number) {
-  railTop = top;
-
-  await act(async () => {
-    // Any change publishes; the value itself is not what the rail reads.
-    setScrollProgress(Math.random());
-    // The rail coalesces ticks through `requestAnimationFrame`. Stubbing that
-    // to run inline is not an option: GSAP keeps a rAF of its own alive, and a
-    // synchronous stub turns it into unbounded recursion.
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-  });
+function openFrame() {
+  placeRail(-20);
+  advance(BEAT_COOLDOWN_MS + 1);
+  wheel(120);
+  finish('education-sticky-header');
+  advance(BEAT_COOLDOWN_MS + 1);
 }
-
-beforeEach(() => {
-  resetScrollProgress();
-  window.innerHeight = 800;
-  railTop = 400;
-
-  const original = Element.prototype.getBoundingClientRect;
-  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
-    this: Element
-  ) {
-    if ((this as HTMLElement).dataset?.testid !== 'education-rail') {
-      return original.call(this);
-    }
-    return {
-      top: railTop,
-      height: RAIL_HEIGHT,
-      bottom: railTop + RAIL_HEIGHT,
-      left: 0,
-      right: 1440,
-      width: 1440,
-      x: 0,
-      y: railTop,
-      toJSON: () => ({}),
-    } as DOMRect;
-  });
-
-  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
-    this: HTMLElement
-  ) {
-    if (this.dataset?.testid === 'education-rail') return RAIL_HEIGHT;
-    return FRAME_HEIGHT;
-  });
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
 
 describe('EducationRail content', () => {
   it('names the section once, as a heading', () => {
@@ -83,7 +32,7 @@ describe('EducationRail content', () => {
     render(<EducationRail />);
 
     for (const record of EDUCATION_RECORDS) {
-      expect(screen.getByRole('heading', { name: record.title })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: record.title, hidden: true })).toBeInTheDocument();
       for (const item of record.items) {
         expect(screen.getByText(item)).toBeInTheDocument();
       }
@@ -135,7 +84,7 @@ describe('EducationRail marks', () => {
     expect(
       screen.getByRole('img', { name: /HiLCoE School of Computer Science/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Saint Joseph School' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Saint Joseph School', hidden: true })).toBeInTheDocument();
   });
 
   it('stands the two marks on opposite sides of their records', () => {
@@ -146,7 +95,7 @@ describe('EducationRail marks', () => {
     expect(stage.querySelectorAll('[data-mark-side="left"]')).toHaveLength(1);
     expect(stage.querySelectorAll('[data-mark-side="right"]')).toHaveLength(1);
 
-    const seal = screen.getByRole('img', { name: 'Saint Joseph School' });
+    const seal = screen.getByRole('img', { name: 'Saint Joseph School', hidden: true });
     expect(seal.closest('[data-mark-side]')?.getAttribute('data-mark-side')).toBe('left');
   });
 
@@ -193,17 +142,17 @@ describe('EducationRail hold', () => {
     }
   });
 
-  it('lets the frame go once the rail runs out, and only then', async () => {
+  it('retains its fixed stage when a flick spends the rail before the records are read', async () => {
     render(<EducationRail />);
     const stage = screen.getByTestId('education-stage');
 
     await placeRail(-(RAIL_HEIGHT - FRAME_HEIGHT) - 300);
-    expect(stage.style.getPropertyValue('--release')).toBe('300px');
+    expect(stage.style.getPropertyValue('--release')).toBe('0px');
     expect(stage.getAttribute('data-visible')).toBe('true');
 
-    // Carried clear of the top: nothing left to show.
     await placeRail(-(RAIL_HEIGHT - FRAME_HEIGHT) - FRAME_HEIGHT);
-    expect(stage.getAttribute('data-visible')).toBeNull();
+    expect(stage.getAttribute('data-visible')).toBe('true');
+    expect(stage.style.getPropertyValue('--release')).toBe('0px');
   });
 
   it('opens the frame when the section takes the screen, not before', async () => {
@@ -220,7 +169,10 @@ describe('EducationRail hold', () => {
     expect(frame.getAttribute('data-open')).toBeNull();
 
     await placeRail(-10);
-    await waitFor(() => expect(frame.getAttribute('data-open')).toBe('true'));
+    expect(frame.getAttribute('data-open')).toBeNull();
+    advance(BEAT_COOLDOWN_MS + 1);
+    wheel(120);
+    expect(frame.getAttribute('data-open')).toBe('true');
   });
 
   it('settles the heading out of the frame\'s way as it opens', async () => {
@@ -231,32 +183,36 @@ describe('EducationRail hold', () => {
     expect(head.getAttribute('data-settled')).toBeNull();
 
     await placeRail(-10);
-    await waitFor(() => expect(head.getAttribute('data-settled')).toBe('true'));
+    advance(BEAT_COOLDOWN_MS + 1);
+    wheel(120);
+    expect(head.getAttribute('data-settled')).toBeNull();
+    finish('education-sticky-header');
+    expect(head.getAttribute('data-settled')).toBe('true');
   });
 });
 
 describe('EducationRail record selection', () => {
-  it('reads the record the reader has scrolled to', async () => {
+  it('does not derive the record from scroll distance', async () => {
     render(<EducationRail />);
     expect(screen.getByText(EDUCATION_RECORDS[0].title, { selector: 'p' })).toBeInTheDocument();
 
     // Three fifths of the way through the record window of the hold.
     await placeRail(-(RAIL_HEIGHT - FRAME_HEIGHT) * (0.14 + 0.78 * 0.6));
-    await waitFor(() =>
-      expect(
-        screen.queryByText(EDUCATION_RECORDS[0].title, { selector: 'p' })
-      ).not.toBeInTheDocument()
-    );
+    expect(screen.getByText(EDUCATION_RECORDS[0].title, { selector: 'p' })).toBeInTheDocument();
   });
 
   it('never runs past the end of the set', async () => {
     render(<EducationRail />);
+    openFrame();
+    for (let index = 1; index < EDUCATION_RECORDS.length; index++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Next record' }));
+      finish('education-track');
+      advance(BEAT_COOLDOWN_MS + 1);
+    }
     await placeRail(-100000);
-    await waitFor(() =>
-      expect(
-        screen.getByText(EDUCATION_RECORDS[EDUCATION_RECORDS.length - 1].title, { selector: 'p' })
-      ).toBeInTheDocument()
-    );
+    expect(screen.getByText(EDUCATION_RECORDS[EDUCATION_RECORDS.length - 1].title, { selector: 'p' }))
+      .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next record' })).toBeDisabled();
   });
 });
 
@@ -264,24 +220,18 @@ describe('EducationRail controls', () => {
   it('cannot step back from the first record', () => {
     render(<EducationRail />);
     expect(screen.getByRole('button', { name: 'Previous record' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Next record' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next record' })).toBeDisabled();
   });
 
-  it('spends the scroll a record costs rather than jumping the track alone', async () => {
-    /*
-     * Scroll chooses the record. A control that moved only the track would be
-     * undone the instant the reader touched the wheel again, so next and
-     * previous move the reader instead.
-     */
+  it('changes one logical record without spending page scroll', () => {
     const scrollBy = vi.fn();
     window.scrollBy = scrollBy;
 
     render(<EducationRail />);
-    await userEvent.click(screen.getByRole('button', { name: 'Next record' }));
-
-    expect(scrollBy).toHaveBeenCalledTimes(1);
-    const [{ top }] = scrollBy.mock.calls[0] as [{ top: number }];
-    expect(top).toBeCloseTo((0.78 * (RAIL_HEIGHT - FRAME_HEIGHT)) / EDUCATION_RECORDS.length, 5);
+    openFrame();
+    fireEvent.click(screen.getByRole('button', { name: 'Next record' }));
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(screen.getByText(EDUCATION_RECORDS[1].title, { selector: 'p' })).toBeInTheDocument();
   });
 });
 

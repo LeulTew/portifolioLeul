@@ -50,17 +50,7 @@ export function checkIsFooterContrast(): boolean {
 
   const footerY = window.innerHeight - 60;
 
-  // 1. If Skills section has reached or passed above the footer,
-  // we are definitely on normal background.
-  const skillsEl = findSkills();
-  if (skillsEl) {
-    const skillsRect = skillsEl.getBoundingClientRect();
-    if (skillsRect.top <= footerY) {
-      return false;
-    }
-  }
-
-  // 2. Condition A: Education Stage is visible and physically covers the footer
+  // A reading stage can cover Skills even after a flick passes the whole rail.
   const eduStage = findEduStage();
   if (eduStage && eduStage.getAttribute('data-visible') === 'true') {
     const stageRect = eduStage.getBoundingClientRect();
@@ -71,6 +61,9 @@ export function checkIsFooterContrast(): boolean {
     // If stage bottom is above footer, the stage has lifted and exposed normal background
     return false;
   }
+
+  const skillsEl = findSkills();
+  if (skillsEl && skillsEl.getBoundingClientRect().top <= footerY) return false;
 
   // 3. Condition B: PinnedSequence in About is actively pinned and in green background state
   const aboutEl = findAbout();

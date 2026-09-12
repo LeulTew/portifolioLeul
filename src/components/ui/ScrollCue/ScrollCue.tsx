@@ -1,5 +1,5 @@
 import styles from './ScrollCue.module.css';
-import { CUE_BASE_HEIGHT, CUE_VIEW_WIDTH, CUE_VIEW_X } from './cueGeometry';
+import { CUE_BASE_HEIGHT, CUE_VIEW_WIDTH, CUE_RUN_X, cueViewX } from './cueGeometry';
 
 /**
  * The mark between the hero and About: a bracket that draws itself as the
@@ -103,6 +103,8 @@ export interface ScrollCueProps {
    * is the caller's to decide. Use `cueRunForHeight` to turn a height into it.
    */
   run?: number;
+  /** Turn the same curve inward when the heading's margin cannot fit its bow. */
+  mirrored?: boolean;
   onActivate?: () => void;
   className?: string;
   label?: string;
@@ -111,6 +113,7 @@ export interface ScrollCueProps {
 export function ScrollCue({
   progress = 0,
   run = 0,
+  mirrored = false,
   onActivate,
   className,
   label = 'Scroll to the next section',
@@ -134,11 +137,12 @@ export function ScrollCue({
     >
       <svg
         className={styles.drawing}
-        viewBox={`${CUE_VIEW_X} 50 ${CUE_VIEW_WIDTH} ${CUE_BASE_HEIGHT + runUnits}`}
+        viewBox={`${cueViewX(mirrored)} 50 ${CUE_VIEW_WIDTH} ${CUE_BASE_HEIGHT + runUnits}`}
         preserveAspectRatio="xMinYMin meet"
         aria-hidden="true"
         focusable="false"
       >
+      <g transform={mirrored ? `translate(${2 * CUE_RUN_X} 0) scale(-1 1)` : undefined}>
       <path
         className={`${styles.stroke} ${styles.trace}`}
         d={trace}
@@ -161,6 +165,7 @@ export function ScrollCue({
         data-testid="scroll-cue-current"
         data-flowing={drawn > 0.99}
       />
+      </g>
       </svg>
     </button>
   );

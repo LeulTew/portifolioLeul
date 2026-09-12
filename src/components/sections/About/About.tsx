@@ -759,7 +759,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   );
 }
 
-export function About() {
+export function About({ onNavigate }: { onNavigate?: (section: string) => void } = {}) {
   const containerRef = useRef<HTMLElement>(null);
   const educationRef = useRef<HTMLDivElement>(null);
   const reducedMotion = getPrefersReducedMotion();
@@ -926,7 +926,7 @@ export function About() {
         <div ref={educationRef} className={styles.educationWrapper} data-green-bg="true">
           {/* Owns the Education heading too: the heading has to be held on
               screen with the frame, not scroll away above it. */}
-          <EducationRail />
+          <EducationRail onNavigate={onNavigate} />
         </div>
       </div>
     </section>

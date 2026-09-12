@@ -37,8 +37,14 @@ export type ScrollDirection = 'down' | 'up';
 
 type Listener = (direction: ScrollDirection) => void;
 
-const listeners = new Set<Listener>();
+const listeners = new Map<Listener, boolean>();
 let started = false;
+let lastWheelAt = -Infinity;
+let wheelStarted = false;
+let touchStarted = false;
+
+/** Momentum stays in one wave until the wheel has been quiet for this long. */
+export const SCROLL_WAVE_IDLE_MS = 250;
 
 /** Wheel deltas below this are trackpad settling, not a request for anything. */
 const WHEEL_THRESHOLD = 2;
@@ -57,19 +63,26 @@ const SCROLL_KEYS = new Map<string, ScrollDirection>([
   ['Home', 'up'],
 ]);
 
-function emit(direction: ScrollDirection): void {
-  for (const listener of listeners) listener(direction);
+function emit(direction: ScrollDirection, waveStart: boolean): void {
+  for (const [listener, startsOnly] of listeners) {
+    if (!startsOnly || waveStart) listener(direction);
+  }
 }
 
 function onWheel(event: WheelEvent): void {
+  const now = performance.now();
+  if (now - lastWheelAt >= SCROLL_WAVE_IDLE_MS) wheelStarted = false;
+  lastWheelAt = now;
   if (Math.abs(event.deltaY) < WHEEL_THRESHOLD) return;
-  emit(event.deltaY > 0 ? 'down' : 'up');
+  emit(event.deltaY > 0 ? 'down' : 'up', !wheelStarted);
+  wheelStarted = true;
 }
 
 let touchY: number | null = null;
 
 function onTouchStart(event: TouchEvent): void {
   touchY = event.touches[0]?.clientY ?? null;
+  touchStarted = false;
 }
 
 function onTouchMove(event: TouchEvent): void {
@@ -78,16 +91,23 @@ function onTouchMove(event: TouchEvent): void {
   const travelled = touchY - current;
   if (Math.abs(travelled) < TOUCH_THRESHOLD) return;
   touchY = current;
-  emit(travelled > 0 ? 'down' : 'up');
+  emit(travelled > 0 ? 'down' : 'up', !touchStarted);
+  touchStarted = true;
 }
 
 function onTouchEnd(): void {
   touchY = null;
+  touchStarted = false;
 }
 
 function onKeyDown(event: KeyboardEvent): void {
+  const target = event.target;
+  if (target instanceof Element) {
+    if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+    if ((event.key === ' ' || event.key === 'Spacebar') && target.closest('button')) return;
+  }
   const direction = SCROLL_KEYS.get(event.key);
-  if (direction) emit(direction);
+  if (direction) emit(direction, !event.repeat);
 }
 
 /** Starts listening. Safe to call more than once. */
@@ -114,10 +134,16 @@ function cleanupScrollGesture(): void {
   window.removeEventListener('touchend', onTouchEnd);
   window.removeEventListener('keydown', onKeyDown);
   touchY = null;
+  touchStarted = false;
+  lastWheelAt = -Infinity;
+  wheelStarted = false;
 }
 
-export function subscribeScrollGesture(listener: Listener): () => void {
-  listeners.add(listener);
+export function subscribeScrollGesture(
+  listener: Listener,
+  options: { startsOnly?: boolean } = {}
+): () => void {
+  listeners.set(listener, options.startsOnly ?? false);
   // Listening is what starts it, so nothing has to remember to initialise it.
   initScrollGesture();
   return () => {

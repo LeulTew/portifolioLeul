@@ -358,3 +358,56 @@ outcome has not been established. Further work must resolve or causally explain
 the remaining tablet cadence and obtain the original seal-incident evidence,
 then close the relevant device/deployment verification gaps. No changes were
 made merely to manufacture a passing score.
+
+## Follow-up: Education reader and original hero journey
+
+The subsequent user request changes Education from distance-selected records
+to deliberate reading stages and restores the arrow's original Hero-to-About
+journey. This follow-up does not retroactively change the baseline verdict.
+
+The first isolated reproduction selected records 1, 2 and 3 within **63.8ms**,
+before the About title completed. The new controller waits for that completion,
+the full opening/crossing timeline and a **1200ms visible reading pause**.
+Each accepted wheel wave or native control activation selects one record.
+Momentum, early gestures and repeated keys are discarded, not queued.
+Visibility changes preserve the remaining pause. Explicit navigation and both
+terminal exits are covered, including button-only reading and reverse re-entry.
+
+The arrow again starts below the departed hero and travels into About, rather
+than beginning already anchored at the destination. Its spatial request has a
+bounded visible-frame drawing speed. Original tangent-continuous paths and
+current-flow animation remain; on narrow margins the curve is reflected inward
+to avoid clipping without moving the landing vertical.
+
+Fresh production-bundle journeys at 1440x900 dark and 1024x768 light verified:
+
+- An initial +12000 wheel leaves Education at record 0. A separate uninterrupted
+  85-event wave causes exactly one crossing; a fresh wave advances once more.
+- Next/Previous, full forward release, last-record reverse entry and full Home
+  return succeed. Native Space changes exactly one record and spends **0px**
+  of page scroll. Button-only reading releases to visible Skills; Home navigation
+  requested during a crossing waits rather than interrupting it.
+- Navigation and footer follow the visible Education stage, not hidden Contact.
+  The light toolbar's composited text contrast is **10.49:1**.
+- Cue-box-to-heading gaps are **36.013px / 36.002px**. The first partial stroke
+  starts at visible hero-space y **764.6px / 644.6px**, rather than above the screen.
+- No page errors occurred. Lightly instrumented reverse-heading rAF cadence has
+  p95 **16.7ms**, worst **22.3ms**, at both sizes. The previous 38.9ms p95 was not
+  reproduced by this probe, which avoids repeated computed-style and geometry
+  sampling during motion. These are delivered rAF intervals, not a universal
+  GPU-presentation or physical-device guarantee.
+
+The complete local gate passes **121 files / 1138 tests**, with the same four
+existing skips, plus ESLint, application TypeScript and the production build.
+Obsolete distance-to-record helpers and their tests were replaced by mounted
+completion, gesture, navigation, visibility and ownership regressions.
+
+Evidence includes `education-before.json`, `education-pacing-before-clean.log`,
+`hero-origin-wave-before.log`, `education-exits-before.log`,
+`education-arrow-final-gate.log`, `education-arrow-1440-dark.json`,
+`education-arrow-1024-light.json`, `hero-curve-inward.png` and
+`education-light-readable-chrome.png` in the same session artifact directory.
+
+**Integration remains pending:** the requested animated hero cloud has not yet
+been integrated or verified. No main push, merge or redeployment is represented
+by this follow-up gate.
