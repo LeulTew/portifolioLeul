@@ -13,7 +13,7 @@ import {
 import { getCameraFreezes } from '@/lib/camera/cameraHold';
 import { isCameraFrozen } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import { isFrameDrawn } from '@/lib/render/frameGate';
+import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
 
 /**
  * Scrubs the camera along the cinematic spline as the page scrolls, and parks
@@ -56,7 +56,7 @@ export function CinematicCameraController({
     if (!camera) return;
     // Same reasoning as the grade: the damping is exact over an accumulated
     // delta, so posing the camera for an undrawn frame buys nothing.
-    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
+    if (!isFrameDrawn(state.clock.elapsedTime)) return;
 
     const reducedMotion = getPrefersReducedMotion();
     const offset = scroll?.offset ?? 0;
@@ -98,7 +98,7 @@ export function CinematicCameraController({
       smoothedTarget.copy(desiredTarget);
       hasSettled.current = true;
     } else {
-      const step = Math.min(delta ?? 0, MAX_FRAME_DELTA);
+      const step = Math.min(drawnFrameDelta(state.clock.elapsedTime, delta ?? 0), MAX_FRAME_DELTA);
       const { damp } = THREE.MathUtils;
 
       camera.position.x = damp(camera.position.x, desiredPosition.x, POSITION_DAMPING, step);

@@ -59,9 +59,10 @@ class MockResizeObserver {
 }
 window.ResizeObserver = MockResizeObserver as any;
 
-vi.mock("./lib/gateways/gpuTier", () => ({
-  useGpuTier: () => ({ tier: "high", particleCount: 2000, dpr: 1.5 }),
-}));
+vi.mock("./lib/gateways/gpuTier", () => {
+  const config = { tier: "high", softwareRenderer: false, particleCount: 2000, dpr: 1.5 };
+  return { useGpuTier: () => config, getGpuTier: () => config };
+});
 
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
@@ -103,7 +104,7 @@ const runFrames = (count = 1, delta = 0.016) => {
   for (let i = 0; i < count; i += 1) {
     clockTime += delta;
     const now = clockTime;
-    const state = { clock: { getElapsedTime: () => now } };
+    const state = { ...threeState, size: { ...threeState.size, height: track.clientHeight }, clock: { elapsedTime: now } };
     frameCallbacks.forEach((cb) => cb(state, delta));
   }
 };
@@ -563,7 +564,7 @@ describe("App scroll position across a track resize", () => {
     expect(html.style.transform).toBe(previous);
   });
 
-  it("does not rewrite the reconciled HTML transform on idle frames", async () => {
+  it("does not rewrite or measure an already reconciled idle HTML layer", async () => {
     renderApp();
     const html = screen.getByTestId("scroll-html");
     mockScroll.offset = 0;
@@ -572,10 +573,16 @@ describe("App scroll position across a track resize", () => {
     act(() => runFrames(3));
     const writes: MutationRecord[] = [];
     const observer = new MutationObserver(records => writes.push(...records));
+    const heightReads = vi.spyOn(mockScroll.el, 'scrollHeight', 'get');
+    const viewportReads = vi.spyOn(mockScroll.el, 'clientHeight', 'get');
     observer.observe(html, { attributes: true, attributeFilter: ["style"] });
     await act(async () => runFrames(30));
     observer.disconnect();
     expect(writes).toHaveLength(0);
+    expect(heightReads).not.toHaveBeenCalled();
+    expect(viewportReads).not.toHaveBeenCalled();
+    heightReads.mockRestore();
+    viewportReads.mockRestore();
   });
 });
 

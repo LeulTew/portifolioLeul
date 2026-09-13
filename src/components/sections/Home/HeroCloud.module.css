@@ -5,11 +5,6 @@
 }
 
 .cloud {
-  --cloud-core: #ffffff;
-  --cloud-body-shade: #f2f2f2;
-  --cloud-vapor: #ffffff;
-  --cloud-light: #ffffff;
-  --cloud-shade: #8c8c8c;
   --cloud-density: 1;
   --cloud-vapor-density: 0.55;
   --cloud-light-density: 0.5;
@@ -21,11 +16,6 @@
 
 .cloud[data-cloud-theme='light'],
 :global([data-theme='light']) .cloud:not([data-cloud-theme]) {
-  --cloud-core: #ffffff;
-  --cloud-body-shade: #f4f4f4;
-  --cloud-vapor: #ffffff;
-  --cloud-light: #ffffff;
-  --cloud-shade: #a0a0a0;
   --cloud-density: 1;
   --cloud-vapor-density: 0.8;
   --cloud-light-density: 0.65;
@@ -34,7 +24,7 @@
 .body,
 .vapor,
 .shear,
-.cloud svg {
+.layerImage {
   position: absolute;
   inset: 0;
   display: block;
@@ -47,9 +37,18 @@
   opacity: var(--cloud-density);
 }
 
-/* SVG user units: at 0 the mask covers the bank; at 1 even its wisps are clear. */
-.dissolveFront {
-  transform: translate3d(calc(var(--cloud-shut) * 1880px), 0, 0);
+.dissolving {
+  position: absolute;
+  inset: 0;
+  mask-image: var(--cloud-mask);
+  mask-size: 175% 137.5%;
+  mask-repeat: no-repeat;
+  /* Maps the original -660..1440 SVG mask onto the 1200x640 cloud. */
+  mask-position: calc(73.333333% - var(--cloud-shut) * 208.888889%) 50%;
+}
+
+.maskSource {
+  display: none;
 }
 
 .vapor,
@@ -79,10 +78,6 @@
   will-change: transform;
 }
 
-.cloud[data-motion='running'] .dissolveFront {
-  will-change: transform;
-}
-
 @keyframes vaporDrift {
   from {
     transform: translate3d(-3px, 2px, 0) scale3d(1, 1, 1);
@@ -108,8 +103,7 @@
   }
 
   .cloud[data-motion] .vapor,
-  .cloud[data-motion] .shear,
-  .cloud[data-motion] .dissolveFront {
+  .cloud[data-motion] .shear {
     animation: none;
     transform: none;
     will-change: auto;

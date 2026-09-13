@@ -81,9 +81,9 @@ describe('the mounted About chapter plays every movement in order', () => {
     await handover(true);
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
     expect(chapter.headReady()).toBe(false);
-    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('0.0000');
+    expect(screen.getByTestId('about-held-header').style.getPropertyValue('--head-travel')).toBe('0.0000');
     await chapter.run(480);
-    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('0.0000');
+    expect(screen.getByTestId('about-held-header').style.getPropertyValue('--head-travel')).toBe('0.0000');
     await chapter.run(HEAD_SETTLE.durationMs + 40);
     expect(chapter.headReady()).toBe(true);
     await chapter.run(BEAT_REST_MS - 20);

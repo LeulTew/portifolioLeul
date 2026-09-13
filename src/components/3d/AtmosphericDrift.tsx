@@ -54,7 +54,7 @@ export function AtmosphericDrift({
     // frame on the CPU. Skip it on any frame that will not be drawn -- which
     // includes every frame behind the opaque section this used to test for
     // directly, and every frame above the tier's redraw ceiling.
-    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
+    if (!isFrameDrawn(state.clock.elapsedTime)) return;
 
     // The camera orbits through this field, so motes approaching the lens are
     // scaled away rather than rendering as large bright shapes.
@@ -66,7 +66,7 @@ export function AtmosphericDrift({
       mesh,
       seeds,
       count,
-      ambientTime(state.clock.getElapsedTime()),
+      ambientTime(state.clock.elapsedTime),
       bounds,
       state.camera?.position
     );

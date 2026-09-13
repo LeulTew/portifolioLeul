@@ -26,9 +26,11 @@ import { getScrollProgress } from '@/lib/scroll/scrollProgress';
  */
 
 /** Elapsed time of the frame the current decision belongs to. */
+// Pass R3F's clock.elapsedTime snapshot: getElapsedTime() advances that clock.
 let decidedAt = Number.NaN;
 let decision = true;
 let lastDrawnAt = Number.NEGATIVE_INFINITY;
+let elapsedBetweenDraws = Number.NaN;
 
 /** Minimum seconds between draws. Zero means every frame. */
 let minInterval = 0;
@@ -90,9 +92,18 @@ export function isFrameDrawn(time: number): boolean {
     return decision;
   }
 
+  elapsedBetweenDraws = time - lastDrawnAt;
   lastDrawnAt = time;
   decision = true;
   return decision;
+}
+
+/** Damping and water advance by time between rendered frames, not one RAF delta. */
+export function drawnFrameDelta(time: number, frameDelta: number): number {
+  if (!isFrameDrawn(time)) return 0;
+  return Number.isFinite(time) && Number.isFinite(elapsedBetweenDraws)
+    ? Math.max(0, elapsedBetweenDraws)
+    : Math.max(0, Number.isFinite(frameDelta) ? frameDelta : 0);
 }
 
 /** Test-only: forget the budget and any frame already decided. */
@@ -100,5 +111,6 @@ export function resetFrameGate(): void {
   decidedAt = Number.NaN;
   decision = true;
   lastDrawnAt = Number.NEGATIVE_INFINITY;
+  elapsedBetweenDraws = Number.NaN;
   minInterval = 0;
 }

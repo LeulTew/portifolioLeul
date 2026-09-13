@@ -22,7 +22,7 @@ vi.mock('@/lib/atmosphere/writeDriftInstances', () => ({
 }));
 
 const frame = (elapsed = 1) =>
-  frameCallback?.({ clock: { getElapsedTime: () => elapsed } });
+  frameCallback?.({ clock: { elapsedTime: elapsed } });
 
 describe('AtmosphericDrift', () => {
   beforeEach(() => {

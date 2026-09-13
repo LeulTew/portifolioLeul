@@ -250,7 +250,7 @@ describe('About introduces one thing at a time', () => {
     await seqTo('0.00');
 
     expect(headReady()).toBe(false);
-    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('0.0000');
+    expect(header().style.getPropertyValue('--head-travel')).toBe('0.0000');
     expect(header()).toBeInTheDocument();
     expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
     expect(statements().style.getPropertyValue('--two-in')).toBe('0.000');
@@ -261,7 +261,7 @@ describe('About introduces one thing at a time', () => {
     await seqTo('0.10');
 
     expect(headReady()).toBe(true);
-    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('1.0000');
+    expect(header().style.getPropertyValue('--head-travel')).toBe('1.0000');
     expect(statements().style.getPropertyValue('--one-in')).toBe('0.000');
   });
 

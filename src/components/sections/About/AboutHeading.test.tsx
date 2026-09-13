@@ -22,6 +22,8 @@ function mount() {
   const view = render(<>
     <section id="home" data-hero-handover-settled="true" />
     <section id="about" />
+    <div data-heading-mirror="" aria-hidden="true" />
+    <button data-testid="scroll-cue" />
     <div data-active="true" data-testid="heading-stage">
       <AboutHeading>
         <div data-heading-title=""><h2>About Me</h2></div>
@@ -30,7 +32,7 @@ function mount() {
     </div>
   </>);
   const about = document.getElementById('about')!;
-  const root = document.documentElement;
+  const motion = view.getByTestId('about-held-header');
   const stage = view.getByTestId('heading-stage');
   const position = async (seq: number) => {
     stage.style.setProperty('--seq', String(seq));
@@ -39,8 +41,8 @@ function mount() {
   const run = async (duration: number) => {
     for (let i = 0; i < duration; i += 20) await clock.frame(20);
   };
-  const travel = () => Number(root.style.getPropertyValue('--head-travel'));
-  return { ...view, clock, about, root, position, run, travel };
+  const travel = () => Number(motion.style.getPropertyValue('--head-travel'));
+  return { ...view, clock, about, motion, position, run, travel };
 }
 
 describe('centered About arrival', () => {
@@ -54,6 +56,10 @@ describe('centered About arrival', () => {
     await scene.run(420);
     expect(scene.travel()).toBeGreaterThan(0);
     expect(scene.travel()).toBeLessThan(1);
+    expect(document.documentElement.style.getPropertyValue('--head-travel')).toBe('');
+    const mirror = document.querySelector<HTMLElement>('[data-heading-mirror]')!;
+    expect(mirror.style.getPropertyValue('--head-travel')).toBe(scene.motion.style.getPropertyValue('--head-travel'));
+    expect(scene.getByTestId('scroll-cue').style.getPropertyValue('--head-travel')).toBe(scene.motion.style.getPropertyValue('--head-travel'));
     await scene.run(800);
     expect(scene.travel()).toBe(1);
     expect(scene.about).toHaveAttribute('data-head-settled', 'true');
@@ -82,9 +88,9 @@ describe('centered About arrival', () => {
     await scene.run(1120);
     expect(scene.travel()).toBe(0);
     expect(scene.about).toHaveAttribute('data-head-pending', 'true');
-    expect(Number(scene.root.style.getPropertyValue('--heading-presence'))).toBeLessThan(1);
+    expect(Number(scene.motion.style.getPropertyValue('--heading-presence'))).toBeLessThan(1);
     await scene.run(300);
-    expect(scene.root.style.getPropertyValue('--heading-presence')).toBe('0.0000');
+    expect(scene.motion.style.getPropertyValue('--heading-presence')).toBe('0.0000');
     expect(scene.about).not.toHaveAttribute('data-head-pending');
     expect(scene.clock.pending).toBe(0);
   });
@@ -106,6 +112,6 @@ describe('centered About arrival', () => {
     scene.unmount();
     expect(scene.clock.pending).toBe(0);
     expect(scene.about).not.toHaveAttribute('data-head-pending');
-    expect(scene.root.style.getPropertyValue('--head-travel')).toBe('');
+    expect(scene.motion.style.getPropertyValue('--head-travel')).toBe('');
   });
 });

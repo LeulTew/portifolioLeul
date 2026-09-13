@@ -7,6 +7,7 @@ import { acquireProbeContext, releaseContext } from '../render/webglContext';
 
 export interface GpuTierConfig {
   tier: 'low' | 'medium' | 'high';
+  softwareRenderer: boolean;
   dpr: [number, number];
   particleCount: number;
   enablePostProcessing: boolean;
@@ -30,6 +31,7 @@ export interface GpuTierConfig {
    * a reflection that was already being distorted by the normal map.
    */
   waterReflectionSize: number;
+  waterReflectionFps: number;
   /**
    * Whether the device can afford backdrop-filter blurs.
    *
@@ -62,6 +64,7 @@ export function detectGpuTier(): GpuTierConfig {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return {
       tier: 'medium',
+      softwareRenderer: false,
       dpr: [1, 1.5],
       particleCount: 800,
       enablePostProcessing: false,
@@ -69,6 +72,7 @@ export function detectGpuTier(): GpuTierConfig {
       shadowMapSize: 1024,
       maxFps: 0,
       waterReflectionSize: 512,
+      waterReflectionFps: 0,
       enableBackdropBlur: true,
       videoClips: 2,
       oceanSegments: 128,
@@ -91,12 +95,14 @@ export function detectGpuTier(): GpuTierConfig {
    * recently used context, which on this page is the backdrop itself.
    */
   let isLowPowerGpu = false;
+  let isSoftwareGpu = false;
   const gl = acquireProbeContext();
   try {
     if (gl) {
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
         const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+        isSoftwareGpu = /swiftshader|llvmpipe|softpipe|lavapipe|software|basic render/i.test(renderer);
         if (/intel|mali|adreno(?!.*(660|730|740))|powervr/i.test(renderer)) {
           isLowPowerGpu = true;
         }
@@ -110,10 +116,12 @@ export function detectGpuTier(): GpuTierConfig {
     releaseContext(gl);
   }
 
-  if (isMobileOrTablet || memory < 4 || cores <= 4 || isLowPowerGpu) {
+  if (isMobileOrTablet || memory < 4 || cores <= 4 || isLowPowerGpu || isSoftwareGpu) {
     return {
       tier: 'low',
-      dpr: [1, 1],
+      softwareRenderer: isSoftwareGpu,
+      // Keep software WebGL on, but avoid a retina-sized framebuffer on the CPU.
+      dpr: isSoftwareGpu ? [0.4, 0.4] : [1, 1],
       particleCount: 350,
       enablePostProcessing: false,
       enableComplexShaders: false,
@@ -122,7 +130,8 @@ export function detectGpuTier(): GpuTierConfig {
       // time rather than frame count, so it sits in exactly the same place on
       // the frames that are drawn.
       maxFps: 30,
-      waterReflectionSize: 256,
+      waterReflectionSize: isSoftwareGpu ? 64 : 256,
+      waterReflectionFps: isSoftwareGpu ? 10 : 0,
       enableBackdropBlur: false,
       videoClips: 1,
       oceanSegments: 96,
@@ -133,6 +142,7 @@ export function detectGpuTier(): GpuTierConfig {
   if (memory >= 8 && cores >= 8 && !isLowPowerGpu) {
     return {
       tier: 'high',
+      softwareRenderer: false,
       dpr: [1, 2],
       particleCount: 1500,
       enablePostProcessing: true,
@@ -140,6 +150,7 @@ export function detectGpuTier(): GpuTierConfig {
       shadowMapSize: 2048,
       maxFps: 0,
       waterReflectionSize: 512,
+      waterReflectionFps: 0,
       enableBackdropBlur: true,
       videoClips: 2,
       oceanSegments: 160,
@@ -149,6 +160,7 @@ export function detectGpuTier(): GpuTierConfig {
 
   return {
     tier: 'medium',
+    softwareRenderer: false,
     dpr: [1, 1.5],
     particleCount: 800,
     enablePostProcessing: false,
@@ -156,6 +168,7 @@ export function detectGpuTier(): GpuTierConfig {
     shadowMapSize: 1024,
     maxFps: 0,
     waterReflectionSize: 512,
+    waterReflectionFps: 0,
     enableBackdropBlur: true,
     videoClips: 2,
     oceanSegments: 128,

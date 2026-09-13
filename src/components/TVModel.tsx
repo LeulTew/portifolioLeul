@@ -1,6 +1,7 @@
 import { useGLTF, useVideoTexture } from '@react-three/drei';
 import { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
+import { resolveSceneModel } from '@/lib/assets/criticalAssets';
 
 /** How long each clip holds the screen before the set changes. */
 const CLIP_DURATION_MS = 8000;
@@ -11,7 +12,7 @@ type TVModelProps = JSX.IntrinsicElements['group'] & {
 };
 
 export function TVModel({ clips = 2, ...props }: TVModelProps) {
-  const { scene } = useGLTF('/models/crt-lite.glb', false);
+  const { scene } = useGLTF(resolveSceneModel('/models/crt-lite.glb'), false);
   const [videoIndex, setVideoIndex] = useState(0);
 
   /*

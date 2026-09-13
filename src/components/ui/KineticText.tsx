@@ -191,7 +191,11 @@ export function KineticRotator({
           initial={{ y: '100%', opacity: 0, filter: 'blur(4px)' }}
           animate={{ y: '0%', opacity: 1, filter: 'blur(0px)' }}
           exit={{ y: '-100%', opacity: 0, filter: 'blur(4px)' }}
-          transition={Springs.smooth}
+          transition={{
+            ...Springs.smooth,
+            // A spring can overshoot zero into an invalid negative blur radius.
+            filter: { type: 'tween', duration: 0.35, ease: Easings.easeOutCubic },
+          }}
           className="inline-block font-mono font-bold text-emerald-400"
         >
           {words[index]}

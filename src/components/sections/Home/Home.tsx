@@ -10,6 +10,7 @@ import styles from './Home.module.css';
 import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { createTranslatedPositionReader } from '@/lib/scroll/translatedPosition';
 import {
   HERO_SCREENS,
   CUE_START_GAP,
@@ -60,6 +61,7 @@ import { cloudBounds, measureHeroContent } from './heroContentBounds';
 const CUE_WIDTH_PX = 64;
 
 const findAbout = cachedElement(() => document.getElementById('about'));
+const findCue = cachedElement(() => document.querySelector<HTMLElement>('[data-testid="scroll-cue"]'));
 const CUE_OWNERS = ['data-head-pending', 'data-head-travelling', 'data-head-settled',
   'data-statements-present', 'data-bg-active', 'data-bg-settled', 'data-title-active',
   'data-title-settled', 'data-reverse-transition-active'];
@@ -139,6 +141,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
   const innerActiveRef = useRef(false);
   const frameRef = useRef(0);
   const applyRef = useRef<(() => void) | null>(null);
+  const positionReaderRef = useRef<ReturnType<typeof createTranslatedPositionReader> | null>(null);
   const lastFrameRef = useRef(0);
   const settledRef = useRef(false);
   const [settled, setSettled] = useState(false);
@@ -166,6 +169,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
     if (typeof window === 'undefined') return;
     let observedAbout: HTMLElement | null = null;
     let cueWasHeld = false;
+    const styledCues = new Set<HTMLElement>();
     const chapterObserver = new MutationObserver(() => apply());
     let observedScrollLayer: HTMLElement | null = null;
     const findScrollLayer = cachedElement(() => {
@@ -174,6 +178,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       }
       return null;
     });
+    const positionReader = sectionElement ? createTranslatedPositionReader(sectionElement, findScrollLayer) : null;
+    positionReaderRef.current = positionReader;
     const scrollLayerObserver = new MutationObserver(() => {
       if (innerPhaseRef.current.t < 1 || findAbout()?.dataset.statementsPresent !== 'true') apply();
     });
@@ -235,7 +241,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
       const holdLength = held ? window.innerHeight * (HERO_SCREENS - 1) : 0;
 
-      const top = section.getBoundingClientRect().top;
+      const top = positionReader?.read() ?? section.getBoundingClientRect().top;
       const progress = holdProgress(top, holdLength);
       const about = findAbout();
       const scrollLayer = findScrollLayer();
@@ -271,7 +277,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
       // The body-level portal needs viewport coordinates, including in reduced
       // motion. Its SVG progress alone cannot override a zero CSS opacity.
-      const root = document.documentElement;
+      const cue = findCue();
       const heldTop = heldTopRef.current;
       const rail = railRef.current;
       const scrolled = Math.max(-top, 0);
@@ -279,18 +285,21 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       const restingCue = chapterHoldsCue || returningCue || (heroStillLeaving && getHeroCue() >= 1);
       const y = restingCue ? rail.endY :
         rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
-      writeStyleProperty(root, '--cue-y', `${y.toFixed(3)}px`);
       const arrowX = returningCue ? rail.endX :
         rail.startX + (rail.endX - rail.startX) * easeInOutCubic(cuePhaseRef.current.t);
-      writeStyleProperty(root, '--cue-x', `${(!held ? rail.endX : arrowX).toFixed(3)}px`);
 
       const presence = !held || restingCue ? 1 : cuePresence(top, heldTop, window.innerHeight);
-      writeStyleProperty(root, '--cue-presence', presence.toFixed(3));
-      writeStyleProperty(root, '--cue-drawn', getHeroCue().toFixed(3));
       const muted = about?.getAttribute('data-statements-present') === 'true';
-      writeStyleProperty(root, '--cue-chapter-opacity', muted ? '0' : '1');
-      writeStyleProperty(root, '--cue-animation-state', muted ? 'paused' : 'running');
-      writeStyleProperty(root, '--cue-heading-progress', held ? 'var(--head-travel, 0)' : '0');
+      if (cue) {
+        styledCues.add(cue);
+        writeStyleProperty(cue, '--cue-y', `${y.toFixed(3)}px`);
+        writeStyleProperty(cue, '--cue-x', `${(!held ? rail.endX : arrowX).toFixed(3)}px`);
+        writeStyleProperty(cue, '--cue-presence', presence.toFixed(3));
+        writeStyleProperty(cue, '--cue-drawn', getHeroCue().toFixed(3));
+        writeStyleProperty(cue, '--cue-chapter-opacity', muted ? '0' : '1');
+        writeStyleProperty(cue, '--cue-animation-state', muted ? 'paused' : 'running');
+        writeStyleProperty(cue, '--cue-heading-progress', held ? 'var(--head-travel, 0)' : '0');
+      }
 
       if (!content) return;
 
@@ -455,11 +464,14 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
     return () => {
       unsubscribe();
       applyRef.current = null;
+      positionReaderRef.current = null;
       chapterObserver.disconnect();
       scrollLayerObserver.disconnect();
-      for (const property of ['--cue-chapter-opacity', '--cue-animation-state',
-        '--cue-heading-progress']) {
-        document.documentElement.style.removeProperty(property);
+      for (const cue of styledCues) {
+        for (const property of ['--cue-x', '--cue-y', '--cue-drawn', '--cue-height',
+          '--cue-presence', '--cue-chapter-opacity', '--cue-animation-state', '--cue-heading-progress']) {
+          cue.style.removeProperty(property);
+        }
       }
       window.removeEventListener('resize', apply);
       if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
@@ -497,6 +509,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
      * page. Better to have no rail for a few frames than a wrong one for good.
      */
     const measure = (): boolean => {
+      positionReaderRef.current?.refresh();
       const about = document.getElementById('about');
       const plate = section.querySelector<HTMLElement>('[data-cue-layer="backdrop"]');
       const pinned = pinRef.current;
@@ -533,8 +546,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
        */
       const headingStyle = window.getComputedStyle(heading);
 
-      const rootStyle = document.documentElement.style;
-      const centerY = Number.parseFloat(rootStyle.getPropertyValue('--heading-origin-y'));
+      const headingMotion = heading.style;
+      const centerY = Number.parseFloat(headingMotion.getPropertyValue('--heading-origin-y'));
       const headingTop = held && Number.isFinite(centerY) ? centerY : Number.parseFloat(headingStyle.top);
       if (!Number.isFinite(headingTop) || headingTop <= 0) return false;
 
@@ -571,7 +584,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         title.textContent ?? '',
         fontShorthand(window.getComputedStyle(title))
       );
-      const centerX = Number.parseFloat(rootStyle.getPropertyValue('--heading-origin-x'));
+      const centerX = Number.parseFloat(headingMotion.getPropertyValue('--heading-origin-x'));
       const markLeft = held && Number.isFinite(centerX) ? centerX : headingLeft + inkOffset;
 
       /*
@@ -624,8 +637,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       writeStyleProperty(section, '--cue-height', `${height.toFixed(3)}px`);
 
       // The portaled mark reads its geometry from the root, for the same reason.
-      const root = document.documentElement;
-      writeStyleProperty(root, '--cue-height', `${height.toFixed(3)}px`);
+      const cue = findCue();
+      if (cue) writeStyleProperty(cue, '--cue-height', `${height.toFixed(3)}px`);
       setCueRun(cueRunForHeight(height, CUE_WIDTH_PX));
       applyRef.current?.();
       return true;

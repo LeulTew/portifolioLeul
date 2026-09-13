@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import * as THREE from 'three';
 import { MeModel } from './MeModel';
+import { useGLTF } from '@react-three/drei';
 
 // Mock @react-three/drei
 vi.mock('@react-three/drei', () => {
@@ -38,7 +39,7 @@ vi.mock('@react-three/drei', () => {
 // Mock @react-three/fiber
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn((callback) => {
-    callback({ clock: { getElapsedTime: () => 1.0 } }, 0.016);
+    callback({ clock: { elapsedTime: 1.0 } }, 0.016);
   }),
 }));
 
@@ -46,10 +47,23 @@ describe('MeModel 3D Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it('renders MeModel and sets up animations and shadows', () => {
     const { unmount } = render(<MeModel position={[0, 0, 0]} />);
     expect(unmount).toBeDefined();
     unmount();
+  });
+
+  it('does not dispose the cached model when an instance unmounts', () => {
+    const view = render(<MeModel />);
+    const loaded: { scene: THREE.Group } = vi.mocked(useGLTF).mock.results[0].value;
+    const mesh = loaded.scene.children.find(child => child instanceof THREE.Mesh);
+    if (!(mesh instanceof THREE.Mesh) || Array.isArray(mesh.material)) throw new Error('Expected the cached mesh fixture');
+    const geometry = vi.spyOn(mesh.geometry, 'dispose');
+    const material = vi.spyOn(mesh.material, 'dispose');
+    view.unmount();
+    expect(geometry).not.toHaveBeenCalled();
+    expect(material).not.toHaveBeenCalled();
   });
 });

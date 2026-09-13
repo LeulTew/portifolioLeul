@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getGpuTier } from '@/lib/gateways/gpuTier';
 
 /**
  * The assets the first view cannot open without, fetched up front with real
@@ -67,6 +68,26 @@ export const CRITICAL_ASSETS: readonly CriticalAsset[] = [
 export const CRITICAL_MODELS: readonly string[] = CRITICAL_ASSETS.filter(
   (asset) => asset.kind === 'model'
 ).map((asset) => asset.url);
+
+const SOFTWARE_MODELS: Readonly<Record<string, CriticalAsset>> = {
+  '/models/terrain-opt.glb': { url: '/models/terrain-software.glb', bytes: 639_252, kind: 'model' },
+  '/models/me-animated-lite.glb': { url: '/models/me-animated-software.glb', bytes: 336_260, kind: 'model' },
+  '/models/crt-lite.glb': { url: '/models/crt-software.glb', bytes: 142_812, kind: 'model' },
+};
+const SOFTWARE_ASSETS = CRITICAL_ASSETS.map(asset => SOFTWARE_MODELS[asset.url] ?? asset);
+const SOFTWARE_CRITICAL_MODELS = SOFTWARE_ASSETS.filter(asset => asset.kind === 'model').map(asset => asset.url);
+
+export function resolveSceneModel(url: string, software = getGpuTier().softwareRenderer): string {
+  return software ? SOFTWARE_MODELS[url]?.url ?? url : url;
+}
+
+export function getCriticalAssets(software = getGpuTier().softwareRenderer): readonly CriticalAsset[] {
+  return software ? SOFTWARE_ASSETS : CRITICAL_ASSETS;
+}
+
+export function getCriticalModels(software = getGpuTier().softwareRenderer): readonly string[] {
+  return software ? SOFTWARE_CRITICAL_MODELS : CRITICAL_MODELS;
+}
 
 /**
  * The textures the scene loads through three, so a readiness probe can wait on
@@ -169,6 +190,7 @@ export function loadCriticalAssets(
   if (assets || fetchImpl) return runLoad(onProgress, options);
 
   if (!shared) {
+    const manifest = getCriticalAssets();
     /*
      * Built before the load starts, and deliberately so: runLoad publishes its
      * opening state synchronously, before it has returned anything to assign.
@@ -177,15 +199,15 @@ export function loadCriticalAssets(
      */
     const run: SharedRun = {
       subscribers: new Set(),
-      latest: emptyProgress(CRITICAL_ASSETS),
-      promise: Promise.resolve(emptyProgress(CRITICAL_ASSETS)),
+      latest: emptyProgress(manifest),
+      promise: Promise.resolve(emptyProgress(manifest)),
     };
     shared = run;
 
     run.promise = runLoad((progress) => {
       run.latest = progress;
       for (const subscriber of run.subscribers) subscriber(progress);
-    });
+    }, { assets: manifest });
   }
 
   const active = shared;
@@ -210,7 +232,7 @@ export function loadCriticalAssets(
  */
 async function runLoad(
   onProgress: (progress: AssetProgress) => void,
-  { assets = CRITICAL_ASSETS, signal, fetchImpl }: LoadCriticalAssetsOptions = {}
+  { assets = getCriticalAssets(), signal, fetchImpl }: LoadCriticalAssetsOptions = {}
 ): Promise<AssetProgress> {
   const request = fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined);
 
@@ -348,7 +370,7 @@ async function runLoad(
  * megabytes retained for nothing -- on exactly the machines this work is for.
  */
 export function releaseCriticalAssets(
-  assets: readonly CriticalAsset[] = CRITICAL_ASSETS
+  assets: readonly CriticalAsset[] = getCriticalAssets()
 ): void {
   for (const asset of assets) {
     if (asset.kind === 'model') THREE.Cache.remove(asset.url);

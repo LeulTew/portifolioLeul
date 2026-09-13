@@ -3,11 +3,13 @@ import { render } from '@testing-library/react';
 import * as THREE from 'three';
 import { Ocean } from './Ocean';
 
+const created = vi.hoisted(() => ({ water: [] as THREE.Mesh[] }));
+
 // Mock Water constructor class
 vi.mock('three/examples/jsm/objects/Water.js', () => {
   class MockWater extends THREE.Mesh {
-    constructor() {
-      super();
+    constructor(geometry: THREE.BufferGeometry) {
+      super(geometry);
       this.material = new THREE.ShaderMaterial({
         uniforms: {
           time: { value: 0 },
@@ -18,6 +20,7 @@ vi.mock('three/examples/jsm/objects/Water.js', () => {
           size: { value: 1.45 },
         },
       });
+      created.water.push(this);
     }
   }
 
@@ -29,7 +32,7 @@ vi.mock('three/examples/jsm/objects/Water.js', () => {
 // Mock @react-three/fiber
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn((callback) => {
-    callback({ clock: { getElapsedTime: () => 0.016 } }, 0.016);
+    callback({ clock: { elapsedTime: 0.016 } }, 0.016);
   }),
   useLoader: vi.fn(() => new THREE.Texture()),
 }));
@@ -37,6 +40,7 @@ vi.mock('@react-three/fiber', () => ({
 describe('Ocean 3D Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    created.water.length = 0;
   });
 
   it('renders dark theme ocean without crashing', () => {
@@ -49,5 +53,16 @@ describe('Ocean 3D Component', () => {
     const { unmount } = render(<Ocean theme="light" />);
     expect(unmount).toBeDefined();
     unmount();
+  });
+
+  it('keeps the shared surface geometry alive across material/theme changes', () => {
+    const view = render(<Ocean theme="dark" />);
+    const geometry = created.water[0].geometry;
+    const dispose = vi.spyOn(geometry, 'dispose');
+    view.rerender(<Ocean theme="light" />);
+    expect(created.water.at(-1)!.geometry).toBe(geometry);
+    expect(dispose).not.toHaveBeenCalled();
+    view.unmount();
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });

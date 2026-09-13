@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { isFrameDrawn, isWorldOccluded, resetFrameGate, setFrameBudget } from './frameGate';
+import { drawnFrameDelta, isFrameDrawn, isWorldOccluded, resetFrameGate, setFrameBudget } from './frameGate';
 import { setWorldOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
 
@@ -52,6 +52,15 @@ describe('frameGate', () => {
   });
 
   describe('redraw ceiling', () => {
+    it('shares the elapsed time across skipped frames without slowing motion', () => {
+      setFrameBudget(1 / 30);
+      expect(drawnFrameDelta(0, 1 / 180)).toBe(1 / 180);
+      expect(drawnFrameDelta(0.01, 1 / 180)).toBe(0);
+      expect(drawnFrameDelta(0.034, 1 / 180)).toBeCloseTo(0.034);
+      expect(drawnFrameDelta(0.034, 0.5)).toBeCloseTo(0.034);
+      expect(drawnFrameDelta(0.069, 1 / 180)).toBeCloseTo(0.035);
+    });
+
     it('holds a 30fps budget to roughly every other frame at 60', () => {
       setFrameBudget(1 / 30);
 

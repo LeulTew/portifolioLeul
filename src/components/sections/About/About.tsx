@@ -123,7 +123,7 @@ function TransitionMaskedOverlay() {
         * their opacity from the same code that writes the real heading, so
         * whatever the real one says, this says.
         */}
-      <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`}>
+      <div className={`${styles.heldHeader} ${styles.heldHeaderWhite}`} data-heading-mirror="">
         <div className={styles.titleBox} data-heading-title="">
           <div
             className={`${styles.title} ${styles.titleWhite}`}

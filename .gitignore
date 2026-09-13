@@ -43,7 +43,10 @@ coverage/
 # Local worktrees & scratch
 portifolioXLeul/
 .agent/
-scripts/
+scripts/*
+!scripts/optimize-models.mjs
+!scripts/bake-hero-cloud.mjs
+.impeccable/hook.cache.json
 
 
 # Emitted by `tsc --build` on the composite tsconfig projects.

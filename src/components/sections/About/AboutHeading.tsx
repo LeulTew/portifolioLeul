@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { advancePhase, easeInOutCubic, isPhaseAtTarget, phaseFrameDelta, phaseGate,
@@ -24,7 +24,13 @@ export function AboutHeading({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const heading = ref.current;
     if (!heading) return;
-    const root = document.documentElement;
+    const findMirror = cachedElement(() => document.querySelector<HTMLElement>('[data-heading-mirror]'));
+    const findCue = cachedElement(() => document.querySelector<HTMLElement>('[data-testid="scroll-cue"]'));
+    const painted = new Set<HTMLElement>();
+    const paint = (element: HTMLElement, property: string, value: string) => {
+      painted.add(element);
+      writeStyleProperty(element, property, value);
+    };
     const home = document.getElementById('home');
     const readAbout = createAboutReader();
     const readSeq = createSeqReader(() => ref.current);
@@ -45,8 +51,17 @@ export function AboutHeading({ children }: { children: ReactNode }) {
       const about = readAbout();
       if (!about) return;
       const leaving = moved && !target && phase.t <= 0 && presence.t > 0;
-      writeStyleProperty(root, '--head-travel', easeInOutCubic(phase.t).toFixed(4));
-      writeStyleProperty(root, '--heading-presence', presence.t.toFixed(4));
+      const travel = easeInOutCubic(phase.t).toFixed(4);
+      const opacity = presence.t.toFixed(4);
+      paint(heading, '--head-travel', travel);
+      paint(heading, '--heading-presence', opacity);
+      const mirror = findMirror();
+      if (mirror) {
+        paint(mirror, '--head-travel', travel);
+        paint(mirror, '--heading-presence', opacity);
+      }
+      const cue = findCue();
+      if (cue) paint(cue, '--head-travel', travel);
       writeAttribute(about, 'data-head-settled', phase.t >= 1 ? 'true' : null);
       writeAttribute(about, 'data-head-pending', (target && phase.t < 1) || leaving ? 'true' : null);
       writeAttribute(about, 'data-head-travelling', phase.t > 0 && phase.t < 1 ? 'true' : null);
@@ -131,10 +146,14 @@ export function AboutHeading({ children }: { children: ReactNode }) {
         '--heading-rest-y': `${top}px`,
       };
       let changed = false;
-      for (const [property, value] of Object.entries(values)) {
-        if (root.style.getPropertyValue(property) !== value) {
-          writeStyleProperty(root, property, value);
-          changed = true;
+      const entries = Object.entries(values);
+      for (const element of [heading, findMirror(), findCue()]) {
+        if (!element) continue;
+        for (const [property, value] of entries) {
+          if (element.style.getPropertyValue(property) !== value) {
+            paint(element, property, value);
+            changed = true;
+          }
         }
       }
       if (changed) window.dispatchEvent(new Event('about-heading-layout'));
@@ -168,7 +187,9 @@ export function AboutHeading({ children }: { children: ReactNode }) {
       window.removeEventListener('resize', resize);
       motionQuery.removeEventListener('change', resize);
       if (frame) cancelAnimationFrame(frame);
-      for (const property of properties) root.style.removeProperty(property);
+      for (const element of painted) {
+        for (const property of properties) element.style.removeProperty(property);
+      }
       if (about) {
         for (const name of ['data-head-settled', 'data-head-pending', 'data-head-travelling']) {
           writeAttribute(about, name, null);

@@ -36,7 +36,7 @@ export function RenderGovernor({ maxFps = 0 }: RenderGovernorProps = {}) {
   const camera = useThree((state) => state.camera);
 
   useFrame((state) => {
-    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
+    if (!isFrameDrawn(state.clock.elapsedTime)) return;
     gl.render(scene, camera);
   }, RENDER_PRIORITY);
 

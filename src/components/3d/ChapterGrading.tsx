@@ -11,7 +11,7 @@ import {
 } from '@/lib/atmosphere/chapterGrade';
 import { getCameraFreezes } from '@/lib/camera/cameraHold';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import { isFrameDrawn } from '@/lib/render/frameGate';
+import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
 
 /**
  * Cross-fades lighting and fog depth along the camera arc.
@@ -50,7 +50,7 @@ export function ChapterGrading({
     // Damping is exponential in elapsed time, so a grade advanced only on
     // drawn frames lands in exactly the same place as one advanced on all of
     // them -- it simply is not computed for images that are never shown.
-    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
+    if (!isFrameDrawn(state.clock.elapsedTime)) return;
 
     sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraFreezes()), target);
 
@@ -58,7 +58,7 @@ export function ChapterGrading({
     // is the depth and colour of the shot, not the transition.
     const step = getPrefersReducedMotion()
       ? 1
-      : 1 - Math.exp(-GRADE_DAMPING * Math.min(delta ?? 0, MAX_FRAME_DELTA));
+      : 1 - Math.exp(-GRADE_DAMPING * Math.min(drawnFrameDelta(state.clock.elapsedTime, delta ?? 0), MAX_FRAME_DELTA));
 
     const ambient = ambientRef.current;
     if (ambient) {

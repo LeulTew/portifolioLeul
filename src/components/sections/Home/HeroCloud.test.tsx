@@ -1,12 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Profiler, StrictMode } from 'react';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { parse } from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HeroCloud } from './HeroCloud';
 
 const cloudCss = readFileSync(join(__dirname, 'HeroCloud.module.css'), 'utf8');
+const textureDirectory = join(__dirname, '../../../../public/textures/hero-cloud');
+const source = (layer: string) => document.importNode(new DOMParser().parseFromString(
+  readFileSync(join(textureDirectory, `${layer}.svg`), 'utf8'), 'image/svg+xml',
+).documentElement, true);
 
 function declarationsFor(selector: string, reduced = false) {
   const declarations = new Map<string, string>();
@@ -119,8 +123,8 @@ describe('HeroCloud', () => {
     expect(root.style.getPropertyValue('--shut')).toBe('');
     expect(root.textContent).toBe('');
     expect(root.querySelector('canvas, animate, animateTransform, button, a')).toBeNull();
-    root.querySelectorAll('svg').forEach((svg) => {
-      expect(svg).toHaveAttribute('focusable', 'false');
+    root.querySelectorAll('img').forEach((image) => {
+      expect(image).toHaveAttribute('alt', '');
     });
   });
 
@@ -149,16 +153,10 @@ describe('HeroCloud', () => {
       });
     });
 
-    it('uses true white pigment and full body opacity in both themes, never terrain-tinted mist', () => {
+    it('keeps the baked pigment neutral and retains theme-specific ambient density', () => {
       const dark = declarationsFor('.cloud');
       const light = declarationsFor(".cloud[data-cloud-theme='light']");
       [dark, light].forEach((theme) => {
-        ['--cloud-core', '--cloud-vapor', '--cloud-light'].forEach((token) => {
-          expect(theme.get(token)).toBe('#ffffff');
-        });
-        const shade = theme.get('--cloud-shade')!;
-        expect(shade).toMatch(/^#[0-9a-f]{6}$/i);
-        expect(new Set(shade.slice(1).match(/../g)).size).toBe(1);
         expect(Number(theme.get('--cloud-density'))).toBe(1);
       });
       expect(declarationsFor('.body').get('opacity')).toBe('var(--cloud-density)');
@@ -169,8 +167,7 @@ describe('HeroCloud', () => {
     });
 
     it('keeps white puff cores translucent and feathers their edges to transparency', () => {
-      const { container } = render(<HeroCloud />);
-      const root = cloud(container);
+      const root = source('body');
       const gradient = root.querySelector('radialGradient[id$="-puff"]')!;
       expect(gradient).not.toBeNull();
       const stops = [...gradient.querySelectorAll('stop')];
@@ -179,10 +176,9 @@ describe('HeroCloud', () => {
       expect(Number(stops[1].getAttribute('offset'))).toBeGreaterThanOrEqual(0.5);
       expect(stops.at(-1)).toHaveAttribute('stop-opacity', '0');
       stops.forEach((stop) => {
-        expect(stop).toHaveAttribute('stop-color', 'var(--cloud-core)');
+        expect(stop).toHaveAttribute('stop-color', '#ffffff');
       });
       const puffs = root.querySelector(`g[fill="url(#${gradient.id})"]`)!;
-      expect(puffs.closest('[mask]')).not.toBeNull();
       expect(puffs.querySelectorAll('path')).toHaveLength(3);
       puffs.querySelectorAll('path').forEach((puff) => {
         expect(puff.getAttribute('d')!.match(/C /g)!.length).toBeGreaterThanOrEqual(6);
@@ -195,23 +191,18 @@ describe('HeroCloud', () => {
     });
 
     it('varies the body density instead of painting a flat opaque patch', () => {
-      const { container } = render(<HeroCloud />);
-      const root = cloud(container);
+      const root = source('body');
       const gradient = root.querySelector('radialGradient[id$="-density"]')!;
       expect(gradient).not.toBeNull();
       const stops = [...gradient.querySelectorAll('stop')];
       expect(stops.length).toBeGreaterThanOrEqual(3);
       expect(stops.map(stop => Number(stop.getAttribute('stop-opacity')))).toEqual([0.78, 0.64, 0]);
-      [declarationsFor('.cloud'), declarationsFor(".cloud[data-cloud-theme='light']")]
-        .forEach((theme) => {
-          stops.forEach((stop) => {
-            const token = stop.getAttribute('stop-color')!.match(/^var\((--[^)]+)\)$/)![1];
-            const channels = theme.get(token)!.slice(1).match(/../g)!
-              .map((channel) => parseInt(channel, 16));
+      stops.forEach((stop) => {
+            const channels = stop.getAttribute('stop-color')!.slice(1).match(/../g)!
+              .map(channel => parseInt(channel, 16));
             expect(new Set(channels).size).toBe(1);
             expect(channels[0]).toBeGreaterThanOrEqual(240);
-          });
-        });
+      });
       const edge = root.querySelector('filter[id$="-edge"]')!;
       expect(edge.querySelector('feGaussianBlur'))
         .toHaveAttribute('stdDeviation', '12');
@@ -220,16 +211,16 @@ describe('HeroCloud', () => {
     it('dissolves every material layer through the same soft, scalloped front and trailing wisps', () => {
       const { container } = render(<HeroCloud />);
       const root = cloud(container);
-      const mask = root.querySelector('mask')!;
-      const front = mask.firstElementChild!;
-      const filteredFront = front.querySelector('g[filter]')!;
+      const mask = root.querySelector<HTMLElement>('[data-cloud-mask]')!;
+      const canonical = source('mask');
+      const filteredFront = canonical.querySelector('g[filter]')!;
       const edgeId = filteredFront.getAttribute('filter')!.slice(5, -1);
-      const edge = [...root.querySelectorAll('filter')].find((filter) => filter.id === edgeId)!;
+      const edge = [...canonical.querySelectorAll('filter')].find(filter => filter.id === edgeId)!;
       const paths = filteredFront.querySelectorAll('path');
 
-      expect(mask).toHaveAttribute('maskUnits', 'userSpaceOnUse');
-      expect(mask).toHaveAttribute('maskContentUnits', 'userSpaceOnUse');
-      expect(front.getAttribute('class')).toContain('dissolveFront');
+      expect(mask.style.getPropertyValue('--cloud-mask')).toBe('url("/textures/hero-cloud/mask.webp")');
+      expect(canonical).toHaveAttribute('viewBox', '-660 -120 2100 880');
+      expect(root.querySelector('filter, feTurbulence, feGaussianBlur')).toBeNull();
       expect(paths).toHaveLength(4);
       expect(paths[0].getAttribute('d')!.match(/C /g)!.length).toBeGreaterThanOrEqual(6);
       [...paths].slice(1).forEach((wisp) => {
@@ -241,39 +232,59 @@ describe('HeroCloud', () => {
       expect(edge.querySelector('feTurbulence')).toHaveAttribute('seed', '23');
       expect(edge.querySelector('feDisplacementMap')).toHaveAttribute('scale', '38');
       expect(edge.querySelector('feGaussianBlur')).toHaveAttribute('stdDeviation', '14');
-      const layers = root.querySelectorAll('[mask]');
-      expect(layers).toHaveLength(3);
-      layers.forEach((layer) => {
-        expect(layer).toHaveAttribute('mask', `url(#${mask.id})`);
-        expect(layer.getAttribute('class')).toContain('dissolving');
-      });
+      expect(root.querySelectorAll('[data-cloud-mask]')).toHaveLength(1);
+      expect(mask.querySelectorAll('img')).toHaveLength(3);
+      expect(declarationsFor('.dissolving').get('mask-image')).toBe('var(--cloud-mask)');
     });
 
     it('inherits clamped --shut and traverses completely clear without moving the bank', () => {
-      const { container } = render(<HeroCloud />);
-      const root = cloud(container);
-      const mask = root.querySelector('mask')!;
+      const mask = source('mask');
       const solid = mask.querySelector('rect')!;
-      const edge = root.querySelector('filter[id$="-dissolve-edge"]')!;
       expect(declarationsFor('.cloud').get('--cloud-shut'))
         .toBe('clamp(0, var(--shut, 0), 1)');
-      const transform = declarationsFor('.dissolveFront').get('transform')!;
-      expect(transform).toBe('translate3d(calc(var(--cloud-shut) * 1880px), 0, 0)');
-      const travel = Number(transform.match(/\* (\d+)px/)![1]);
-      const viewportWidth = Number(mask.getAttribute('width'));
-      const viewportHeight = Number(mask.getAttribute('height'));
+      expect(declarationsFor('.dissolving').get('mask-size')).toBe('175% 137.5%');
+      expect(declarationsFor('.dissolving').get('mask-position'))
+        .toBe('calc(73.333333% - var(--cloud-shut) * 208.888889%) 50%');
+      const left = (progress: number) => (1200 - 2100) * (73.333333 - progress * 208.888889) / 100;
+      expect(left(0)).toBeCloseTo(-660, 3);
+      expect(left(0.5)).toBeCloseTo(-660 + 1880 * 0.5, 3);
+      expect(left(1)).toBeGreaterThan(1200);
+      expect((640 - 880) * 0.5).toBe(-120);
       // The unfiltered overlap covers the complete mask at the starting pose.
       expect(Number(solid.getAttribute('x'))).toBeLessThanOrEqual(0);
       expect(Number(solid.getAttribute('y'))).toBeLessThanOrEqual(0);
-      expect(Number(solid.getAttribute('width'))).toBeGreaterThanOrEqual(viewportWidth);
+      expect(Number(solid.getAttribute('width'))).toBeGreaterThanOrEqual(1200);
       expect(Number(solid.getAttribute('y')) + Number(solid.getAttribute('height')))
-        .toBeGreaterThanOrEqual(viewportHeight);
-      // Even the bounded filter's last feather is outside at the terminal pose.
-      expect(Number(edge.getAttribute('x')) + travel).toBeGreaterThan(viewportWidth);
-      expect(Number(solid.getAttribute('x')) + travel).toBeGreaterThan(viewportWidth);
-      expect(Number(solid.getAttribute('x')) + travel * 0.5).toBeLessThan(viewportWidth);
-      expect(root.style.getPropertyValue('--shut')).toBe('');
+        .toBeGreaterThanOrEqual(640);
       expect(declarationsFor('.cloud').has('--shut')).toBe(false);
+    });
+
+    it('uses bounded raster assets without live SVG filters', () => {
+      const { container } = render(<HeroCloud />);
+      const root = cloud(container);
+      expect(root).toHaveAttribute('data-cloud-texture', 'raster');
+      expect(root.querySelectorAll('img')).toHaveLength(4);
+      expect(root.querySelectorAll('filter')).toHaveLength(0);
+      expect(root.querySelectorAll('svg')).toHaveLength(0);
+      for (const layer of ['body', 'vapor', 'shear', 'mask']) {
+        const bytes = readFileSync(join(textureDirectory, `${layer}.webp`));
+        expect(bytes.subarray(0, 4).toString('ascii')).toBe('RIFF');
+        expect(bytes.subarray(8, 12).toString('ascii')).toBe('WEBP');
+        expect(bytes.length).toBeLessThan(180000);
+      }
+    });
+
+    it('reports a failed texture and falls back to its editable vector source', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { container } = render(<HeroCloud />);
+      const root = cloud(container);
+      fireEvent.error(root.querySelector('img')!);
+      expect(warn).toHaveBeenCalledOnce();
+      expect(root).toHaveAttribute('data-cloud-texture', 'vector');
+      root.querySelectorAll('img').forEach(image => expect(image.getAttribute('src')).toMatch(/\.svg$/));
+      fireEvent.error(root.querySelector('img')!);
+      expect(error).toHaveBeenCalledOnce();
     });
 
     it('accepts forward and reverse progress without React updates, new clocks, or changing noise', () => {
@@ -301,7 +312,7 @@ describe('HeroCloud', () => {
     });
 
     it('uses a static unmasked cloud and only a fade under reduced motion', () => {
-      ['vapor', 'shear', 'dissolveFront'].forEach((layer) => {
+      ['vapor', 'shear'].forEach((layer) => {
         const declarations = declarationsFor(`.cloud[data-motion] .${layer}`, true);
         expect(declarations.get('animation')).toBe('none');
         expect(declarations.get('transform')).toBe('none');
@@ -323,19 +334,15 @@ describe('HeroCloud', () => {
     expect(cloud(container)).not.toHaveAttribute('data-cloud-theme');
   });
 
-  it('namespaces all material references across simultaneous instances', () => {
+  it('keeps simultaneous instances independent without shared mutable SVG ids', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { container } = render(<><HeroCloud /><HeroCloud /></>);
-    const ids = [...container.querySelectorAll('[id]')].map((element) => element.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    container.querySelectorAll('[data-hero-cloud]').forEach((root) => {
-      const localIds = new Set([...root.querySelectorAll('[id]')].map((element) => element.id));
-      root.querySelectorAll('[fill], [filter], [mask]').forEach((element) => {
-        ['fill', 'filter', 'mask'].forEach((attribute) => {
-          const reference = element.getAttribute(attribute)?.match(/^url\(#(.+)\)$/)?.[1];
-          if (reference) expect(localIds.has(reference)).toBe(true);
-        });
-      });
-    });
+    expect(container.querySelectorAll('[id]')).toHaveLength(0);
+    const roots = container.querySelectorAll('[data-hero-cloud]');
+    fireEvent.error(roots[0].querySelector('img')!);
+    expect(roots[0]).toHaveAttribute('data-cloud-texture', 'vector');
+    expect(roots[1]).toHaveAttribute('data-cloud-texture', 'raster');
+    expect(warn).toHaveBeenCalledOnce();
   });
 
   it('starts still, drifts only while intersecting, and pauses offscreen', () => {
@@ -357,7 +364,7 @@ describe('HeroCloud', () => {
     intersect(root, true);
     rerender(<HeroCloud active={false} />);
     expect(root).toHaveAttribute('data-motion', 'paused');
-    expect(root.querySelectorAll('svg')).toHaveLength(3);
+    expect(root.querySelector('[data-cloud-mask]')!.querySelectorAll('img')).toHaveLength(3);
     expect(observers[0].disconnect).toHaveBeenCalledOnce();
     expect(motionListeners.size).toBe(0);
     // A queued observer notification cannot revive an inactive layer.
@@ -396,7 +403,7 @@ describe('HeroCloud', () => {
     const root = cloud(container);
     intersect(root, true);
     expect(root).toHaveAttribute('data-motion', 'paused');
-    expect(root.querySelector('path')).toBeInTheDocument();
+    expect(root.querySelector('img[src$="/body.webp"]')).toBeInTheDocument();
     setReducedMotion(false);
     expect(root).toHaveAttribute('data-motion', 'running');
     setReducedMotion(true);

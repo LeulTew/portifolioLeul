@@ -73,6 +73,7 @@ describe('GPU tier renderer probe', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     resetGpuTier();
   });
 
@@ -116,4 +117,28 @@ describe('GPU tier renderer probe', () => {
 
     expect(['low', 'medium', 'high']).toContain(detectGpuTier().tier);
   });
+
+  it.each(['SwiftShader Device (Subzero)', 'llvmpipe', 'Microsoft Basic Render Driver'])(
+    'keeps %s on a conservative graphics budget even with ample CPU and RAM',
+    renderer => {
+      vi.stubGlobal('navigator', { userAgent: 'Desktop Chrome', hardwareConcurrency: 16, deviceMemory: 16 });
+      const loseContext = vi.fn();
+      stubProbe({
+        getExtension: (name: string) => name === 'WEBGL_debug_renderer_info'
+          ? { UNMASKED_RENDERER_WEBGL: 37446 }
+          : name === 'WEBGL_lose_context' ? { loseContext } : null,
+        getParameter: () => renderer,
+      });
+      const config = detectGpuTier();
+      expect(config.tier).toBe('low');
+      expect(config.softwareRenderer).toBe(true);
+      expect(config.dpr).toEqual([0.4, 0.4]);
+      expect(config.waterReflectionSize).toBe(64);
+      expect(config.particleCount).toBeGreaterThan(0);
+      expect(config.videoClips).toBe(1);
+      expect(config.oceanSegments).toBeGreaterThan(0);
+      expect(config.maxFps).toBe(30);
+      expect(loseContext).toHaveBeenCalledOnce();
+    },
+  );
 });

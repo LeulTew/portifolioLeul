@@ -36,7 +36,7 @@ let clockTime = 0;
 const frame = (delta = 0.016) => {
   clockTime += delta;
   const now = clockTime;
-  frameCallback?.({ clock: { getElapsedTime: () => now } }, delta);
+  frameCallback?.({ clock: { elapsedTime: now } }, delta);
 };
 
 const advance = (count = 1, delta = 0.016) => {

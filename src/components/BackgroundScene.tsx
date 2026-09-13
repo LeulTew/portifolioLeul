@@ -17,9 +17,11 @@ import { ChapterGrading } from './3d/ChapterGrading';
 import { LocalEnvironment } from './3d/LocalEnvironment';
 import { SceneReady } from './3d/SceneReady';
 import {
-  CRITICAL_MODELS,
+  getCriticalModels,
+  resolveSceneModel,
   CRITICAL_SCENE_TEXTURES,
 } from '@/lib/assets/criticalAssets';
+import { getGpuTier } from '@/lib/gateways/gpuTier';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { isFrameDrawn } from '@/lib/render/frameGate';
 import { DEFAULT_REFLECTION_SIZE } from './ocean/oceanConfig';
@@ -59,7 +61,8 @@ interface TerrainProps {
 }
 
 function Terrain({ surfaceColor }: TerrainProps) {
-  const { scene } = useGLTF(TERRAIN_URL, NO_DRACO);
+  const { scene } = useGLTF(resolveSceneModel(TERRAIN_URL), NO_DRACO);
+  const softwareRenderer = getGpuTier().softwareRenderer;
   
   const terrain = useMemo(() => {
     const clone = scene.clone();
@@ -70,6 +73,7 @@ function Terrain({ surfaceColor }: TerrainProps) {
           roughness: 0.5,
           metalness: 0.8,
           envMapIntensity: 1.5,
+          flatShading: softwareRenderer,
         });
         
         if (child.material.map) {
@@ -87,14 +91,13 @@ function Terrain({ surfaceColor }: TerrainProps) {
       }
     });
     return clone;
-  }, [scene, surfaceColor]);
+  }, [scene, surfaceColor, softwareRenderer]);
 
-  // Clean up cloned terrain mesh, material, and textures on unmount
+  // The clone owns materials/textures, but its geometry belongs to the GLTF cache.
   useEffect(() => {
     return () => {
       terrain.traverse((child) => {
         if (child instanceof THREE.Mesh) {
-          child.geometry?.dispose();
           if (child.material) {
             if (child.material.map) {
               child.material.map.dispose();
@@ -211,6 +214,7 @@ interface BackgroundSceneProps {
   particleCount?: number;
   /** Edge of the water's reflection target. See the GPU tier budget. */
   reflectionSize?: number;
+  reflectionFps?: number;
   /** How many clips the CRT cycles. See the GPU tier budget. */
   videoClips?: number;
   /** Ocean surface resolution. See the GPU tier budget. */
@@ -222,6 +226,7 @@ export function BackgroundScene({
   theme,
   particleCount = DEFAULT_PARTICLE_COUNT,
   reflectionSize = DEFAULT_REFLECTION_SIZE,
+  reflectionFps = 0,
   videoClips = 2,
   oceanSegments,
   oceanRings,
@@ -273,7 +278,7 @@ export function BackgroundScene({
 
     // The world holds completely still behind an opaque section, and redraws
     // no faster than the tier allows.
-    const time = state.clock.getElapsedTime();
+    const time = state.clock.elapsedTime;
     if (!isFrameDrawn(time)) return;
 
     const reducedMotion = getPrefersReducedMotion();
@@ -294,7 +299,7 @@ export function BackgroundScene({
       <group>
         {/* Holds the loader shut until the world is actually built. */}
         <Suspense fallback={null}>
-          <SceneReady models={CRITICAL_MODELS} textures={CRITICAL_SCENE_TEXTURES} />
+          <SceneReady models={getCriticalModels()} textures={CRITICAL_SCENE_TEXTURES} />
         </Suspense>
 
         <LocalEnvironment />
@@ -305,6 +310,7 @@ export function BackgroundScene({
             theme={theme}
             position={[0, -4, 0]}
             reflectionSize={reflectionSize}
+            reflectionFps={reflectionFps}
             segments={oceanSegments}
             rings={oceanRings}
           />

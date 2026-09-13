@@ -3,6 +3,7 @@ import { useGLTF, useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { isFrameDrawn } from '@/lib/render/frameGate';
+import { resolveSceneModel } from '@/lib/assets/criticalAssets';
 
 const MODEL_PATH = '/models/me-animated-lite.glb';
 
@@ -20,7 +21,7 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
   const groupRef = useRef<THREE.Group>(null);
   
   // Load the GLB model with animations
-  const { scene, animations } = useGLTF(MODEL_PATH, NO_DRACO);
+  const { scene, animations } = useGLTF(resolveSceneModel(MODEL_PATH), NO_DRACO);
   
   // Setup animations
   const { actions, names } = useAnimations(animations, groupRef);
@@ -37,7 +38,7 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
     }
   }, [actions, names]);
 
-  // Configure shadows & material highlights for high visual clarity, with disposal on unmount
+  // These resources belong to the shared GLTF cache, not to this instance.
   useEffect(() => {
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -54,33 +55,21 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
       }
     });
 
-    return () => {
-      scene.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry?.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach((mat) => mat.dispose());
-          } else if (child.material) {
-            child.material.dispose();
-          }
-        }
-      });
-    };
   }, [scene]);
 
   // Fallback: subtle floating if no animations
   useFrame((state) => {
-    if (!isFrameDrawn(state.clock.getElapsedTime())) return;
+    if (!isFrameDrawn(state.clock.elapsedTime)) return;
 
     if (groupRef.current && names.length === 0) {
-      const time = state.clock.getElapsedTime();
+      const time = state.clock.elapsedTime;
       groupRef.current.position.y = position[1] + Math.sin(time * 0.8) * 0.15;
     }
   });
 
   return (
     <group ref={groupRef} position={position} rotation={rotation} scale={scale}>
-      <primitive object={scene} />
+      <primitive object={scene} dispose={null} />
     </group>
   );
 }

@@ -41,7 +41,7 @@ const advance = (count = 1, delta = 0.016) => {
     // call would ask the render gate to accept time running backwards.
     clockTime += delta;
     const now = clockTime;
-    frameCallback?.({ mouse: pointer, clock: { getElapsedTime: () => now } }, delta);
+    frameCallback?.({ mouse: pointer, clock: { elapsedTime: now } }, delta);
   }
 };
 
@@ -136,7 +136,7 @@ describe('CinematicCameraController', () => {
 
   it('tolerates a frame state with no pointer', () => {
     mount();
-    expect(() => frameCallback?.({ clock: { getElapsedTime: () => 0 } }, 0.016)).not.toThrow();
+    expect(() => frameCallback?.({ clock: { elapsedTime: 0 } }, 0.016)).not.toThrow();
   });
 
   it('clamps a long frame delta so a backgrounded tab cannot teleport the camera', () => {
@@ -146,11 +146,11 @@ describe('CinematicCameraController', () => {
 
     scrollState.offset = CAMERA_ARC_END;
     // One frame with a 30s delta, as a restored tab reports.
-    frameCallback?.({ mouse: pointer, clock: { getElapsedTime: () => 30 } }, 30);
+    frameCallback?.({ mouse: pointer, clock: { elapsedTime: 30 } }, 30);
     const jumped = opening.distanceTo(camera.position);
 
     camera.position.copy(opening);
-    frameCallback?.({ mouse: pointer, clock: { getElapsedTime: () => 30 } }, 0.1);
+    frameCallback?.({ mouse: pointer, clock: { elapsedTime: 30 } }, 0.1);
     const clamped = opening.distanceTo(camera.position);
 
     expect(jumped).toBeCloseTo(clamped, 5);

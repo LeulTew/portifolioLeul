@@ -7,6 +7,8 @@ import { resetHeroCue } from '@/lib/motion/heroCue';
 import { HERO_SCREENS, HOLD_CLOSE_END, INNER_END } from '@/lib/motion/heroPin';
 import { HERO_SEQUENCE, sequenceDuration } from '@/lib/motion/sectionChoreography';
 
+const cueStyle = () => screen.getByTestId('scroll-cue').style;
+
 /**
  * Scrolls the reader `share` of the way into the hero hold.
  *
@@ -361,7 +363,7 @@ describe('Home choreography', () => {
     playBeats(2000);
     expect(drawn()).toBeGreaterThan(0);
     expect(drawn()).toBeLessThan(1);
-    const origin = parseFloat(document.documentElement.style.getPropertyValue('--cue-y'));
+    const origin = parseFloat(cueStyle().getPropertyValue('--cue-y'));
     expect(origin).toBeGreaterThan(0);
     expect(origin).toBeLessThan(vh);
 
@@ -394,8 +396,9 @@ describe('Home choreography', () => {
     enterHero();
 
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
-    expect(document.documentElement.style.getPropertyValue('--cue-drawn')).toBe('1.000');
-    expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('1.000');
+    expect(cueStyle().getPropertyValue('--cue-drawn')).toBe('1.000');
+    expect(cueStyle().getPropertyValue('--cue-presence')).toBe('1.000');
+    expect(document.documentElement.style.getPropertyValue('--cue-drawn')).toBe('');
   });
 
   it('preserves the 36px landing gap for a fractional fixed heading inset', () => {
@@ -406,7 +409,7 @@ describe('Home choreography', () => {
     layOutRail({ aboutTop, headingTop: 109.25 });
     scrollIntoHold(HERO_SCREENS / (HERO_SCREENS - 1));
     playBeats(3500);
-    const root = document.documentElement.style;
+    const root = cueStyle();
     const tip = parseFloat(root.getPropertyValue('--cue-y')) +
       parseFloat(root.getPropertyValue('--cue-height'));
     expect(109.25 - tip).toBeCloseTo(36, 2);
@@ -417,7 +420,7 @@ describe('Home choreography', () => {
     render(<Home />);
     enterHero();
     layOutRail({ aboutTop: window.innerHeight });
-    const origin = document.documentElement.style.getPropertyValue('--cue-y');
+    const origin = cueStyle().getPropertyValue('--cue-y');
     const measured = document.getElementById('home')!.style.getPropertyValue('--cue-top');
     expect(parseFloat(origin)).toBeGreaterThan(0);
     expect(parseFloat(origin)).toBeCloseTo(parseFloat(measured), 3);
@@ -483,13 +486,13 @@ describe('Home choreography', () => {
     about.setAttribute('data-statements-present', 'true');
     scrollIntoHold(8);
     playBeats(400);
-    expect(document.documentElement.style.getPropertyValue('--cue-chapter-opacity')).toBe('0');
+    expect(cueStyle().getPropertyValue('--cue-chapter-opacity')).toBe('0');
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
     about.removeAttribute('data-statements-present');
     scrollIntoHold(0);
     playBeats(400);
-    expect(document.documentElement.style.getPropertyValue('--cue-presence')).toBe('1.000');
-    expect(document.documentElement.style.getPropertyValue('--cue-chapter-opacity')).toBe('1');
+    expect(cueStyle().getPropertyValue('--cue-presence')).toBe('1.000');
+    expect(cueStyle().getPropertyValue('--cue-chapter-opacity')).toBe('1');
     expect(getByTestId('scroll-cue')).toHaveAttribute('data-progress', '1.000');
   });
 
