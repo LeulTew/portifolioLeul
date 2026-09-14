@@ -45,6 +45,53 @@ describe('Education completed-beat navigation', () => {
     expect(selected()).toBe(0);
   });
 
+  it('does not claim a return while Skills is finishing its own reverse beat', async () => {
+    const skills = document.createElement('section');
+    skills.id = 'skills';
+    skills.dataset.skillsActive = 'true';
+    document.body.appendChild(skills);
+    mount();
+    act(() => publishSectionNavigation('skills'));
+    place(-20);
+    advance(SCROLL_WAVE_IDLE_MS + 1);
+    wheel(-120);
+    expect(screen.getByTestId('education-stage')).not.toHaveAttribute('data-visible', 'true');
+    await act(async () => { delete skills.dataset.skillsActive; });
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-visible', 'true');
+    skills.remove();
+  });
+
+  it('does not reclaim skipped Education on the first upward wave while the reader is still below it', () => {
+    mount(false);
+    act(() => publishSectionNavigation('skills'));
+    document.getElementById('about')!.dataset.titleSettled = 'true';
+    place(-10000);
+    advance(SCROLL_WAVE_IDLE_MS + 1);
+    wheel(-500);
+    expect(screen.getByTestId('education-stage')).not.toHaveAttribute('data-visible', 'true');
+    place(-2100);
+    advance(300);
+    wheel(-500);
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-visible', 'true');
+  });
+
+  it('does not treat a temporarily unmeasured track rebuild as a reverse entry', () => {
+    mount(false);
+    act(() => publishSectionNavigation('projects'));
+    document.getElementById('about')!.dataset.titleSettled = 'true';
+    place(-10000);
+    const rail = screen.getByTestId('education-rail');
+    Object.defineProperty(rail, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => new DOMRect(),
+    });
+    wheel(-500);
+    advance(SCROLL_WAVE_IDLE_MS + 1);
+    expect(screen.getByTestId('education-stage')).not.toHaveAttribute('data-visible', 'true');
+    Reflect.deleteProperty(rail, 'getBoundingClientRect');
+    place(-2100);
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-visible', 'true');
+  });
   it('does not select hidden records before the About title has completed', () => {
     mount(false);
     place(-100000);

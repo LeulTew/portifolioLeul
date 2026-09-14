@@ -9,6 +9,8 @@ const findEducation = cachedElement(() =>
   document.querySelector<HTMLElement>('[data-testid="education-stage"]'));
 const findGround = cachedElement(() =>
   document.querySelector<HTMLElement>('#about [data-green-bg="true"]'));
+const findSkills = cachedElement(() =>
+  document.querySelector<HTMLElement>('[data-testid="skills-stage"]'));
 
 const properties = [
   '--chapter-ink-mask', '--chapter-ink-clip', '--chapter-ink-opacity', '--chapter-ink-visibility',
@@ -20,6 +22,9 @@ export function updateChapterInk(): void {
   const education = findEducation();
   const overlay = findOverlay();
   const about = findAbout();
+  const skills = findSkills();
+  const skillsCoverage = skills?.dataset.visible === 'true'
+    ? Math.min(1, Math.max(0, Number(skills.style.opacity))) : 0;
   let mode = 'none';
   let opacity = 1;
   let clip = 'inset(0px)';
@@ -33,7 +38,9 @@ export function updateChapterInk(): void {
       `${Math.max(0, window.innerHeight - rect.bottom)}px ${Math.max(0, rect.left)}px)`;
   };
 
-  if (education?.dataset.visible === 'true') {
+  if (skillsCoverage === 1) {
+    mode = 'none';
+  } else if (education?.dataset.visible === 'true') {
     cover(education);
   } else if (overlay?.dataset.active === 'true') {
     if (about?.dataset.bgActive === 'true' || about?.dataset.bgSettled === 'true') {
@@ -44,6 +51,9 @@ export function updateChapterInk(): void {
     const ground = findGround();
     if (ground) cover(ground);
   }
+  // The held Skills plate covers the physical green underlay. Its actual
+  // alpha, not scroll distance, determines how much white chrome still shows.
+  opacity *= 1 - skillsCoverage;
 
   writeAttribute(root, 'data-chapter-ink', mode);
   writeStyleProperty(root, '--chapter-ink-mask', mode === 'pixels' ? 'url("#bg-pixel-transition-mask")' : 'none');
@@ -58,7 +68,7 @@ export function useChapterInk(): void {
     const observer = new MutationObserver(update);
     const discovery = new MutationObserver(update);
     function update() {
-      const elements = [findAbout(), findOverlay(), findEducation()];
+      const elements = [findAbout(), findOverlay(), findEducation(), findSkills()];
       for (const element of elements) {
         if (element && !observed.has(element)) {
           observed.add(element);

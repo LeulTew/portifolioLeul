@@ -160,6 +160,34 @@ describe('useActiveSection', () => {
     expect(getByTestId('active').textContent).toBe('skills');
   });
 
+  it('keeps Skills selected while its stage is still reading beyond its physical spacer', async () => {
+    const sections = addSections();
+    const skills = sections.find(section => section.id === 'skills')!;
+    const { getByTestId } = render(<Probe />);
+    act(() => capturedCallback?.(band({ projects: 260 })));
+    await act(async () => { skills.dataset.skillsActive = 'true'; });
+    expect(getByTestId('active').textContent).toBe('skills');
+    document.getElementById('projects')!.getBoundingClientRect = () => DOMRect.fromRect({
+      x: 0, y: 80, width: 1440, height: 1000,
+    });
+    await act(async () => { delete skills.dataset.skillsActive; });
+    expect(getByTestId('active').textContent).toBe('projects');
+  });
+
+  it('prioritizes the visible Skills stage over an About sequence still releasing underneath it', async () => {
+    addSections();
+    const about = document.getElementById('about')!;
+    const skills = document.getElementById('skills')!;
+    about.dataset.sequenceActive = 'true';
+    skills.dataset.skillsActive = 'true';
+    const { getByTestId } = render(<Probe />);
+    expect(getByTestId('active').textContent).toBe('skills');
+    act(() => capturedCallback?.(band({ projects: 260 })));
+    expect(getByTestId('active').textContent).toBe('skills');
+    await act(async () => { delete skills.dataset.skillsActive; });
+    expect(getByTestId('active').textContent).toBe('about');
+  });
+
   it('waits for sections that have not mounted yet', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Probe />);

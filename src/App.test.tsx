@@ -529,6 +529,37 @@ describe("App scroll position across a track resize", () => {
     expect(mockScroll.el.scrollTop).toBe(0);
   });
 
+  it("restores Drei's rendered offset before publishing any chapter measurements", () => {
+    renderApp();
+    const html = screen.getByTestId("scroll-html");
+    mockScroll.el.scrollTop = 4000;
+    mockScroll.offset = 4000 / (mockScroll.el.scrollHeight - track.clientHeight);
+    setScrollProgress(mockScroll.offset);
+    const seen: Array<{ progress: number; transform: string }> = [];
+    const unsubscribe = subscribeScrollProgress(progress => {
+      seen.push({ progress, transform: html.style.transform });
+    });
+
+    act(() => {
+      contentHeight = 11000;
+      window.dispatchEvent(new Event("resize"));
+    });
+    // This is the new state object Drei creates when its pages change.
+    mockScroll.offset = 0;
+    mockScroll.delta = 0.1;
+    act(() => runFrames(1));
+    unsubscribe();
+
+    const restored = mockScroll.el.scrollTop / (mockScroll.el.scrollHeight - track.clientHeight);
+    expect(restored).toBeGreaterThan(0);
+    expect(mockScroll.offset).toBeCloseTo(restored, 8);
+    expect(mockScroll.delta).toBe(0);
+    expect(seen).toEqual([{
+      progress: restored,
+      transform: `translate3d(0px, ${-1000 * (pagesOf() - 1) * restored}px, 0px)`,
+    }]);
+  });
+
   it("reconciles a stale HTML translation when Drei has settled at zero delta", () => {
     renderApp();
     const html = screen.getByTestId("scroll-html");

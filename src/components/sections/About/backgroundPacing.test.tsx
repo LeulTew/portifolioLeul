@@ -23,7 +23,7 @@ describe('the mounted background beat after a suspended frame', () => {
 
   const start = async () => {
     const clock = animationClock();
-    render(
+    const view = render(
       <section id="about" data-statements-cleared="true">
         <div data-active="true" style={{ '--seq': 0.953 } as React.CSSProperties}>
           <BackgroundPixelTransition />
@@ -34,7 +34,7 @@ describe('the mounted background beat after a suspended frame', () => {
     await act(async () => {
       window.dispatchEvent(new WheelEvent('wheel', { deltaY: 3 }));
     });
-    return { clock, about: document.getElementById('about')! };
+    return { clock, about: document.getElementById('about')!, ...view };
   };
 
   it('plays the rise instead of publishing transition and settled on its first delayed frame', async () => {
@@ -79,6 +79,38 @@ describe('the mounted background beat after a suspended frame', () => {
     await clock.frame(10);
     expect(about).toHaveAttribute('data-bg-active', 'true');
     expect(about).not.toHaveAttribute('data-bg-settled');
+  });
+
+  it('preserves a completed background when a desktop resize rebuilds its grid', async () => {
+    const { clock, about } = await start();
+    await clock.run(BACKGROUND_RISE.durationMs);
+    expect(about).toHaveAttribute('data-bg-settled', 'true');
+    await act(async () => { window.dispatchEvent(new Event('resize')); });
+    expect(about).toHaveAttribute('data-bg-settled', 'true');
+    expect(about).not.toHaveAttribute('data-bg-active');
+    expect(clock.pending).toBe(0);
+  });
+
+  it('finishes the remaining rise after a resize without restarting or adding a rest', async () => {
+    const { clock, about } = await start();
+    await clock.run(BACKGROUND_RISE.durationMs - 200);
+    expect(about).not.toHaveAttribute('data-bg-settled');
+    await act(async () => { window.dispatchEvent(new Event('resize')); });
+    await clock.run(100);
+    expect(about).not.toHaveAttribute('data-bg-settled');
+    await clock.run(100);
+    expect(about).toHaveAttribute('data-bg-settled', 'true');
+    expect(clock.pending).toBe(0);
+  });
+
+  it('still clears its ownership when the background is actually unmounted', async () => {
+    const { clock, about, rerender } = await start();
+    await clock.run(BACKGROUND_RISE.durationMs);
+    rerender(<section id="about" data-statements-cleared="true" />);
+    expect(about).not.toHaveAttribute('data-bg-transition');
+    expect(about).not.toHaveAttribute('data-bg-active');
+    expect(about).not.toHaveAttribute('data-bg-settled');
+    expect(document.documentElement).not.toHaveAttribute('data-navbar-contrary');
   });
 
   it('still shows the retreat when its first reverse frame is delayed', async () => {

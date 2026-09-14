@@ -151,7 +151,8 @@
 }
 
 :global(main[inert]) .tracerBeam,
-:global([data-education-covered]) .tracerBeam {
+:global([data-education-covered]) .tracerBeam,
+:global([data-skills-covered]) .tracerBeam {
   animation-play-state: paused;
 }
 

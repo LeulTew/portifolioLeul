@@ -1,3 +1,13 @@
+SkillsMotion.tsx adapts React Bits SplitText, DecryptedText, BlurText, TextType, ScrollReveal and TiltedCard for this website.
+Canonical source: https://github.com/DavidHDev/react-bits
+Revision: 3a1c7f2f9f94ed833934ab5c2635760b9e644583
+https://github.com/DavidHDev/react-bits/blob/3a1c7f2f9f94ed833934ab5c2635760b9e644583/src/ts-default/TextAnimations/SplitText/SplitText.tsx
+https://github.com/DavidHDev/react-bits/blob/3a1c7f2f9f94ed833934ab5c2635760b9e644583/src/ts-default/Components/TiltedCard/TiltedCard.tsx
+https://github.com/DavidHDev/react-bits/blob/3a1c7f2f9f94ed833934ab5c2635760b9e644583/src/ts-default/TextAnimations/DecryptedText/DecryptedText.tsx
+https://github.com/DavidHDev/react-bits/blob/3a1c7f2f9f94ed833934ab5c2635760b9e644583/src/ts-default/TextAnimations/BlurText/BlurText.tsx
+https://github.com/DavidHDev/react-bits/blob/3a1c7f2f9f94ed833934ab5c2635760b9e644583/src/ts-default/TextAnimations/TextType/TextType.tsx
+https://github.com/DavidHDev/react-bits/blob/3a1c7f2f9f94ed833934ab5c2635760b9e644583/src/ts-default/TextAnimations/ScrollReveal/ScrollReveal.tsx
+
 MIT + Commons Clause License Condition v1.0
 
 Copyright (c) 2026 David Haz

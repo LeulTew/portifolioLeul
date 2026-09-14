@@ -1,7 +1,12 @@
 import { findScrollContainer } from './scrollContainer';
 
 /** Stop painting covered DOM without changing geometry or hiding the native scrollport. */
-export function coverEducationBackground(host: HTMLElement, stage: HTMLElement): () => void {
+export function coverChapterBackground(
+  host: HTMLElement,
+  stage: HTMLElement,
+  owner: 'education' | 'skills' = 'education',
+): () => void {
+  const attribute = `data-${owner}-covered`;
   const main = host.closest('main');
   const container = findScrollContainer(host);
   const parent = main?.parentElement;
@@ -13,10 +18,10 @@ export function coverEducationBackground(host: HTMLElement, stage: HTMLElement):
     node,
     visibility: node.style.getPropertyValue('visibility'),
     priority: node.style.getPropertyPriority('visibility'),
-    marker: node.getAttribute('data-education-covered'),
+    marker: node.getAttribute(attribute),
   }));
   for (const { node } of covered) {
-    node.setAttribute('data-education-covered', '');
+    node.setAttribute(attribute, '');
     node.style.visibility = 'hidden';
   }
   let restored = false;
@@ -26,8 +31,10 @@ export function coverEducationBackground(host: HTMLElement, stage: HTMLElement):
     for (const { node, visibility, priority, marker } of covered) {
       if (visibility) node.style.setProperty('visibility', visibility, priority);
       else node.style.removeProperty('visibility');
-      if (marker === null) node.removeAttribute('data-education-covered');
-      else node.setAttribute('data-education-covered', marker);
+      if (marker === null) node.removeAttribute(attribute);
+      else node.setAttribute(attribute, marker);
     }
   };
 }
+
+export { coverChapterBackground as coverEducationBackground };

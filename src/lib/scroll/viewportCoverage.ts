@@ -96,12 +96,15 @@ export function useViewportShareEffect(
   useEffect(() => {
     if (!element || typeof IntersectionObserver === 'undefined') return;
 
-    const about = document.getElementById('about');
-    const canBeCovered = about !== null && !about.contains(element);
+    const main = element.closest('main');
+    const owners = ['about', 'skills']
+      .map(id => main?.querySelector<HTMLElement>(`#${id}`) ?? document.getElementById(id))
+      .filter((owner): owner is HTMLElement => owner !== null && !owner.contains(element));
+    const covered = () => owners.some(hasChapterOwnership);
     let share = 0;
     let published = Number.NaN;
     const report = () => {
-      const next = canBeCovered && hasChapterOwnership(about) ? 0 : share;
+      const next = covered() ? 0 : share;
       if (next === published) return;
       published = next;
       callbackRef.current(next);
@@ -117,8 +120,8 @@ export function useViewportShareEffect(
     );
 
     // Covered sections must not spend their entrance behind the pinned chapter.
-    const ownership = canBeCovered ? new MutationObserver(() => {
-      if (!hasChapterOwnership(about)) {
+    const ownership = owners.length ? new MutationObserver(() => {
+      if (!covered()) {
         // The chapter may settle its scrollport before IntersectionObserver catches up.
         const rect = element.getBoundingClientRect();
         const height = window.innerHeight - 2 * inset;
@@ -128,10 +131,10 @@ export function useViewportShareEffect(
       }
       report();
     }) : null;
-    if (ownership && about) ownership.observe(about, {
+    owners.forEach(owner => ownership?.observe(owner, {
       attributes: true,
       attributeFilter: CHAPTER_OWNERSHIP_ATTRIBUTES,
-    });
+    }));
     observer.observe(element);
     return () => {
       observer.disconnect();
