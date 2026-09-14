@@ -64,6 +64,7 @@ describe('PinnedSequence world coverage', () => {
     mount();
     expect(screen.getByTestId('pinned-sequence-overlay')).toHaveAttribute('data-active', 'true');
     expect(screen.getByTestId('pinned-sequence-overlay').style.getPropertyValue('--ground-in')).toBe('1.000');
+    expect(document.getElementById('about')).toHaveAttribute('data-sequence-active', 'true');
     expect(isWorldOccluded()).toBe(true);
     expect(isFrameDrawn(1)).toBe(false);
   });
@@ -78,6 +79,7 @@ describe('PinnedSequence world coverage', () => {
     });
     expect(isWorldOccluded()).toBe(false);
     expect(isFrameDrawn(2)).toBe(true);
+    expect(document.getElementById('about')).not.toHaveAttribute('data-sequence-active');
   });
 
   it('releases world coverage on unmount', () => {

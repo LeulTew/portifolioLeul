@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
-import { writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import styles from './PinnedSequence.module.css';
 
@@ -80,6 +80,10 @@ export function PinnedSequence({
   useEffect(() => {
     if (!spacer) return;
     const home = document.getElementById('home');
+    const section = spacer.closest<HTMLElement>('section[id]');
+    const publishOwnership = (active: boolean) => {
+      if (section) writeAttribute(section, 'data-sequence-active', active ? 'true' : null);
+    };
 
     /*
      * Whether the spacer is anywhere near the screen.
@@ -144,6 +148,7 @@ export function PinnedSequence({
             if (overlayRef.current.dataset.active !== 'false') {
               overlayRef.current.dataset.active = 'false';
             }
+            publishOwnership(false);
             if (occludesWorld) setOverlayOcclusion(false);
           }
         },
@@ -237,6 +242,7 @@ export function PinnedSequence({
       // marks the subtree dirty, and this overlay holds the whole section.
       const active = String(pinned);
       if (overlay.dataset.active !== active) overlay.dataset.active = active;
+      publishOwnership(pinned);
 
       /*
        * Nothing is published from a spacer that has not been laid out.
@@ -347,6 +353,7 @@ export function PinnedSequence({
       completionObserver?.disconnect();
       window.removeEventListener('resize', apply);
       window.removeEventListener('scroll', apply);
+      publishOwnership(false);
       if (occludesWorld) setOverlayOcclusion(false);
     };
   }, [spacer, layers, occludesWorld]);

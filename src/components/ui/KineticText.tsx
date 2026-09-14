@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Springs, Easings, getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { useSectionEntrance } from '@/lib/scroll/useSectionFocus';
 
 interface KineticHeadingProps {
   text: string;
@@ -20,6 +21,7 @@ export function KineticHeading({
 }: KineticHeadingProps) {
   const words = text.split(' ');
   const prefersReduced = getPrefersReducedMotion();
+  const entrance = useSectionEntrance(!prefersReduced, 20);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -57,10 +59,10 @@ export function KineticHeading({
   return (
     <Tag className={cn('flex flex-wrap items-baseline gap-x-3 gap-y-1', className)} aria-label={text}>
       <MotionSpan
+        ref={entrance.ref}
         variants={containerVariants}
         initial={prefersReduced ? false : 'hidden'}
-        whileInView={prefersReduced ? undefined : 'visible'}
-        viewport={{ once: true, margin: '-20px' }}
+        animate={prefersReduced ? undefined : entrance.hasEntered ? 'visible' : 'hidden'}
         className="flex flex-wrap items-baseline gap-x-2"
       >
         {words.map((word, idx) => {

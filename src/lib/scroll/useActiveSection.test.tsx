@@ -137,6 +137,29 @@ describe('useActiveSection', () => {
     expect(getByTestId('active').textContent).toBe('contact');
   });
 
+  it('keeps About selected through its pinned sequence and Education handoff', async () => {
+    addSections();
+    const { getByTestId } = render(<Probe />);
+    const about = document.getElementById('about')!;
+    act(() => capturedCallback?.(band({ contact: 260 })));
+    await act(async () => { about.dataset.sequenceActive = 'true'; });
+    expect(getByTestId('active').textContent).toBe('about');
+
+    act(() => capturedCallback?.(band({ contact: 0, projects: 260 })));
+    expect(getByTestId('active').textContent).toBe('about');
+    await act(async () => {
+      about.dataset.educationActive = 'true';
+      delete about.dataset.sequenceActive;
+    });
+    expect(getByTestId('active').textContent).toBe('about');
+
+    document.getElementById('skills')!.getBoundingClientRect = () => DOMRect.fromRect({
+      x: 0, y: 80, width: 1440, height: 1000,
+    });
+    await act(async () => { delete about.dataset.educationActive; });
+    expect(getByTestId('active').textContent).toBe('skills');
+  });
+
   it('waits for sections that have not mounted yet', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Probe />);

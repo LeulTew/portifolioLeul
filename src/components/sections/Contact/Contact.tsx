@@ -9,10 +9,13 @@ import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import styles from './Contact.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
+import { useSectionEntrance } from '@/lib/scroll/useSectionFocus';
 
 export function Contact() {
   const containerRef = useRef<HTMLElement>(null);
   const reducedMotion = getPrefersReducedMotion();
+  const formEntrance = useSectionEntrance(!reducedMotion);
+  const infoEntrance = useSectionEntrance(!reducedMotion);
 
   const handleSocialHover = () => {
     soundFx.playMagneticSnap();
@@ -39,20 +42,22 @@ export function Contact() {
 
         <div className={styles.grid}>
           <motion.div 
+            ref={formEntrance.ref}
             className={styles.formContainer}
             initial={reducedMotion ? false : { opacity: 0, x: -40 }}
-            whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            animate={reducedMotion ? undefined : formEntrance.hasEntered
+              ? { opacity: 1, x: 0 } : { opacity: 0, x: -40 }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
           >
             <ContactForm />
           </motion.div>
 
           <motion.div 
+            ref={infoEntrance.ref}
             className={styles.contactInfo}
             initial={reducedMotion ? false : { opacity: 0, x: 40 }}
-            whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            animate={reducedMotion ? undefined : infoEntrance.hasEntered
+              ? { opacity: 1, x: 0 } : { opacity: 0, x: 40 }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.15 }}
           >
             <div className={styles.infoItem}>

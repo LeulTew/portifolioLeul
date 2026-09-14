@@ -1,24 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  BEAT_COOLDOWN_MS,
   BEAT_DEADBAND,
   STATEMENT_CLEAR,
   statementsHeldClear,
 } from './aboutBeats';
 import { phaseGate } from '@/lib/motion/triggeredPhase';
-
-/**
- * The last movement of the reverse, which used to run into the one before it.
- *
- * Going down, the chapter is a chain of separate movements and the reader calls
- * for each: the statements clear, and only after a gesture and a rest does the
- * wall rise. Measured coming back up, the wall finished retreating and the
- * statements began walking in 10ms later -- against 3131ms between those same
- * two beats going down. Nothing was out of order; there was simply no pause,
- * so the two read as one movement.
- */
-
-const REST = BEAT_COOLDOWN_MS;
 
 /** Replays the reverse frame by frame, the way `update()` runs it. */
 function replayReverse(options: {
@@ -39,7 +25,7 @@ function replayReverse(options: {
 
   let wasClear = true;
   let armed = false;
-  let restedAt = 0;
+  let ready = false;
   let releasedAt: number | null = null;
   const FRAME = 16.7;
 
@@ -48,18 +34,14 @@ function replayReverse(options: {
     const seq = typeof seqOption === 'function' ? seqOption(frame) : seqOption;
     const backgroundBusy = frame < busyFrames;
 
-    // The gesture listener, which only counts once the rest has been served.
-    if (gestureAt.includes(frame) && wasClear && !armed) {
-      const since = now - restedAt;
-      if (restedAt > 0 && since >= REST) armed = true;
-    }
+    if (gestureAt.includes(frame) && wasClear && ready) armed = true;
 
     // update(), in the order About.tsx runs it.
     if (backgroundBusy || !wasClear) {
-      restedAt = 0;
+      ready = false;
       armed = false;
-    } else if (restedAt === 0) {
-      restedAt = now;
+    } else {
+      ready = true;
     }
 
     wasClear = statementsHeldClear({
@@ -73,8 +55,6 @@ function replayReverse(options: {
       wasClear,
       seq,
       armed,
-      restedAt,
-      now,
     });
 
     if (!wasClear && releasedAt === null) releasedAt = now;
@@ -95,26 +75,15 @@ describe('the statements wait to be asked back', () => {
     expect(releasedAt).toBeNull();
   });
 
-  it('serves the rest before an ask counts', () => {
-    /*
-     * The wall lands on frame 3. A reader spamming the wheel is producing
-     * gestures at that instant, and every one of them arrives inside the rest.
-     */
-    const spam = Array.from({ length: 60 }, (_, i) => i + 3);
-    const { releasedAt, stillClear } = replayReverse({ gestureAt: spam });
-
-    // Discarded, not queued: they do not pay off the moment the rest is over.
+  it('discards requests made before the background finishes', () => {
+    const { releasedAt, stillClear } = replayReverse({ gestureAt: [0, 1, 2] });
     expect(stillClear).toBe(true);
     expect(releasedAt).toBeNull();
   });
 
-  it('lets them back once asked after the rest', () => {
-    const afterRest = Math.ceil(REST / 16.7) + 12;
-    const { releasedAt } = replayReverse({ gestureAt: [afterRest] });
-
-    expect(releasedAt).not.toBeNull();
-    // And the pause it produces is the rest, not a rounding of it.
-    expect(releasedAt as number).toBeGreaterThanOrEqual(REST);
+  it('accepts the first request after completion without an extra pause', () => {
+    const { releasedAt } = replayReverse({ gestureAt: [4] });
+    expect(releasedAt).toBe(4 * 16.7);
   });
 
   it('stops waiting to be asked at the start of the stretch', () => {
@@ -133,11 +102,11 @@ describe('the statements wait to be asked back', () => {
     expect(releasedAt).not.toBeNull();
   });
 
-  it('gives the wall its turn first, whatever the rest says', () => {
+  it('gives the wall its turn first, even with a reverse request', () => {
     /*
      * Ordering was never the problem and must not become one. While the wall is
      * anything other than fully gone, the statements stay out of its way even
-     * with a gesture in hand and the rest long served.
+     * with a gesture in hand.
      */
     const held = statementsHeldClear({
       positionWants: false,
@@ -145,8 +114,6 @@ describe('the statements wait to be asked back', () => {
       wasClear: true,
       seq: 0.5,
       armed: true,
-      restedAt: 1,
-      now: 1_000_000,
     });
 
     expect(held).toBe(true);
@@ -160,8 +127,6 @@ describe('the statements wait to be asked back', () => {
       wasClear: false,
       seq: 0.5,
       armed: false,
-      restedAt: 0,
-      now: 0,
     });
 
     expect(held).toBe(false);
@@ -175,16 +140,14 @@ describe('the statements wait to be asked back', () => {
         wasClear: true,
         seq: BEAT_DEADBAND,
         armed: false,
-        restedAt: 1,
-        now: BEAT_COOLDOWN_MS + 1,
       })
     ).toBe(false);
   });
 
-  it('does not spend the reverse cooldown just because the reader reached the start', () => {
+  it('releases at the start immediately after the background finishes', () => {
     expect(statementsHeldClear({
       positionWants: false, backgroundBusy: false, wasClear: true,
-      seq: 0, armed: false, restedAt: 1, now: BEAT_COOLDOWN_MS,
-    })).toBe(true);
+      seq: 0, armed: false,
+    })).toBe(false);
   });
 });

@@ -2,100 +2,13 @@ import { useCallback, useRef, type CSSProperties } from 'react';
 import type React from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { HilcoeMark } from './HilcoeMark';
-import { SaintJosephMark } from './SaintJosephMark';
-import { EDUCATION_RECORDS, type EducationRecord } from './educationRecords';
+import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
+import { EducationRecord } from './EducationRecord';
+import { EDUCATION_RECORDS } from './educationRecords';
 import { useRailStaged } from './useRailStaging';
 import { useEducationPlayback } from './useEducationPlayback';
 import { findScrollContainer, scrollContainerBy } from './scrollContainer';
 import styles from './EducationRail.module.css';
-
-/** Past this many, the list reads as a wall and is set in two columns. */
-const DENSE_ITEMS = 6;
-
-function Record({
-  record,
-  position,
-  onWheel,
-  inactive,
-}: {
-  record: EducationRecord;
-  position: number;
-  /** Hands the wheel back to the page; see `forwardWheel`. */
-  onWheel: (event: React.WheelEvent) => void;
-  inactive: boolean;
-}) {
-  return (
-    <article
-      className={styles.record}
-      data-record={position}
-      data-has-mark={record.logo ? 'true' : undefined}
-      data-mark-side={record.markSide}
-      aria-hidden={inactive || undefined}
-      aria-label={`${record.kind}: ${record.title}`}
-    >
-      <div className={styles.plate}>
-        <div className={styles.plateHead}>
-          <span className={styles.kind} data-part="kind">
-            {record.kind}
-          </span>
-          {/* Uncovered from behind its own edge rather than faded in, so the
-              title reads as typeset on arrival instead of switched on. */}
-          <h3 className={styles.recordTitle}>
-            <span className={styles.recordTitleInner} data-part="title">
-              {record.title}
-            </span>
-          </h3>
-        </div>
-        <dl className={styles.spec}>
-          <div className={styles.specRow} data-part="row">
-            <dt className={styles.specKey}>Award</dt>
-            <dd className={styles.specValue}>{record.award}</dd>
-          </div>
-          <div className={styles.specRow} data-part="row">
-            <dt className={styles.specKey}>Completed</dt>
-            <dd className={`${styles.specValue} ${styles.mono}`}>{record.period}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className={styles.detail}>
-        {record.summary ? (
-          <p className={styles.summary} data-part="row">
-            {record.summary}
-          </p>
-        ) : null}
-        <ul className={styles.items} data-dense={record.items.length > DENSE_ITEMS || undefined}>
-          {record.items.map((item) => (
-            <li key={item} className={styles.item} data-part="row">
-              <span className={styles.itemRule} aria-hidden="true" />
-              <span className={styles.itemText}>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/*
-        Only where the real artwork exists. No placeholder for the rest.
-
-        The figure, not the cell around it, is the hover target and the only
-        thing here that takes pointer events -- so it is also what hands the
-        wheel back to the page. See the note on `.markFigure`.
-      */}
-      {record.logo ? (
-        <div className={styles.mark}>
-          <span className={styles.markFigure} onWheel={onWheel}>
-            {record.logo === 'hilcoe' ? (
-              <HilcoeMark className={styles.markArt} />
-            ) : (
-              <SaintJosephMark />
-            )}
-          </span>
-        </div>
-      ) : null}
-    </article>
-  );
-}
 
 /**
  * Education, read one record at a time inside a frame that draws itself open
@@ -120,10 +33,10 @@ function Record({
  * against -- and against a damped scroll, one frame behind reads as the frame
  * vibrating rather than as the frame being still.
  *
- * Position requests the stage, never the record index. A completed crossing,
- * reading pause and fresh scroll wave (or a control click) select one record.
+ * Title completion opens the stage without another gesture or stretch of scroll.
+ * Once a crossing finishes, a fresh wave or control click can select one record.
  */
-export function EducationRail({ onNavigate }: { onNavigate?: (section: string) => void } = {}) {
+export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const pinnedRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -144,7 +57,7 @@ export function EducationRail({ onNavigate }: { onNavigate?: (section: string) =
   }, staged, total, onNavigate);
 
   /*
-   * The controls are the only thing on the stage that takes pointer events,
+   * Controls and the artwork's hover surfaces take pointer events,
    * and taking them means taking the wheel too. The stage is fixed and
    * portalled out of the scroll container, so a wheel event landing on a
    * button has nowhere to bubble to and the page simply stops -- so it is
@@ -212,56 +125,59 @@ export function EducationRail({ onNavigate }: { onNavigate?: (section: string) =
               aria-hidden="true"
             />
 
-            <div className={`${styles.viewport} ${styles.opening}`}>
-              <div ref={trackRef} className={styles.track} data-testid="education-track">
-                {EDUCATION_RECORDS.map((record, index) => (
-                  <Record
-                    key={record.id}
-                    record={record}
-                    position={index}
-                    onWheel={forwardWheel}
-                    inactive={staged && index !== active}
-                  />
-                ))}
+            <div className={`${styles.canvas} ${styles.opening}`}>
+              <div className={styles.viewport}>
+                <div ref={trackRef} className={styles.track} data-testid="education-track">
+                  {EDUCATION_RECORDS.map((record, index) => (
+                    <EducationRecord
+                      key={record.id}
+                      record={record}
+                      position={index}
+                      onWheel={forwardWheel}
+                      inactive={staged && index !== active}
+                      interactive={staged && phase === 'reading' && index === active}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className={`${styles.controls} ${styles.opening}`} onWheel={forwardWheel}>
-              <button
-                type="button"
-                className={styles.control}
-                onClick={() => step(-1)}
-                disabled={active === 0 || (staged && !ready)}
-                aria-label="Previous record"
-              >
-                <ChevronLeft size={20} strokeWidth={1.5} aria-hidden="true" />
-              </button>
+              <div className={styles.controls} onWheel={forwardWheel}>
+                <button
+                  type="button"
+                  className={styles.control}
+                  onClick={() => step(-1)}
+                  disabled={active === 0 || (staged && !ready)}
+                  aria-label="Previous record"
+                >
+                  <ChevronLeft size={20} strokeWidth={1.5} aria-hidden="true" />
+                </button>
 
-              {/* Where the reader is in the set, drawn rather than counted. */}
-              <ol className={styles.progress} data-testid="education-progress">
-                {EDUCATION_RECORDS.map((record, index) => (
-                  <li
-                    key={record.id}
-                    className={styles.progressTick}
-                    data-on={index <= active ? 'true' : undefined}
-                    aria-current={index === active ? 'true' : undefined}
-                  />
-                ))}
-              </ol>
+                {/* Where the reader is in the set, drawn rather than counted. */}
+                <ol className={styles.progress} data-testid="education-progress">
+                  {EDUCATION_RECORDS.map((record, index) => (
+                    <li
+                      key={record.id}
+                      className={styles.progressTick}
+                      data-on={index <= active ? 'true' : undefined}
+                      aria-current={index === active ? 'true' : undefined}
+                    />
+                  ))}
+                </ol>
 
-              <p className={styles.nowReading} aria-live="polite">
-                {activeRecord.title}
-              </p>
+                <p className={styles.nowReading} aria-live="polite">
+                  {activeRecord.title}
+                </p>
 
-              <button
-                type="button"
-                className={styles.control}
-                onClick={() => step(1)}
-                disabled={active === total - 1 || (staged && !ready)}
-                aria-label="Next record"
-              >
-                <ChevronRight size={20} strokeWidth={1.5} aria-hidden="true" />
-              </button>
+                <button
+                  type="button"
+                  className={styles.control}
+                  onClick={() => step(1)}
+                  disabled={active === total - 1 || (staged && !ready)}
+                  aria-label="Next record"
+                >
+                  <ChevronRight size={20} strokeWidth={1.5} aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CHAPTER_OWNERSHIP_ATTRIBUTES, hasChapterOwnership } from './chapterOwnership';
 
 /**
  * Which section the reader is currently in.
@@ -43,8 +44,16 @@ export function useActiveSection(sectionIds: readonly string[]): string {
         return;
       }
 
-      const update = () => {
-        const reading = sections.find(section => section.dataset.educationActive === 'true');
+      const update = (refreshGeometry = false) => {
+        const reading = sections.find(hasChapterOwnership);
+        if (!reading && refreshGeometry) {
+          const top = window.innerHeight * 0.45;
+          const bottom = window.innerHeight * 0.55;
+          for (const section of sections) {
+            const rect = section.getBoundingClientRect();
+            visible.set(section.id, Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top)));
+          }
+        }
         let bestId = reading?.id ?? '';
         let bestHeight = 0;
         if (!reading) {
@@ -71,10 +80,10 @@ export function useActiveSection(sectionIds: readonly string[]): string {
       );
 
       sections.forEach((section) => observer?.observe(section));
-      ownership = new MutationObserver(update);
+      ownership = new MutationObserver(() => update(true));
       sections.forEach(section => ownership?.observe(section, {
         attributes: true,
-        attributeFilter: ['data-education-active'],
+        attributeFilter: CHAPTER_OWNERSHIP_ATTRIBUTES,
       }));
       update();
     };

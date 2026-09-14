@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
-import { BEAT_DEADBAND, TITLE_WRITE, BEAT_COOLDOWN_MS } from './aboutBeats';
+import { BEAT_DEADBAND, TITLE_WRITE } from './aboutBeats';
 import { cachedElement, writeAttribute } from '@/lib/dom/cachedElement';
 import {
   advancePhase,
@@ -89,8 +89,6 @@ export function TitlePixelTransition({
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
   const armedRef = useRef(false);
-  const readyAtRef = useRef(0);
-  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reducedMotion = getPrefersReducedMotion();
 
   const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
@@ -494,37 +492,7 @@ export function TitlePixelTransition({
      * down asks again.
      */
 
-    /*
-     * Gestures made during the beat, and during the pause after it, count for
-     * nothing.
-     *
-     * Requiring the previous beat to be finished is not enough on its own. A
-     * reader spamming the wheel is still producing gestures at the exact moment
-     * the flag lands, so the first one arms the next beat instantly and the
-     * chain runs straight through as one movement -- the thing the arming was
-     * added to prevent. `readyAtRef` is stamped when the precondition arrives,
-     * and nothing is accepted until the rest has been served.
-     */
-    if (!isBackgroundSettled) {
-      armedRef.current = false;
-      readyAtRef.current = 0;
-      if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
-      cooldownTimerRef.current = null;
-    } else if (readyAtRef.current === 0) {
-      readyAtRef.current =
-        typeof performance !== 'undefined' ? performance.now() : 0;
-    }
-    const rested =
-      readyAtRef.current > 0 &&
-      (typeof performance !== 'undefined' ? performance.now() : 0) -
-        readyAtRef.current >=
-        BEAT_COOLDOWN_MS;
-    if (readyAtRef.current > 0 && !rested && cooldownTimerRef.current === null) {
-      cooldownTimerRef.current = setTimeout(() => {
-        cooldownTimerRef.current = null;
-        update();
-      }, Math.max(1, BEAT_COOLDOWN_MS - (performance.now() - readyAtRef.current)));
-    }
+    if (!isBackgroundSettled) armedRef.current = false;
 
     /*
      * Past the end of the stretch, the beat stops waiting to be asked.
@@ -547,7 +515,7 @@ export function TitlePixelTransition({
     const active = educationOwnsTitle || (
       reached &&
       isBackgroundSettled &&
-      (armedRef.current || wasActiveRef.current || (spent && rested)));
+      (armedRef.current || wasActiveRef.current || spent));
 
     /*
      * Disarmed only on the way OUT, never merely for not having started.
@@ -595,12 +563,6 @@ export function TitlePixelTransition({
       if (direction !== 'down') return;
       if (readAbout()?.getAttribute('data-bg-settled') !== 'true') return;
       if (armedRef.current) return;
-      // Discarded, not queued: a gesture that merely arrived early
-      // must not take effect the instant the rest is over.
-      const since =
-        (typeof performance !== 'undefined' ? performance.now() : 0) -
-        readyAtRef.current;
-      if (readyAtRef.current === 0 || since < BEAT_COOLDOWN_MS) return;
       armedRef.current = true;
       update();
     });
@@ -640,8 +602,6 @@ export function TitlePixelTransition({
       unsubscribeScroll();
       unsubscribeGesture();
       gateObserver?.disconnect();
-      if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
-      cooldownTimerRef.current = null;
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       if (animFrameRef.current) {

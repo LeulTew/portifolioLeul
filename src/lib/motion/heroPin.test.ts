@@ -6,6 +6,7 @@ import {
   CUE_START_GAP,
   CUE_TIP_GAP,
   INNER_END,
+  CUE_ENTER,
   cueRail,
   cueRest,
   cuePresence,
@@ -154,17 +155,16 @@ describe('cueRail', () => {
   const HEADING = 160;
   const rail = cueRail(PLATE_BOTTOM, HELD_TOP, HEADING, HOLD, H);
 
-  it('starts under the plate as the plate begins to shut', () => {
+  it('preserves the rail origin independently of the earlier drawing trigger', () => {
     /*
      * The plate is pinned, so its offset is a screen position for the whole
      * hold, and the page position that lines up with it is that scroll plus
-     * that offset. Drawing begins when the copy has gone, which is where the
-     * plate's own beat starts.
+     * that offset. Earlier ink does not change this authored geometry.
      */
-    const drawStarts = HOLD * INNER_END;
-    expect(rail.top).toBe(drawStarts + PLATE_BOTTOM + CUE_START_GAP);
+    const originOffset = HOLD * INNER_END;
+    expect(rail.top).toBe(originOffset + PLATE_BOTTOM + CUE_START_GAP);
     // On screen at that moment, it is exactly under the plate's bottom edge.
-    expect(rail.top - drawStarts).toBe(PLATE_BOTTOM + CUE_START_GAP);
+    expect(rail.top - originOffset).toBe(PLATE_BOTTOM + CUE_START_GAP);
   });
 
   it('is shorter than the window it is drawn in', () => {
@@ -210,15 +210,15 @@ describe('cueDraw', () => {
   const headOnScreen = (scrolled: number) =>
     rail.top + at(scrolled) * rail.height - scrolled;
 
-  it('draws nothing while the copy is still leaving', () => {
-    // A line inviting the reader onward competes with what it leads them from.
+  it('waits only for the shared foreground trigger, not its completed exit', () => {
     expect(at(0)).toBe(0);
-    expect(at(hold * INNER_END * 0.5)).toBe(0);
-    expect(at(hold * INNER_END)).toBe(0);
+    expect(at(hold * CUE_ENTER * 0.5)).toBe(0);
+    expect(at(hold * CUE_ENTER)).toBe(0);
+    expect(at(hold * INNER_END * 0.5)).toBeGreaterThan(0);
   });
 
-  it('starts as the plate begins to shut', () => {
-    expect(at(hold * INNER_END + 1)).toBeGreaterThan(0);
+  it('starts with the foreground departure', () => {
+    expect(at(hold * CUE_ENTER + 1)).toBeGreaterThan(0);
     expect(at(hold * HOLD_CLOSE_END)).toBeGreaterThan(0);
   });
 
@@ -229,17 +229,19 @@ describe('cueDraw', () => {
      * is -- so the fix is a shorter hold, not a later mark. Most of the
      * drawing now happens with the panel on its way up.
      */
-    const drawSpan = HELD_TOP - hold * INNER_END;
-    const waitingForPanel = hold - hold * INNER_END;
+    const drawSpan = HELD_TOP - hold * CUE_ENTER;
+    const waitingForPanel = hold - hold * CUE_ENTER;
     expect(waitingForPanel / drawSpan).toBeLessThan(0.25);
   });
 
   it('grows downward from under the plate as the panel rises', () => {
-    const start = hold * INNER_END;
+    const start = hold * CUE_ENTER;
     const early = headOnScreen(start + (HELD_TOP - start) * 0.25);
     const later = headOnScreen(start + (HELD_TOP - start) * 0.6);
 
-    expect(headOnScreen(hold * INNER_END)).toBeCloseTo(700 + CUE_START_GAP, 6);
+    expect(headOnScreen(start)).toBeCloseTo(
+      700 + CUE_START_GAP + hold * (INNER_END - CUE_ENTER), 6
+    );
     expect(later).toBeLessThan(early);
   });
 
@@ -262,7 +264,7 @@ describe('cueDraw', () => {
   });
 
   it('draws nothing rather than dividing by a span that does not exist', () => {
-    expect(cueDraw(-500, hold, hold * INNER_END)).toBe(0);
+    expect(cueDraw(-500, hold, hold * CUE_ENTER)).toBe(0);
     expect(cueDraw(Number.NaN, hold, HELD_TOP)).toBe(0);
     expect(cueDraw(-500, hold, Number.NaN)).toBe(0);
   });

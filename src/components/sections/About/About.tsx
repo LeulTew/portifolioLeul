@@ -11,6 +11,7 @@ import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { AboutHeading } from './AboutHeading';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { createAboutReader, createSeqReader } from './seqReader';
 import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
@@ -365,18 +366,17 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     arriveWaitingRef.current = headSettled && arriveReached && !wasArrivingRef.current;
     swapRequestRef.current = prepareBeatRequest(swapRequestRef.current, arrive >= 1 && swap < 1, now);
     clearRequestRef.current = prepareBeatRequest(clearRequestRef.current, swap >= 1 && clear < 1, now);
-    returnRequestRef.current = prepareBeatRequest(returnRequestRef.current, !backgroundBusy && clear > 0, now);
-    unswapRequestRef.current = prepareBeatRequest(unswapRequestRef.current, clear <= 0 && !wasClearingRef.current && swap > 0, now);
-    leaveRequestRef.current = prepareBeatRequest(leaveRequestRef.current, swap <= 0 && !wasActiveRef.current && arrive > 0, now);
+    returnRequestRef.current = prepareBeatRequest(returnRequestRef.current, !backgroundBusy && clear >= 1, now);
+    unswapRequestRef.current = prepareBeatRequest(unswapRequestRef.current, clear <= 0 && !wasClearingRef.current && swap >= 1, now);
+    leaveRequestRef.current = prepareBeatRequest(leaveRequestRef.current, swap <= 0 && !wasActiveRef.current && arrive >= 1, now);
 
     // Read completion, not threshold distance. Later beats hold earlier ones
     // through their reverse, including the stopped-reader pauses between them.
     wasClearingRef.current = backgroundBusy || (clearReached
       ? wasClearingRef.current || (swap >= 1 && beatRequested(clearRequestRef.current, spent, now))
-      : statementsHeldClear({
+      : (wasClearingRef.current && clear < 1) || statementsHeldClear({
         positionWants: false, backgroundBusy, wasClear: wasClearingRef.current,
         seq, armed: returnRequestRef.current.armed,
-        restedAt: returnRequestRef.current.readyAt ?? 0, now,
       }));
     const clearBusy = clear > 0 || wasClearingRef.current;
     wasActiveRef.current = clearBusy || (swapReached
@@ -389,7 +389,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
 
     const delay = beatWakeDelay([
       { request: swapRequestRef.current }, { request: clearRequestRef.current },
-      { request: returnRequestRef.current }, { request: unswapRequestRef.current },
+      { request: returnRequestRef.current, cooldown: 0 }, { request: unswapRequestRef.current },
       { request: leaveRequestRef.current },
     ], now);
     if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
@@ -427,7 +427,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         swapRequestRef.current = askBeat(swapRequestRef.current, now);
         clearRequestRef.current = askBeat(clearRequestRef.current, now);
       } else {
-        returnRequestRef.current = askBeat(returnRequestRef.current, now);
+        returnRequestRef.current = askBeat(returnRequestRef.current, now, 0);
         unswapRequestRef.current = askBeat(unswapRequestRef.current, now);
         leaveRequestRef.current = askBeat(leaveRequestRef.current, now);
       }
@@ -499,7 +499,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
   );
 }
 
-export function About({ onNavigate }: { onNavigate?: (section: string) => void } = {}) {
+export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
   const containerRef = useRef<HTMLElement>(null);
   const educationRef = useRef<HTMLDivElement>(null);
   const reducedMotion = getPrefersReducedMotion();

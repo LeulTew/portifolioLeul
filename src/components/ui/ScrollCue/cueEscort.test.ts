@@ -31,7 +31,11 @@ describe('centered About title and its arrow escort', () => {
   it('composes both axes of the escort from the title movement on the same frame', () => {
     const css = readFileSync(join(__dirname, '../../sections/Home/Home.module.css'), 'utf-8');
     const cue = /\.scrollCue \{([^}]+)\}/.exec(css)?.[1];
+    expect(cue).toContain('left: 0');
+    expect(cue).toContain('transform: translate3d(');
+    expect(cue).toContain('--cue-x');
     expect(cue).toContain('--cue-y');
+    expect(cue).not.toContain('left: var(');
     expect(cue).toContain('--heading-origin-x');
     expect(cue).toContain('--heading-origin-y');
     expect(cue).toContain('--heading-rest-x');

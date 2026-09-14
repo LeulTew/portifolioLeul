@@ -363,7 +363,8 @@
   position: fixed;
   top: 0;
   transform: translate3d(
-    calc((var(--heading-rest-x, 0px) - var(--heading-origin-x, 0px)) * var(--cue-heading-progress, 0)),
+    calc(var(--cue-x, 12rem) +
+      (var(--heading-rest-x, 0px) - var(--heading-origin-x, 0px)) * var(--cue-heading-progress, 0)),
     calc(var(--cue-y, 100vh) +
       (var(--heading-rest-y, 0px) - var(--heading-origin-y, 0px)) * var(--cue-heading-progress, 0)),
     0
@@ -374,9 +375,9 @@
    * vertical the words start from at every display width. It was a flat
    * `15rem`, which agreed with the heading at one window size only.
    */
-  left: var(--cue-x, 12rem);
+  left: 0;
   /* Sized to the drawn geometry, so the box is the mark and nothing else. */
-  width: 64px;
+  width: 112px;
   height: var(--cue-height, 300px);
   /*
    * Faded at both ends, never cut.

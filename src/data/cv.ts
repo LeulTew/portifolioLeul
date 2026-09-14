@@ -43,6 +43,8 @@ export const cvData = {
     {
       issuer: "Bootdev",
       year: "2025",
+      completedAtLeast: 15,
+      completionUnit: "courses & projects",
       description: "A comprehensive series of courses focused on backend development and computer science fundamentals in Python.",
       items: [
         "Build a Static Site Generator in Python (Sept 2025)",
@@ -60,6 +62,8 @@ export const cvData = {
     {
       issuer: "freeCodeCamp",
       year: "2024",
+      completedAtLeast: 2,
+      completionUnit: "certifications",
       description: "Each certification represents approximately 300 hours of coursework in core web and software development principles.",
       items: [
         "JavaScript Algorithms and Data Structures (Beta)",

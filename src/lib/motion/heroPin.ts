@@ -9,8 +9,8 @@
  *
  * So the section is several screens tall and its contents are held at the
  * first of them. Scrolling advances a progress value rather than the copy's
- * position. Copy and cloud clear together; the cue then draws the connection
- * to About and follows the incoming section's actual movement.
+ * position. Copy and cloud clear together while the cue draws the connection
+ * to About, following the incoming section's actual movement.
  *
  * `position: sticky` cannot do this here. The page scrolls inside a
  * transformed element, which leaves sticky with no scrollport to stick to --
@@ -45,7 +45,7 @@ export const HERO_SCREENS = 1 + HERO_HOLD_SCREENS;
 /**
  * Share of the hold by which the copy has finished leaving.
  *
- * Retained for the original scroll profile and the start of the cue's rail.
+ * Retained for the original scroll profile and the cue's rail origin.
  * Normal-motion copy and fog now share INNER_EXIT_MS rather than these offsets.
  */
 export const INNER_END = 0.42;
@@ -68,10 +68,8 @@ export const HOLD_CLOSE_END = 0.72;
    clock. Scroll now names the moment a beat should start; the beat's own
    duration decides how it gets there.
 
-   Durations were picked to land on the same wall-clock feel the scrub had at
-   an ordinary reading pace, so the sequence keeps its timing: the copy is a
-   beat longer than the plate, because five staggered departures need room the
-   single eyelid does not.
+   Copy and fog share one 900ms exit. The requested stroke overlaps that exit
+   on the same frame loop; About waits for both completed endpoints.
    ------------------------------------------------------------------------- */
 
 /** How long the copy takes to leave, once scroll has started it. */
@@ -88,6 +86,7 @@ export const CUE_DRAW_MS = 950;
  */
 export const INNER_ENTER = 0.02;
 export const INNER_RELEASE = 0.005;
+export const CUE_ENTER = INNER_ENTER;
 
 /**
  * Hold progress that commits the plate to shutting, and the lower point that
@@ -234,19 +233,8 @@ export function cueRail(
       ? headingTop
       : viewportHeight * CUE_TIP_SCREEN_SHARE;
 
-  /*
-   * The mark starts under the plate as the plate begins to shut.
-   *
-   * The plate is pinned, so `plateBottom` is where it sits on the screen for
-   * the whole hold rather than where it sits in the page; the page position
-   * that lines up with it is the scroll at which drawing begins plus that
-   * offset.
-   *
-   * It was moved to the end of the hold at one point to stop it being drawn
-   * down an empty hero. That was the wrong lever: the fix is for the section
-   * underneath to arrive sooner, which is the hold's length, not the mark's
-   * timing.
-   */
+  // Keep the authored rail and landing; requesting its ink earlier must not
+  // lengthen the bridge or pull its origin up into the departing foreground.
   const top = holdLength * INNER_END + plateBottom + CUE_START_GAP;
 
   /*
@@ -262,9 +250,8 @@ export function cueRail(
 /**
  * How far through its drawing the cue is.
  *
- * Nothing while the copy is still leaving -- a line inviting the reader onward
- * competes with the thing it leads them away from. Then it is drawn evenly,
- * from the moment the plate starts to shut through to the moment the held
+ * The stroke starts during the foreground's departure, once scroll requests
+ * the bridge. It draws from the start of the rail through to the moment the held
  * stretch takes over the window, where its head comes to rest just above the
  * heading.
  *
@@ -280,7 +267,7 @@ export function cueDraw(
   if (!Number.isFinite(sectionTop) || !Number.isFinite(holdLength)) return 0;
   if (!Number.isFinite(heldTop) || holdLength < 0) return 0;
 
-  const startsAt = holdLength * INNER_END;
+  const startsAt = holdLength * CUE_ENTER;
   const span = heldTop - startsAt;
   if (span <= 0) return 0;
 
@@ -288,7 +275,7 @@ export function cueDraw(
   return clamp01((scrolled - startsAt) / span);
 }
 
-/** A spent flick still draws visibly after the content and fog have cleared. */
+/** A spent flick still draws visibly instead of jumping to its requested endpoint. */
 export function advanceCue(state: PhaseState, requested: number, dtMs: number): PhaseState {
   const target = clamp01(requested);
   const next = advancePhase(state, target > state.t, dtMs, CUE_DRAW_MS);
@@ -296,7 +283,7 @@ export function advanceCue(state: PhaseState, requested: number, dtMs: number): 
 }
 
 export function cueTravel(railTop: number, heldTop: number, holdLength: number, drawn: number): number {
-  const start = holdLength * INNER_END;
+  const start = holdLength * CUE_ENTER;
   return railTop - start - (heldTop - start) * clamp01(drawn);
 }
 

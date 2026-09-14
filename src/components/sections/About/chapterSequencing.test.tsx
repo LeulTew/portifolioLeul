@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { animationClock } from '@/test/animationClock';
 import { About } from './About';
 import {
-  BEAT_COOLDOWN_MS, BEAT_REST_MS, HEAD_SETTLE, STATEMENT_ARRIVE,
+  BACKGROUND_RISE, BEAT_COOLDOWN_MS, BEAT_REST_MS, HEAD_SETTLE, STATEMENT_ARRIVE,
   STATEMENT_CLEAR, STATEMENT_SWAP, TITLE_WRITE,
 } from './aboutBeats';
 
@@ -14,9 +14,14 @@ vi.mock('./EducationRail/EducationRail', () => ({ EducationRail: () => null }));
 vi.mock('../../ui/ParallaxPlate', () => ({ ParallaxPlate: () => null }));
 vi.mock('../../ui/FocusScrim', () => ({ FocusScrim: () => null }));
 
-const HEAD_INTRO_MS = 500 + HEAD_SETTLE.durationMs;
+const HEAD_INTRO_MS = BEAT_REST_MS + HEAD_SETTLE.durationMs;
 
 describe('the mounted About chapter plays every movement in order', () => {
+  it('limits the remaining reading pauses to 250ms', () => {
+    expect(BEAT_COOLDOWN_MS).toBe(250);
+    expect(BEAT_REST_MS).toBe(250);
+  });
+
   beforeEach(() => {
     vi.stubEnv('NODE_ENV', 'development');
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -82,7 +87,7 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
     expect(chapter.headReady()).toBe(false);
     expect(screen.getByTestId('about-held-header').style.getPropertyValue('--head-travel')).toBe('0.0000');
-    await chapter.run(480);
+    await chapter.run(BEAT_REST_MS - 20);
     expect(screen.getByTestId('about-held-header').style.getPropertyValue('--head-travel')).toBe('0.0000');
     await chapter.run(HEAD_SETTLE.durationMs + 40);
     expect(chapter.headReady()).toBe(true);
@@ -215,11 +220,13 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
     expect(Number(chapter.overlay.style.getPropertyValue('--head-on'))).toBe(1);
     expect(Number(chapter.overlay.style.getPropertyValue('--ground-on'))).toBe(1);
-    await chapter.run(TITLE_WRITE.durationMs);
+    await chapter.run(TITLE_WRITE.durationMs - 150);
+    expect(chapter.about).toHaveAttribute('data-reverse-transition-active', 'true');
+    expect(chapter.about).toHaveAttribute('data-bg-settled', 'true');
+    await chapter.run(80);
     expect(chapter.about).not.toHaveAttribute('data-reverse-transition-active');
-    expect(chapter.about).toHaveAttribute('data-bg-settled', 'true');
-    await chapter.run(900);
-    expect(chapter.about).toHaveAttribute('data-bg-settled', 'true');
+    expect(chapter.about).toHaveAttribute('data-bg-active', 'true');
+    expect(chapter.about).not.toHaveAttribute('data-bg-settled');
     await chapter.run(13000);
     expect(chapter.headReady()).toBe(false);
     expect(chapter.value('one-on')).toBe(0);
@@ -235,20 +242,22 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.run(15000);
     await chapter.position(0.549);
     await chapter.wheel(-3);
-    await chapter.run(TITLE_WRITE.durationMs + 20);
-    expect(chapter.about).not.toHaveAttribute('data-reverse-transition-active');
+    await chapter.run(TITLE_WRITE.durationMs - 10);
+    expect(chapter.about).toHaveAttribute('data-reverse-transition-active', 'true');
     expect(chapter.headReady()).toBe(true);
     expect(chapter.value('two-on')).toBe(0);
     await chapter.wheel(-3);
-    await chapter.run(BEAT_COOLDOWN_MS + 20);
+    await chapter.run(20);
+    expect(chapter.about).not.toHaveAttribute('data-reverse-transition-active');
     expect(chapter.about).toHaveAttribute('data-bg-settled', 'true');
     expect(chapter.clock.pending).toBe(0);
     await chapter.wheel(-3);
-    await chapter.run(1520);
+    await chapter.run(BACKGROUND_RISE.durationMs - 10);
+    expect(chapter.about).toHaveAttribute('data-bg-active', 'true');
+    await chapter.wheel(-3);
+    await chapter.run(20);
     expect(chapter.about).not.toHaveAttribute('data-bg-active');
     expect(chapter.about).toHaveAttribute('data-statements-cleared', 'true');
-    await chapter.wheel(-3);
-    await chapter.run(BEAT_COOLDOWN_MS + 20);
     expect(chapter.value('two-on')).toBe(0);
     expect(chapter.clock.pending).toBe(0);
     await chapter.wheel(-3);
@@ -285,6 +294,22 @@ describe('the mounted About chapter plays every movement in order', () => {
     chapter.unmount();
     expect(vi.getTimerCount()).toBe(0);
     expect(chapter.clock.pending).toBe(0);
+  });
+
+  it('does not let the shorter rest replace the statement animation lock', async () => {
+    const chapter = mount();
+    await chapter.position(0.953);
+    await chapter.run(HEAD_INTRO_MS + BEAT_REST_MS + STATEMENT_ARRIVE.durationMs / 2);
+    const arriving = chapter.value('one-on');
+    expect(arriving).toBeGreaterThan(0);
+    expect(arriving).toBeLessThan(1);
+    await chapter.position(-1);
+    await chapter.wheel(-3);
+    await chapter.run(BEAT_COOLDOWN_MS + 20);
+    expect(chapter.value('one-on')).toBeGreaterThan(arriving);
+    await chapter.run(STATEMENT_ARRIVE.durationMs / 2 - BEAT_COOLDOWN_MS);
+    expect(chapter.value('one-on')).toBe(1);
+    expect(chapter.headReady()).toBe(true);
   });
 
   it('does not spend the authored heading-to-copy rest in a suspended frame', async () => {

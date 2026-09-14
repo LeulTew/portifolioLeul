@@ -1,8 +1,8 @@
 /**
- * Geometry for Education entry, release and the selected record's track.
+ * Geometry for Education re-entry, release and the selected record's track.
  *
- * Scroll never selects a record. The playback controller accepts one fresh
- * wave or control activation after the complete crossing and reading pause.
+ * Scroll distance never selects a record. The playback controller accepts one fresh
+ * wave or control activation as soon as the complete crossing finishes.
  */
 
 /**

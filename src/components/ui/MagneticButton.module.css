@@ -150,6 +150,11 @@
   opacity: 1;
 }
 
+:global(main[inert]) .tracerBeam,
+:global([data-education-covered]) .tracerBeam {
+  animation-play-state: paused;
+}
+
 @keyframes traceBorder {
   to {
     stroke-dashoffset: -225;

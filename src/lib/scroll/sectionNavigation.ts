@@ -1,5 +1,12 @@
 type Listener = (section: string) => void;
 
+export interface SectionNavigationOptions {
+  /** Settle a completed chapter's landing without another animation or input lock. */
+  immediate?: boolean;
+}
+
+export type SectionNavigate = (section: string, options?: SectionNavigationOptions) => void;
+
 const listeners = new Set<Listener>();
 
 /** Explicit navigation can leave a reading stage; scroll momentum cannot. */

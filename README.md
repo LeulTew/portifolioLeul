@@ -58,10 +58,71 @@ _> Total payload reduced by over **150MB**._\_
 | Category           | Technologies                                  |
 | :----------------- | :-------------------------------------------- |
 | **Core**           | React 18, TypeScript, Vite                    |
-| **3D & Animation** | React Three Fiber, Drei, Framer Motion, GSAP  |
+| **3D & Animation** | React Three Fiber, Drei, Framer Motion, GSAP, Anime.js |
 | **Styling**        | Tailwind CSS, CSS Modules                     |
 | **Testing**        | Vitest, React Testing Library (100% Coverage) |
 | **Deployment**     | Vercel                                        |
+
+Education uses a paused Anime.js timeline for split typography and credential
+artwork, driven by the existing GSAP chapter clock. Each record transition is
+authored as one second, with no independent animation loop or post-animation
+cooldown. Text starts late enough to remain visibly animated as the incoming
+record enters, in either direction. About retains navigation
+ownership until Education releases the
+viewport; natural departure lands on Skills rather than spending later sections
+behind the reader. Narrow and reduced-motion layouts expose every record in
+normal document flow.
+Explicit Home/About navigation starts a fresh Education chapter; natural upward
+return from Skills preserves the trailing record. Shared kinetic headings and
+Contact panels use ownership-aware one-shot entrances, so crossing their
+geometric bounds under the covered chapter does not consume their animations.
+
+Certification totals use explicit lower bounds in `cvData`, independent of the
+featured course lists. The displayed years describe those selections, not the
+completion date of every credential in the total.
+
+The credential artwork adapts [React Bits TiltedCard](https://reactbits.dev/components/tilted-card)
+to the existing Framer Motion runtime: pointer-local springs, cached geometry,
+and immediate reset when a record stops being interactive. The typography takes
+its splitting approach from [SplitText](https://reactbits.dev/text-animations/split-text),
+but its finite glyphs are authored in React and animated by Anime.js rather than
+adding another scroll trigger. Supporting copy adapts
+[BlurText](https://reactbits.dev/text-animations/blur-text)'s word-by-word
+overshoot and focus; labels, dates and GPA adapt
+[DecryptedText](https://reactbits.dev/text-animations/decrypted-text)'s sequential
+original-character reveal. Both use the chapter clock instead of one-shot
+observers, independent timers, or per-frame React state. Blur is bounded to one
+small filter per phrase. Decryption preserves the original accessible text and
+its layout while painting at most ten precomputed, record-wide cipher steps.
+HiLCoE folds its title into place, Saint Joseph uses a letterpress arrival,
+Boot.dev decodes its name, and freeCodeCamp uses a lateral letter wave.
+Reveal painting is bounded to 60fps on high-refresh displays; the existing track
+clock remains unchanged and the exact completed frame is never skipped.
+The [React Bits license](public/licenses/react-bits.txt)
+is MIT plus Commons Clause, not unrestricted MIT. Bricolage Grotesque is
+self-hosted with its [SIL Open Font License](public/fonts/OFL-BricolageGrotesque.txt).
+
+While the Education stage is opaque, the covered HTML and old pinned overlays
+stop painting; the scrollport and layout remain available. They are restored
+before the stage uncovers them. Their temporary `data-education-covered` marker
+also pauses invisible button tracers, avoiding animation-driven style work.
+The same tracer guard applies when Skills makes `main` inert; visible button
+motion is unchanged. Settled Drei translations cache CSSOM's rounded
+serialization, avoiding repeated layout reads and false progress publications
+on high-refresh displays.
+Anime timelines are assembled without intermediate composition and initialized
+once, so adding glyphs and rows does not repeatedly seek partially built motion.
+Every incoming record replays its text and artwork, including backward crossings
+and re-entry from Skills. Reverse arrivals mirror the glyph direction and decode
+order, not the semantic text. Completed reveals are disposed immediately, so
+reading retains no text filters, transforms or cipher work. Frame departure stays
+simple and uses the same completion gate.
+
+Boot.dev's supplied color and white artwork is cropped into small transparent
+WebP assets and resolves from white to color below its selected builds. The
+academic logos are unchanged. The two freeCodeCamp records carry lightweight
+algorithm-flow and responsive-layout SVG illustrations, not invented issuer
+badges. These draw on the same reveal clock and add no pointer or scroll traps.
 
 ## ⚙️ Local Development
 
@@ -71,7 +132,7 @@ git clone https://github.com/LeulTew/portifolioLeul.git
 cd portifolioLeul
 
 # 2. Install
-pnpm install
+bun install
 
 # 3. Configure Environment
 # Create .env.local and add your EmailJS credentials:
@@ -80,7 +141,7 @@ pnpm install
 # VITE_EMAILJS_PUBLIC_KEY=...
 
 # 4. Run
-pnpm dev
+bun run dev
 ```
 
 All three EmailJS settings are required for contact-form delivery. Missing or

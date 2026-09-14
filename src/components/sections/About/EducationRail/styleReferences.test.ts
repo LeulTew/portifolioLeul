@@ -13,7 +13,12 @@ describe('education artwork styling', () => {
         }
       });
     const missing: string[] = [];
-    for (const file of ['EducationRail.tsx', 'educationMotion.ts', 'SaintJosephMark.tsx', 'HilcoeMark.tsx']) {
+    for (const file of [
+      'EducationRail.tsx', 'EducationRecord.tsx', 'EducationArtwork.tsx',
+      'EducationText.tsx', 'EducationBrand.tsx',
+      'educationMotion.ts', 'educationReveal.ts',
+      'SaintJosephMark.tsx', 'HilcoeMark.tsx',
+    ]) {
       const source = readFileSync(join(__dirname, file), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       for (const match of source.matchAll(/styles\.(\w+)/g)) {
@@ -21,5 +26,45 @@ describe('education artwork styling', () => {
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it('never adds an internal scroll region or an autonomous CSS animation', () => {
+    const forbidden: string[] = [];
+    postcss.parse(readFileSync(join(__dirname, 'EducationRail.module.css'), 'utf8'))
+      .walkDecls((declaration) => {
+        if (
+          (/^overflow(?:-[xy])?$/.test(declaration.prop) && /auto|scroll/.test(declaration.value)) ||
+          /^animation(?:-|$)/.test(declaration.prop)
+        ) {
+          forbidden.push(`${declaration.prop}: ${declaration.value}`);
+        }
+      });
+    expect(forbidden).toEqual([]);
+  });
+
+  it('promotes glyphs only during motion on the visible, active record', () => {
+    const promoted: string[] = [];
+    postcss.parse(readFileSync(join(__dirname, 'EducationRail.module.css'), 'utf8'))
+      .walkRules((rule) => {
+        if (!/data-edu-glyph|\.glyph\b/.test(rule.selector)) return;
+        rule.walkDecls('will-change', () => { promoted.push(rule.selector); });
+      });
+    expect(promoted).toHaveLength(1);
+    expect(promoted[0]).toContain("[data-visible='true']");
+    expect(promoted[0]).toContain("[data-reveal='true']");
+    expect(promoted[0]).toContain("[data-record]:not([aria-hidden='true'])");
+    expect(promoted[0]).toContain("[data-phase='opening']");
+    expect(promoted[0]).toContain("[data-phase='crossing']");
+    expect(promoted[0]).toContain("[data-phase='closing']");
+    expect(promoted[0]).not.toContain("[data-phase='reading']");
+  });
+
+  it('keeps the fixed footer clearance on compact desktop layouts', () => {
+    const padding: string[] = [];
+    postcss.parse(readFileSync(join(__dirname, 'EducationRail.module.css'), 'utf8'))
+      .walkRules('.pinned', (rule) => {
+        rule.walkDecls('padding-bottom', declaration => { padding.push(declaration.value); });
+      });
+    expect(padding).toEqual(['calc(max(2rem, 3vw) + 2.5rem)']);
   });
 });

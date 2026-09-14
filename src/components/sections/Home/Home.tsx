@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
@@ -58,7 +58,7 @@ import { cloudBounds, measureHeroContent } from './heroContentBounds';
  * The mark is drawn at a fixed aspect, so its width is what its length is
  * measured against; stated here because the run has to be computed from both.
  */
-const CUE_WIDTH_PX = 64;
+const CUE_WIDTH_PX = 112;
 
 const findAbout = cachedElement(() => document.getElementById('about'));
 const findCue = cachedElement(() => document.querySelector<HTMLElement>('[data-testid="scroll-cue"]'));
@@ -141,6 +141,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
   const innerActiveRef = useRef(false);
   const frameRef = useRef(0);
   const applyRef = useRef<(() => void) | null>(null);
+  const onCueDrawComplete = useCallback(() => applyRef.current?.(), []);
   const positionReaderRef = useRef<ReturnType<typeof createTranslatedPositionReader> | null>(null);
   const lastFrameRef = useRef(0);
   const settledRef = useRef(false);
@@ -266,23 +267,27 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
         pinned.style.setProperty('--pin', offset);
       }
 
-      cueTargetRef.current = chapterHoldsCue ? 1 :
-        innerPhaseRef.current.t >= 1 ? cueDraw(top, holdLength, heldTopRef.current) : 0;
+      cueTargetRef.current = chapterHoldsCue ? 1 : cueDraw(top, holdLength, heldTopRef.current);
       setHeroCue(!held ? 1 : cuePhaseRef.current.t);
+      const cue = findCue();
       writeAttribute(
         section,
         'data-hero-handover-settled',
-        !held || (getHeroCue() >= 1 && !heroStillLeaving) ? 'true' : null
+        !held || (getHeroCue() >= 1 && cue?.dataset.progress === '1.000' && !heroStillLeaving)
+          ? 'true' : null
       );
 
       // The body-level portal needs viewport coordinates, including in reduced
       // motion. Its SVG progress alone cannot override a zero CSS opacity.
-      const cue = findCue();
       const heldTop = heldTopRef.current;
       const rail = railRef.current;
       const scrolled = Math.max(-top, 0);
       const returningCue = cueWasHeld && !chapterHoldsCue && cueTargetRef.current < cuePhaseRef.current.t;
-      const restingCue = chapterHoldsCue || returningCue || (heroStillLeaving && getHeroCue() >= 1);
+      const arrivingCue = held && !cueWasHeld && cuePhaseRef.current.t > 0 &&
+        (cuePhaseRef.current.t < 1 || cue?.dataset.progress !== '1.000') &&
+        cueTargetRef.current >= 1;
+      const restingCue = chapterHoldsCue || returningCue || arrivingCue ||
+        (heroStillLeaving && getHeroCue() >= 1);
       const y = restingCue ? rail.endY :
         rail.top - scrolled + cueRest(top, heldTop, window.innerHeight);
       const arrowX = returningCue ? rail.endX :
@@ -304,8 +309,8 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       if (!content) return;
 
       /*
-       * Copy and fog share one exit clock. The arrow waits for their common
-       * hidden endpoint instead of overlapping the foreground.
+       * Copy, fog and the requested stroke overlap on the same frame loop.
+       * About still waits for both the foreground and the cue to finish.
        */
       /*
        * Scroll says *whether*, not *how far*.
@@ -944,7 +949,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       */}
       </div>
 
-      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} />
+      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} onDrawComplete={onCueDrawComplete} />
     </section>
   );
 }
@@ -953,9 +958,10 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
  *
  * Only the cue's paths re-render as scroll draws the connection.
  */
-function HeroScrollCue({ onActivate, run }: {
+function HeroScrollCue({ onActivate, run, onDrawComplete }: {
   onActivate: () => void;
   run: number;
+  onDrawComplete: () => void;
 }) {
   const [progress, setProgress] = useState(0);
 
@@ -963,12 +969,18 @@ function HeroScrollCue({ onActivate, run }: {
     const publish = (next: number) => {
       // Finer than the stroke can show, and it drops the steps a slow scroll
       // spends re-reporting a value the line already sits at.
-      setProgress((current) => (Math.abs(current - next) < 0.002 ? current : next));
+      setProgress((current) =>
+        next === 0 || next === 1 || Math.abs(current - next) >= 0.002 ? next : current
+      );
     };
 
     publish(getHeroCue());
     return subscribeHeroCue(publish);
   }, []);
+
+  useLayoutEffect(() => {
+    if (progress === 1) onDrawComplete();
+  }, [onDrawComplete, progress]);
 
   const cue = (
     <ScrollCue
