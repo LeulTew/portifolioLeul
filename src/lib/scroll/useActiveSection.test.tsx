@@ -160,6 +160,20 @@ describe('useActiveSection', () => {
     expect(getByTestId('active').textContent).toBe('skills');
   });
 
+  it('keeps Skills selected while its stage is still reading beyond its physical spacer', async () => {
+    const sections = addSections();
+    const skills = sections.find(section => section.id === 'skills')!;
+    const { getByTestId } = render(<Probe />);
+    act(() => capturedCallback?.(band({ projects: 260 })));
+    await act(async () => { skills.dataset.skillsActive = 'true'; });
+    expect(getByTestId('active').textContent).toBe('skills');
+    document.getElementById('projects')!.getBoundingClientRect = () => DOMRect.fromRect({
+      x: 0, y: 80, width: 1440, height: 1000,
+    });
+    await act(async () => { delete skills.dataset.skillsActive; });
+    expect(getByTestId('active').textContent).toBe('projects');
+  });
+
   it('waits for sections that have not mounted yet', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Probe />);

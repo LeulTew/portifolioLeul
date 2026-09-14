@@ -98,6 +98,28 @@ describe('chrome painted through the actual chapter background', () => {
     expect(attributes).not.toHaveBeenCalled();
   });
 
+  it('composites white chrome with the actual Skills plate rather than the green hidden behind it', () => {
+    const { education } = scene();
+    education.dataset.visible = 'true';
+    vi.spyOn(education, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, window.innerWidth, window.innerHeight));
+    const skills = document.createElement('div');
+    skills.dataset.testid = 'skills-stage';
+    skills.dataset.visible = 'true';
+    skills.style.opacity = '0.6';
+    document.body.appendChild(skills);
+    updateChapterInk();
+    expect(root.style.getPropertyValue('--chapter-ink-opacity')).toBe('0.4');
+    skills.style.opacity = '1';
+    updateChapterInk();
+    expect(root.dataset.chapterInk).toBe('none');
+    expect(root.style.getPropertyValue('--chapter-ink-visibility')).toBe('hidden');
+    delete skills.dataset.visible;
+    updateChapterInk();
+    expect(root.dataset.chapterInk).toBe('solid');
+    expect(root.style.getPropertyValue('--chapter-ink-opacity')).toBe('1');
+  });
+
   it('observes late portals, stopped-scroll changes and releases all ownership on unmount', async () => {
     const { unmount } = renderHook(useChapterInk);
     const { about, overlay } = scene();

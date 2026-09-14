@@ -89,6 +89,7 @@ function App() {
   const handleLoaded = useCallback(() => setIsLoading(false), []);
   /** Frames left to re-announce a restored position to ScrollControls. */
   const restoreSyncFramesRef = useRef(0);
+  const restoredOffsetRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // The context is optional by type -- it has no sensible default -- and this
@@ -313,33 +314,38 @@ function App() {
    * this component and ScrollControls, and an effect here can run *before* the
    * rebuild that resets scrollTop.
    */
-  const applyPendingRestore = useCallback(() => {
+  const applyPendingRestore = useCallback((): number | null => {
     const track = scrollElementRef.current;
-    if (!track) return;
+    const pending = pendingRestoreRef.current;
+    const expectedOffset = pending
+      ? preserveScrollOffset(pending.offset, pending.fromPages, scrollPagesRef.current)
+      : null;
+    if (!track) return expectedOffset;
 
     if (restoreSyncFramesRef.current > 0) {
       restoreSyncFramesRef.current -= 1;
       // ScrollControls ignores scroll events for one frame after a rebuild, so
       // re-announce the position once that guard has lifted.
       track.dispatchEvent(new Event('scroll'));
-      return;
+      return restoredOffsetRef.current;
     }
 
-    const pending = pendingRestoreRef.current;
-    if (!pending) return;
+    if (!pending) return null;
 
     const scrollable = track.scrollHeight - track.clientHeight;
-    if (scrollable <= 0) return;
+    if (scrollable <= 0) return expectedOffset;
 
     const nextPages = track.scrollHeight / track.clientHeight - 1;
     // Wait for the rebuild: until the track carries its new height, restoring
     // would measure against the geometry we are trying to leave behind.
-    if (Math.abs(nextPages - pending.fromPages) < 1e-3) return;
+    if (Math.abs(nextPages - pending.fromPages) < 1e-3) return expectedOffset;
 
     pendingRestoreRef.current = null;
-    track.scrollTop =
-      preserveScrollOffset(pending.offset, pending.fromPages, nextPages) * scrollable;
+    const offset = preserveScrollOffset(pending.offset, pending.fromPages, nextPages);
+    track.scrollTop = offset * scrollable;
+    restoredOffsetRef.current = offset;
     restoreSyncFramesRef.current = 2;
+    return offset;
   }, []);
 
   const attachMain = useCallback((node: HTMLElement | null) => {
@@ -473,7 +479,7 @@ function App() {
     <main ref={attachMain} className={styles.main}>
       <Home onNavigate={scrollToSection} theme={theme} flat={!show3D} />
       <About onNavigate={scrollToSection} />
-      <Skills />
+      <Skills onNavigate={scrollToSection} />
       <Projects theme={theme} />
       <div className={styles.spacer} />
       <Contact />
@@ -587,7 +593,7 @@ function ScrollManager({
   onFrame,
 }: {
   onReady: (el: HTMLDivElement | null, state: ReturnType<typeof useScroll> | null) => void;
-  onFrame: () => void;
+  onFrame: () => number | null;
 }) {
   const scroll = useScroll();
 
@@ -599,12 +605,18 @@ function ScrollManager({
   // The page scrolls inside the ScrollControls element, so this is the only
   // place that knows the real progress. Publish it for the DOM layer.
   useFrame((state) => {
+    const restored = onFrame();
+    if (scroll && restored !== null) {
+      // Restoring only scrollTop lets Drei damp its new offset from zero,
+      // briefly publishing a fictitious return through earlier chapters.
+      scroll.offset = restored;
+      scroll.delta = 0;
+    }
     // Drei 9 skips HTML transforms at zero delta, including a reset to zero
     // after rebuilding pages. Reconcile only settled, physically agreed state;
     // moving frames remain exclusively Drei's, and pending restores stay put.
     const geometryChanged = scroll ? reconcileScrollLayer(scroll, state.size.height) : false;
     setScrollProgress(scroll?.offset ?? 0, geometryChanged);
-    onFrame();
   });
 
   return null;

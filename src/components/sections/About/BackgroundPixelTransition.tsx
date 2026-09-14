@@ -566,15 +566,18 @@ export function BackgroundPixelTransition({
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = 0;
       }
-      if (typeof document !== 'undefined') {
-        const aboutSection = document.getElementById('about');
-        aboutSection?.removeAttribute('data-bg-transition');
-        aboutSection?.removeAttribute('data-bg-active');
-        aboutSection?.removeAttribute('data-bg-settled');
-        document.documentElement.removeAttribute('data-navbar-contrary');
-      }
     };
   }, [readAbout, update]);
+
+  // Rebuilding the pixel grid must not revoke an already completed beat.
+  // Ownership is released only when the background itself leaves the tree.
+  useEffect(() => () => {
+    const aboutSection = readAbout();
+    aboutSection?.removeAttribute('data-bg-transition');
+    aboutSection?.removeAttribute('data-bg-active');
+    aboutSection?.removeAttribute('data-bg-settled');
+    document.documentElement.removeAttribute('data-navbar-contrary');
+  }, [readAbout]);
 
   return (
     <div
