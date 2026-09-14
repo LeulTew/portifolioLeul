@@ -57,7 +57,7 @@ describe('Skills', () => {
   it('keeps the complete toolkit readable without a staged viewport', () => {
     render(<Skills />);
     expect(screen.getByTestId('skills-stage')).toHaveAttribute('data-staged', 'false');
-    expect(screen.queryByRole('button', { name: 'Next skill' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Next:/ })).not.toBeInTheDocument();
     skillCategories.forEach(category => {
       expect(screen.getByRole('heading', { name: category.title })).toBeVisible();
     });
@@ -80,6 +80,19 @@ describe('Skills', () => {
       const to = path.getAttribute('d')!;
       expect(from.match(/[a-z]/gi)).toEqual(to.match(/[a-z]/gi));
       expect(from.match(/-?\d*\.?\d+/g)).toHaveLength(to.match(/-?\d*\.?\d+/g)!.length);
+    });
+
+  });
+
+  it('uses a distinct primary visual subject for each capability', () => {
+    render(<Skills />);
+    const subjects = [
+      'chip-pins', 'interface-system', 'neural-volume',
+      'storage-tiers', 'vector-nib', 'collaborating-modules',
+    ];
+    skillCategories.forEach((category, index) => {
+      const article = screen.getByRole('article', { name: category.title });
+      expect(article.querySelector(`[data-asset-feature="${subjects[index]}"]`)).not.toBeNull();
     });
   });
 });

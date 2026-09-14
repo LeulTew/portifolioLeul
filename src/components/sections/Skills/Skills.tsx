@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
 import { SKILL_CHAPTERS, type SkillChapter } from './skillsData';
-import { SkillText, TiltedInstrument } from './SkillsMotion';
-import { SkillArtifact } from './SkillArtifact';
+import { SkillInlineText, SkillText, TiltedInstrument } from './SkillsMotion';
+import { SkillSculpture } from './SkillSculpture';
 import { useSkillsPlayback, useSkillsStaged } from './useSkillsPlayback';
 import styles from './Skills.module.css';
 
@@ -21,27 +21,30 @@ function Chapter({
     <article
       className={styles.chapter}
       data-skill-chapter={index}
+      data-scene={chapter.scene}
+      data-composition={chapter.composition}
       aria-hidden={staged && !active ? true : undefined}
       aria-label={chapter.title}
     >
-      <div className={styles.editorial}>
-        <SkillText text={chapter.title} tag="h3" className={styles.title} animated={staged} />
-        <p className={styles.summary} data-skill-copy="">{chapter.summary}</p>
+      <div className={styles.editorial} onWheel={onWheel}>
+        <SkillText text={chapter.title} tag="h3" className={styles.title}
+          animated={staged} mode={chapter.textMotion} />
+        <p className={styles.summary} data-skill-summary="">{chapter.summary}</p>
         <ul className={styles.skillList} aria-label={`${chapter.title} toolkit`}>
           {chapter.items.map(skill => (
-            <li key={skill} className={styles.skill} data-skill-copy="">
+            <li key={skill} className={styles.skill} data-skill-copy="" aria-label={staged ? skill : undefined}>
               <span className={styles.skillMarker} aria-hidden="true" />
-              <span>{skill}</span>
+              <SkillInlineText text={skill} mode={chapter.inlineMotion} animated={staged} />
             </li>
           ))}
         </ul>
       </div>
 
-      <div className={styles.visual}>
-        <TiltedInstrument enabled={staged && active} onWheel={onWheel}>
-          <SkillArtifact scene={chapter.scene} />
+      {!staged && <div className={styles.visual}>
+        <TiltedInstrument enabled={false}>
+          <SkillSculpture scene={chapter.scene} />
         </TiltedInstrument>
-        <div className={styles.process} data-skill-copy="" aria-hidden="true">
+        <div className={styles.process} aria-hidden="true">
           {chapter.process.map((part, partIndex) => (
             <span key={part}>
               {partIndex > 0 && <ArrowRight size={14} strokeWidth={1.5} />}
@@ -49,7 +52,7 @@ function Chapter({
             </span>
           ))}
         </div>
-      </div>
+      </div>}
     </article>
   );
 }
@@ -59,7 +62,7 @@ export function Skills({ onNavigate }: { onNavigate?: (section: string) => void 
   const stageRef = useRef<HTMLDivElement>(null);
   const controlRef = useRef<HTMLButtonElement | null>(null);
   const staged = useSkillsStaged();
-  const { active, phase, ready, visible, step } = useSkillsPlayback(
+  const { active, settledIndex, phase, ready, visible, step } = useSkillsPlayback(
     { host: hostRef, stage: stageRef }, staged, onNavigate,
   );
   useEffect(() => {
@@ -105,19 +108,40 @@ export function Skills({ onNavigate }: { onNavigate?: (section: string) => void 
               onWheel={forwardWheel}
             />
           ))}
+          {staged && <div className={styles.worldTrack} aria-hidden="true">
+            <div className={styles.sharedVisual} data-skill-rig="">
+              <TiltedInstrument enabled={visible} interactive={phase === 'reading'} onWheel={forwardWheel}>
+                <div className={styles.sculptureObject} data-skill-object="">
+                  <SkillSculpture shared />
+                </div>
+              </TiltedInstrument>
+              <div className={styles.sharedCaptions}>
+                {SKILL_CHAPTERS.map((chapter, index) => (
+                  <div key={chapter.scene} className={styles.process} data-material-caption={index}>
+                    {chapter.process.map((part, partIndex) => (
+                      <span key={part}>
+                        {partIndex > 0 && <ArrowRight size={14} strokeWidth={1.5} />}
+                        {part}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>}
         </div>
         {staged && (
           <footer className={styles.footer} data-skill-chrome="" onWheel={forwardWheel}>
             <div className={styles.sequence}>
               <span className={styles.counter} aria-hidden="true">
-                <span>{String(active + 1).padStart(2, '0')}</span>
+                <span className={styles.counterValue} key={settledIndex}>{String(settledIndex + 1).padStart(2, '0')}</span>
                 <span className={styles.counterTotal}>/ {String(SKILL_CHAPTERS.length).padStart(2, '0')}</span>
               </span>
               <ol className={styles.progress} aria-label="Skills chapters">
                 {SKILL_CHAPTERS.map((chapter, index) => (
                   <li key={chapter.scene} aria-label={chapter.title}
-                    aria-current={active === index ? 'step' : undefined}
-                    data-complete={index < active ? 'true' : undefined} />
+                    aria-current={settledIndex === index ? 'step' : undefined}
+                    data-complete={index < settledIndex ? 'true' : undefined} />
                 ))}
               </ol>
             </div>
@@ -129,7 +153,9 @@ export function Skills({ onNavigate }: { onNavigate?: (section: string) => void 
               </button>
               <button type="button" className={styles.next} disabled={!ready}
                 onClick={event => { controlRef.current = event.currentTarget; step(1); }}>
-                {active === SKILL_CHAPTERS.length - 1 ? 'See projects' : 'Next skill'}
+                {settledIndex === SKILL_CHAPTERS.length - 1
+                  ? 'See projects'
+                  : `Next: ${SKILL_CHAPTERS[settledIndex + 1].title}`}
                 <ArrowRight size={18} strokeWidth={1.5} aria-hidden="true" />
               </button>
             </div>

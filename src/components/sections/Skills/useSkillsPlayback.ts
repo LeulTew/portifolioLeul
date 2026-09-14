@@ -40,6 +40,7 @@ export function useSkillsPlayback(
   onNavigate?: (section: string) => void,
 ) {
   const [active, setActive] = useState(0);
+  const [settledIndex, setSettledIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('outside');
   const [ready, setReady] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -82,6 +83,7 @@ export function useSkillsPlayback(
     }, panel);
     if (side === 'after') current = score!.stops.length - 1;
     setActive(current);
+    setSettledIndex(current);
     setPhase('outside');
     setVisible(false);
     setReady(false);
@@ -109,6 +111,7 @@ export function useSkillsPlayback(
       frame = requestAnimationFrame(tick);
     };
     const reading = () => {
+      setSettledIndex(current);
       changePhase('reading');
       rest = SKILLS_READING_MS;
       wake();
@@ -199,6 +202,7 @@ export function useSkillsPlayback(
       rest = 0;
       current = side === 'before' ? 0 : current;
       setActive(current);
+      setSettledIndex(current);
       changePhase('entering');
       show(true);
       if (side === 'before') {
@@ -332,8 +336,9 @@ export function useSkillsPlayback(
       if (main && !previouslyInert) writeAttribute(main, 'inert', null);
       setOverlayOcclusion(false, 'skills');
       context.revert();
+      score.dispose();
     };
   }, [host, stage, staged, onNavigate]);
 
-  return { active, phase, ready, visible, step };
+  return { active, settledIndex, phase, ready, visible, step };
 }

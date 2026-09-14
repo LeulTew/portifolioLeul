@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import gsap from 'gsap';
 import { Skills } from './Skills';
 import { SKILL_CHAPTERS, SKILLS_STAGE_QUERY } from './skillsData';
+import { getMaterialGeometry } from './skillGeometry';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { resetScrollGesture } from '@/lib/scroll/scrollGesture';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
@@ -19,9 +20,10 @@ const originalRect = Element.prototype.getBoundingClientRect;
 
 const stage = () => screen.getByTestId('skills-stage');
 const index = () => Number(stage().dataset.activeSkill);
-const next = () => screen.getByRole('button', { name: 'Next skill' });
+const next = () => screen.getByRole('button', { name: /^Next:/ });
 
-function advance(ms: number, interval = 16) {
+// Behavioral cases exercise the 50ms visible-frame ceiling; pacing cases use 16ms.
+function advance(ms: number, interval = 50) {
   let remaining = ms;
   while (remaining > 0) {
     if (frames.size === 0) {
@@ -153,14 +155,14 @@ describe('Skills completed-beat playback', () => {
     mount();
     place(80);
     wheel(delta);
-    advance(1750);
+    advance(1750, 16);
     expect(stage()).toHaveAttribute('data-phase', 'entering');
-    advance(100);
+    advance(100, 16);
     expect(stage()).toHaveAttribute('data-phase', 'reading');
     expect(next()).toBeDisabled();
-    advance(1160);
+    advance(1160, 16);
     expect(next()).toBeDisabled();
-    advance(40);
+    advance(40, 16);
     expect(next()).toBeEnabled();
   });
 
@@ -206,17 +208,49 @@ describe('Skills completed-beat playback', () => {
 
   it('retraces the same score in reverse and restores the original artifact', () => {
     enter();
-    const first = stage().querySelector('[data-skill-chapter="0"]')!;
-    const initial = [...first.querySelectorAll('path')].map(path => path.getAttribute('d'));
+    const sculpture = stage().querySelector('[data-skill-sculpture]')!;
+    const initial = [...sculpture.querySelectorAll('path')].map(path => path.getAttribute('d'));
     cross();
     fireEvent.click(screen.getByRole('button', { name: 'Previous skill' }));
     advance(3300);
     expect(index()).toBe(0);
     expect(screen.getByRole('heading', { name: 'Languages' })).toBeVisible();
-    expect([...first.querySelectorAll('path')].map(path => path.getAttribute('d'))).toEqual(initial);
+    expect(stage().querySelector('[data-skill-sculpture]')).toBe(sculpture);
+    expect([...sculpture.querySelectorAll('path')].map(path => path.getAttribute('d'))).toEqual(initial);
     expect(stage().querySelector('[data-skill-chapter="1"]')).toHaveStyle({ visibility: 'hidden' });
   });
 
+  it('morphs the same visible material while its depth layers move at different rates', () => {
+    enter();
+    const sculpture = stage().querySelector('[data-skill-sculpture]')!;
+    const shell = sculpture.querySelector('[data-material-shell]')!;
+    const body = sculpture.querySelector('[data-material-body]')!;
+    const floor = sculpture.querySelector('[data-material-floor]')!;
+    const foreground = sculpture.querySelector('[data-material-foreground]')!;
+    const before = shell.getAttribute('d');
+    fireEvent.click(next());
+    for (let sample = 0; sample < 3; sample++) {
+      advance(350);
+      expect(stage().querySelector('[data-skill-sculpture]')).toBe(sculpture);
+      expect(Number(gsap.getProperty(body, 'opacity'))).toBe(1);
+      expect(shell.getAttribute('d')).not.toBe(before);
+    }
+    expect(Math.abs(Number(gsap.getProperty(floor, 'x')) - Number(gsap.getProperty(foreground, 'x'))))
+      .toBeGreaterThan(20);
+    advance(2250);
+    expect(shell.getAttribute('d')).toBe(getMaterialGeometry('interfaces').shell);
+    expect(Number(gsap.getProperty(stage().querySelector('[data-skill-rig]')!, 'xPercent'))).toBe(-25);
+  });
+
+  it('does not label an outgoing heading with a destination chapter number', () => {
+    enter();
+    fireEvent.click(next());
+    advance(300);
+    const progress = screen.getByRole('list', { name: 'Skills chapters' });
+    expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Languages');
+    advance(1800);
+    expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Frameworks & Web');
+  });
   it('holds an unfinished sequence even after a flick spends its entire spacer', () => {
     enter();
     place(-20000);

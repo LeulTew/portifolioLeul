@@ -5,6 +5,19 @@ import { describe, expect, it } from 'vitest';
 
 describe('scroll entrance property ownership', () => {
   it.each([
+    ':global(main[inert]) .tracerBeam',
+    ':global([data-education-covered]) .tracerBeam',
+  ])('pauses covered button tracers through %s', selector => {
+    const css = postcss.parse(readFileSync(join(__dirname, '..', 'ui', 'MagneticButton.module.css'), 'utf8'));
+    const states: string[] = [];
+    css.walkRules(rule => {
+      if (!rule.selectors.includes(selector)) return;
+      rule.walkDecls('animation-play-state', declaration => { states.push(declaration.value); });
+    });
+    expect(states).toEqual(['paused']);
+  });
+
+  it.each([
     ['Skills', '.chapter'],
     ['Skills', '.instrumentTilt'],
     ['Contact', '.formContainer'],

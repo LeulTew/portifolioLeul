@@ -50,4 +50,22 @@ describe('Skills instrument depth', () => {
     expect(gsap.getTweensOf(figure.firstElementChild)).toHaveLength(0);
     expect(figure.firstElementChild).not.toHaveAttribute('style');
   });
+
+  it('does not let pointer motion fight the moving camera, then resumes on the same object', () => {
+    const { container, rerender } = render(<TiltedInstrument enabled interactive={false}><svg /></TiltedInstrument>);
+    const figure = container.querySelector('figure')!;
+    const object = figure.firstElementChild!;
+    const bounds = vi.spyOn(figure, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, 0, 100, 100));
+    fireEvent.pointerMove(figure, { pointerType: 'mouse', clientX: 80, clientY: 50 });
+    expect(bounds).not.toHaveBeenCalled();
+    expect(gsap.getTweensOf(object).some(tween => tween.isActive())).toBe(false);
+
+    rerender(<TiltedInstrument enabled interactive><svg /></TiltedInstrument>);
+    fireEvent.pointerMove(figure, { pointerType: 'mouse', clientX: 80, clientY: 50 });
+    act(() => { gsap.getTweensOf(object).forEach(tween => tween.progress(1)); });
+    expect(container.querySelector('figure')).toBe(figure);
+    expect(bounds).toHaveBeenCalledTimes(1);
+    expect(Number(gsap.getProperty(object, 'rotationY'))).toBeCloseTo(2.4);
+  });
 });
