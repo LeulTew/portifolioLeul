@@ -174,6 +174,20 @@ describe('useActiveSection', () => {
     expect(getByTestId('active').textContent).toBe('projects');
   });
 
+  it('prioritizes the visible Skills stage over an About sequence still releasing underneath it', async () => {
+    addSections();
+    const about = document.getElementById('about')!;
+    const skills = document.getElementById('skills')!;
+    about.dataset.sequenceActive = 'true';
+    skills.dataset.skillsActive = 'true';
+    const { getByTestId } = render(<Probe />);
+    expect(getByTestId('active').textContent).toBe('skills');
+    act(() => capturedCallback?.(band({ projects: 260 })));
+    expect(getByTestId('active').textContent).toBe('skills');
+    await act(async () => { delete skills.dataset.skillsActive; });
+    expect(getByTestId('active').textContent).toBe('about');
+  });
+
   it('waits for sections that have not mounted yet', () => {
     vi.useFakeTimers();
     const { getByTestId } = render(<Probe />);

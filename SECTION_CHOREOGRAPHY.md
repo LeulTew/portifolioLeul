@@ -289,10 +289,10 @@ On a track rebuild, App restores Drei's damped offset together with native
 `scrollTop`, before publishing geometry. Otherwise a new zero-based scroll
 state can briefly appear to revisit Education while the reader is in Skills.
 Unconnected or zero-height rails never request an entry.
-An About grid resize preserves its completed background ownership and resumes
-any unfinished post-rise rest instead of stranding the following chapters.
-Browser-canonical transform comparison avoids repeated scroll-layout reads
-caused by CSSOM serialization rounding, without rounding the authored geometry.
+An About grid resize preserves its completed background ownership and the
+remaining rise without adding a post-rise rest. The shared `reconcileScrollLayer`
+cache avoids repeated scroll-layout reads caused by CSSOM serialization
+rounding, without rounding the authored geometry.
 `data-skills-active` keeps the global navigation on Skills even if a flick
 has physically passed its spacer. The keyed `skills` world-occlusion owner
 suppresses hidden world draws only while the stage is fully opaque, and clears
@@ -301,6 +301,10 @@ behind Skills; global navigation remains above it. Its white chapter-ink mirror
 is attenuated by the Skills plate's actual opacity, not the green geometry
 hidden underneath. The obscured main content is inert only while Skills owns
 the stage, so keyboard navigation cannot wander into hidden project controls.
+The shared ownership-aware section-entrance hook waits for both About/Education
+and Skills to release. It remeasures current viewport coverage, including the
+existing entrance inset, instead of spending later headings or Contact's
+entrance on an intersection cached underneath either stage.
 
 ### Motion, type, and fallback
 
