@@ -5,7 +5,7 @@ import { STATEMENT_LAYERS, ABOUT_SCREENS } from "./statementLayers";
 import { windowPresence, layerOpacity } from "@/lib/motion/sequenceWindow";
 import { cvData } from "../../../data/cv";
 
-// Mock framer-motion useScroll & useSpring
+// Keep scroll-driven copy deterministic without replacing artwork motion values.
 vi.mock("framer-motion", async (importOriginal) => {
   const actual = await importOriginal<typeof import("framer-motion")>();
   return {
@@ -13,7 +13,6 @@ vi.mock("framer-motion", async (importOriginal) => {
     useScroll: () => ({
       scrollYProgress: { get: () => 0.5 },
     }),
-    useSpring: (val: unknown) => val,
     useTransform: () => 0,
   };
 });

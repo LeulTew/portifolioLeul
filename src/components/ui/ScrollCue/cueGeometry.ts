@@ -8,12 +8,12 @@
  */
 
 /** Width of the viewBox, and the base height of the drawing inside it. */
-export const CUE_VIEW_WIDTH = 112;
+export const CUE_VIEW_WIDTH = 196;
 
 /**
  * Base height of the drawing inside the viewBox.
  *
- * The curve keeps its proportions; only the final straight run lengthens.
+ * Additional height is distributed through all three turns, not a long tail.
  */
 export const CUE_BASE_HEIGHT = 360;
 
@@ -21,7 +21,7 @@ export const CUE_BASE_HEIGHT = 360;
 export const CUE_VIEW_X = 0;
 export const CUE_VIEW_Y = 10;
 export const CUE_RUN_X = 24;
-export const CUE_START_X = 90;
+export const CUE_START_X = 166;
 
 /**
  * Non-scaling stroke width in CSS pixels, matching the stylesheet.
@@ -37,10 +37,8 @@ export const CUE_STROKE_WIDTH = 2.4;
  * How far the run's left edge sits from the left edge of the rendered box.
  *
  * The mark is drawn at a fixed aspect inside its box, so the line the reader
- * actually sees is not at the box's centre -- it is most of the way to the
- * right of it. Placing the box by its centre put the line some twenty pixels
- * right of where it was meant to be, which is why it did not sit on the
- * heading it points at.
+ * actually sees is off-center, with the bow to one side. Placing the box by
+ * its centre would move the line away from the heading it points at.
  *
  * Measured to the stroke's left edge rather than its centre. A heading is
  * aligned by the edge of its first glyph, and `A` in this face has no left
@@ -62,13 +60,12 @@ export function cueStartOffset(widthPx: number): number {
 }
 
 /**
- * Extra straight run, in viewBox units, that makes the mark a given height.
+ * Extra vertical span, in viewBox units, that makes the mark a given height.
  *
  * The mark is drawn at a fixed aspect (`meet`, so it never distorts), which
  * means a taller box alone does not make a longer line -- it fits the width
- * and leaves the rest of the box empty. Lengthening the run is what actually
- * makes the line longer, and only the straight part grows: the curve at the
- * top and the head at the bottom keep their proportions.
+ * and leaves the rest of the box empty. The additional span lengthens all
+ * three bends while the final approach and arrowhead keep their proportions.
  */
 export function cueRunForHeight(heightPx: number, widthPx: number): number {
   if (!Number.isFinite(heightPx) || !Number.isFinite(widthPx)) return 0;

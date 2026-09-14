@@ -1,5 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import postcss from 'postcss';
 import { MagneticButton } from './MagneticButton';
 import * as animGateway from '@/lib/gateways/animationGateway';
 
@@ -73,5 +76,19 @@ describe('MagneticButton', () => {
       </MagneticButton>
     );
     expect(screen.getByText(/glass dark/i)).toBeDefined();
+  });
+
+  it('pauses tracer motion only under an inert or Education-covered background', () => {
+    const selectors: string[] = [];
+    postcss.parse(readFileSync(join(__dirname, 'MagneticButton.module.css'), 'utf8'))
+      .walkRules(rule => {
+        rule.walkDecls('animation-play-state', declaration => {
+          if (declaration.value === 'paused') selectors.push(...rule.selectors);
+        });
+      });
+    expect(selectors).toEqual([
+      ':global(main[inert]) .tracerBeam',
+      ':global([data-education-covered]) .tracerBeam',
+    ]);
   });
 });

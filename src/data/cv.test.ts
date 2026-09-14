@@ -21,6 +21,14 @@ describe("cvData", () => {
     expect(cvData.certifications.length).toBeGreaterThan(0);
   });
 
+  it("keeps completion totals separate from the featured credential selection", () => {
+    for (const entry of cvData.certifications) {
+      expect(Number.isSafeInteger(entry.completedAtLeast)).toBe(true);
+      expect(entry.completedAtLeast).toBeGreaterThanOrEqual(entry.items.length);
+      expect(["courses & projects", "certifications"]).toContain(entry.completionUnit);
+    }
+  });
+
   it("contains contact info and social links", () => {
     expect(cvData.contact.email).toBe("leulman2@gmail.com");
     expect(cvData.contact.social.github).toBeDefined();

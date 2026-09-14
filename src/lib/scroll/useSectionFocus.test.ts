@@ -79,6 +79,51 @@ describe('useSectionFocus', () => {
     expect(result.current.hasEntered).toBe(true);
   });
 
+  it('does not spend a later entrance behind About or Education', async () => {
+    const about = document.createElement('section');
+    about.id = 'about';
+    about.dataset.sequenceActive = 'true';
+    document.body.appendChild(about);
+    const { result, unmount } = renderHook(() => useSectionFocus(element));
+    try {
+      element.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 900, height: VIEWPORT });
+      cover(1);
+      expect(result.current.coverage).toBe(0);
+      expect(result.current.hasEntered).toBe(false);
+      await act(async () => {
+        about.dataset.educationActive = 'true';
+        delete about.dataset.sequenceActive;
+      });
+      expect(result.current.hasEntered).toBe(false);
+      await act(async () => { delete about.dataset.educationActive; });
+      expect(result.current.coverage).toBe(1);
+      expect(result.current.hasEntered).toBe(true);
+    } finally {
+      unmount();
+      about.remove();
+    }
+  });
+
+  it('does not spend a stale covered entrance when the chapter settles somewhere else', async () => {
+    const about = document.createElement('section');
+    about.id = 'about';
+    about.dataset.educationActive = 'true';
+    document.body.appendChild(about);
+    const { result, unmount } = renderHook(() => useSectionFocus(element));
+    try {
+      cover(1);
+      element.getBoundingClientRect = () => DOMRect.fromRect({
+        x: 0, y: 2000, width: 900, height: VIEWPORT,
+      });
+      await act(async () => { delete about.dataset.educationActive; });
+      expect(result.current.coverage).toBe(0);
+      expect(result.current.hasEntered).toBe(false);
+    } finally {
+      unmount();
+      about.remove();
+    }
+  });
+
   it('scrubs the exit from the first pixel of scroll', () => {
     // The exit used to sit at zero until the section was nearly half gone,
     // which read as the page not responding to the scroll at all.

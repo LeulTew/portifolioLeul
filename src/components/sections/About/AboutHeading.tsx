@@ -5,12 +5,11 @@ import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { advancePhase, easeInOutCubic, isPhaseAtTarget, phaseFrameDelta, phaseGate,
   PHASE_AT_REST, type PhaseState } from '@/lib/motion/triggeredPhase';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
-import { HEAD_SETTLE } from './aboutBeats';
+import { BEAT_REST_MS, HEAD_SETTLE } from './aboutBeats';
 import { createAboutReader, createSeqReader } from './seqReader';
 import { centeredHeading } from './headingGeometry';
 import styles from './About.module.css';
 
-const CENTER_REST_MS = 500;
 const RETURN_FADE_MS = 280;
 const properties = [
   '--head-travel', '--heading-presence', '--heading-enter-x', '--heading-enter-y',
@@ -67,7 +66,7 @@ export function AboutHeading({ children }: { children: ReactNode }) {
       writeAttribute(about, 'data-head-travelling', phase.t > 0 && phase.t < 1 ? 'true' : null);
     };
 
-    const running = () => (target && hold < CENTER_REST_MS) ||
+    const running = () => (target && hold < BEAT_REST_MS) ||
       !isPhaseAtTarget(phase, target) ||
       !isPhaseAtTarget(presence, target || !moved || phase.t > 0);
 
@@ -75,8 +74,8 @@ export function AboutHeading({ children }: { children: ReactNode }) {
       frame = 0;
       const dt = phaseFrameDelta(last ? now - last : 16.7);
       last = now;
-      if (target && phase.t <= 0 && hold < CENTER_REST_MS) {
-        hold = Math.min(CENTER_REST_MS, hold + dt);
+      if (target && phase.t <= 0 && hold < BEAT_REST_MS) {
+        hold = Math.min(BEAT_REST_MS, hold + dt);
       } else {
         phase = advancePhase(phase, target, dt, HEAD_SETTLE.durationMs);
       }

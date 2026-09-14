@@ -41,10 +41,14 @@ describe('EDUCATION_RECORDS', () => {
     expect(secondary.kind).toBe('Secondary');
   });
 
-  it('counts a certification set rather than restating its issuer', () => {
+  it('uses the completion lower bound rather than counting the featured courses', () => {
     const bootdev = EDUCATION_RECORDS.find((r) => r.title === 'Bootdev')!;
     expect(bootdev.kind).toBe('Certification');
-    expect(bootdev.award).toBe(`${cvData.certifications[0].items.length} courses completed`);
+    expect(bootdev.award).toBe('15+ courses & projects');
+    expect(bootdev.items).toHaveLength(10);
+    const freecodecamp = EDUCATION_RECORDS.find((r) => r.title === 'freeCodeCamp')!;
+    expect(freecodecamp.award).toBe('2+ certifications');
+    expect(freecodecamp.items).toHaveLength(2);
   });
 
   it('gives every record a distinct key', () => {

@@ -97,20 +97,14 @@ export const TITLE_WRITE: StatementBeat = {
 };
 
 /**
- * The pause between one beat finishing and the next being allowed to start.
- *
- * The heading-to-copy handoff also uses this authored, visible-frame rest.
- * The background and the title are two separate events, and without a gap they
- * do not read as two: the last cell lands and the heading is already
- * dissolving, so the pair arrives as one compound movement with a change of
- * subject in the middle. The rest is what lets the reader see the chapter turn
- * green, and then see it renamed.
+ * The visible reading rest at the centered heading and its handoff to copy.
+ * Background, title and Education handoffs wait only for animation completion.
  */
-export const BEAT_REST_MS = 420;
+export const BEAT_REST_MS = 250;
 
 /**
- * How long the chapter rests after a beat before it will take the next request,
- * including each statement handoff and their reverse. Boundary requests skip
+ * How long the statements rest before taking the next request, including
+ * their handoffs and reverse. Boundary requests skip
  * only the gesture, never this cooldown; cancellable timers wake a stopped pin.
  *
  * The gesture requirement alone does not make the stages separate. A beat only
@@ -126,7 +120,7 @@ export const BEAT_REST_MS = 420;
  * Long enough to read as a beat landing and being let go of; short enough that
  * someone reading at a normal pace never notices they were held.
  */
-export const BEAT_COOLDOWN_MS = 1200;
+export const BEAT_COOLDOWN_MS = 250;
 
 /**
  * The heading travelling from where the reader was looking to where it lives.
@@ -220,28 +214,7 @@ export function beatWakeDelay(
   return Number.isFinite(delay) ? Math.max(1, delay) : null;
 }
 
-/**
- * Whether the statements are still held out of the chapter's way.
- *
- * The way down is a chain of separate movements, each one the reader's to call
- * for: the statements clear, and then the wall waits for a gesture and a rest
- * before it rises. Measured on the way back up, the wall finished retreating
- * and the statements began walking in 10ms later, against 3131ms between the
- * same two beats going down. The order was right and the pacing was not, so the
- * last two movements of the reverse read as one.
- *
- * This is rule 5 in the other direction. `backgroundBusy` keeps the ordering --
- * the green goes first, and uncovers the empty screen it rose onto -- and then
- * the reader has to ask again, and be made to wait once more before the ask
- * counts. A gesture that arrives during the rest is discarded rather than
- * queued, so spamming the wheel upward buys nothing.
- *
- * `seq` past the start of the stretch is the escape, and it is the same one the
- * forward beats have at the far end: a reader who flicks all the way up stops
- * producing gestures, and a beat still waiting for one would leave the
- * statements cleared for good -- with the pin held until the chapter finishes,
- * which it then never would. Reaching the start IS the request.
- */
+/** The background must finish retreating before a reverse request restores copy. */
 export function statementsHeldClear(input: {
   /** What the position gate alone wants. */
   positionWants: boolean;
@@ -251,15 +224,10 @@ export function statementsHeldClear(input: {
   wasClear: boolean;
   /** Where the reader is in the held stretch. */
   seq: number;
-  /** An upward gesture has arrived since the rest was served. */
+  /** An upward gesture has arrived since the background finished. */
   armed: boolean;
-  /** When the wall finished retreating; 0 while it has not. */
-  restedAt: number;
-  now: number;
 }): boolean {
   if (input.positionWants || input.backgroundBusy) return true;
   if (!input.wasClear) return false;
-  const rested =
-    input.restedAt > 0 && input.now - input.restedAt >= BEAT_COOLDOWN_MS;
-  return !((input.armed || input.seq <= BEAT_DEADBAND) && rested);
+  return !(input.armed || input.seq <= BEAT_DEADBAND);
 }

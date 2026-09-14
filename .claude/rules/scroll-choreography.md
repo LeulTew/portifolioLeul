@@ -52,15 +52,25 @@ scroll and by a hard flick takes the same wall-clock time. Measured, not assumed
 
 **Home-to-About refinement (2026-09-13):** after the scoped `f46b247` restoration,
 the user explicitly requested a whiter fog-wave cloud, a redesigned arrow and a
-large centered About title that moves to the top left. Copy and cloud now
-disappear together on the same 900ms exit, before the arrow starts. The stroke
-draws visibly toward its scroll-requested target; its upward movement is never
+large centered About title that moves to the top left. Copy and cloud
+disappear together on the same 900ms exit. The 2026-09-14 refinement starts
+the requested arrow during that dissolution, not after it. These are overlapping
+layers of one handover; About still waits for both to finish, including the
+committed SVG endpoint rather than only its queued React update. The stroke
+and foreground share their initial position trigger, so a small wheel movement
+does not dissolve the cloud while leaving the arrow waiting for a second input.
+This earlier request preserves the existing rail origin, length and landing.
+The stroke draws visibly toward its scroll-requested target; its upward movement is never
 interpolated independently. It follows the incoming section's actual rendered
 scroll transform at 1:1 speed. Use the measured line length to reach the title,
-not a different travel speed or an arbitrary shortening cap. Once pinned, its
+not a different travel speed or an arbitrary shortening cap. A spent flick pins
+the unfinished stroke at its landing instead of carrying its drawing offscreen.
+Its three wider S turns span the measured rail instead of collecting at the top
+above a long straight tail. Both axes use the same composited translation, not
+per-frame layout through `left`. Once pinned, its
 tip shares the title's two-axis displacement. The centered composition holds for
-500ms of visible time, then docks on one 1100ms beat without an extra gesture latch.
-Statements still wait for actual docking and their existing reading pause.
+250ms of visible time, then docks on one 1100ms beat without an extra gesture latch.
+Statements wait for actual docking and a 250ms visible reading pause.
 Reverse waits for statements, retraces the same pose, then fades before releasing
 the pin. Reduced motion keeps the normal inset without a travel animation.
 Cloud dissolution belongs to the vapor's own mask/wisps, never a whole-bank slide.
@@ -69,13 +79,13 @@ cloud reforms only after About and the arrow have released the screen. Its
 neutral-white, translucent footprint follows the actual text and button bounds,
 not an empty full-width flex row. The arrow retains its original mint in both
 themes, including hover and the current pulse, with a non-scaling 2.4px stroke.
-Spatial chrome and Education pacing are unchanged.
+Spatial chrome retains its existing animation behavior.
 
 The fixed chrome uses a second, non-interactive white paint through the
 **same live SVG mask** as About Me. LT, navigation labels, Scroll to explore
 and the year are not recolored by row majorities, scroll thresholds or a timed
 whole-element fade. Education/static green edges clip this viewport-sized
-paint to their actual bounds. About Me's existing mask and timing are unchanged.
+paint to their actual bounds. About Me's existing mask and animation duration are unchanged.
 
 Suspended frames are not visible time. `phaseFrameDelta` caps each movement
 and its post-movement rest at 50ms per paint; a hidden tab or long task must
@@ -119,7 +129,8 @@ Widening the gap cannot fix it and blocking the scroll is not allowed.
 ## 5. A beat also waits to be asked, and then waits a moment longer
 
 After the previous beat completes, the next one needs **a scroll gesture made
-after that completion**, and not until a cooldown has elapsed.
+after that completion**. The remaining statement handoffs have a **250ms**
+reading cooldown; full animation completion is always required.
 
 - Gestures during a beat: **ignored**.
 - Gestures during the cooldown: **discarded, not queued**.
@@ -130,14 +141,67 @@ the chain runs through as one compound movement. And queuing an early gesture
 lets spam work simply by arriving early, which is the same failure wearing a
 delay. The reader has to ask again.
 
-`BEAT_COOLDOWN_MS` in `aboutBeats.ts` is the knob.
+`BEAT_COOLDOWN_MS` in `aboutBeats.ts` is the statement reading knob.
+`BEAT_REST_MS` is the 250ms visible rest at the centered heading and before copy.
 
-Education records require a **new input wave** after their complete GSAP
-timeline (including seal and rows) and a 1200ms visible reading pause. A wave
-ends after 250ms without wheel input; sub-threshold motion cannot consume its
-start. Touch momentum and repeated keys cannot become additional requests.
-Next/Previous use the same completion and reading gate, without spending
-scroll distance. Native control activation remains native.
+Background completion is published on the final animation frame, without a
+post-rise rest. The next title request is accepted immediately after that
+completion. In reverse, the background accepts a request immediately after the
+title finishes returning, and statements accept one immediately after the
+background finishes retreating. There are no additional cooldowns at those
+boundaries. Early requests still cannot interrupt or queue behind unfinished
+movements; shorter statement pauses do not replace their completion checks.
+
+The Education handoff is automatic: **title completion immediately starts
+opening the first card**, without another pause, gesture, or physical rail
+threshold. The frame and completed title remain owned through the opening.
+Reverse closing releases the title immediately on completion, and re-entry
+from Skills opens the last record without a separate opening request.
+
+Education records also have no post-animation cooldown:
+a **new input wave** is accepted **as soon as the full GSAP timeline finishes**
+(including seal and rows), with no extra reading or settle pause. Readiness is
+published by completion itself, never by a later timer or scroll update.
+Record crossings finish in **one second in either direction**: the track,
+artwork, title and rows settle together instead of extending the input lock with
+subtle animation tails. Row stagger uses a bounded total amount, not a delay per
+row, so dense cards cannot take longer. Do not enable controls before completion.
+Seal arrival transforms belong to untransitioned wrappers; hover transforms
+stay on the inner artwork so CSS cannot extend the completed GSAP movement.
+The Education typography and artwork use a paused Anime.js timeline sought by
+that same GSAP clock on every arrival. The 2026-09-14 text refinement replays all
+card copy and artwork on backward crossings and re-entry too; never interpret
+the direction as an animation-enable flag. Headings fold in, supporting copy
+uses React Bits BlurText word keyframes, and labels/dates/GPA use DecryptedText's
+sequential reveal. Start them late enough to remain visible after the track
+exposes their side of the card. Everything still finishes in the shared second.
+Mirror incoming glyph direction and decode order on return. Frame departure
+remains simple. Dispose the reveal at completion, restoring plain text and
+removing transient filters, transforms and cipher layers before enabling input.
+Use only a small phrase-level blur, not a filtered surface per word. Precompute
+and batch cipher frames across the record; leave the source text accessible and
+in layout. Paint arrivals at most 60 times per authored second on high-refresh
+displays, always publishing the exact terminal frame. Do not throttle the track
+or introduce a second clock. Institution-specific title profiles, the small
+supplied Boot.dev mark, and the two certification diagrams share this timeline.
+No second playback loop,
+independent completion timer, or engine sharing the same element's transform.
+Dispose the previous reveal when changing records and on unmount.
+The React Bits artwork tilt runs only on the interactive record with a fine
+pointer. Its inner Motion spring is separate from Anime's arrival wrapper,
+caches pointer geometry, and resets immediately before a crossing or when hidden.
+No pointer-following tooltip, persistent promotion, or idle animation loop.
+Build each Anime reveal with timeline composition disabled and initialize it
+once after adding its explicit endpoints. Keep the native scrollport visible
+while suppressing covered HTML/pinned-overlay painting; restore that painting
+before departure reveals the page.
+A wave ends after 250ms without wheel input; this groups momentum, not a pause
+added after completion.
+Sub-threshold motion cannot consume its start. Waves started during a crossing
+are discarded, never queued or retriggered on completion. Touch momentum and
+repeated keys cannot become additional requests. Next/Previous use the same
+completion gate, without spending scroll distance. Native control activation
+remains native.
 
 ---
 
@@ -149,13 +213,31 @@ scroll distance. Native control activation remains native.
 - An `IntersectionObserver` may not hide a section whose chapter is still
   playing.
 - Past the end of the stretch a transition beat **stops waiting to be asked**.
-  Education may open this way, but its readable records are an explicit
-  exception: they never auto-advance from a spent scroll position. A fresh
+  Education opens directly on title completion, but its readable records are
+  an explicit exception: they never auto-advance from a spent scroll position. A fresh
   wave or Next/Previous activation is still required for every record.
 - Education keeps the completed About title owned through its handoff and
-  reverse, and resumes the About underlay before disappearing. Explicit global
-  navigation may leave after the current movement and reading pause. A natural
-  exit aligns the next section only if the reader has not already left the rail.
+  reverse, and resumes the About underlay before disappearing. Navigation stays
+  on About while its sequence or Education is visible, regardless of the
+  physical sections under the overlay. Explicit global navigation may leave as
+  soon as the current movement completes. Natural forward departure always
+  aligns Skills: wheel travel spent reading cards must not skip later sections.
+  Publish `data-education-released` only when forward closing actually completes;
+  clear it on a new claim, backward reset, or cleanup. While Skills publishes
+  `data-skills-active`, Education must not reclaim the viewport. Observe its
+  release so an already-requested return can open without another gesture.
+  A final one-shot settlement at the closing boundary synchronizes the native
+  scrollport, Drei offset, and HTML transform, even if momentum interrupted the
+  initial glide. This adds no timer or input listener; subsequent native input
+  remains native. Explicit navigation cancels this pending automatic landing.
+  Apply the same settlement to the reverse About landing.
+  Later viewport-driven entrances remain unspent while covered, and resume from
+  their freshly measured coverage when the chapter releases ownership, never a
+  cached intersection from a section behind the overlay.
+  Shared kinetic headings and Contact's actual Motion triggers use the same
+  ownership-aware entrance hook, not independent `whileInView` one-shot latches.
+  Explicit Home/About navigation resets an outside Education chapter to its first
+  record; only the natural upward Skills return preserves its trailing record.
 - Cooldowns wake themselves when they expire; pin release observes completion.
   Neither may depend on another scroll publication after the reader stops.
 - Publish local sequence measurements before their animation consumers, even

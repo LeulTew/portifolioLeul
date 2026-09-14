@@ -13,8 +13,8 @@ import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { ThemeContext, type Theme } from '../theme/ThemeContext';
 import { ABOUT_CHAPTER_BG } from './chapterBackground';
 import {
-  BACKGROUND_RISE, BEAT_DEADBAND, BEAT_REST_MS, BEAT_COOLDOWN_MS,
-  askBeat, beatRequested, beatWakeDelay, prepareBeatRequest, UNREQUESTED_BEAT,
+  BACKGROUND_RISE, BEAT_DEADBAND, BEAT_COOLDOWN_MS,
+  askBeat, beatRequested, prepareBeatRequest, UNREQUESTED_BEAT,
 } from './aboutBeats';
 import { generateCells, getGridConfig, type PixelCellData } from './pixelRise';
 import { createAboutReader, createSeqReader } from './seqReader';
@@ -25,7 +25,7 @@ export interface BackgroundPixelTransitionProps {
   start?: number;
   /** Sequence progress where transition ends. Default: 1.0. */
   end?: number;
-  /** Consistent animation duration in milliseconds. Default: 1200 */
+  /** Consistent animation duration in milliseconds. Default: 1500 */
   durationMs?: number;
   color?: string;
   className?: string;
@@ -58,12 +58,11 @@ export function BackgroundPixelTransition({
   const wasActiveRef = useRef(false);
   const lastFrameRef = useRef(0);
   const animFrameRef = useRef(0);
-  const restRef = useRef(0);
+  const updateRef = useRef<() => void>(() => {});
   const armedRef = useRef(false);
   const readyAtRef = useRef(0);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const returnRequestRef = useRef(UNREQUESTED_BEAT);
-  const returnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const readSeq = useRef(createSeqReader(() => containerRef.current)).current;
   const readAbout = useRef(createAboutReader()).current;
@@ -210,21 +209,7 @@ export function BackgroundPixelTransition({
           }
         }
 
-        /*
-         * Reaching 1 is not the same as being done, and only `step` knows the
-         * difference.
-         *
-         * There is a rest after the climb before this beat hands over, and it
-         * is served inside the frame loop. So the loop owns both of these once
-         * the climb is complete: it clears `data-bg-active` and publishes
-         * `data-bg-settled` together, at the end of the rest.
-         *
-         * If this branch published `data-bg-settled` at 1 the rest would buy
-         * nothing -- the title would start the instant the last cell landed.
-         * And if it cleared `data-bg-active` at 1, the rest would fall in a gap
-         * where no beat claimed to be running and the pin could release
-         * mid-handover. Both stay exactly as the climb left them.
-         */
+        // The terminal frame publishes settled and releases active together.
         if (!isComplete) {
           if (aboutSection.hasAttribute('data-bg-settled')) {
             aboutSection.removeAttribute('data-bg-settled');
@@ -277,7 +262,6 @@ export function BackgroundPixelTransition({
       animFrameRef.current = 0;
       const dt = phaseFrameDelta(lastFrameRef.current > 0 ? now - lastFrameRef.current : 16.7);
       lastFrameRef.current = now;
-      const remainingRiseMs = (1 - phaseRef.current.t) * durationMs;
 
       phaseRef.current = advancePhase(
         phaseRef.current,
@@ -289,7 +273,6 @@ export function BackgroundPixelTransition({
       renderPhase(phaseRef.current.t);
 
       if (!isPhaseAtTarget(phaseRef.current, wasActiveRef.current)) {
-        restRef.current = 0;
         animFrameRef.current = requestAnimationFrame(step);
         return;
       }
@@ -298,30 +281,18 @@ export function BackgroundPixelTransition({
 
       if (!wasActiveRef.current) {
         lastFrameRef.current = 0;
-        restRef.current = 0;
         aboutSection?.removeAttribute('data-bg-settled');
         return;
       }
 
-      /*
-       * Finished climbing, but not yet finished: the rest is served here, with
-       * the frame loop still running, and only then does the beat announce
-       * itself done to whatever is waiting on it.
-       */
-      restRef.current += Math.max(0, dt - remainingRiseMs);
-      if (restRef.current < BEAT_REST_MS) {
-        animFrameRef.current = requestAnimationFrame(step);
-        return;
-      }
-
       lastFrameRef.current = 0;
-      restRef.current = 0;
       if (aboutSection?.getAttribute('data-bg-settled') !== 'true') {
         aboutSection?.setAttribute('data-bg-settled', 'true');
       }
       if (aboutSection?.hasAttribute('data-bg-active')) {
         aboutSection.removeAttribute('data-bg-active');
       }
+      updateRef.current();
     },
     [durationMs, readAbout, renderPhase]
   );
@@ -373,7 +344,7 @@ export function BackgroundPixelTransition({
      * each other, and no input is cancelled at all.
      *
      * The beat is still discrete and still fixed-duration: crossing `start`
-     * buys the whole 1200ms climb at its authored speed no matter how hard the
+     * buys the whole 1500ms climb at its authored speed no matter how hard the
      * wheel was spun, and `advancePhase` reverses it from wherever it got to.
      * The deadband -- exit five hundredths below enter -- is what keeps an
      * inertial wobble on the threshold from restarting it.
@@ -491,18 +462,12 @@ export function BackgroundPixelTransition({
     const spent = seq >= 0.995;
     const now = performance.now();
     returnRequestRef.current = prepareBeatRequest(
-      returnRequestRef.current, !titleBusy && phaseRef.current.t > 0, now
+      returnRequestRef.current, !titleBusy && phaseRef.current.t >= 1, now
     );
-    const returnDelay = beatWakeDelay([{ request: returnRequestRef.current }], now);
-    if (returnTimerRef.current !== null) clearTimeout(returnTimerRef.current);
-    returnTimerRef.current = returnDelay === null ? null : setTimeout(() => {
-      returnTimerRef.current = null;
-      update();
-    }, returnDelay);
     const active =
       (reached && statementsCleared && (armedRef.current || wasActiveRef.current || (spent && rested))) ||
       titleBusy ||
-      (wasActiveRef.current && !beatRequested(returnRequestRef.current, seq <= BEAT_DEADBAND, now));
+      (wasActiveRef.current && !beatRequested(returnRequestRef.current, seq <= BEAT_DEADBAND, now, 0));
 
     /*
      * Disarmed only on the way OUT, never merely for not having started.
@@ -531,12 +496,13 @@ export function BackgroundPixelTransition({
   }, [durationMs, end, explicitProgress, readAbout, readSeq, reducedMotion, renderPhase, start, step]);
 
   useEffect(() => {
+    updateRef.current = update;
     update();
     const unsubscribe = subscribeScrollProgress(update);
 
     const unsubscribeGesture = subscribeScrollGesture((direction) => {
       if (direction === 'up') {
-        returnRequestRef.current = askBeat(returnRequestRef.current, performance.now());
+        returnRequestRef.current = askBeat(returnRequestRef.current, performance.now(), 0);
         update();
         return;
       }
@@ -594,8 +560,6 @@ export function BackgroundPixelTransition({
       gateObserver?.disconnect();
       if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
       cooldownTimerRef.current = null;
-      if (returnTimerRef.current !== null) clearTimeout(returnTimerRef.current);
-      returnTimerRef.current = null;
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
       if (animFrameRef.current) {

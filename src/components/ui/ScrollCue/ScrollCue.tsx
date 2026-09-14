@@ -1,19 +1,23 @@
+import { useMemo } from 'react';
 import styles from './ScrollCue.module.css';
-import { CUE_BASE_HEIGHT, CUE_VIEW_WIDTH, CUE_VIEW_Y, CUE_RUN_X, cueViewX } from './cueGeometry';
+import { CUE_BASE_HEIGHT, CUE_VIEW_WIDTH, CUE_VIEW_Y, CUE_RUN_X, CUE_START_X, cueViewX } from './cueGeometry';
 
 /** Dash lengths in the stylesheet are percentages of the path, not units. */
 const PATH_LENGTH = 100;
 
-/** Three generous S turns, with a shared vertical tangent at each join. */
-const CURVE =
-  'M 90 12 C 90 64 14 70 14 128 ' +
-  'C 14 184 98 180 98 236 C 98 280 24 282 24 324';
-
 const BASE_END = 368;
+const CURVE_START_Y = 12;
+const CURVE_END_Y = 324;
 
-/** The line, with `run` units of extra straight travel before the head. */
+/** Three broad turns span the rail, keeping vertical tangents at every join. */
 function traceFor(run: number): string {
-  return `${CURVE} L ${CUE_RUN_X} ${BASE_END + run}`;
+  const y = (value: number) =>
+    (value + run * ((value - CURVE_START_Y) / (CURVE_END_Y - CURVE_START_Y))).toFixed(3);
+  return `M ${CUE_START_X} ${CURVE_START_Y} ` +
+    `C ${CUE_START_X} ${y(64)} 14 ${y(70)} 14 ${y(128)} ` +
+    `C 14 ${y(184)} 182 ${y(180)} 182 ${y(236)} ` +
+    `C 182 ${y(280)} ${CUE_RUN_X} ${y(282)} ${CUE_RUN_X} ${y(CURVE_END_Y)} ` +
+    `L ${CUE_RUN_X} ${BASE_END + run}`;
 }
 
 /**
@@ -40,7 +44,7 @@ export interface ScrollCueProps {
    */
   progress?: number;
   /**
-   * Extra straight run, in viewBox units, appended before the head.
+   * Extra vertical span, in viewBox units, distributed through the three turns.
    *
    * The mark spans the gap between the hero and About, and that gap is a
    * measured number of pixels rather than a shape -- so how long the line runs
@@ -64,7 +68,10 @@ export function ScrollCue({
 }: ScrollCueProps) {
   const drawn = clamp01(progress);
   const runUnits = Number.isFinite(run) && run > 0 ? run : 0;
-  const trace = traceFor(runUnits);
+  const { trace, head } = useMemo(() => ({
+    trace: traceFor(runUnits),
+    head: headFor(runUnits),
+  }), [runUnits]);
 
   // The head lands only once the line reaches it.
   const headDrawn = clamp01((drawn - 0.75) / 0.25);
@@ -96,7 +103,7 @@ export function ScrollCue({
       />
       <path
         className={`${styles.stroke} ${styles.head}`}
-        d={headFor(runUnits)}
+        d={head}
         pathLength={PATH_LENGTH}
         strokeDashoffset={PATH_LENGTH * (1 - headDrawn)}
         data-testid="scroll-cue-head"

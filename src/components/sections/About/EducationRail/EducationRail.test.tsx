@@ -2,10 +2,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EducationRail } from './EducationRail';
 import { EDUCATION_RECORDS } from './educationRecords';
-import { BEAT_COOLDOWN_MS } from '../aboutBeats';
 import {
   RAIL_HEIGHT, FRAME_HEIGHT, placeEducation as placeRail,
-  advanceEducation as advance, wheelEducation as wheel,
   finishEducation as finish, setupEducationClock, cleanupEducationClock,
 } from '@/test/educationClock';
 
@@ -14,10 +12,7 @@ afterEach(cleanupEducationClock);
 
 function openFrame() {
   placeRail(-20);
-  advance(BEAT_COOLDOWN_MS + 1);
-  wheel(120);
   finish('education-sticky-header');
-  advance(BEAT_COOLDOWN_MS + 1);
 }
 
 describe('EducationRail content', () => {
@@ -31,12 +26,106 @@ describe('EducationRail content', () => {
     // them, so a reader on a narrow screen or with motion off gets the lot.
     render(<EducationRail />);
 
-    for (const record of EDUCATION_RECORDS) {
+    for (const [index, record] of EDUCATION_RECORDS.entries()) {
       expect(screen.getByRole('heading', { name: record.title, hidden: true })).toBeInTheDocument();
+      const article = screen.getByTestId('education-track').querySelector(`[data-record="${index}"]`)!;
+      const items = Array.from(article.querySelectorAll('li'), (item) => item.textContent);
       for (const item of record.items) {
-        expect(screen.getByText(item)).toBeInTheDocument();
+        expect(items).toContain(item);
+      }
+      expect(article.textContent).toContain(record.award);
+      expect(article.querySelector('time')?.textContent).toBe(record.period);
+      if (record.summary) expect(article.textContent).toContain(record.summary);
+    }
+  });
+
+  it('gives split display names one complete accessible institution heading', () => {
+    render(<EducationRail />);
+    const names = ['HiLCoE', 'Saint Joseph', 'Boot.dev', 'freeCodeCamp'];
+
+    for (const [index, record] of EDUCATION_RECORDS.entries()) {
+      const heading = screen.getByRole('heading', { name: record.title, hidden: true });
+      expect(heading.getAttribute('aria-label')).toBe(record.title);
+      expect(heading.textContent).toBe(names[index]);
+      const title = heading.querySelector('[data-part="title"]')!;
+      expect(title.getAttribute('aria-hidden')).toBe('true');
+      const glyphs = title.querySelectorAll('[data-edu-glyph]');
+      if (index === 2) {
+        expect(title.querySelector('[data-edu-text="decrypt"]')).not.toBeNull();
+      } else {
+        expect(Array.from(glyphs, (glyph) => glyph.textContent).join(''))
+          .toBe(names[index].replaceAll(' ', ''));
+      }
+      expect(glyphs.length).toBeLessThan(32);
+    }
+  });
+
+  it('gives every piece of card copy a text effect, not just its heading', () => {
+    render(<EducationRail />);
+    const uncovered: string[] = [];
+    for (const record of screen.getByTestId('education-track').querySelectorAll('[data-record]')) {
+      const text = document.createTreeWalker(record, NodeFilter.SHOW_TEXT);
+      while (text.nextNode()) {
+        const node = text.currentNode;
+        if (!node.textContent?.trim() || node.parentElement?.closest('svg')) continue;
+        if (!node.parentElement?.closest('[data-edu-text], [data-edu-glyph]')) {
+          uncovered.push(node.textContent);
+        }
       }
     }
+    expect(uncovered).toEqual([]);
+  });
+
+  it('gives each institution its own text treatment without changing its copy', () => {
+    render(<EducationRail />);
+    expect(Array.from(
+      screen.getByTestId('education-track').querySelectorAll<HTMLElement>('[data-record]'),
+      record => record.dataset.textStyle
+    )).toEqual(['fold', 'letterpress', 'decode', 'flow']);
+  });
+
+  it('keeps the supplied Boot.dev variants small and separate from the academic marks', () => {
+    render(<EducationRail />);
+    const track = screen.getByTestId('education-track');
+    const brand = track.querySelector('[data-record="2"] [data-edu-brand]')!;
+    expect(brand.closest('[data-has-mark]')).toBeNull();
+    expect(brand.closest('[data-dense]')).not.toBeNull();
+    expect(brand.querySelector('[data-edu-brand-color]')).toHaveAttribute('src', '/images/education/bootdev-color.webp');
+    expect(brand.querySelector('[data-edu-brand-white]')).toHaveAttribute('src', '/images/education/bootdev-white.webp');
+    expect(brand.querySelector('[data-edu-brand-white]')).toHaveAttribute('aria-hidden', 'true');
+    expect(brand.querySelector('a, button, [tabindex]')).toBeNull();
+    expect(track.querySelectorAll('[data-edu-diagram]')).toHaveLength(2);
+    for (const diagram of track.querySelectorAll('[data-edu-diagram]')) {
+      expect(diagram.closest('[data-record="3"]')).not.toBeNull();
+      expect(diagram).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
+  it('emphasizes the real GPA once without creating an hours dashboard', () => {
+    render(<EducationRail />);
+    const stage = screen.getByTestId('education-stage');
+    const scores = stage.querySelectorAll('[data-score="true"]');
+    expect(scores).toHaveLength(1);
+    expect(scores[0].textContent).toBe('GPA: 3.92 / 4.00');
+    expect(scores[0].querySelector('strong')?.textContent).toBe('3.92');
+    expect(stage.textContent).toContain(
+      'Each certification represents approximately 300 hours of coursework'
+    );
+    expect(stage.textContent).not.toMatch(/\b600\b/);
+  });
+
+  it('distinguishes completion totals from the featured courses and their years', () => {
+    render(<EducationRail />);
+    const track = screen.getByTestId('education-track');
+    const bootdev = track.querySelector('[data-record="2"]')!;
+    const freecodecamp = track.querySelector('[data-record="3"]')!;
+    expect(bootdev.textContent).toContain('15+ courses & projects');
+    expect(bootdev.textContent).toContain('Featured from 2025');
+    expect(bootdev.textContent).toContain('Selected builds');
+    expect(bootdev.textContent).toContain('Selected coursework');
+    expect(freecodecamp.textContent).toContain('2+ certifications');
+    expect(freecodecamp.textContent).toContain('Featured from 2024');
+    expect(track.querySelector('[data-record="0"]')?.textContent).toContain('Completed 08/2025');
   });
 
   it('draws where the reader is in the set rather than numbering it', () => {
@@ -47,7 +136,7 @@ describe('EducationRail content', () => {
     expect(ticks[1].getAttribute('aria-current')).toBeNull();
   });
 
-  it('marks a list too long to fit, so it is set in columns rather than scrolled', () => {
+  it('groups dense courses into projects and coursework instead of an inner scroller', () => {
     /*
      * The stage is a fixed, full-viewport overlay portalled to the body, and
      * the page scrolls inside an element that is not its ancestor. A scrollable
@@ -56,16 +145,16 @@ describe('EducationRail content', () => {
      * sets are set in columns instead, and nothing inside the frame scrolls.
      */
     render(<EducationRail />);
-    const lists = screen.getByTestId('education-stage').querySelectorAll('ul');
-
-    for (const list of lists) {
-      const long = list.children.length > 6;
-      expect(list.getAttribute('data-dense')).toBe(long ? 'true' : null);
-    }
-
-    // Bootdev's ten courses are the only set long enough to need it.
-    expect(screen.getByTestId('education-stage').querySelectorAll('ul[data-dense="true"]'))
-      .toHaveLength(1);
+     const groups = screen.getByTestId('education-stage').querySelectorAll('[data-dense="true"]');
+     expect(groups).toHaveLength(1);
+     const lists = groups[0].querySelectorAll('ul');
+     expect(lists).toHaveLength(2);
+     expect(lists[0].children).toHaveLength(4);
+     expect(lists[1].children).toHaveLength(6);
+     expect(lists[0].querySelectorAll('[data-build="true"] strong')).toHaveLength(4);
+     expect(lists[1].querySelector('[data-build]')).toBeNull();
+     expect(groups[0].querySelectorAll('[data-part="row"]')).toHaveLength(12);
+     expect(groups[0].querySelector('[tabindex]')).toBeNull();
   });
 });
 
@@ -169,9 +258,6 @@ describe('EducationRail hold', () => {
     expect(frame.getAttribute('data-open')).toBeNull();
 
     await placeRail(-10);
-    expect(frame.getAttribute('data-open')).toBeNull();
-    advance(BEAT_COOLDOWN_MS + 1);
-    wheel(120);
     expect(frame.getAttribute('data-open')).toBe('true');
   });
 
@@ -183,8 +269,6 @@ describe('EducationRail hold', () => {
     expect(head.getAttribute('data-settled')).toBeNull();
 
     await placeRail(-10);
-    advance(BEAT_COOLDOWN_MS + 1);
-    wheel(120);
     expect(head.getAttribute('data-settled')).toBeNull();
     finish('education-sticky-header');
     expect(head.getAttribute('data-settled')).toBe('true');
@@ -207,7 +291,6 @@ describe('EducationRail record selection', () => {
     for (let index = 1; index < EDUCATION_RECORDS.length; index++) {
       fireEvent.click(screen.getByRole('button', { name: 'Next record' }));
       finish('education-track');
-      advance(BEAT_COOLDOWN_MS + 1);
     }
     await placeRail(-100000);
     expect(screen.getByText(EDUCATION_RECORDS[EDUCATION_RECORDS.length - 1].title, { selector: 'p' }))
@@ -258,5 +341,9 @@ describe('EducationRail with reduced motion', () => {
     // No hold is computed at all, so nothing is being moved per frame.
     const pinned = screen.getByTestId('education-rail').firstElementChild as HTMLElement;
     expect(pinned.style.getPropertyValue('--pin')).toBe('');
+    expect(screen.getAllByRole('article')).toHaveLength(EDUCATION_RECORDS.length);
+    for (const record of EDUCATION_RECORDS) {
+      expect(screen.getByRole('heading', { name: record.title })).toBeInTheDocument();
+    }
   });
 });

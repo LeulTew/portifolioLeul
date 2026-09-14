@@ -108,6 +108,29 @@ describe('ScrollCue', () => {
     }
   });
 
+  it.each([0, 180, 850, 2500])('spreads all three broad turns through %i units of extra rail', (run) => {
+    render(<ScrollCue run={run} progress={1} />);
+    const trace = screen.getByTestId('scroll-cue-trace').getAttribute('d') ?? '';
+    const curves = [...trace.matchAll(/C\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/g)]
+      .map(match => match.slice(1).map(Number));
+    const end = /L\s+[\d.]+\s+([\d.]+)\s*$/.exec(trace);
+    expect(curves).toHaveLength(3);
+    expect(end).not.toBeNull();
+    const height = Number(end![1]) - 12;
+    const ends = curves.map(curve => (curve[5] - 12) / height);
+    expect(ends[0]).toBeGreaterThan(0.3);
+    expect(ends[0]).toBeLessThan(0.4);
+    expect(ends[1]).toBeGreaterThan(0.6);
+    expect(ends[1]).toBeLessThan(0.75);
+    expect(ends[2]).toBeGreaterThan(0.85);
+    expect(Number(end![1]) - curves[2][5]).toBeCloseTo(44, 3);
+
+    const horizontalSpan = Math.max(...curves.map(curve => curve[4])) -
+      Math.min(...curves.map(curve => curve[4]));
+    expect(horizontalSpan * 112 / CUE_VIEW_WIDTH).toBeGreaterThanOrEqual(90);
+    expect(screen.getByTestId('scroll-cue-current')).toHaveAttribute('d', trace);
+  });
+
   it('lands the head on the end of the line, pointing along it', () => {
     // The original head floated ~100px below the curve pointing straight down,
     // which read as a detached mark rather than an arrow. Derived from the

@@ -2,6 +2,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { animationClock } from '@/test/animationClock';
 import { AboutHeading } from './AboutHeading';
+import { BEAT_REST_MS } from './aboutBeats';
 
 const reduced = vi.fn(() => false);
 vi.mock('@/lib/gateways/animationGateway', () => ({ getPrefersReducedMotion: () => reduced() }));
@@ -49,7 +50,7 @@ describe('centered About arrival', () => {
   it('holds the large centered pose, then docks without an extra gesture', async () => {
     const scene = mount();
     await scene.position(0.5);
-    await scene.run(480);
+    await scene.run(BEAT_REST_MS - 30);
     expect(scene.travel()).toBe(0);
     expect(scene.about).toHaveAttribute('data-head-pending', 'true');
     expect(scene.about).not.toHaveAttribute('data-head-settled');
@@ -72,8 +73,10 @@ describe('centered About arrival', () => {
     await scene.position(1);
     await scene.clock.frame(10000);
     expect(scene.travel()).toBe(0);
-    await scene.run(300);
+    await scene.run(BEAT_REST_MS - 70);
     expect(scene.travel()).toBe(0);
+    await scene.run(80);
+    expect(scene.travel()).toBeGreaterThan(0);
   });
 
   it('keeps the title docked until the later statements return, then fades at center', async () => {

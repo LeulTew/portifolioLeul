@@ -93,3 +93,13 @@ export function useSectionFocusEffect(
 
   return hasEntered;
 }
+
+/** A one-shot entrance that cannot be spent underneath the owned About chapter. */
+export function useSectionEntrance(enabled = true, inset = 0) {
+  const [element, ref] = useState<HTMLElement | null>(null);
+  const [hasEntered, setHasEntered] = useState(false);
+  useViewportShareEffect(enabled && !hasEntered ? element : null, share => {
+    if (share > 0) setHasEntered(true);
+  }, inset);
+  return { ref, hasEntered };
+}

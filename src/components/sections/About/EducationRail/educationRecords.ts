@@ -66,7 +66,7 @@ export const EDUCATION_RECORDS: readonly EducationRecord[] = [
     id: entry.issuer,
     kind: CERTIFICATION_KIND,
     title: entry.issuer,
-    award: `${entry.items.length} ${entry.items.length === 1 ? 'course' : 'courses'} completed`,
+    award: `${entry.completedAtLeast}+ ${entry.completionUnit}`,
     period: entry.year,
     summary: entry.description,
     items: entry.items,

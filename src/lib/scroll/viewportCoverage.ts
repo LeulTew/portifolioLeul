@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { CHAPTER_OWNERSHIP_ATTRIBUTES, hasChapterOwnership } from './chapterOwnership';
 
 /**
  * Share of the viewport a section must cover before the scrim reaches full
@@ -86,7 +87,8 @@ function shareFromEntry(entry: IntersectionObserverEntry): number {
  */
 export function useViewportShareEffect(
   element: HTMLElement | null,
-  onChange: (share: number) => void
+  onChange: (share: number) => void,
+  inset: number = 0
 ): void {
   const callbackRef = useRef(onChange);
   callbackRef.current = onChange;
@@ -94,38 +96,53 @@ export function useViewportShareEffect(
   useEffect(() => {
     if (!element || typeof IntersectionObserver === 'undefined') return;
 
+    const about = document.getElementById('about');
+    const canBeCovered = about !== null && !about.contains(element);
+    let share = 0;
+    let published = Number.NaN;
+    const report = () => {
+      const next = canBeCovered && hasChapterOwnership(about) ? 0 : share;
+      if (next === published) return;
+      published = next;
+      callbackRef.current(next);
+    };
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[entries.length - 1];
         if (!entry) return;
-        callbackRef.current(shareFromEntry(entry));
+        share = shareFromEntry(entry);
+        report();
       },
-      { threshold: THRESHOLDS }
+      { threshold: THRESHOLDS, ...(inset ? { rootMargin: `-${inset}px` } : {}) }
     );
 
+    // Covered sections must not spend their entrance behind the pinned chapter.
+    const ownership = canBeCovered ? new MutationObserver(() => {
+      if (!hasChapterOwnership(about)) {
+        // The chapter may settle its scrollport before IntersectionObserver catches up.
+        const rect = element.getBoundingClientRect();
+        const height = window.innerHeight - 2 * inset;
+        share = height > 0 && rect.right > inset && rect.left < window.innerWidth - inset
+          ? Math.max(0, Math.min(rect.bottom, window.innerHeight - inset) - Math.max(rect.top, inset)) / height
+          : 0;
+      }
+      report();
+    }) : null;
+    if (ownership && about) ownership.observe(about, {
+      attributes: true,
+      attributeFilter: CHAPTER_OWNERSHIP_ATTRIBUTES,
+    });
     observer.observe(element);
-    return () => observer.disconnect();
-  }, [element]);
+    return () => {
+      observer.disconnect();
+      ownership?.disconnect();
+    };
+  }, [element, inset]);
 }
 
 export function useViewportShare(element: HTMLElement | null): number {
   const [share, setShare] = useState(0);
-
-  useEffect(() => {
-    if (!element || typeof IntersectionObserver === 'undefined') return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[entries.length - 1];
-        if (!entry) return;
-        setShare(shareFromEntry(entry));
-      },
-      { threshold: THRESHOLDS }
-    );
-
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [element]);
+  useViewportShareEffect(element, setShare);
 
   return share;
 }

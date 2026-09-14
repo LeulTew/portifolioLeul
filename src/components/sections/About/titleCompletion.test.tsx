@@ -2,7 +2,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { animationClock } from '@/test/animationClock';
 import { TitlePixelTransition } from './TitlePixelTransition';
-import { BEAT_COOLDOWN_MS, TITLE_WRITE } from './aboutBeats';
+import { TITLE_WRITE } from './aboutBeats';
 
 vi.mock('@/lib/gateways/animationGateway', () => ({
   getPrefersReducedMotion: () => false,
@@ -28,12 +28,18 @@ describe('the mounted title completion publisher', () => {
     );
     const about = document.getElementById('about')!;
     const writes = vi.spyOn(about, 'setAttribute');
-    clock.wait(BEAT_COOLDOWN_MS + 1);
     await act(async () => {
       window.dispatchEvent(new WheelEvent('wheel', { deltaY: 3 }));
     });
     return { clock, about, writes };
   };
+
+  it('accepts a title request immediately after the background completes', async () => {
+    const { clock, about } = await start();
+    await clock.frame(10);
+    expect(about).toHaveAttribute('data-title-active', 'true');
+    expect(about).not.toHaveAttribute('data-title-settled');
+  });
 
   it('publishes settled exactly once, including the terminal frame and idle updates', async () => {
     const { clock, about, writes } = await start();

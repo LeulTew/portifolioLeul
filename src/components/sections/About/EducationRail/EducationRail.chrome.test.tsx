@@ -36,7 +36,7 @@ describe('chrome over the held Education reader', () => {
   it('follows the visible reader rather than the physical Contact section underneath', async () => {
     vi.stubGlobal('IntersectionObserver', FocusObserver);
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      return this.dataset.testid === 'education-stage'
+      return this.dataset.testid === 'education-stage' || this.id === 'contact'
         ? new DOMRect(0, 0, 1440, window.innerHeight)
         : new DOMRect(0, -10000, 1440, 1000);
     });

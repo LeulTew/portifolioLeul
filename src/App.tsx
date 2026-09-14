@@ -28,7 +28,9 @@ import { watchContentSettled, type ContentSettleWatcher } from './lib/render/con
 import { useChapterInk } from './lib/scroll/chapterInk';
 import { ChapterInkLayer, InkLabel } from './components/ui/ChapterInkLayer/ChapterInkLayer';
 import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
-import { publishSectionNavigation } from './lib/scroll/sectionNavigation';
+import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
+import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
+import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
 
 import './index.css';
 import styles from './App.module.css';
@@ -80,6 +82,7 @@ function App() {
   /** The in-flight navigation glide, so a second click replaces the first. */
   const glideRef = useRef<Glide | null>(null);
   const scrollElementRef = useRef<HTMLDivElement | null>(null);
+  const scrollStateRef = useRef<ReturnType<typeof useScroll> | null>(null);
   /** Reader position captured just before the track is resized. */
   const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
 
@@ -163,8 +166,12 @@ function App() {
     // Keeping logic simple: If not phone, we render normal content.
   }, []);
 
-  const handleScrollElement = useCallback((element: HTMLDivElement | null) => {
+  const handleScrollElement = useCallback((
+    element: HTMLDivElement | null,
+    state: ReturnType<typeof useScroll> | null
+  ) => {
     scrollElementRef.current = element;
+    scrollStateRef.current = state;
     setScrollElement(element);
   }, []);
 
@@ -381,7 +388,7 @@ function App() {
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
   }, []);
 
-  const scrollToSection = useCallback((id: string) => {
+  const scrollToSection = useCallback((id: string, options?: SectionNavigationOptions) => {
     const target = document.getElementById(id);
     if (!target) return;
     publishSectionNavigation(id);
@@ -421,7 +428,19 @@ function App() {
        * while a plain instant assignment worked. See `glideScrollTo`.
        */
       glideRef.current?.cancel();
+      if (options?.immediate && scrollStateRef.current) {
+        glideRef.current = null;
+        settleScrollPosition(scrollStateRef.current, ratio);
+        return;
+      }
       glideRef.current = glideScrollTo(container, ratio * containerScrollable);
+      return;
+    }
+
+    if (options?.immediate) {
+      const inset = id === 'about' ? Math.round(window.innerHeight * 0.08) : -80;
+      const top = id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
       return;
     }
 
@@ -567,33 +586,23 @@ function ScrollManager({
   onReady,
   onFrame,
 }: {
-  onReady: (el: HTMLDivElement | null) => void;
+  onReady: (el: HTMLDivElement | null, state: ReturnType<typeof useScroll> | null) => void;
   onFrame: () => void;
 }) {
   const scroll = useScroll();
 
   useEffect(() => {
-    onReady(scroll?.el ?? null);
-    return () => onReady(null);
-  }, [scroll?.el, onReady]);
+    onReady(scroll?.el ?? null, scroll ?? null);
+    return () => onReady(null, null);
+  }, [scroll, onReady]);
 
   // The page scrolls inside the ScrollControls element, so this is the only
   // place that knows the real progress. Publish it for the DOM layer.
   useFrame((state) => {
-    let geometryChanged = false;
-    const html = scroll?.fixed.firstElementChild;
     // Drei 9 skips HTML transforms at zero delta, including a reset to zero
     // after rebuilding pages. Reconcile only settled, physically agreed state;
     // moving frames remain exclusively Drei's, and pending restores stay put.
-    if (scroll && html instanceof HTMLElement && scroll.delta <= scroll.eps) {
-      const y = -state.size.height * (scroll.pages - 1) * scroll.offset;
-      const transform = `translate3d(0px, ${y}px, 0px)`;
-      if (html.style.transform !== transform &&
-          Math.abs(readScrollOffset(scroll.el) - scroll.offset) <= scroll.eps) {
-        html.style.transform = transform;
-        geometryChanged = true;
-      }
-    }
+    const geometryChanged = scroll ? reconcileScrollLayer(scroll, state.size.height) : false;
     setScrollProgress(scroll?.offset ?? 0, geometryChanged);
     onFrame();
   });
