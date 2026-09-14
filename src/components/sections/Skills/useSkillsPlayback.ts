@@ -8,6 +8,7 @@ import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { createSkillsTimeline } from './skillsTimeline';
 import { SKILLS_READING_MS, SKILLS_STAGE_QUERY } from './skillsData';
 
@@ -59,6 +60,7 @@ export function useSkillsPlayback(
     let state: Phase = 'outside';
     let shown = false;
     let covered = false;
+    let uncover: (() => void) | null = null;
     let side: 'before' | 'after' = initialRect.height > 0 && initialRect.bottom <= 0 ? 'after' : 'before';
     let wave: ScrollDirection | null = null;
     let bypass = false;
@@ -91,6 +93,11 @@ export function useSkillsPlayback(
     const cover = (value: boolean) => {
       if (value === covered) return;
       covered = value;
+      if (value) uncover = coverChapterBackground(rail, panel, 'skills');
+      else {
+        uncover?.();
+        uncover = null;
+      }
       setOverlayOcclusion(value, 'skills');
     };
     const changePhase = (next: Phase) => {
@@ -297,8 +304,10 @@ export function useSkillsPlayback(
       if (document.hidden) {
         cancelAnimationFrame(frame);
         frame = 0;
+        cover(false);
       } else {
         lastTime = performance.now();
+        cover(shown && state !== 'leaving' && Number(panel.style.opacity) === 1);
         if (flight || rest > 0) wake();
         apply();
       }
@@ -334,7 +343,7 @@ export function useSkillsPlayback(
       document.removeEventListener('visibilitychange', visibility);
       writeAttribute(rail, 'data-skills-active', null);
       if (main && !previouslyInert) writeAttribute(main, 'inert', null);
-      setOverlayOcclusion(false, 'skills');
+      cover(false);
       context.revert();
       score.dispose();
     };

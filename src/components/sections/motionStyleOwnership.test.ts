@@ -7,6 +7,7 @@ describe('scroll entrance property ownership', () => {
   it.each([
     ':global(main[inert]) .tracerBeam',
     ':global([data-education-covered]) .tracerBeam',
+    ':global([data-skills-covered]) .tracerBeam',
   ])('pauses covered button tracers through %s', selector => {
     const css = postcss.parse(readFileSync(join(__dirname, '..', 'ui', 'MagneticButton.module.css'), 'utf8'));
     const states: string[] = [];

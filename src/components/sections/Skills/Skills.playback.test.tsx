@@ -550,6 +550,40 @@ describe('Skills completed-beat playback', () => {
     expect(index()).toBe(5);
   });
 
+  it('preserves the underlay during transparent boundaries and covers it only behind the opaque stage', () => {
+    mount();
+    place(80);
+    advance(200);
+    const underlay = screen.getByTestId('underlay');
+    expect(Number(stage().style.opacity)).toBeLessThan(1);
+    expect(underlay.style.visibility).toBe('');
+    advance(3100);
+    expect(underlay.style.visibility).toBe('hidden');
+    expect(underlay).toHaveAttribute('data-skills-covered');
+    act(() => publishSectionNavigation('projects'));
+    expect(stage()).toHaveAttribute('data-phase', 'leaving');
+    expect(Number(stage().style.opacity)).toBe(1);
+    expect(underlay.style.visibility).toBe('');
+    expect(underlay).not.toHaveAttribute('data-skills-covered');
+  });
+
+  it('releases covered DOM in a hidden tab and restores coverage without restarting a settled chapter', () => {
+    enter();
+    const underlay = screen.getByTestId('underlay');
+    const hidden = vi.spyOn(document, 'hidden', 'get');
+    hidden.mockReturnValue(true);
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(underlay.style.visibility).toBe('');
+    expect(getOverlayOcclusion()).toBe(false);
+    hidden.mockReturnValue(false);
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(underlay.style.visibility).toBe('hidden');
+    expect(getOverlayOcclusion()).toBe(true);
+    expect(stage()).toHaveAttribute('data-phase', 'reading');
+    expect(index()).toBe(0);
+    expect(next()).toBeEnabled();
+  });
+
   it('makes only the obscured page inert while retaining navigation and restores it on release', () => {
     enter();
     expect(screen.getByTestId('underlay')).toHaveAttribute('inert');
@@ -558,6 +592,8 @@ describe('Skills completed-beat playback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to About' }));
     advance(1900);
     expect(screen.getByTestId('underlay')).not.toHaveAttribute('inert');
+    expect(screen.getByTestId('underlay').style.visibility).toBe('');
+    expect(screen.getByTestId('underlay')).not.toHaveAttribute('data-skills-covered');
   });
 
   it('cleans up in-flight animation, pending frames, subscriptions and ownership on unmount', () => {

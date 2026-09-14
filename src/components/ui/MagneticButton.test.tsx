@@ -78,7 +78,7 @@ describe('MagneticButton', () => {
     expect(screen.getByText(/glass dark/i)).toBeDefined();
   });
 
-  it('pauses tracer motion only under an inert or Education-covered background', () => {
+  it('pauses tracer motion only under an inert or chapter-covered background', () => {
     const selectors: string[] = [];
     postcss.parse(readFileSync(join(__dirname, 'MagneticButton.module.css'), 'utf8'))
       .walkRules(rule => {
@@ -89,6 +89,7 @@ describe('MagneticButton', () => {
     expect(selectors).toEqual([
       ':global(main[inert]) .tracerBeam',
       ':global([data-education-covered]) .tracerBeam',
+      ':global([data-skills-covered]) .tracerBeam',
     ]);
   });
 });

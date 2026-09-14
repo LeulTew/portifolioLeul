@@ -344,6 +344,11 @@ animation units cannot change under an in-flight tween.
 
 Button tracers under the inert main content pause while Skills owns the opaque
 stage; invisible border loops must not keep invalidating style behind it.
+The shared reversible chapter-cover helper also hides the covered composited
+HTML and old pinned overlays once Skills is fully opaque, without changing
+their geometry or hiding the native scrollport. It restores their original
+visibility and markers before a transparent departure, on tab suspension, and
+on unmount. Global navigation and the Skills stage remain outside that cover.
 
 There are no ambient animation loops. The movement and reading clock stops at
 rest and pauses in hidden tabs. The active artifact can respond to the pointer;
