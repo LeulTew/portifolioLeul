@@ -2,7 +2,7 @@ import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import gsap from 'gsap';
 import { SkillInlineText, SkillText } from './SkillsMotion';
-import { revealSkillTypography } from './skillTextMotion';
+import { revealSkillTypography, withdrawSkillTypography } from './skillTextMotion';
 import { SKILL_CHAPTERS } from './skillsData';
 
 afterEach(() => {
@@ -58,6 +58,52 @@ describe('inner skill-label choreography', () => {
 });
 
 describe('capability-specific text choreography', () => {
+  it.each(SKILL_CHAPTERS)('$scene keeps economy typography word-sized and reversible without hidden glyph work', chapter => {
+    document.documentElement.dataset.quality = 'low';
+    const label = chapter.items[0];
+    const content = () => <article>
+      <SkillText text={chapter.title} tag="h3" animated mode={chapter.textMotion} />
+      <p data-skill-summary="">Supporting meaning</p>
+      <ul><li data-skill-copy="" aria-label={label}>
+        <SkillInlineText text={label} mode={chapter.inlineMotion} animated />
+      </li></ul>
+    </article>;
+    const { container, rerender } = render(content());
+    const article = container.querySelector('article')!;
+    const heading = article.querySelector('h3')!;
+    const words = [...heading.querySelectorAll('[data-skill-word], [data-skill-scan-text]')];
+    expect(heading).toHaveAttribute('data-text-quality', 'economy');
+    expect(words).toHaveLength(chapter.title.split(/\s+/).length);
+    expect(article.querySelectorAll('[data-skill-char], [data-skill-inline-unit]')).toHaveLength(0);
+    let timeline: gsap.core.Timeline;
+    const context = gsap.context(() => {
+      timeline = gsap.timeline({ paused: true })
+        .add(revealSkillTypography(article, chapter.textMotion, chapter.inlineMotion))
+        .add(withdrawSkillTypography(article, chapter.textMotion));
+    }, article);
+    try {
+      timeline!.time(1.12);
+      expect(heading).toHaveAccessibleName(chapter.title);
+      expect(article.querySelector('li')).toHaveAccessibleName(label);
+      expect(article.querySelector('[data-inline-motion]')).toHaveTextContent(label);
+      words.forEach(word => {
+        expect(Number(gsap.getProperty(word, 'opacity'))).toBe(1);
+        expect(Number(gsap.getProperty(word, 'rotationX'))).toBe(0);
+        expect(word.getAttribute('style')).not.toContain('filter');
+      });
+      const settled = words.map(word => word.getAttribute('style'));
+      timeline!.progress(1);
+      timeline!.time(1.12);
+      expect(words.map(word => word.getAttribute('style'))).toEqual(settled);
+      document.documentElement.dataset.quality = 'high';
+      rerender(content());
+      expect(heading).toHaveAttribute('data-text-quality', 'economy');
+      expect(article.querySelectorAll('[data-skill-char], [data-skill-inline-unit]')).toHaveLength(0);
+    } finally {
+      context.revert();
+    }
+  });
+
   it.each(SKILL_CHAPTERS)('$scene uses its own actual animation mechanism', chapter => {
     const { container } = render(<article>
       <SkillText text={chapter.title} tag="h3" animated mode={chapter.textMotion} />

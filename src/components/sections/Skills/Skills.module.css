@@ -338,6 +338,16 @@
   transform-origin: 50% 50%;
 }
 
+.title[data-text-quality='economy'],
+:global([data-quality='low']) .instrument {
+  perspective: none;
+}
+
+:global([data-quality='low']) .instrumentTilt,
+:global([data-quality='low']) .sculptureObject {
+  transform-style: flat;
+}
+
 .artifact {
   display: block;
   width: 100%;

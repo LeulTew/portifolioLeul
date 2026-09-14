@@ -329,12 +329,14 @@ geometry and cached theme colors. This
 avoids repeatedly laying out multiple SVG surface copies while the material
 changes. Supporting labels and details remain vector-based. No WebGL context,
 video, shader, image-generation service, or animation dependency is added.
-Low quality omits pointer tilt, headline blur, duplicate draft/rim strokes and
-detail-scale effects, and substitutes restrained row motion for per-character
-inner-label effects; ground parallax and the asset transformations remain.
+Low quality omits pointer tilt, unused perspective/depth contexts, headline blur,
+duplicate draft/rim strokes and detail-scale effects. Its headline grammars use
+word-sized units instead of individual glyphs, and supporting labels use plain
+text with restrained row motion instead of mounting hidden character masks.
+Ground parallax and the asset transformations remain.
 If Canvas 2D is unavailable, a warning is emitted and SVG remains the renderer.
-Quality is fixed for the mounted material so its contour topology cannot change
-under an in-flight tween.
+Quality is fixed for the mounted material and text so contour topology and
+animation units cannot change under an in-flight tween.
 
 Button tracers under the inert main content pause while Skills owns the opaque
 stage; invisible border loops must not keep invalidating style behind it.

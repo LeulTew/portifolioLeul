@@ -1,5 +1,5 @@
 import {
-  createElement, useEffect, useRef,
+  createElement, useEffect, useRef, useState,
   type ReactNode, type WheelEventHandler,
 } from 'react';
 import gsap from 'gsap';
@@ -18,9 +18,11 @@ interface SkillTextProps {
 }
 
 export function SkillText({ text, tag = 'span', className, animated, mode = 'assemble' }: SkillTextProps) {
+  const [economy] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement.dataset.quality === 'low');
   const words = animated ? text.split(/(\s+)/).map((word, index) => {
     if (/^\s+$/.test(word)) return word;
-    if (mode === 'decode' || mode === 'draw') {
+    if (!economy && (mode === 'decode' || mode === 'draw')) {
       return <span className={styles.wordGroup} aria-hidden="true" key={index}>
         {Array.from(word).map((character, characterIndex) => (
           <span className={styles.charMask} key={characterIndex}>
@@ -43,6 +45,7 @@ export function SkillText({ text, tag = 'span', className, animated, mode = 'ass
   }) : text;
   return createElement(tag, {
     className, 'aria-label': animated ? text : undefined, 'data-text-motion': animated ? mode : undefined,
+    'data-text-quality': animated ? (economy ? 'economy' : 'full') : undefined,
   }, words);
 }
 
@@ -51,7 +54,10 @@ export function SkillInlineText({ text, mode, animated }: {
   mode: SkillInlineMotion;
   animated: boolean;
 }) {
+  const [economy] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement.dataset.quality === 'low');
   if (!animated) return <span>{text}</span>;
+  if (economy) return <span data-inline-motion={mode} aria-hidden="true">{text}</span>;
   const characters = mode === 'decode' || mode === 'type';
   return <span className={styles.inlineText} data-inline-motion={mode} aria-hidden="true">
     {text.split(/(\s+)/).map((word, wordIndex) => {

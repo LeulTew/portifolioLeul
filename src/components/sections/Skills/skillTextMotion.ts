@@ -9,28 +9,29 @@ export function revealSkillTypography(
   const timeline = gsap.timeline({ defaults: { immediateRender: false } });
   const heading = article.querySelector('h3');
   if (!heading) throw new Error('Skills typography needs its capability heading.');
+  const economy = heading.dataset.textQuality === 'economy';
   const words = heading.querySelectorAll('[data-skill-word]');
   const chars = heading.querySelectorAll('[data-skill-char]');
+  const letterUnits = economy ? words : chars;
   const windows = heading.querySelectorAll('[data-skill-scan-window]');
   const scanText = heading.querySelectorAll('[data-skill-scan-text]');
   const rows = article.querySelectorAll('[data-skill-copy]');
   const summary = article.querySelector('[data-skill-summary]');
-  const blur = document.documentElement.dataset.quality === 'low' ? 0 : 4;
-
   switch (mode) {
     case 'decode':
-      timeline.fromTo(chars, { yPercent: 100, opacity: 0 }, {
+      timeline.fromTo(letterUnits, { yPercent: 100, opacity: 0 }, {
         yPercent: 0, opacity: 1, duration: 0.68, stagger: 0.037, ease: 'power4.inOut',
       }, 0.03);
       break;
     case 'assemble':
-      timeline.fromTo(words, { yPercent: 108, x: -14, rotationX: -28, opacity: 0.3 }, {
+      timeline.fromTo(words, { yPercent: 108, x: -14, rotationX: economy ? 0 : -28, opacity: 0.3 }, {
         yPercent: 0, x: 0, rotationX: 0, opacity: 1, duration: 0.78, stagger: 0.095, ease: 'power4.out',
       }, 0.04);
       break;
     case 'focus':
-      timeline.fromTo(words, { y: -24, scale: 0.92, opacity: 0, filter: `blur(${blur}px)` }, {
-        y: 0, scale: 1, opacity: 1, filter: 'blur(0px)', duration: 0.82, stagger: 0.075, ease: 'power3.out',
+      timeline.fromTo(words, { y: -24, scale: 0.92, opacity: 0, ...(economy ? {} : { filter: 'blur(4px)' }) }, {
+        y: 0, scale: 1, opacity: 1, ...(economy ? {} : { filter: 'blur(0px)' }),
+        duration: 0.82, stagger: 0.075, ease: 'power3.out',
       }, 0.03);
       break;
     case 'scan':
@@ -41,7 +42,7 @@ export function revealSkillTypography(
       }, 0.02);
       break;
     case 'draw':
-      timeline.fromTo(chars, {
+      timeline.fromTo(letterUnits, {
         y: index => 22 + Math.sin(index * 0.65) * 22,
         rotation: index => Math.sin(index * 0.5) * 12,
         opacity: 0,
@@ -72,7 +73,7 @@ export function revealSkillTypography(
     stagger: { each: mode === 'scan' ? 0.07 : 0.045, from: mode === 'focus' ? 'center' : 'start' },
   }, 0.38);
 
-  if (document.documentElement.dataset.quality !== 'low') {
+  if (!economy) {
     rows.forEach((row, index) => {
       const units = row.querySelectorAll('[data-skill-inline-unit]');
       if (!units.length) return;
@@ -112,13 +113,16 @@ export function withdrawSkillTypography(article: HTMLElement, mode: SkillTextMot
   const timeline = gsap.timeline({ defaults: { ease: 'power2.in', duration: 0.3 } });
   const heading = article.querySelector('h3');
   if (!heading) throw new Error('Skills typography needs its capability heading.');
+  const letterUnits = heading.querySelectorAll(
+    heading.dataset.textQuality === 'economy' ? '[data-skill-word]' : '[data-skill-char]',
+  );
   if (mode === 'decode') {
-    timeline.to(heading.querySelectorAll('[data-skill-char]'), { yPercent: -110, stagger: 0.011 });
+    timeline.to(letterUnits, { yPercent: -110, stagger: 0.011 });
   } else if (mode === 'scan') {
     timeline.to(heading.querySelectorAll('[data-skill-scan-window]'), { xPercent: 105 }, 0)
       .to(heading.querySelectorAll('[data-skill-scan-text]'), { xPercent: -105 }, 0);
   } else if (mode === 'draw') {
-    timeline.to(heading.querySelectorAll('[data-skill-char]'), {
+    timeline.to(letterUnits, {
       y: index => Math.sin(index * 0.6) * -18 - 12, opacity: 0, stagger: 0.008,
     });
   } else {
