@@ -75,44 +75,112 @@ function InterfaceDetails({ face }: { face: string }) {
   </>;
 }
 
-function LearningDetails({ face }: { face: string }) {
-  return <>
-    <Piece depth="back">
-      <g data-asset-feature="neural-volume" transform={materialMatrix('intelligence')}>
-        <path d="M-139-100v203M-15-135v270M143-100v203"
-          className={styles.artGrid} strokeDasharray="3 7" />
-        <Trace d="M-112-74C-60-55-52 90 0 108M0-108C55-83 60 55 112 74M-112 74C-64 49-50-89 0-108M0 108C54 81 63-53 112-74" />
-      </g>
-    </Piece>
-    <Piece>
-      {LEARNING_NODES.map((point, index) => {
-        const [x, y] = projectMaterialPoint('intelligence', point);
-        return <g key={index} data-material-node="" data-material-origin={`${x} ${y}`}>
-          <circle cx={x} cy={y} r={[10, 14, 10, 12, 12, 10, 14, 10][index]} fill={face} className={styles.artEdge} />
-          <circle cx={x} cy={y} r="4" className={styles.artMint} />
+const NEURAL_SLICES = [
+  {
+    nodes: [0, 1, 2], origin: '232 280', depth: 'back',
+    face: 'M196 164 248 183Q256 186 257 193L280 386Q281 397 272 394L224 375Q215 371 214 362L191 173Q190 162 196 164Z',
+    bevel: 'M191 173 214 362Q215 371 224 375L272 394 265 401 215 381Q207 378 206 368L183 178Z',
+    rim: 'M196 165 247 184Q255 187 256 194L279 384',
+    seam: 'M201 190 224 358',
+  },
+  {
+    nodes: [3, 4, 5, 6], origin: '363 278', depth: 'middle',
+    face: 'M320 119 373 140Q382 144 384 158L414 410Q415 424 404 420L346 397Q337 393 336 382L308 132Q306 116 320 119Z',
+    bevel: 'M308 132 336 382Q337 393 346 397L404 420 396 428 337 405Q328 401 327 389L299 141Z',
+    rim: 'M319 120 372 141Q381 145 383 158L413 409',
+    seam: 'M321 154 347 380',
+  },
+  {
+    nodes: [7, 8, 9], origin: '498 300', depth: 'front',
+    face: 'M460 191 514 210Q524 214 525 227L547 411Q548 423 537 419L483 398Q474 395 473 383L451 204Q449 186 460 191Z',
+    bevel: 'M451 204 473 383Q474 395 483 398L537 419 530 426 474 405Q465 402 464 389L442 213Z',
+    rim: 'M460 192 513 211Q523 215 524 227L546 410',
+    seam: 'M465 223 483 382',
+  },
+] as const;
+const NEURAL_PIXELS = Array.from({ length: 12 }, (_, index) => {
+  const x = index % 3 * 20;
+  const y = Math.floor(index / 3) * 20;
+  return `M${x} ${y}h13v13h-13Z`;
+});
+
+function LearningDetails() {
+  const id = `neural-${useId().replace(/:/g, '')}`;
+  return <g data-asset-feature="neural-volume">
+    <defs>
+      <linearGradient id={`${id}-slice`} x1="0" y1="0" x2="1" y2="1">
+        <stop stopColor="var(--skill-face)" stopOpacity=".8" />
+        <stop offset=".45" stopColor="var(--skill-face-low)" stopOpacity=".3" />
+        <stop offset="1" stopColor="var(--skill-shade)" stopOpacity=".6" />
+      </linearGradient>
+      <radialGradient id={`${id}-pearl`} cx=".31" cy=".25" r=".76">
+        <stop stopColor="var(--skill-face)" />
+        <stop offset=".44" stopColor="var(--skill-face-low)" />
+        <stop offset=".82" stopColor="var(--skill-shade)" />
+        <stop offset="1" stopColor="var(--skill-dark-side)" />
+      </radialGradient>
+      <radialGradient id={`${id}-active`} cx=".3" cy=".24" r=".8">
+        <stop stopColor="var(--skill-face)" />
+        <stop offset=".24" stopColor="var(--skill-mint)" />
+        <stop offset=".74" stopColor="var(--skill-accent)" />
+        <stop offset="1" stopColor="var(--skill-dark-side)" />
+      </radialGradient>
+      {([['quiet', 9], ['signal', 14], ['core', 21]] as const).map(([kind, radius]) => {
+        return <g key={kind} id={`${id}-${kind}`}>
+          <ellipse cy={radius + 5} rx={radius * 0.95} ry={radius * 0.28}
+            fill="var(--skill-shadow)" opacity=".16" />
+          <circle r={radius + 4} className={styles.neuralSocket} />
+          <circle r={radius} fill={`url(#${id}-${kind === 'quiet' ? 'pearl' : 'active'})`} />
+          <path d={`M${-radius * 0.6} ${-radius * 0.25}Q${-radius * 0.4} ${-radius * 0.76} ${radius * 0.18} ${-radius * 0.74}`}
+            className={styles.neuralRim} />
         </g>;
       })}
-      <circle cx="360" cy="274" r="20" className={styles.artMint} />
-      <circle cx="360" cy="274" r="6" className={styles.artDarkSide} />
-    </Piece>
+    </defs>
     <Piece depth="back">
-      <g transform="translate(98 281) skewY(-24)">
-        <rect width="90" height="100" rx="8" fill={face} className={styles.artEdge} />
-        {[0, 1, 2].map(row => [0, 1, 2].map(col => (
-          <rect key={`${row}-${col}`} x={15 + col * 22} y={17 + row * 24} width="13" height="14" rx="2"
-            className={row === col ? styles.artMint : styles.artFaint} />
-        )))}
+      <path d="M215 213C277 213 298 244 360 244M223 280C288 280 303 314 368 314M360 244C420 244 430 228 490 228M368 314C434 314 440 298 498 298"
+        className={styles.neuralFilament} />
+    </Piece>
+    {NEURAL_SLICES.map((slice, layer) => (
+      <Piece key={layer} depth={slice.depth}>
+        <g data-neural-layer={layer}>
+          <path d={slice.bevel} className={styles.neuralBevel} />
+          <path d={slice.face} fill={`url(#${id}-slice)`} className={styles.neuralSheet} />
+          <path d={slice.rim} className={styles.neuralRim} />
+          <path d={slice.seam} className={styles.neuralFilament} />
+          <g data-material-node="" data-material-origin={slice.origin}>
+            {slice.nodes.map(index => {
+              const [x, y] = projectMaterialPoint('intelligence', LEARNING_NODES[index]);
+              const active = index === 1 || index === 4 || index === 8;
+              return <use key={index} data-neural-node={index} x={x} y={y}
+                href={`#${id}-${index === 4 ? 'core' : active ? 'signal' : 'quiet'}`} />;
+            })}
+          </g>
+          <Trace d={slice.seam} />
+        </g>
+      </Piece>
+    ))}
+    <Piece depth="back">
+      <g data-neural-input="" transform="matrix(.95 -.32 .42 .7 91 314)">
+        <path d={NEURAL_PIXELS.join(' ')} transform="translate(-3 5)" className={styles.artDarkSide} />
+        <path d={NEURAL_PIXELS.filter((_, index) => index % 4 !== 0).join(' ')}
+          fill={`url(#${id}-pearl)`} className={styles.artEdge} />
+        <path d={NEURAL_PIXELS.filter((_, index) => index % 4 === 0).join(' ')} className={styles.artMint} />
       </g>
     </Piece>
     <Piece depth="front">
-      <g transform="translate(544 272) skewY(23)">
-        <rect width="74" height="87" rx="8" fill={face} className={styles.artEdge} />
-        <path d="m19 44 13 13 24-29" className={styles.artAccentLine} strokeWidth="4" fill="none" />
+      <g data-neural-output="" transform="matrix(.94 .3 -.16 .96 576 280)">
+        {[64, 39, 22].map((height, index) => (
+          <g key={height}>
+            <path d={`M${index * 19} ${74 - height}l-5 4v${height}l5-4Z`} className={styles.artDarkSide} />
+            <rect x={index * 19} y={74 - height} width="11" height={height} rx="3"
+              fill={index === 0 ? `url(#${id}-active)` : `url(#${id}-pearl)`} className={styles.artEdge} />
+          </g>
+        ))}
       </g>
     </Piece>
-    <Trace d="M179 311C210 302 231 289 257 280" />
-    <Trace d="M462 300C497 307 515 312 546 313" />
-  </>;
+    <Trace d="M175 321C194 321 195 280 223 280" />
+    <Trace d="M498 298C533 298 542 310 576 310" />
+  </g>;
 }
 
 function DataDetails({ face }: { face: string }) {

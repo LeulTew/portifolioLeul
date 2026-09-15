@@ -236,7 +236,7 @@ new credentials, employment, or performance claims.
 | --- | --- | --- |
 | Languages | Solid processor, pins, source code and output | Cipher resolution / short decoded labels |
 | Frameworks & Web | Upright application window and mobile device | Component assembly / masked word assembly |
-| AI & Data Science | Layered neural connections, inputs and outputs, without a repeated housing | Focus / restrained word focus |
+| AI & Data Science | Three beveled neural slices, shaded neurons, weighted routes and tensor-to-prediction flow | Focus / restrained word focus |
 | Databases | Solid relational storage tiers and query/schema elements | Horizontal scan / bounded typed labels |
 | Tools & Design | Beveled vector pen nib drawing a Bezier path | Curved character alignment / vector-line reveals |
 | Professional Skills | Separate collaborating 3D modules | Bilateral alignment / word-emphasis reveal |
@@ -247,6 +247,10 @@ solid surfaces, an application frame, a housing-free network, a sharp pen
 outline, and separate modules have different visual structures. Shared features
 morph while outgoing and incoming asset parts hand over. Continuity belongs
 to the choreography, not to forcing every capability into an identical asset.
+The neural instrument keeps its ten neurons anchored to the same eight
+weighted routes in SVG and low-tier Canvas rendering. Three layer-level
+animation groups replace per-neuron motion; material depth comes from
+theme-aware vector gradients and bevels, not raster assets or blur filters.
 
 The visual track alternates sides, banks and changes scale. Ground and
 foreground construction lines have different relative travel and timing,

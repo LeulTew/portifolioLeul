@@ -367,6 +367,40 @@
 .artTiny { fill: var(--skill-ink); font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: 0.07em; }
 .artLightCode { fill: var(--skill-mint); font-family: ui-monospace, monospace; font-size: 20px; letter-spacing: 0.1em; }
 
+.neuralSheet {
+  stroke: var(--skill-edge);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+}
+
+.neuralBevel {
+  fill: var(--skill-side);
+  stroke: var(--skill-edge);
+  stroke-width: 0.8;
+}
+
+.neuralRim {
+  fill: none;
+  stroke: var(--skill-face);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.neuralFilament {
+  fill: none;
+  stroke: var(--skill-edge);
+  stroke-width: 1;
+  opacity: 0.3;
+}
+
+.neuralSocket {
+  fill: var(--skill-inset);
+  fill-opacity: 0.65;
+  stroke: var(--skill-edge);
+  stroke-width: 0.7;
+}
+
 .materialDraft {
   fill: none;
   stroke: var(--skill-edge);
