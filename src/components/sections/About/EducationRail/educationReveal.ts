@@ -1,15 +1,28 @@
-import { createTimeline, stagger } from 'animejs';
+import { createTimeline, stagger, steps } from 'animejs';
 import { prepareTextFrames } from './educationTextFrames';
-import { educationTextParts, educationTextStyle, type EducationTextPart } from './educationTextProfiles';
+import {
+  EDUCATION_TEXT_PROFILES, educationTextParts, educationTextStyle, type EducationTextPart,
+} from './educationTextProfiles';
 import styles from './EducationRail.module.css';
 
 export const EDUCATION_REVEAL_MS = 1000;
+export const EDUCATION_SCAN_STEPS = 8;
+const scanEase = steps(EDUCATION_SCAN_STEPS);
 
 function addTextMotion(
   timeline: ReturnType<typeof createTimeline>,
   { element, motion, start, end }: EducationTextPart,
   direction: -1 | 1
 ) {
+  if (motion === 'scan') {
+    // One stationary terminal shutter, not staggered word ink or assembly travel.
+    timeline.add(element, {
+      clipPath: [direction > 0 ? 'inset(0% 100% 0% 0%)' : 'inset(0% 0% 0% 100%)', 'inset(0% 0% 0% 0%)'],
+      duration: end - start, ease: scanEase,
+    }, start);
+    return;
+  }
+
   if (motion === 'type' || motion === 'decrypt' || motion === 'count') {
     timeline.add(element, {
       opacity: [0, 1],
@@ -88,7 +101,8 @@ export function createEducationReveal(record: HTMLElement, direction: -1 | 1 = 1
   });
   const glyphs = record.querySelectorAll<HTMLElement>('[data-edu-glyph]');
   const textStyle = educationTextStyle(record.dataset.textStyle);
-  const title = textStyle === 'decode' ? [] : Array.from(
+  const titleMotion = EDUCATION_TEXT_PROFILES[textStyle].title;
+  const title = titleMotion === 'decrypt' ? [] : Array.from(
     glyphs.length ? glyphs : record.querySelectorAll<HTMLElement>('[data-part="title"]')
   );
   const rows = record.querySelectorAll<HTMLElement>('[data-part="row"]');
@@ -98,13 +112,13 @@ export function createEducationReveal(record: HTMLElement, direction: -1 | 1 = 1
 
   timeline.add({ duration: EDUCATION_REVEAL_MS }, 0);
   if (title.length) {
-    if (textStyle === 'letterpress') {
+    if (titleMotion === 'press') {
       timeline.add(title, {
         translateY: [-16 * direction, 0], rotateZ: [4 * direction, 0], scale: [1.22, 1],
         opacity: [0, 1], duration: 430, ease: 'outCubic',
         delay: stagger([0, 150], { from: 'center' }),
       }, 420);
-    } else if (textStyle === 'flow') {
+    } else if (titleMotion === 'wave') {
       timeline.add(title, {
         translateY: (_target: unknown, index = 0) => [(index % 2 ? -30 : 34) * direction, 0],
         rotateZ: (_target: unknown, index = 0) => [(index % 2 ? 12 : -12) * direction, 0],

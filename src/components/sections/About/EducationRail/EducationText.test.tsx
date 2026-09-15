@@ -5,10 +5,26 @@ import {
   DECRYPT_STEPS, TEXT_FRAME_STEPS, decryptionFrames, countingFrames, typingFrames, prepareTextFrames,
 } from './educationTextFrames';
 import { educationTextParts } from './educationTextProfiles';
+import styles from './EducationRail.module.css';
 
 afterEach(cleanup);
 
 describe('React Bits Education text adapters', () => {
+  it.each(['Selected coursework', 'A long  terminal course name '.repeat(20)])(
+    'keeps scan source plain and wrapping inside one existing bounded phrase box',
+    source => {
+      const { container } = render(<EducationText motion="scan" text={source} role="course" />);
+      const phrase = container.querySelector<HTMLElement>('[data-edu-text="scan"]')!;
+      expect(phrase).toHaveClass(styles.frameWord);
+      expect(phrase).toHaveAttribute('data-edu-role', 'course');
+      expect(phrase).not.toHaveAttribute('aria-hidden');
+      expect(phrase.textContent).toBe(source);
+      expect(phrase.style.cssText).toBe('');
+      expect(container.querySelectorAll('span')).toHaveLength(1);
+      expect(phrase.querySelector('[data-edu-word], [data-edu-cipher], [data-edu-plain]')).toBeNull();
+    }
+  );
+
   it('keeps ordinary text, whitespace and wrapping opportunities without starting an animation', () => {
     const { container } = render(<p><EducationText motion="blur" text="Computer Science &  Technology" /></p>);
     expect(container.textContent).toBe('Computer Science &  Technology');

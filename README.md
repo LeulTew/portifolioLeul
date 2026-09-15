@@ -104,15 +104,19 @@ but its finite glyphs are authored in React and animated by Anime.js rather than
 adding another scroll trigger. Each institution has its own text profile and
 cue order, including different treatments within the course lists:
 
-- HiLCoE pairs a folded heading/award with ruled wipes, lateral assemblies, and
+- HiLCoE pairs a folded heading/award with lateral assemblies and
   a decimal [CountUp](https://reactbits.dev/text-animations/count-up) GPA.
-- Saint Joseph uses center-out letterpress, word hinges, and ink reveals rather
-  than decryption.
+- Saint Joseph alone uses center-out letterpress and smooth word-level ink reveals.
 - Boot.dev decodes its name and selected metadata, types its build titles using
   [TextType](https://reactbits.dev/text-animations/text-type), and varies the
-  coursework between scanning, wiping, and resolving.
-- freeCodeCamp uses alternating letter/word waves, a responsive-copy wipe, and
-  [BlurText](https://reactbits.dev/text-animations/blur-text) for its summary only.
+  coursework with discrete terminal scans and resolving text.
+- freeCodeCamp alone uses alternating letter/word waves and
+  [BlurText](https://reactbits.dev/text-animations/blur-text).
+
+These motion families are exclusive to each institution, including its metadata
+and individual course rows; repetition is allowed within one record, not across
+records. Pairwise ownership and actual intermediate trajectories are covered by
+regression tests.
 
 These adaptations retain the chapter clock instead of adding one-shot observers,
 independent timers, or per-frame React state. The one soft-focus phrase uses one
@@ -148,6 +152,11 @@ simple and uses the same completion gate.
 Boot.dev's supplied color and white artwork is cropped into small transparent
 WebP assets, with no rectangular backing: white at rest, color only on hover.
 Hover owns the image crossfade; the arrival clock only animates their wrapper.
+Its desktop record is a two-tone editorial layout using the same mineral paper
+and pine ink: a larger display title, readable build ledger, and full-height
+curriculum column. The white mark sits on that contrasting curriculum surface,
+not loose on the paper. Rows share the available space without adding an inner
+scroll area, fake project links, invented totals, or a longer animation lock.
 Saint Joseph keeps its green disc at rest and removes it in the colored hover
 state. Academic artwork assets are unchanged. The two freeCodeCamp records carry lightweight
 algorithm-flow and responsive-layout SVG illustrations, not invented issuer

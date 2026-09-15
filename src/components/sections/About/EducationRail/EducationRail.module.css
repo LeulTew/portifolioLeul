@@ -1079,6 +1079,215 @@
   }
 }
 
+@media (min-width: 901px) {
+  .record[data-provider='bootdev'] {
+    --boot-gutter: clamp(1.5rem, 3vw, 3.5rem);
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: 'plate curriculum' 'builds curriculum';
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .record[data-provider='bootdev'] .plate {
+    gap: clamp(0.5rem, 1.25vh, 0.875rem);
+    padding: clamp(1.5rem, 3vh, 2.5rem) var(--boot-gutter) clamp(0.875rem, 2vh, 1.5rem);
+  }
+
+  .record[data-provider='bootdev'] .recordTitle {
+    font-size: clamp(3.5rem, 9.5vh, 6rem);
+    line-height: 0.96;
+    letter-spacing: -0.04em;
+  }
+
+  .record[data-provider='bootdev'] .credential {
+    gap: 0.5rem;
+  }
+
+  .record[data-provider='bootdev'] .award {
+    font-size: clamp(1.125rem, 1.5vw, 1.5rem);
+  }
+
+  .record[data-provider='bootdev'] .summary {
+    align-self: start;
+    max-width: 51ch;
+    padding: 0;
+    font-size: clamp(1rem, 1.1vw, 1.125rem);
+    line-height: 1.45;
+  }
+
+  .record[data-provider='bootdev'] :is(.detail, .courseColumns) {
+    display: contents;
+  }
+
+  .record[data-provider='bootdev'] .courseGroup {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .record[data-provider='bootdev'] .groupTitle {
+    flex: none;
+    margin: 0 0 0.65rem;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .record[data-provider='bootdev'] .items {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .record[data-provider='bootdev'] .item {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    min-height: min-content;
+    padding: clamp(0.4rem, 0.9vh, 0.75rem) 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .record[data-provider='bootdev'] .item:last-child {
+    border-bottom: 0;
+  }
+
+  .record[data-provider='bootdev'] .item[data-build='true']::before {
+    content: none;
+  }
+
+  .record[data-provider='bootdev'] .itemDate {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='builds'] {
+    grid-area: builds;
+    padding: 0 var(--boot-gutter) clamp(1rem, 2.5vh, 2rem);
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='builds'] .items {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='builds'] .itemText {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: baseline;
+    column-gap: clamp(0.75rem, 1.5vw, 1.5rem);
+    width: 100%;
+    font-size: clamp(1.125rem, 1.55vw, 1.625rem);
+    line-height: 1.22;
+    letter-spacing: -0.015em;
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='builds'] .itemTitle {
+    font-family: var(--credential-display);
+    font-weight: 600;
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='builds'] .itemDate {
+    margin: 0;
+    white-space: nowrap;
+    letter-spacing: 0;
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='coursework'] {
+    grid-area: curriculum;
+    padding: clamp(1.5rem, 3vh, 2.5rem) clamp(1.25rem, 2.5vw, 3rem);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='coursework'] .groupTitle {
+    margin-bottom: 0.9rem;
+    color: var(--accent);
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='coursework'] .item {
+    padding-block: clamp(0.3rem, 0.55vh, 0.6rem);
+    border-color: color-mix(in srgb, var(--paper) 22%, transparent);
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='coursework'] .itemText {
+    font-size: clamp(0.9375rem, 1.12vw, 1.125rem);
+    line-height: 1.35;
+    color: var(--paper);
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='coursework'] .itemDate {
+    color: color-mix(in srgb, var(--paper) 78%, transparent);
+  }
+
+  .record[data-provider='bootdev'] .brand {
+    flex: none;
+    margin: 0 0 clamp(1rem, 2.5vh, 2rem);
+  }
+
+  .record[data-provider='bootdev'] .brandStamp {
+    width: clamp(8rem, 11vw, 11rem);
+    height: clamp(3.25rem, 6.5vh, 4.5rem);
+  }
+
+  .record[data-provider='bootdev'] .brandWhite {
+    filter: none;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 740px) {
+  .record[data-provider='bootdev'] {
+    --boot-gutter: clamp(1.25rem, 2.2vw, 1.75rem);
+  }
+
+  .record[data-provider='bootdev'] .plate {
+    padding-block: 1rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .record[data-provider='bootdev'] .recordTitle {
+    font-size: clamp(3rem, 8.5vh, 4rem);
+  }
+
+  .record[data-provider='bootdev'] .summary {
+    font-size: 0.9375rem;
+  }
+
+  .record[data-provider='bootdev'] .item {
+    padding-block: 0.3rem;
+  }
+
+  .record[data-provider='bootdev'] .itemDate {
+    display: inline;
+    margin: 0;
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='builds'] .itemText {
+    font-size: 1.125rem;
+    line-height: 1.3;
+  }
+
+  .record[data-provider='bootdev'] [data-course-group='coursework'] {
+    padding: 1.25rem;
+  }
+
+  .record[data-provider='bootdev'] .brand {
+    margin-bottom: 0.75rem;
+  }
+
+  .record[data-provider='bootdev'] .brandStamp {
+    width: 7.5rem;
+    height: 2.875rem;
+  }
+}
+
 /* Unstaged records are complete, uncapped documents, never inner scroll areas. */
 .rail:not([data-staged='true']) .stage {
   position: static;

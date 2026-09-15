@@ -94,6 +94,11 @@ export function EducationRecord({
     : record.logo === 'saint-joseph' ? 'letterpress' : 'fold';
   const text = EDUCATION_TEXT_PROFILES[textStyle];
   let courseOrdinal = 0;
+  const summary = record.summary ? (
+    <p className={styles.summary} data-part="row">
+      <EducationText text={record.summary} motion={text.summary} role="summary" />
+    </p>
+  ) : null;
 
   return (
     <article
@@ -149,28 +154,25 @@ export function EducationRecord({
             </p>
           </div>
         </div>
+        {bootdev ? summary : null}
       </div>
 
-      {record.summary ? (
-        <p className={styles.summary} data-part="row">
-          <EducationText text={record.summary} motion={text.summary} role="summary" />
-        </p>
-      ) : null}
+      {!bootdev ? summary : null}
 
       <div className={styles.detail}>
-        <span className={styles.detailRule} data-edu-rule="" aria-hidden="true" />
+        {!bootdev ? <span className={styles.detailRule} data-edu-rule="" aria-hidden="true" /> : null}
         {grouped ? (
           <div className={styles.courseColumns} data-dense="true">
-            <div className={styles.courseGroup}>
+            <div className={styles.courseGroup} data-course-group="builds">
               <h4 className={styles.groupTitle} data-part="row">
                 <EducationText text="Selected builds" motion={text['build-group']} role="build-group" />
               </h4>
               <ul className={styles.items}>
                 {projects.map((item, index) => <CourseItem item={item} text={text} ordinal={index} key={item} />)}
               </ul>
-              {bootdev ? <BootdevBrand onWheel={onWheel} /> : null}
             </div>
-            <div className={styles.courseGroup}>
+            <div className={styles.courseGroup} data-course-group="coursework">
+              {bootdev ? <BootdevBrand onWheel={onWheel} /> : null}
               <h4 className={styles.groupTitle} data-part="row">
                 <EducationText text="Selected coursework" motion={text['course-group']} role="course-group" />
               </h4>
