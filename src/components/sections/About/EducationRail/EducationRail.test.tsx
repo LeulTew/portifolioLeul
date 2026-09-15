@@ -345,5 +345,9 @@ describe('EducationRail with reduced motion', () => {
     for (const record of EDUCATION_RECORDS) {
       expect(screen.getByRole('heading', { name: record.title })).toBeInTheDocument();
     }
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const brand = screen.getByRole('img', { name: 'Boot.dev' }).parentElement!;
+    expect(fireEvent.wheel(brand, { deltaY: 120, cancelable: true })).toBe(true);
+    expect(scrollBy).not.toHaveBeenCalled();
   });
 });

@@ -1,8 +1,83 @@
 import { createTimeline, stagger } from 'animejs';
-import { prepareDecryptedText } from './educationDecryption';
+import { prepareTextFrames } from './educationTextFrames';
+import { educationTextParts, educationTextStyle, type EducationTextPart } from './educationTextProfiles';
 import styles from './EducationRail.module.css';
 
 export const EDUCATION_REVEAL_MS = 1000;
+
+function addTextMotion(
+  timeline: ReturnType<typeof createTimeline>,
+  { element, motion, start, end }: EducationTextPart,
+  direction: -1 | 1
+) {
+  if (motion === 'type' || motion === 'decrypt' || motion === 'count') {
+    timeline.add(element, {
+      opacity: [0, 1],
+      translateY: [motion === 'count' ? 10 * direction : 0, 0],
+      duration: 120,
+    }, start);
+    return;
+  }
+
+  const words = Array.from(element.querySelectorAll<HTMLElement>('[data-edu-word]'));
+  if (!words.length) throw new Error(`Education ${motion} text is missing its word units`);
+  if (direction < 0) words.reverse();
+  const spread = words.length > 1 ? 90 : 0;
+  const duration = end - start - spread;
+  const common = {
+    opacity: [0, 1],
+    duration,
+    ease: 'outCubic' as const,
+    delay: stagger([0, spread], { from: motion === 'press' ? 'center' : 'first' }),
+  };
+
+  switch (motion) {
+    case 'fold':
+      timeline.add(words, {
+        ...common, rotateX: [-76 * direction, 0], translateY: [16 * direction, 0],
+      }, start);
+      break;
+    case 'wipe':
+      timeline.add(words, {
+        ...common,
+        clipPath: [direction > 0 ? 'inset(0% 100% 0% 0%)' : 'inset(0% 0% 0% 100%)', 'inset(0% 0% 0% 0%)'],
+        translateX: [-8 * direction, 0],
+      }, start);
+      break;
+    case 'slide':
+      timeline.add(words, {
+        ...common, translateX: [-34 * direction, 0], skewX: [8 * direction, 0],
+      }, start);
+      break;
+    case 'press':
+      timeline.add(words, {
+        ...common, scale: [1.25, 1], rotateZ: [-3.5 * direction, 0], translateY: [-8 * direction, 0],
+      }, start);
+      break;
+    case 'wave':
+      timeline.add(words, {
+        ...common,
+        translateY: (_target: unknown, index = 0) => [(index % 2 ? -22 : 26) * direction, 0],
+        rotateZ: (_target: unknown, index = 0) => [(index % 2 ? 7 : -7) * direction, 0],
+        scale: [0.84, 1],
+      }, start);
+      break;
+    case 'blur': {
+      const first = Math.round(duration * 0.62);
+      timeline.add(element, {
+        filter: ['blur(3px)', 'blur(0px)'], duration: end - start, ease: 'outQuad',
+      }, start);
+      timeline.add(words, {
+        keyframes: [
+          { translateY: [18 * direction, -3 * direction], opacity: [0, 0.65], duration: first },
+          { translateY: 0, opacity: 1, duration: duration - first },
+        ],
+        delay: common.delay, ease: 'outCubic',
+      }, start);
+      break;
+    }
+  }
+}
 
 /** Paused deliberately: the chapter's single clock owns every arrival and return. */
 export function createEducationReveal(record: HTMLElement, direction: -1 | 1 = 1) {
@@ -12,26 +87,38 @@ export function createEducationReveal(record: HTMLElement, direction: -1 | 1 = 1
     defaults: { ease: 'outExpo', composition: 'none' },
   });
   const glyphs = record.querySelectorAll<HTMLElement>('[data-edu-glyph]');
-  const textStyle = record.dataset.textStyle ?? 'fold';
+  const textStyle = educationTextStyle(record.dataset.textStyle);
   const title = textStyle === 'decode' ? [] : Array.from(
     glyphs.length ? glyphs : record.querySelectorAll<HTMLElement>('[data-part="title"]')
   );
   const rows = record.querySelectorAll<HTMLElement>('[data-part="row"]');
-  const decryption = prepareDecryptedText(record, direction);
+  const textParts = educationTextParts(record);
+  const textFrames = prepareTextFrames(textParts, direction);
   if (direction < 0) title.reverse();
 
   timeline.add({ duration: EDUCATION_REVEAL_MS }, 0);
-  if (title.length) timeline.add(title, {
-    translateY: textStyle === 'flow' ? [24 * direction, 0] : [`${112 * direction}%`, '0%'],
-    translateX: textStyle === 'flow' ? [-24 * direction, 0] : [0, 0],
-    rotateX: [textStyle === 'fold' ? -82 * direction : 0, 0],
-    rotateZ: [(textStyle === 'flow' ? 8 : textStyle === 'letterpress' ? -2 : -4) * direction, 0],
-    scale: [textStyle === 'letterpress' ? 0.9 : 1, 1],
-    opacity: [0, 1],
-    duration: 410,
-    ease: 'outCubic',
-    delay: stagger([0, 170]),
-  }, 420);
+  if (title.length) {
+    if (textStyle === 'letterpress') {
+      timeline.add(title, {
+        translateY: [-16 * direction, 0], rotateZ: [4 * direction, 0], scale: [1.22, 1],
+        opacity: [0, 1], duration: 430, ease: 'outCubic',
+        delay: stagger([0, 150], { from: 'center' }),
+      }, 420);
+    } else if (textStyle === 'flow') {
+      timeline.add(title, {
+        translateY: (_target: unknown, index = 0) => [(index % 2 ? -30 : 34) * direction, 0],
+        rotateZ: (_target: unknown, index = 0) => [(index % 2 ? 12 : -12) * direction, 0],
+        scale: [0.72, 1], opacity: [0, 1], duration: 430, ease: 'outCubic',
+        delay: stagger([0, 170]),
+      }, 400);
+    } else {
+      timeline.add(title, {
+        translateY: [`${112 * direction}%`, '0%'],
+        rotateX: [-82 * direction, 0], rotateZ: [-4 * direction, 0],
+        opacity: [0, 1], duration: 410, ease: 'outCubic', delay: stagger([0, 170]),
+      }, 420);
+    }
+  }
   timeline.add(record.querySelectorAll('[data-part="kind"]'), {
     opacity: [0, 1], duration: 200,
   }, 250);
@@ -39,37 +126,12 @@ export function createEducationReveal(record: HTMLElement, direction: -1 | 1 = 1
     opacity: [0, 1], duration: 160, delay: stagger([0, 90]),
   }, 250);
 
-  const phrases = Array.from(record.querySelectorAll<HTMLElement>('[data-edu-text="blur"]'));
-  phrases.forEach((phrase, index) => {
-    const words = Array.from(phrase.querySelectorAll<HTMLElement>('[data-edu-word]'));
-    if (direction < 0) words.reverse();
-    const start = 380 + (phrases.length > 1 ? index / (phrases.length - 1) * 110 : 0);
-    // BlurText's overshoot/resolve keyframes, with one small filter per phrase
-    // instead of a separate filtered surface for every word.
-    timeline.add(phrase, {
-      filter: ['blur(3px)', 'blur(0px)'], duration: 420, ease: 'outQuad',
-    }, start);
-    timeline.add(words, {
-      keyframes: [
-        { translateY: [18 * direction, -3 * direction], opacity: [0, 0.65], duration: 260 },
-        { translateY: 0, opacity: 1, duration: 160 },
-      ],
-      delay: stagger([0, 90]), ease: 'outCubic',
-    }, start);
-  });
+  textParts.forEach(part => addTextMotion(timeline, part, direction));
 
   const brands = record.querySelectorAll('[data-edu-brand]');
   if (brands.length) timeline.add(brands, {
     translateY: [8, 0], opacity: [0, 1], duration: 360,
   }, 640);
-  if (brands.length) {
-    timeline.add(record.querySelectorAll('[data-edu-brand-color]'), {
-      opacity: [0, 1], duration: 240,
-    }, 760);
-    timeline.add(record.querySelectorAll('[data-edu-brand-white]'), {
-      opacity: [1, 0], duration: 240,
-    }, 760);
-  }
   const diagrams = record.querySelectorAll('[data-edu-diagram]');
   if (diagrams.length) timeline.add(diagrams, {
     translateY: [12, 0], opacity: [0, 1], duration: 450,
@@ -112,7 +174,7 @@ export function createEducationReveal(record: HTMLElement, direction: -1 | 1 = 1
   }, 180);
   // Every target has explicit endpoints; assemble first, then render once.
   timeline.init();
-  decryption.seek(0);
+  textFrames.seek(0);
   let paintedFrame = -1;
   return {
     get duration() { return timeline.duration; },
@@ -124,10 +186,10 @@ export function createEducationReveal(record: HTMLElement, direction: -1 | 1 = 1
       if (frame === paintedFrame && time !== 0 && time !== EDUCATION_REVEAL_MS) return;
       paintedFrame = frame;
       timeline.seek(time, muteCallbacks);
-      decryption.seek(time);
+      textFrames.seek(time);
     },
     revert() {
-      decryption.revert();
+      textFrames.revert();
       timeline.revert();
     },
   };

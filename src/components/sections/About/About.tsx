@@ -1,9 +1,10 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, type WheelEvent } from 'react';
 import { PinnedSequence } from '../../ui/PinnedSequence';
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
-import { ParallaxPlate } from '../../ui/ParallaxPlate';
+import { StatementMorph } from './StatementMorph';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { EducationRail } from './EducationRail/EducationRail';
+import { findScrollContainer, scrollContainerBy } from './EducationRail/scrollContainer';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
@@ -204,7 +205,8 @@ function StatementsContainer({ children }: StatementsContainerProps) {
        */
       const arrived = easeInOutCubic(arrive);
       const present = (1 - clear) * arrive;
-      const presentOn = (1 - easeInOutCubic(clear)) * arrived;
+      const remainingOn = 1 - easeInOutCubic(clear);
+      const presentOn = remainingOn * arrived;
 
       /*
        * Handover curves: zero empty gap. As statement one ramps out, statement
@@ -221,6 +223,16 @@ function StatementsContainer({ children }: StatementsContainerProps) {
       writeStyleProperty(el, '--one-on', ((1 - eased) * presentOn).toFixed(3));
       writeStyleProperty(el, '--two-in', (t * present).toFixed(3));
       writeStyleProperty(el, '--two-on', (eased * presentOn).toFixed(3));
+      // Only readable rests accept selection; invisible copy must not catch the pointer.
+      writeStyleProperty(el, '--one-copy-events', t === 0 && arrive === 1 && clear === 0 ? 'auto' : 'none');
+      writeStyleProperty(el, '--two-copy-events', t === 1 && arrive === 1 && clear === 0 ? 'auto' : 'none');
+      const seedOn = Math.max(arrived, Math.min(1, arriveRestRef.current / BEAT_REST_MS));
+      writeStyleProperty(el, '--seed-on', seedOn.toFixed(3));
+      writeStyleProperty(el, '--one-morph', arrived.toFixed(3));
+      writeStyleProperty(el, '--two-morph', eased.toFixed(3));
+      writeStyleProperty(el, '--one-shape-on', ((1 - eased) * remainingOn).toFixed(3));
+      writeStyleProperty(el, '--two-shape-on', remainingOn.toFixed(3));
+      writeAttribute(el, 'data-morphing', (arrive > 0 && arrive < 1) || (t > 0 && t < 1) ? 'true' : null);
 
       const isGreen = checkIsGreen();
       if (isGreen) {
@@ -265,6 +277,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
 
       if (arriveWaitingRef.current && arriveRestRef.current < BEAT_REST_MS) {
         arriveRestRef.current += phaseFrameDelta(dt);
+        renderPhase(phaseRef.current.t, clearPhaseRef.current.t, arrivePhaseRef.current.t);
         if (arriveRestRef.current < BEAT_REST_MS) {
           animFrameRef.current = requestAnimationFrame(step);
         } else {
@@ -297,8 +310,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         arrivePhaseRef.current.t
       );
 
-      // One loop for both beats: a second `requestAnimationFrame` would run
-      // the same composition twice per frame and publish it twice.
+      // The same loop carries every statement phase and its matching shape.
       const running =
         !isPhaseAtTarget(phaseRef.current, wasActiveRef.current) ||
         !isPhaseAtTarget(clearPhaseRef.current, wasClearingRef.current) ||
@@ -492,8 +504,15 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     };
   }, [readAbout, update]);
 
+  const forwardCopyWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
+    const scrollport = findScrollContainer(readAbout());
+    if (!scrollport || scrollport.contains(event.currentTarget)) return;
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scrollport.clientHeight : 1;
+    scrollContainerBy(scrollport, event.deltaY * unit);
+  }, [readAbout]);
+
   return (
-    <div ref={ref} className={styles.statements} data-contrary="false">
+    <div ref={ref} className={styles.statements} data-contrary="false" onWheel={forwardCopyWheel}>
       {children}
     </div>
   );
@@ -502,7 +521,6 @@ function StatementsContainer({ children }: StatementsContainerProps) {
 export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
   const containerRef = useRef<HTMLElement>(null);
   const educationRef = useRef<HTMLDivElement>(null);
-  const reducedMotion = getPrefersReducedMotion();
 
   /*
    * The rail used to publish the chapter's colour from an IntersectionObserver
@@ -582,34 +600,30 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
           {/* Masked transition overlay: pure white text cutout over rising green transition background */}
           <TransitionMaskedOverlay />
 
-          {/* Held for the whole stretch: the one thing that does not come and
-              go, so the statements read as arriving on it. */}
-          <div className={styles.heldField} aria-hidden="true">
-            <ParallaxPlate reducedMotion={reducedMotion} />
-            <ParallaxPlate flipped reducedMotion={reducedMotion} />
-          </div>
-
           <StatementsContainer>
             <div
               className={`${styles.leftColumn} ${styles.layerOne}`}
               data-testid="about-left-column"
             >
-              <h3 className={styles.statementText}>
-                <span className={`${styles.statementLine} ${styles.lineFirst}`}>
-                  KEEP IT SIMPLE
-                </span>
-                <span
-                  className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight}`}
-                >
-                  BUT SIGNIFICANT
-                </span>
-              </h3>
+              <StatementMorph side="left" />
+              <div className={styles.statementCopy} data-statement-copy="">
+                <h3 className={styles.statementText}>
+                  <span className={`${styles.statementLine} ${styles.lineFirst} ${styles.statementHinge}`}>
+                    KEEP IT SIMPLE
+                  </span>{' '}
+                  <span
+                    className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight} ${styles.statementInk}`}
+                  >
+                    BUT SIGNIFICANT
+                  </span>
+                </h3>
 
-              <div className={styles.subStatement}>
-                <span className={styles.subStatementBar} />
-                <span className={styles.subStatementText}>
-                  CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS
-                </span>
+                <div className={styles.subStatement}>
+                  <span className={styles.subStatementBar} />
+                  <span className={styles.subStatementText}>
+                    CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -617,44 +631,48 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
               className={`${styles.rightColumn} ${styles.layerTwo}`}
               data-testid="about-right-column"
             >
-              <h3 className={styles.statementText}>
-                <span className={`${styles.statementLine} ${styles.lineFirst}`}>
-                  SCALABLE SYSTEMS
-                </span>
-                <span
-                  className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight}`}
-                >
-                  CRAFTED TO EMPOWER
-                </span>
-              </h3>
+              <StatementMorph side="right" />
+              <div className={styles.statementCopy} data-statement-copy="">
+                <h3 className={styles.statementText}>
+                  <span className={`${styles.statementLine} ${styles.lineFirst}`}>
+                    <span className={styles.leadWord}>SCALABLE</span>{' '}
+                    <span className={styles.leadWord}>SYSTEMS</span>
+                  </span>{' '}
+                  <span
+                    className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight} ${styles.statementSupport}`}
+                  >
+                    CRAFTED TO EMPOWER
+                  </span>
+                </h3>
 
-              <div className={styles.metricsList}>
-                <div className={styles.metricItem}>
-                  <span className={styles.metricValue}>3+</span>
-                  <span className={styles.metricLabel}>
-                    Years Engineering Production Web &amp; Mobile Systems
-                  </span>
+                <div className={styles.metricsList}>
+                  <div className={styles.metricItem}>
+                    <span className={styles.metricValue}>3+</span>
+                    <span className={styles.metricLabel}>
+                      Years Engineering Production Web &amp; Mobile Systems
+                    </span>
+                  </div>
+                  <div className={styles.metricItem}>
+                    <span className={styles.metricValue}>30+</span>
+                    <span className={styles.metricLabel}>
+                      Applications Delivered Across AI/ML, 3D &amp; Cloud
+                    </span>
+                  </div>
+                  <div className={styles.metricItem}>
+                    <span className={styles.metricValue}>BSc</span>
+                    <span className={styles.metricLabel}>
+                      Computer Science Graduate (HiLCoE)
+                    </span>
+                  </div>
                 </div>
-                <div className={styles.metricItem}>
-                  <span className={styles.metricValue}>30+</span>
-                  <span className={styles.metricLabel}>
-                    Applications Delivered Across AI/ML, 3D &amp; Cloud
-                  </span>
-                </div>
-                <div className={styles.metricItem}>
-                  <span className={styles.metricValue}>BSc</span>
-                  <span className={styles.metricLabel}>
-                    Computer Science Graduate (HiLCoE)
-                  </span>
-                </div>
-              </div>
 
-              <div className={styles.pillContainer}>
-                {cvData.about.highlights.map((highlight, i) => (
-                  <span key={i} className={styles.editorialPill}>
-                    {highlight}
-                  </span>
-                ))}
+                <div className={styles.pillContainer}>
+                  {cvData.about.highlights.map(highlight => (
+                    <span key={highlight} className={styles.editorialPill}>
+                      {highlight}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </StatementsContainer>

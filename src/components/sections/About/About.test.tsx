@@ -28,7 +28,7 @@ describe("About Section", () => {
     expect(section).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /About Me/i })).toBeInTheDocument();
     expect(screen.getByText(/KEEP IT SIMPLE/i)).toBeInTheDocument();
-    expect(screen.getByText(/SCALABLE SYSTEMS/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: /SCALABLE SYSTEMS/i })).toBeInTheDocument();
     expect(screen.getByText(/3\+/i)).toBeInTheDocument();
     expect(screen.getByText(/30\+/i)).toBeInTheDocument();
 
@@ -66,13 +66,15 @@ describe('About held sequence', () => {
     expect(overlay).toContainElement(screen.getByTestId('about-right-column'));
   });
 
-  it('holds the background for the whole stretch, not per statement', () => {
+  it('gives each statement its own persistent square-to-copy surface', () => {
     render(<About />);
-    const plates = screen.getAllByTestId('parallax-plate');
-    expect(plates.length).toBeGreaterThan(0);
-    const overlay = screen.getByTestId('about-sequence-overlay');
-    for (const plate of plates) {
-      expect(overlay).toContainElement(plate);
+    for (const side of ['left', 'right']) {
+      const column = screen.getByTestId(`about-${side}-column`);
+      const shape = column.querySelector(`[data-statement-morph="${side}"]`);
+      expect(shape).not.toBeNull();
+      expect(shape).toHaveAttribute('aria-hidden', 'true');
+      expect(shape?.querySelectorAll('[data-morph-plane]')).toHaveLength(4);
+      expect(column.querySelector('[data-statement-copy]')).not.toBeNull();
     }
   });
 
@@ -96,12 +98,8 @@ describe('About held sequence', () => {
     expect(windowPresence(0.98, ground.start, ground.end, ground.feather!)).toBe(1);
   });
 
-  it('clears the geometry before the stretch ends', () => {
-    // Something still drifting at the handover reads as scenery left behind.
-    // Must be completely cleared before background pixel transition begins at 0.78
-    const field = STATEMENT_LAYERS.find((l) => l.name === 'field')!;
-    expect(windowPresence(0.78, field.start, field.end, field.feather!)).toBe(0);
-    expect(windowPresence(0.97, field.start, field.end, field.feather!)).toBe(0);
+  it('does not give the squares an independent scroll-driven exit', () => {
+    expect(STATEMENT_LAYERS.some(layer => layer.name === 'field')).toBe(false);
   });
 
   it('starts each statement from nothing, not from a blurred ghost', () => {

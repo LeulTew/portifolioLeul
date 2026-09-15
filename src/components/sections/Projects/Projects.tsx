@@ -188,6 +188,7 @@ export function Projects({ theme }: { theme?: string }) {
         <div className={styles.filterContainer}>
           <ExpandableTabs
             tabs={categories}
+            ariaLabel="Filter projects"
             theme={theme}
             onChange={(index) => {
               if (index !== null) {

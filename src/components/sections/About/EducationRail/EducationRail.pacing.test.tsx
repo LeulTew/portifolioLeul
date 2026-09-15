@@ -279,7 +279,7 @@ describe('Education completed-beat navigation', () => {
         expect(element.style.transform).toBe('');
         expect(element.style.filter).toBe('');
       }
-      expect(record.querySelector('[data-edu-decrypt-active]')).toBeNull();
+      expect(record.querySelector('[data-edu-text-active]')).toBeNull();
       expect(screen.getByTestId('education-stage')).not.toHaveAttribute('data-reveal');
       if (index < 3) expect(next).toBeEnabled();
       else expect(next).toBeDisabled();
@@ -307,9 +307,11 @@ describe('Education completed-beat navigation', () => {
         expect(glyph.style.transform).not.toBe('');
         expect(Number(glyph.style.opacity)).toBeLessThan(1);
       } else {
-        expect(record.querySelector('[data-part="title"] [data-edu-decrypt-active]')).not.toBeNull();
+        expect(record.querySelector('[data-part="title"] [data-edu-text-active]')).not.toBeNull();
       }
-      expect(record.querySelector('[data-edu-decrypt-active]')).not.toBeNull();
+      const course = record.querySelector<HTMLElement>('[data-edu-role="course"] [data-edu-word]')!;
+      expect(course.style.transform).not.toBe('');
+      expect(Number(course.style.opacity)).toBeLessThan(1);
       finish('education-track');
       expect(stage).toHaveAttribute('data-phase', 'reading');
       previous = index;
@@ -499,9 +501,11 @@ describe('Education completed-beat navigation', () => {
     expect(screen.getByTestId('education-stage')).toHaveAttribute('data-active-record', '3');
     finish('education-sticky-header', 0.6);
     expect(screen.getByTestId('education-stage')).toHaveAttribute('data-reveal', 'true');
-    expect(screen.getByTestId('education-track').querySelector(
-      '[data-record="3"] [data-edu-decrypt-active]'
-    )).not.toBeNull();
+    const returningCopy = screen.getByTestId('education-track').querySelector<HTMLElement>(
+      '[data-record="3"] [data-edu-role="course"] [data-edu-word]'
+    )!;
+    expect(returningCopy.style.transform).toContain('rotateZ(');
+    expect(Number(returningCopy.style.opacity)).toBeLessThan(1);
     finish('education-sticky-header');
     wheel(-120);
     expect(selected()).toBe(3);

@@ -3,10 +3,9 @@ import type { SequenceLayer } from '../../ui/PinnedSequence';
 /**
  * When each statement holds the stage.
  *
- * They do not overlap: the first is gone before the second begins, so the
- * background is the only thing continuous across the handover. That is what
- * makes the stretch read as standing still while things arrive, rather than as
- * two panels crossfading past each other.
+ * Spatial gates request the beats; the shared statement clock unfolds each
+ * square into its copy. The second square waits for that first arrival even
+ * when a flick has already spent the spatial windows.
  *
  * Its own module rather than a constant beside the component, so the component
  * file exports only components and fast refresh keeps working.
@@ -18,13 +17,6 @@ export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
    * sequence and seamlessly hands over to the Education section without disappearing.
    */
   { name: 'ground', start: 0, end: 2, feather: 0.09 },
-  /*
-   * The geometry leaves before the stretch does. Something still drifting as
-   * the section hands over reads as scenery that was forgotten rather than
-   * cleared. Fades out completely by 0.76 so the 3D parallax plates are fully
-   * cleared before the background pixel transition begins at 0.78.
-   */
-  { name: 'field', start: 0.01, end: 0.76, feather: 0.08 },
   /*
    * The heading, and it arrives while the arrow is still pointing at it.
    *

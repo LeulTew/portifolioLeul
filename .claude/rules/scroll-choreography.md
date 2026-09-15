@@ -171,16 +171,23 @@ stay on the inner artwork so CSS cannot extend the completed GSAP movement.
 The Education typography and artwork use a paused Anime.js timeline sought by
 that same GSAP clock on every arrival. The 2026-09-14 text refinement replays all
 card copy and artwork on backward crossings and re-entry too; never interpret
-the direction as an animation-enable flag. Headings fold in, supporting copy
-uses React Bits BlurText word keyframes, and labels/dates/GPA use DecryptedText's
-sequential reveal. Start them late enough to remain visible after the track
+the direction as an animation-enable flag. The desktop text refinement gives
+each record its own choreography, not a shared blur/decode template: HiLCoE uses
+folds, ruled wipes and a counting GPA; Saint Joseph uses center-out letterpress,
+hinges and ink reveals; Boot.dev uses typed builds, decoded metadata and course
+scans; freeCodeCamp uses letter/word waves, a responsive-copy wipe and a single
+soft-focus summary. Individual course rows vary inside those profiles too.
+Start them late enough to remain visible after the track
 exposes their side of the card. Everything still finishes in the shared second.
 Mirror incoming glyph direction and decode order on return. Frame departure
 remains simple. Dispose the reveal at completion, restoring plain text and
-removing transient filters, transforms and cipher layers before enabling input.
+removing transient filters, transforms, clips and text-paint layers before enabling input.
 Use only a small phrase-level blur, not a filtered surface per word. Precompute
-and batch cipher frames across the record; leave the source text accessible and
-in layout. Paint arrivals at most 60 times per authored second on high-refresh
+and batch text frames across the record; leave the source text accessible and
+in layout. Typing preserves whole-word slots so a growing prefix cannot jump
+between lines; counters preserve the exact source precision. Cipher frames have
+ten steps, and typing/counting have at most 24. Perspective is enabled only while
+the visible record is revealing. Paint arrivals at most 60 times per authored second on high-refresh
 displays, always publishing the exact terminal frame. Do not throttle the track
 or introduce a second clock. Institution-specific title profiles, the small
 supplied Boot.dev mark, and the two certification diagrams share this timeline.

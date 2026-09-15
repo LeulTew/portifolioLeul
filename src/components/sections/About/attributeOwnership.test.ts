@@ -62,7 +62,7 @@ describe('the chapter has one author per flag', () => {
   });
 
   it.each([
-    { file: 'About.tsx', owned: ['data-statements-cleared', 'data-statements-present'] },
+    { file: 'About.tsx', owned: ['data-morphing', 'data-statements-cleared', 'data-statements-present'] },
     { file: 'AboutHeading.tsx', owned: ['data-head-pending', 'data-head-settled', 'data-head-travelling'] },
   ])('$file writes only the flags its own beats decide', ({ file, owned }) => {
     const body = code(read(file));

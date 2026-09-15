@@ -63,6 +63,21 @@ _> Total payload reduced by over **150MB**._\_
 | **Testing**        | Vitest, React Testing Library (100% Coverage) |
 | **Deployment**     | Vercel                                        |
 
+About's paired squares unfold into their corresponding text blocks, left first,
+then right, on the existing arrival/swap/clear clock. Shape transforms and text
+clipping share geometry measured only on layout changes; reverse travel folds
+the second statement back into its square. There is no separate scroll exit,
+animation loop, or added rest. Inside the morph, the left thesis hinges open
+before its ink reveal; the right lead resolves from its exposed edge, with
+quieter supporting copy and opposing-axis metadata. These derived text windows
+finish and reverse on the same phase values. Readable desktop copy remains
+selectable and forwards wheel travel to the real scrollport without cancelling
+input or doubling native document scrolling. Narrow and reduced-motion layouts omit the
+decorative geometry. Passive highlight labels use shared surface/ink tokens,
+compact typography and square corners rather than blurred button-like pills.
+Project filters retain their rounded control shape, use the same theme tokens
+and type scale, and expose 48px targets, visible keyboard focus and pressed state.
+
 Education uses a paused Anime.js timeline for split typography and credential
 artwork, driven by the existing GSAP chapter clock. Each record transition is
 authored as one second, with no independent animation loop or post-animation
@@ -86,16 +101,28 @@ to the existing Framer Motion runtime: pointer-local springs, cached geometry,
 and immediate reset when a record stops being interactive. The typography takes
 its splitting approach from [SplitText](https://reactbits.dev/text-animations/split-text),
 but its finite glyphs are authored in React and animated by Anime.js rather than
-adding another scroll trigger. Supporting copy adapts
-[BlurText](https://reactbits.dev/text-animations/blur-text)'s word-by-word
-overshoot and focus; labels, dates and GPA adapt
-[DecryptedText](https://reactbits.dev/text-animations/decrypted-text)'s sequential
-original-character reveal. Both use the chapter clock instead of one-shot
-observers, independent timers, or per-frame React state. Blur is bounded to one
-small filter per phrase. Decryption preserves the original accessible text and
-its layout while painting at most ten precomputed, record-wide cipher steps.
-HiLCoE folds its title into place, Saint Joseph uses a letterpress arrival,
-Boot.dev decodes its name, and freeCodeCamp uses a lateral letter wave.
+adding another scroll trigger. Each institution has its own text profile and
+cue order, including different treatments within the course lists:
+
+- HiLCoE pairs a folded heading/award with ruled wipes, lateral assemblies, and
+  a decimal [CountUp](https://reactbits.dev/text-animations/count-up) GPA.
+- Saint Joseph uses center-out letterpress, word hinges, and ink reveals rather
+  than decryption.
+- Boot.dev decodes its name and selected metadata, types its build titles using
+  [TextType](https://reactbits.dev/text-animations/text-type), and varies the
+  coursework between scanning, wiping, and resolving.
+- freeCodeCamp uses alternating letter/word waves, a responsive-copy wipe, and
+  [BlurText](https://reactbits.dev/text-animations/blur-text) for its summary only.
+
+These adaptations retain the chapter clock instead of adding one-shot observers,
+independent timers, or per-frame React state. The one soft-focus phrase uses one
+small filter, never per-word blur surfaces. Typing keeps whole-word layout slots
+so partial words do not jump between lines. The source text remains accessible
+and selectable while aria-hidden paint layers change. Cipher frames are bounded
+to ten steps; typing and counting use at most 24 precomputed steps and preserve
+exact final values. All text and transient perspective finish inside the same
+one-second crossing and are restored to plain, unpromoted text before input
+becomes ready.
 Reveal painting is bounded to 60fps on high-refresh displays; the existing track
 clock remains unchanged and the exact completed frame is never skipped.
 The [React Bits license](public/licenses/react-bits.txt)
@@ -119,8 +146,10 @@ reading retains no text filters, transforms or cipher work. Frame departure stay
 simple and uses the same completion gate.
 
 Boot.dev's supplied color and white artwork is cropped into small transparent
-WebP assets and resolves from white to color below its selected builds. The
-academic logos are unchanged. The two freeCodeCamp records carry lightweight
+WebP assets, with no rectangular backing: white at rest, color only on hover.
+Hover owns the image crossfade; the arrival clock only animates their wrapper.
+Saint Joseph keeps its green disc at rest and removes it in the colored hover
+state. Academic artwork assets are unchanged. The two freeCodeCamp records carry lightweight
 algorithm-flow and responsive-layout SVG illustrations, not invented issuer
 badges. These draw on the same reveal clock and add no pointer or scroll traps.
 

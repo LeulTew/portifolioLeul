@@ -1,22 +1,37 @@
 import styles from './EducationRail.module.css';
+import type { EducationTextMotion, EducationTextRole } from './educationTextProfiles';
 
 // React Bits text adapters: the chapter clock replaces their one-shot observers
 // and timers. Attribution and terms are in public/licenses/react-bits.txt.
-export function BlurText({ text }: { text: string }) {
-  return (
-    <span className={styles.blurText} data-edu-text="blur">
-      {text.split(/(\s+)/).map((word, index) => /^\s+$/.test(word) ? word : (
-        <span className={styles.blurWord} data-edu-word="" key={index}>{word}</span>
-      ))}
-    </span>
-  );
-}
+export function EducationText({
+  text,
+  motion,
+  role,
+}: {
+  text: string;
+  motion: EducationTextMotion;
+  role?: EducationTextRole;
+}) {
+  if (motion === 'decrypt' || motion === 'type' || motion === 'count') {
+    const splitWords = motion === 'type' && text.trim().length > 0;
+    const pieces = splitWords ? text.split(/(\s+)/) : [text];
+    return (
+      <span className={styles.textFrames} data-edu-text={motion} data-edu-role={role}>
+        {pieces.map((piece, index) => splitWords && /^\s+$/.test(piece) ? piece : (
+          <span className={styles.frameWord} key={index}>
+            <span className={styles.framePlain} data-edu-plain="">{piece}</span>
+            <span className={styles.framePaint} data-edu-cipher="" aria-hidden="true" />
+          </span>
+        ))}
+      </span>
+    );
+  }
 
-export function DecryptedText({ text }: { text: string }) {
   return (
-    <span className={styles.decryptText} data-edu-text="decrypt">
-      <span className={styles.decryptPlain} data-edu-plain="">{text}</span>
-      <span className={styles.decryptCipher} data-edu-cipher="" aria-hidden="true" />
+    <span className={styles.textPhrase} data-edu-text={motion} data-edu-role={role}>
+      {text.split(/(\s+)/).map((word, index) => /^\s+$/.test(word) ? word : (
+        <span className={styles.textWord} data-edu-word="" key={index}>{word}</span>
+      ))}
     </span>
   );
 }

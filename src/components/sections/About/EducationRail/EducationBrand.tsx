@@ -1,11 +1,12 @@
+import type { WheelEventHandler } from 'react';
 import styles from './EducationRail.module.css';
 
-export function BootdevBrand() {
+export function BootdevBrand({ onWheel }: { onWheel?: WheelEventHandler<HTMLDivElement> }) {
   return (
     <div className={styles.brand} data-edu-brand="">
-      <div className={styles.brandStamp}>
+      <div className={styles.brandStamp} onWheel={onWheel}>
         <img
-          className={styles.brandImage}
+          className={`${styles.brandImage} ${styles.brandColor}`}
           data-edu-brand-color=""
           src="/images/education/bootdev-color.webp"
           width={256}

@@ -11,7 +11,6 @@ vi.mock('@/lib/gateways/animationGateway', () => ({
   getPrefersReducedMotion: () => false,
 }));
 vi.mock('./EducationRail/EducationRail', () => ({ EducationRail: () => null }));
-vi.mock('../../ui/ParallaxPlate', () => ({ ParallaxPlate: () => null }));
 vi.mock('../../ui/FocusScrim', () => ({ FocusScrim: () => null }));
 
 const HEAD_INTRO_MS = BEAT_REST_MS + HEAD_SETTLE.durationMs;
@@ -168,10 +167,17 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.about).toHaveAttribute('data-head-settled', 'true');
     await chapter.run(BEAT_REST_MS - 50);
     expect(chapter.value('one-on')).toBe(0);
+    expect(chapter.value('seed-on')).toBeGreaterThan(0);
+    expect(chapter.value('one-morph')).toBe(0);
+    expect(chapter.value('two-morph')).toBe(0);
     await chapter.wheel();
     await chapter.run(STATEMENT_ARRIVE.durationMs + 40);
     expect(chapter.value('one-on')).toBe(1);
     expect(chapter.value('two-on')).toBe(0);
+    expect(chapter.value('one-morph')).toBe(1);
+    expect(chapter.value('two-morph')).toBe(0);
+    expect(chapter.value('two-shape-on')).toBe(1);
+    expect(chapter.value('seed-on')).toBe(1);
     expect(screen.getByTestId('about-left-column').parentElement).toHaveAttribute('data-contrary', 'false');
     await chapter.wheel();
     await chapter.run(BEAT_COOLDOWN_MS + 50);
@@ -190,12 +196,17 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.wheel();
     await chapter.run(STATEMENT_SWAP.durationMs + 20);
     expect(chapter.value('two-on')).toBe(1);
+    expect(chapter.value('two-morph')).toBe(1);
+    expect(chapter.value('one-shape-on')).toBe(0);
+    expect(chapter.statements).not.toHaveAttribute('data-morphing');
     await chapter.wheel();
     await chapter.run(BEAT_COOLDOWN_MS + 50);
     expect(chapter.value('two-on')).toBe(1);
     await chapter.wheel();
     await chapter.run(STATEMENT_CLEAR.durationMs + 20);
     expect(chapter.about).toHaveAttribute('data-statements-cleared', 'true');
+    expect(chapter.value('one-shape-on')).toBe(0);
+    expect(chapter.value('two-shape-on')).toBe(0);
   });
 
   it('finishes and releases after an end flick, then reverses on screen without snapping', async () => {
@@ -273,8 +284,15 @@ describe('the mounted About chapter plays every movement in order', () => {
     await chapter.run(BEAT_COOLDOWN_MS + 20);
     expect(chapter.value('one-on')).toBe(0);
     await chapter.wheel(-3);
-    await chapter.run(STATEMENT_SWAP.durationMs + 20);
+    await chapter.run(STATEMENT_SWAP.durationMs / 2);
+    expect(chapter.value('two-morph')).toBeGreaterThan(0);
+    expect(chapter.value('two-morph')).toBeLessThan(1);
+    expect(chapter.value('one-morph')).toBe(1);
+    expect(chapter.statements).toHaveAttribute('data-morphing', 'true');
+    await chapter.run(STATEMENT_SWAP.durationMs / 2 + 20);
     expect(chapter.value('one-on')).toBe(1);
+    expect(chapter.value('two-morph')).toBe(0);
+    expect(chapter.value('two-shape-on')).toBe(1);
     expect(chapter.headReady()).toBe(true);
     await chapter.position(-1);
     await chapter.run(BEAT_COOLDOWN_MS + 500);
@@ -282,6 +300,9 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.headReady()).toBe(true);
     await chapter.run(3000);
     expect(chapter.headReady()).toBe(false);
+    expect(chapter.value('one-morph')).toBe(0);
+    expect(chapter.value('two-morph')).toBe(0);
+    expect(chapter.value('seed-on')).toBe(0);
     expect(chapter.clock.pending).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -303,6 +324,9 @@ describe('the mounted About chapter plays every movement in order', () => {
     const arriving = chapter.value('one-on');
     expect(arriving).toBeGreaterThan(0);
     expect(arriving).toBeLessThan(1);
+    expect(chapter.value('one-morph')).toBe(arriving);
+    expect(chapter.value('two-morph')).toBe(0);
+    expect(chapter.statements).toHaveAttribute('data-morphing', 'true');
     await chapter.position(-1);
     await chapter.wheel(-3);
     await chapter.run(BEAT_COOLDOWN_MS + 20);
