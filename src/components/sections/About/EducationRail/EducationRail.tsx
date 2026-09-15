@@ -64,10 +64,11 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
    * handed on by hand.
    */
   const forwardWheel = useCallback((event: React.WheelEvent) => {
+    if (!staged) return;
     const rail = railRef.current;
     if (!rail) return;
     scrollContainerBy(findScrollContainer(rail), event.deltaY);
-  }, []);
+  }, [staged]);
 
   const activeRecord = EDUCATION_RECORDS[active] ?? EDUCATION_RECORDS[0];
 

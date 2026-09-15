@@ -32,6 +32,26 @@ afterEach(() => {
 });
 
 describe('Education Anime.js reveal', () => {
+  it('arrives the Boot.dev wrapper without taking over its hover-only image states', () => {
+    const record = fixture(1);
+    const brand = document.createElement('div');
+    brand.dataset.eduBrand = '';
+    brand.innerHTML = `
+      <img data-edu-brand-white src="/images/education/bootdev-white.webp" alt="">
+      <img data-edu-brand-color src="/images/education/bootdev-color.webp" alt="Boot.dev">`;
+    record.appendChild(brand);
+    const reveal = createEducationReveal(record);
+    reveals.push(reveal);
+    for (const time of [0, 760, 880, 1000]) {
+      reveal.seek(time);
+      for (const image of brand.querySelectorAll('img')) {
+        expect(image.style.opacity).toBe('');
+      }
+    }
+    expect(brand.style.opacity).toBe('1');
+    expect(reveal.duration).toBe(1000);
+  });
+
   it.each([1, 13, 40])('bounds %i rows, split type and artwork to the same one-second clock', rowCount => {
     const record = fixture(rowCount);
     const reveal = createEducationReveal(record);
@@ -49,7 +69,7 @@ describe('Education Anime.js reveal', () => {
     for (const element of record.querySelectorAll<HTMLElement>('[data-edu-glyph], [data-part="row"], [data-edu-word]')) {
       expect(element.style.opacity).toBe('1');
     }
-    expect(record.querySelector('[data-edu-decrypt-active]')).toBeNull();
+    expect(record.querySelector('[data-edu-text-active]')).toBeNull();
     expect(record.querySelector<HTMLElement>('[data-edu-glyph]')!.style.transform)
       .toContain('rotateX(0deg)');
     expect(record.querySelector(`.${styles.markReveal}`)).toHaveAttribute('r', '172');
@@ -107,7 +127,7 @@ describe('Education Anime.js reveal', () => {
         expect(word.style.transform).not.toBe('');
       }
     }
-    expect(record.querySelector('[data-edu-decrypt-active]')).not.toBeNull();
+    expect(record.querySelector('[data-edu-text-active]')).not.toBeNull();
     expect(record.querySelector('[data-edu-plain]')?.textContent).toBe('Certification');
     expect(record.querySelector('[data-edu-cipher]')?.textContent).not.toBe('Certification');
     reveal.seek(1000, true);
@@ -134,6 +154,6 @@ describe('Education Anime.js reveal', () => {
     reveal.seek(999);
     reveal.seek(1000);
     expect(reveal.progress).toBe(1);
-    expect(record.querySelector('[data-edu-decrypt-active]')).toBeNull();
+    expect(record.querySelector('[data-edu-text-active]')).toBeNull();
   });
 });

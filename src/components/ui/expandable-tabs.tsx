@@ -24,6 +24,7 @@ type TabItem = Tab | Separator;
 
 interface ExpandableTabsProps {
   tabs: TabItem[];
+  ariaLabel?: string;
   className?: string;
   activeColor?: string;
   onChange?: (index: number | null) => void;
@@ -53,6 +54,7 @@ const transition = { delay: 0.1, type: "spring", bounce: 0, duration: 0.6 };
 
 export function ExpandableTabs({
   tabs,
+  ariaLabel = "Filter categories",
   className,
   onChange,
   theme: propTheme,
@@ -93,9 +95,10 @@ export function ExpandableTabs({
 
   return (
     <div
-      role="tablist"
+      role="group"
+      aria-label={ariaLabel}
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-full border border-white/15 bg-white/8 p-2 shadow-lg backdrop-blur-[30px]",
+        "flex flex-wrap items-center gap-2 rounded-full border border-[var(--pill-rail-border)] bg-[var(--pill-rail-bg)] p-2",
         className
       )}
     >
@@ -111,8 +114,8 @@ export function ExpandableTabs({
         return (
           <motion.button
             key={tab.title}
-            role="tab"
-            aria-selected={isSelected}
+            type="button"
+            aria-pressed={isSelected}
             aria-label={displayTitle}
             variants={buttonVariants}
             initial={false}
@@ -121,11 +124,14 @@ export function ExpandableTabs({
             onClick={() => handleSelect(index)}
             transition={transition}
             className={cn(
-              "relative flex items-center rounded-full transition-colors duration-300",
-              is720p ? "text-sm font-medium py-2" : "text-sm font-medium py-3", // Added vertical padding
+              "relative flex items-center justify-center rounded-full text-[0.8125rem] font-medium transition-colors duration-300",
+              // Keep a 48px target while the Projects surface scales to 0.97.
+              "min-h-[50px] min-w-[50px]",
+              "focus-visible:[outline-style:solid] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-current",
+              is720p ? "py-2" : "py-3",
               // Horizontal padding is handled by variants
               selected === index
-                ? "bg-white/95 text-black shadow-md"
+                ? "bg-[var(--pill-active-bg)] text-[var(--pill-active-text)]"
                 : isLight
                   ? "text-black/60 hover:bg-black/5 hover:text-black"
                   : "text-white/70 hover:bg-white/5 hover:text-white/95"
@@ -138,6 +144,8 @@ export function ExpandableTabs({
           >
             <Icon 
               size={is720p ? 18 : 20} // Slightly smaller icon for 720p
+              aria-hidden="true"
+              focusable="false"
               style={
                 selected !== index && isLight
                   ? { color: 'rgba(0, 0, 0, 0.6)', stroke: 'rgba(0, 0, 0, 0.6)' }
@@ -152,7 +160,7 @@ export function ExpandableTabs({
                   animate="animate"
                   exit="exit"
                   transition={transition}
-                  className="overflow-hidden"
+                  className="overflow-hidden whitespace-nowrap"
                 >
                   {displayTitle}
                 </motion.span>

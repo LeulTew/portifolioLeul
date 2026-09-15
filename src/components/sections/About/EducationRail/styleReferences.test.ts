@@ -4,6 +4,26 @@ import { describe, expect, it } from 'vitest';
 import postcss from 'postcss';
 
 describe('education artwork styling', () => {
+  it('uses transparent Boot.dev artwork with hover-only color and a hover-only clear school disc', () => {
+    const css = postcss.parse(readFileSync(join(__dirname, 'EducationRail.module.css'), 'utf8'));
+    const values = (selector: string, property: string) => {
+      const found: string[] = [];
+      css.walkRules(selector, rule => {
+        rule.walkDecls(property, declaration => { found.push(declaration.value); });
+      });
+      return found;
+    };
+    expect(values('.brandStamp', 'background')).toEqual(['transparent']);
+    expect(values('.brandStamp', 'pointer-events')).toEqual(['auto']);
+    expect(values('.brandWhite', 'opacity')).toEqual(['1']);
+    expect(values('.brandColor', 'opacity')).toEqual(['0']);
+    expect(values('.brandStamp:hover .brandWhite', 'opacity')).toEqual(['0']);
+    expect(values('.brandStamp:hover .brandColor', 'opacity')).toEqual(['1']);
+    expect(values('.sealDisc', 'background')).toEqual(['#164b36']);
+    expect(values('.sealDisc:hover', 'background')).toEqual(['transparent']);
+    expect(values('.sealDisc:hover', 'box-shadow')).toEqual(['none']);
+  });
+
   it('resolves every referenced module class to a real stylesheet selector', () => {
     const classes = new Set<string>();
     postcss.parse(readFileSync(join(__dirname, 'EducationRail.module.css'), 'utf8'))

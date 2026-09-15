@@ -389,69 +389,6 @@
   opacity: 0.95;
 }
 
-/*
- * The one thing that does not come and go. It carries the whole stretch, so it
- * moves continuously with `--seq` rather than appearing and disappearing with
- * the statements standing on it.
- *
- * It leaves before the stretch does: geometry still drifting as the section
- * hands over reads as scenery someone forgot to clear.
- */
-.heldField {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6vw;
-  padding: 0 clamp(2rem, 8vw, 14rem);
-  pointer-events: none;
-  color: rgba(210, 236, 255, 0.3);
-  box-sizing: border-box;
-  opacity: var(--field-in, 0);
-  /* Leans across the stretch, and draws back as it goes. */
-  transform: translate3d(
-      calc((var(--seq, 0.5) - 0.5) * -6vw),
-      calc((var(--seq, 0.5) - 0.5) * 4vh),
-      0
-    )
-    scale(calc(0.86 + var(--field-in, 0) * 0.14));
-}
-
-.heldField > * {
-  width: min(38vmin, 460px);
-  flex: 0 0 auto;
-}
-
-:global([data-theme='light']) .heldField {
-  color: rgba(15, 23, 42, 0.22);
-}
-
-/*
- * The 3D background geometry must disappear completely when the background changes.
- * Enforce strict invisibility across all transition, active, settled, and education states.
- */
-.about[data-bg-transition='true'] .heldField,
-.about[data-bg-active='true'] .heldField,
-.about[data-bg-settled='true'] .heldField,
-.about[data-title-active='true'] .heldField,
-.about[data-education-active='true'] .heldField,
-:global(#about[data-bg-transition='true']) .heldField,
-:global(#about[data-bg-active='true']) .heldField,
-:global(#about[data-bg-settled='true']) .heldField,
-:global(#about[data-title-active='true']) .heldField,
-:global(#about[data-education-active='true']) .heldField,
-:global(body:has(#about[data-bg-transition='true'])) .heldField,
-:global(body:has(#about[data-bg-active='true'])) .heldField,
-:global(body:has(#about[data-bg-settled='true'])) .heldField,
-:global(body:has(#about[data-title-active='true'])) .heldField,
-:global(body:has(#about[data-education-active='true'])) .heldField,
-:global(html[data-navbar-contrary='true']) .heldField {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
 .statements {
   position: absolute;
   inset: 0;
@@ -471,44 +408,83 @@
   grid-area: 1 / 1;
 }
 
-/*
- * Opacity and blur are driven by two different values on purpose.
- *
- * `-on` is cubed presence and `-in` is presence itself, so a statement is at
- * nothing while it is still on its way in and only becomes visible once it is
- * most of the way there -- by which point most of the blur has already come
- * off. Driving both from one value puts a large soft ghost of the text on
- * screen for the whole approach, legible and blurred, which is the opposite of
- * arriving.
- */
-.layerOne,
-.layerTwo {
-  will-change: opacity, filter, transform;
-}
-
 .layerOne {
   --on: var(--one-on, 0);
   --in: var(--one-in, 0);
+  --copy-events: var(--one-copy-events, none);
+  --morph: var(--one-morph, 0);
+  --shape-on: var(--one-shape-on, 0);
+  --clip-left: 0;
+  --clip-right: 1;
+  --morph-origin: 0% 50%;
+  --morph-direction: 1;
 }
 
 .layerTwo {
   --on: var(--two-on, 0);
   --in: var(--two-in, 0);
+  --copy-events: var(--two-copy-events, none);
+  --morph: var(--two-morph, 0);
+  --shape-on: var(--two-shape-on, 0);
+  --clip-left: 1;
+  --clip-right: 0;
+  --morph-origin: 100% 50%;
+  --morph-direction: -1;
 }
 
 .layerOne,
 .layerTwo {
+  transform: translate3d(0, var(--statement-drop, 0px), 0);
+}
+
+/* The outline and text opening share the same measured rectangle and phase. */
+.statementCopy {
+  --clip-x: calc(var(--seed-inset-x, 0px) * (1 - var(--morph)));
+  --clip-y: calc(var(--seed-inset-y, 0px) * (1 - var(--morph)));
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
   opacity: var(--on);
-  /*
-   * The drop and the entry offset share one transform. Two transforms on one
-   * element means the last one wins, and the statement would either sit at the
-   * wrong height or arrive from the wrong place.
-   */
-  transform: translate3d(
-    0,
-    calc(var(--statement-drop, 0px) + (1 - var(--in)) * 2.5vh),
-    0
+  clip-path: inset(
+    var(--clip-y) calc(var(--clip-x) * var(--clip-right))
+    var(--clip-y) calc(var(--clip-x) * var(--clip-left))
+    round calc((1 - var(--morph)) * 2rem)
   );
+}
+
+.statementMorph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--strong-text) 32%, transparent);
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: calc(var(--seed-on, 0) * var(--shape-on) * clamp(0, (1 - var(--morph)) * 3, 1));
+  transform-origin: var(--morph-origin);
+  transform: scale(
+    calc(var(--seed-scale-x, 0.5) + (1 - var(--seed-scale-x, 0.5)) * var(--morph)),
+    calc(var(--seed-scale-y, 1) + (1 - var(--seed-scale-y, 1)) * var(--morph))
+  );
+}
+
+.statements[data-morphing='true'] .statementMorph {
+  will-change: transform, opacity;
+}
+
+.morphPlane {
+  rx: calc((1 - var(--morph)) * 22px);
+  transform-origin: 50% 50%;
+  opacity: calc(1 - var(--plane-index) * 0.16);
+  transform:
+    rotate(calc((4 - var(--plane-index) * 3) * (1 - var(--morph)) * var(--morph-direction) * 1deg))
+    scale(calc(1 - var(--plane-index) * 0.18 * (1 - var(--morph))));
+}
+
+.morphHorizon {
+  opacity: calc((1 - var(--morph)) * 0.5);
 }
 
 /*
@@ -530,83 +506,41 @@
 .lineFirst,
 .lineSecond {
   display: block;
-  /*
-   * Ten, not twenty. A blur is re-rasterised at every distinct radius, and the
-   * cost climbs with the radius over the area of a headline -- most of the
-   * effect is in the first few pixels anyway.
-   */
-  filter: blur(calc((1 - var(--line, 0)) * 10px));
-
-  /*
-   * Emerges through a rising edge rather than sliding in from one, and the
-   * edge MOVES rather than being redrawn.
-   *
-   * Putting the variable in the gradient's colour stops, which is what this
-   * did first, means the mask is a different image on every frame: it has to
-   * be regenerated and re-uploaded sixty times a second, for the whole area of
-   * a headline. The image is fixed now at twice the box height, half of it
-   * clear and half of it solid with a soft join, and only its position moves --
-   * which the compositor can do without touching the image at all.
-   */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0 34%,
-    #000 62% 100%
-  );
-  mask-image: linear-gradient(to bottom, transparent 0 34%, #000 62% 100%);
-  -webkit-mask-size: 100% 200%;
-  mask-size: 100% 200%;
-  -webkit-mask-position: 0 calc(var(--line, 0) * 100%);
-  mask-position: 0 calc(var(--line, 0) * 100%);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
+  transform: translate3d(0, calc((1 - var(--line, 0)) * 0.8rem), 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The fade carries the sequence; the blur and the drift are decoration. */
-  .layerOne,
-  .layerTwo {
-    transform: none;
+  .statementMorph {
+    display: none;
+  }
+
+  .statementCopy {
+    clip-path: none;
   }
 
   .lineFirst,
   .lineSecond {
-    filter: none;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .heldField {
-    transform: none;
-  }
-
-  .heldField {
     transform: none;
   }
 }
 
-/*
- * Below the breakpoint the plate is dropped and the statement takes the width,
- * so a full screen each would be mostly empty. They stack and share.
- */
 @media (max-width: 900px) {
-  /* The held field is decoration, and it is the first thing to go. */
-  .heldField {
+  .statementMorph {
     display: none;
+  }
+
+  .statementCopy {
+    clip-path: none;
   }
 }
 
 .leftColumn,
 .rightColumn {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
   width: 100%;
   max-width: clamp(380px, 46vw, 780px);
   z-index: 10;
   position: relative;
   box-sizing: border-box;
-  will-change: opacity, filter;
 }
 
 /*
@@ -697,14 +631,14 @@
 .metricsList {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 0.85rem;
 }
 
 .metricItem {
   display: flex;
   align-items: baseline;
   gap: 1rem;
-  border-left: 2px solid rgba(255, 255, 255, 0.15);
+  border-left: 1px solid var(--surface-border);
   padding-left: 1rem;
 }
 
@@ -714,14 +648,16 @@
 
 .metricValue {
   font-family: monospace;
+  font-variant-numeric: tabular-nums;
   font-size: clamp(1.15rem, 1.4vw, 1.4rem);
   font-weight: 800;
+  line-height: 1.2;
   color: var(--accent, #00ff9d);
   min-width: 42px;
 }
 
 :global([data-theme='light']) .metricValue {
-  color: #059669;
+  color: #047857;
 }
 
 .metricLabel {
@@ -734,27 +670,116 @@
 .pillContainer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 0.35rem;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .editorialPill {
-  font-size: clamp(0.72rem, 0.8vw, 0.8rem);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 0.4rem 0.95rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--muted-text);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 2rem;
+  max-width: 100%;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.25rem;
+  background: var(--surface-color);
+  border: 1px solid var(--surface-border);
+  color: var(--strong-text);
 }
 
-:global([data-theme='light']) .editorialPill {
-  background: rgba(17, 24, 39, 0.04);
-  border-color: rgba(17, 24, 39, 0.12);
-  color: var(--strong-text);
+.statements[data-contrary='true'] .editorialPill {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+@media (min-width: 901px) {
+  .statementCopy {
+    pointer-events: var(--copy-events);
+    user-select: text;
+  }
+}
+
+/* Typesetting inside the morph, not another beat. Every window closes by 1
+   and retraces from the same inherited phase when the chapter reverses. */
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .statementCopy {
+    --headline-in: clamp(0, calc((var(--in) - 0.04) / 0.88), 1);
+    --ink-in: clamp(0, calc((var(--in) - 0.2) / 0.78), 1);
+    --support-in: clamp(0, calc((var(--in) - 0.18) / 0.8), 1);
+    --detail-in: clamp(0, calc((var(--in) - 0.3) / 0.68), 1);
+    --tag-in: clamp(0, calc((var(--in) - 0.4) / 0.58), 1);
+  }
+
+  .lineFirst,
+  .lineSecond {
+    transform: none;
+  }
+
+  .statementHinge {
+    transform-origin: 0% 100%;
+    transform:
+      perspective(700px)
+      translate3d(0, calc((1 - var(--headline-in)) * 0.22em), 0)
+      rotateX(calc((1 - var(--headline-in)) * -34deg));
+  }
+
+  .statementInk {
+    clip-path: inset(-0.18em calc((1 - var(--ink-in)) * 100%) -0.18em 0);
+  }
+
+  .leadWord {
+    --word-delay: 0.04;
+    --word-in: clamp(0, calc((var(--in) - var(--word-delay)) / (0.96 - var(--word-delay))), 1);
+    display: inline-block;
+    clip-path: inset(-0.18em 0 -0.18em calc((1 - var(--word-in)) * 100%));
+    transform: translate3d(calc((1 - var(--word-in)) * 0.2em), 0, 0);
+  }
+
+  /* The rightmost word is exposed by the square first; the lead joins it. */
+  .leadWord:first-child {
+    --word-delay: 0.18;
+  }
+
+  .statementSupport {
+    clip-path: inset(calc((1 - var(--support-in)) * 100%) -0.08em -0.18em -0.08em);
+    transform: translate3d(0, calc((1 - var(--support-in)) * 0.1em), 0);
+  }
+
+  .subStatementBar {
+    transform-origin: 0% 50%;
+    transform: scaleX(var(--support-in));
+  }
+
+  .subStatementText {
+    transform: translate3d(calc((1 - var(--support-in)) * -0.35rem), 0, 0);
+  }
+
+  .metricValue {
+    transform: translate3d(0, calc((1 - var(--detail-in)) * 0.35rem), 0);
+  }
+
+  .metricLabel {
+    transform: translate3d(calc((1 - var(--detail-in)) * 0.45rem), 0, 0);
+  }
+
+  .editorialPill {
+    transform: translate3d(calc((1 - var(--tag-in)) * -0.35rem), 0, 0);
+  }
+
+  .statements[data-morphing='true'] .statementHinge,
+  .statements[data-morphing='true'] .leadWord {
+    will-change: transform;
+  }
+
+  .statements[data-morphing='true'] .statementInk,
+  .statements[data-morphing='true'] .statementSupport {
+    will-change: clip-path;
+  }
 }
 
 /* ==========================================================================
@@ -765,6 +790,32 @@
   .header {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .statementText {
+      font-size: clamp(1.5rem, 6.9vw, 2rem);
+    }
+
+    .statementCopy {
+      gap: 1.25rem;
+    }
+
+    .metricItem {
+      gap: 0.5rem;
+      padding-left: 0.5rem;
+    }
+
+    .metricValue {
+      min-width: 2.25rem;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .pillContainer {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   /*
@@ -958,12 +1009,6 @@
   color: #374151;
 }
 
-:global([data-theme='light']) .editorialPill {
-  background: rgba(17, 24, 39, 0.06);
-  border-color: rgba(17, 24, 39, 0.16);
-  color: #111827;
-}
-
 /* ==========================================================================
    Statement Text Color Reactivity on Dark/Green Contrary Background
    When scrolling down or back up over emerald green (--about-chapter-bg),
@@ -1071,18 +1116,4 @@
 :global([data-theme='light']) #about[data-bg-active='true'] .metricLabel,
 .statements[data-contrary='true'] .metricLabel {
   color: rgba(255, 255, 255, 0.92) !important;
-}
-
-:global([data-theme='light']) .statements[data-contrary='true'] .editorialPill,
-:global([data-theme='light'] body:has(#about[data-bg-transition='true'])) .editorialPill,
-:global([data-theme='light'] body:has(#about[data-bg-settled='true'])) .editorialPill,
-:global([data-theme='light'] body:has(#about[data-bg-active='true'])) .editorialPill,
-:global([data-theme='light'] html[data-navbar-contrary='true']) .editorialPill,
-:global([data-theme='light']) #about[data-bg-transition='true'] .editorialPill,
-:global([data-theme='light']) #about[data-bg-settled='true'] .editorialPill,
-:global([data-theme='light']) #about[data-bg-active='true'] .editorialPill,
-.statements[data-contrary='true'] .editorialPill {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(255, 255, 255, 0.28) !important;
-  color: #ffffff !important;
 }

@@ -320,7 +320,6 @@
   margin-block: -0.12em -0.16em;
   overflow: hidden;
   white-space: pre;
-  perspective: 700px;
 }
 
 .glyph {
@@ -329,21 +328,27 @@
   backface-visibility: hidden;
 }
 
-.blurText {
+.textPhrase[data-edu-text='blur'] {
   isolation: isolate;
 }
 
-.blurWord {
+.textPhrase[data-edu-text='fold'] {
   display: inline-block;
+  max-width: 100%;
 }
 
-.decryptText {
+.textWord {
+  display: inline-block;
+  transform-origin: 50% 100%;
+}
+
+.frameWord {
   position: relative;
   display: inline-block;
   max-width: 100%;
 }
 
-.decryptCipher {
+.framePaint {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -353,15 +358,24 @@
   pointer-events: none;
 }
 
-.decryptText[data-edu-decrypt-active] > .decryptPlain {
+.textFrames[data-edu-text-active] .framePlain {
   opacity: 0;
 }
 
-.decryptText[data-edu-decrypt-active] > .decryptCipher {
+.textFrames[data-edu-text-active] .framePaint {
   visibility: visible;
 }
 
+.textFrames[data-edu-text='type'][data-edu-text-active='reverse'] .framePaint {
+  text-align: right;
+}
+
 @media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .stage[data-reveal='true'] .record[data-text-style='fold']:not([aria-hidden='true']) .titleWord,
+  .stage[data-reveal='true'] .record:not([aria-hidden='true']) .textPhrase[data-edu-text='fold'] {
+    perspective: 700px;
+  }
+
   .stage[data-visible='true'][data-reveal='true']:is([data-phase='opening'], [data-phase='crossing'], [data-phase='closing'])
     [data-record]:not([aria-hidden='true'])
     :is([data-edu-glyph], [data-edu-art], [data-edu-rule], [data-edu-piece]) {
@@ -505,21 +519,37 @@
   width: 7rem;
   max-width: 100%;
   height: 3rem;
-  border-radius: 0.375rem;
-  background: var(--ink);
-  pointer-events: none;
+  background: transparent;
+  pointer-events: auto;
 }
 
 .brandImage {
   position: absolute;
-  inset: 0.25rem;
-  width: calc(100% - 0.5rem);
-  height: calc(100% - 0.5rem);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.brandColor {
+  opacity: 0;
 }
 
 .brandWhite {
-  opacity: 0;
+  opacity: 1;
+  filter: drop-shadow(0 1px 1px rgba(18, 55, 41, 0.6));
+}
+
+@media (hover: hover) {
+  .brandStamp:hover .brandColor {
+    opacity: 1;
+  }
+
+  .brandStamp:hover .brandWhite {
+    opacity: 0;
+  }
 }
 
 .certificateDiagram {
@@ -756,7 +786,7 @@
   transform-origin: center center;
 }
 
-/* The circular seal button itself — strict circular hit target */
+/* Decorative hover artwork, not a navigation control. */
 .sealDisc {
   position: relative;
   width: 100%;
@@ -765,11 +795,14 @@
   border-radius: 50%;
   overflow: hidden;
   pointer-events: auto;
-  cursor: pointer;
+  cursor: default;
   background: #164b36;
   box-shadow: 0 7px 15px -9px rgba(18, 55, 41, 0.5),
     inset 0 0 0 1px rgba(240, 243, 231, 0.24);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: center center;
 }
 
@@ -806,6 +839,8 @@
 
   .sealDisc:hover {
     transform: scale(1.05);
+    background: transparent;
+    box-shadow: none;
   }
 
   .sealWrapper:has(.sealDisc:hover) .sealRing {
@@ -854,6 +889,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .brandImage,
   .markArt,
   .markDisc,
   .markPaper,
