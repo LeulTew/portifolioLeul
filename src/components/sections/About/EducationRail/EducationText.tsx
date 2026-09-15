@@ -12,6 +12,12 @@ export function EducationText({
   motion: EducationTextMotion;
   role?: EducationTextRole;
 }) {
+  if (motion === 'scan') {
+    return (
+      <span className={styles.frameWord} data-edu-text={motion} data-edu-role={role}>{text}</span>
+    );
+  }
+
   if (motion === 'decrypt' || motion === 'type' || motion === 'count') {
     const splitWords = motion === 'type' && text.trim().length > 0;
     const pieces = splitWords ? text.split(/(\s+)/) : [text];

@@ -1,7 +1,7 @@
 export type EducationTextStyle = 'fold' | 'letterpress' | 'decode' | 'flow';
 export type EducationTextMotion =
   | 'fold' | 'wipe' | 'slide' | 'press' | 'wave' | 'blur'
-  | 'type' | 'decrypt' | 'count';
+  | 'type' | 'decrypt' | 'scan' | 'count';
 
 const TEXT_CUES = {
   title: 0,
@@ -30,28 +30,28 @@ export type EducationTextProfile = Readonly<
 
 export const EDUCATION_TEXT_PROFILES = {
   fold: {
-    title: 'fold', institution: 'slide', award: 'fold', kind: 'press',
-    'period-label': 'wipe', period: 'slide', summary: 'wipe',
-    'build-group': 'fold', 'course-group': 'wipe', project: 'slide', course: ['wipe', 'slide', 'fold'],
-    date: 'slide', 'score-label': 'press', 'score-value': 'count', 'score-scale': 'wipe',
+    title: 'fold', institution: 'slide', award: 'fold', kind: 'slide',
+    'period-label': 'slide', period: 'slide', summary: 'fold',
+    'build-group': 'fold', 'course-group': 'slide', project: 'slide', course: ['slide', 'fold'],
+    date: 'slide', 'score-label': 'fold', 'score-value': 'count', 'score-scale': 'slide',
   },
   letterpress: {
     title: 'press', institution: 'wipe', award: 'press', kind: 'wipe',
-    'period-label': 'slide', period: 'fold', summary: 'slide',
-    'build-group': 'press', 'course-group': 'wipe', project: 'fold', course: ['press', 'fold', 'wipe', 'slide'],
-    date: 'wipe', 'score-label': 'wipe', 'score-value': 'press', 'score-scale': 'slide',
+    'period-label': 'wipe', period: 'press', summary: 'wipe',
+    'build-group': 'press', 'course-group': 'wipe', project: 'press', course: ['press', 'wipe'],
+    date: 'wipe', 'score-label': 'wipe', 'score-value': 'press', 'score-scale': 'wipe',
   },
   decode: {
-    title: 'decrypt', institution: 'slide', award: 'slide', kind: 'decrypt',
-    'period-label': 'type', period: 'decrypt', summary: 'wipe',
-    'build-group': 'type', 'course-group': 'decrypt', project: 'type', course: ['slide', 'wipe', 'decrypt'],
-    date: 'decrypt', 'score-label': 'type', 'score-value': 'count', 'score-scale': 'slide',
+    title: 'decrypt', institution: 'scan', award: 'scan', kind: 'decrypt',
+    'period-label': 'type', period: 'decrypt', summary: 'scan',
+    'build-group': 'type', 'course-group': 'decrypt', project: 'type', course: ['scan', 'type', 'decrypt'],
+    date: 'decrypt', 'score-label': 'type', 'score-value': 'scan', 'score-scale': 'decrypt',
   },
   flow: {
-    title: 'wave', institution: 'slide', award: 'wave', kind: 'press',
-    'period-label': 'slide', period: 'fold', summary: 'blur',
-    'build-group': 'wave', 'course-group': 'wipe', project: 'wipe', course: ['wave', 'wipe'],
-    date: 'fold', 'score-label': 'slide', 'score-value': 'count', 'score-scale': 'wipe',
+    title: 'wave', institution: 'wave', award: 'wave', kind: 'wave',
+    'period-label': 'wave', period: 'wave', summary: 'wave',
+    'build-group': 'wave', 'course-group': 'wave', project: 'wave', course: ['wave', 'blur'],
+    date: 'wave', 'score-label': 'wave', 'score-value': 'wave', 'score-scale': 'wave',
   },
 } as const satisfies Record<EducationTextStyle, EducationTextProfile>;
 
@@ -63,7 +63,7 @@ const TEXT_WINDOWS: Record<EducationTextStyle, { start: number; end: number }> =
 };
 
 const MOTIONS: ReadonlySet<string> = new Set<EducationTextMotion>([
-  'fold', 'wipe', 'slide', 'press', 'wave', 'blur', 'type', 'decrypt', 'count',
+  'fold', 'wipe', 'slide', 'press', 'wave', 'blur', 'type', 'decrypt', 'scan', 'count',
 ]);
 
 function isTextMotion(value: string): value is EducationTextMotion {

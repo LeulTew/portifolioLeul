@@ -309,11 +309,22 @@ describe('Education completed-beat navigation', () => {
       } else {
         expect(record.querySelector('[data-part="title"] [data-edu-text-active]')).not.toBeNull();
       }
-      const course = record.querySelector<HTMLElement>('[data-edu-role="course"] [data-edu-word]')!;
-      expect(course.style.transform).not.toBe('');
-      expect(Number(course.style.opacity)).toBeLessThan(1);
+      const course = record.querySelector<HTMLElement>('[data-edu-role="course"]')!;
+      if (index === 2) {
+        expect(course).toHaveAttribute('data-edu-text', 'scan');
+        expect(course.style.transform).toBe('');
+        expect(course.style.clipPath).toBe('inset(0% 100% 0% 0%)');
+        finish('education-track', 0.72);
+        expect(course.style.clipPath).toBe('inset(0% 75% 0% 0%)');
+        expect(screen.getByRole('button', { name: 'Next record' })).toBeDisabled();
+      } else {
+        const word = course.querySelector<HTMLElement>('[data-edu-word]')!;
+        expect(word.style.transform).not.toBe('');
+        expect(Number(word.style.opacity)).toBeLessThan(1);
+      }
       finish('education-track');
       expect(stage).toHaveAttribute('data-phase', 'reading');
+      expect(course.style.clipPath).toBe('');
       previous = index;
     }
   });

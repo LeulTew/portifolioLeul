@@ -172,11 +172,13 @@ The Education typography and artwork use a paused Anime.js timeline sought by
 that same GSAP clock on every arrival. The 2026-09-14 text refinement replays all
 card copy and artwork on backward crossings and re-entry too; never interpret
 the direction as an animation-enable flag. The desktop text refinement gives
-each record its own choreography, not a shared blur/decode template: HiLCoE uses
-folds, ruled wipes and a counting GPA; Saint Joseph uses center-out letterpress,
-hinges and ink reveals; Boot.dev uses typed builds, decoded metadata and course
-scans; freeCodeCamp uses letter/word waves, a responsive-copy wipe and a single
-soft-focus summary. Individual course rows vary inside those profiles too.
+each record its own exclusive text-motion families, not a shared blur/decode
+template: HiLCoE uses folds, lateral assemblies and a counting GPA; Saint Joseph
+uses center-out letterpress and smooth word-level ink reveals; Boot.dev uses
+typed builds, decoded metadata and discrete terminal scans; freeCodeCamp uses
+letter/word waves and soft-focus text. Individual course rows vary inside those
+profiles too. A family may repeat within one institution, never across
+institutions, including metadata, awards and group labels.
 Start them late enough to remain visible after the track
 exposes their side of the card. Everything still finishes in the shared second.
 Mirror incoming glyph direction and decode order on return. Frame departure
