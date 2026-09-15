@@ -32,7 +32,7 @@ export const MATERIAL_POSES: Record<SkillScene, MaterialPose> = {
   },
   intelligence: {
     radii: [168, 168], exponent: 2, inset: 0.76, warp: 0, lobes: 0,
-    matrix: [0.98, 0.1, -0.14, 0.96], centerY: 274, depth: 38, panelOpacity: 0, surfaceOpacity: 0,
+    matrix: [1, 0, 0, 1], centerY: 280, depth: 38, panelOpacity: 0, surfaceOpacity: 0,
   },
   data: {
     radii: [170, 142], exponent: 2.2, inset: 0, warp: 0, lobes: 0,
@@ -58,9 +58,26 @@ const mix = (a: Point, b: Point, t: number): Point => [
 const line = (from: Point, to: Point): Cubic => [from, mix(from, to, 1 / 3), mix(from, to, 2 / 3), to];
 
 export const LEARNING_NODES: readonly Point[] = [
-  [-112, -74], [-124, 0], [-112, 74], [0, -108],
-  [0, 108], [112, -74], [124, 0], [112, 74],
+  [-145, -67], [-137, 0], [-129, 68],
+  [-8, -105], [0, -36], [8, 34], [16, 105],
+  [130, -52], [138, 18], [146, 86],
 ];
+export const LEARNING_LINKS = [
+  { from: 0, to: 3, weight: 0.28 },
+  { from: 1, to: 4, weight: 1 },
+  { from: 2, to: 5, weight: 0.3 },
+  { from: 2, to: 6, weight: 0.22 },
+  { from: 3, to: 7, weight: 0.28 },
+  { from: 4, to: 8, weight: 1 },
+  { from: 5, to: 9, weight: 0.28 },
+  { from: 6, to: 9, weight: 0.4 },
+] as const;
+
+function neuralConnection(from: Point, to: Point): Cubic {
+  const reach = (to[0] - from[0]) * 0.42;
+  return [from, [from[0] + reach, from[1]], [to[0] - reach, to[1]], to];
+}
+
 export const DELIVERY_NODES: readonly Point[] = [[-93, -53], [95, -53], [0, 92]];
 
 const ENGRAVINGS: Record<SkillScene, readonly Cubic[]> = {
@@ -81,16 +98,7 @@ const ENGRAVINGS: Record<SkillScene, readonly Cubic[]> = {
     line([-33, 69], [9, 69]),
     line([49, 60], [96, 60]),
   ],
-  intelligence: [
-    line(LEARNING_NODES[0], LEARNING_NODES[3]),
-    line(LEARNING_NODES[1], [0, 0]),
-    line(LEARNING_NODES[2], LEARNING_NODES[4]),
-    line(LEARNING_NODES[0], [0, 0]),
-    line(LEARNING_NODES[2], [0, 0]),
-    line(LEARNING_NODES[3], LEARNING_NODES[5]),
-    line([0, 0], LEARNING_NODES[6]),
-    line(LEARNING_NODES[4], LEARNING_NODES[7]),
-  ],
+  intelligence: LEARNING_LINKS.map(({ from, to }) => neuralConnection(LEARNING_NODES[from], LEARNING_NODES[to])),
   data: [
     line([-108, -52], [108, -52]),
     line([-108, -22], [108, -22]),
@@ -193,7 +201,7 @@ function buildGeometry(scene: SkillScene, segments: number) {
     return {
       d: `M${pointText(points[0])}C${points.slice(1).map(pointText).join(' ')}`,
       points,
-      opacity: stroke ? 1 : 0,
+      opacity: stroke ? (scene === 'intelligence' ? LEARNING_LINKS[index].weight : 1) : 0,
     };
   });
   const outerContour = closedContour(outer, sharpness);

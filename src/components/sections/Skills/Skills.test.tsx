@@ -95,4 +95,22 @@ describe('Skills', () => {
       expect(article.querySelector(`[data-asset-feature="${subjects[index]}"]`)).not.toBeNull();
     });
   });
+
+  it('gives the neural instrument three physical layers and a clear data-to-model-to-output path', () => {
+    render(<Skills />);
+    const article = screen.getByRole('article', { name: 'AI & Data Science' });
+    const sculpture = article.querySelector('[data-asset-feature="neural-volume"]')!;
+    expect(sculpture.querySelectorAll('[data-neural-layer]')).toHaveLength(3);
+    expect(sculpture.querySelectorAll('[data-neural-node]')).toHaveLength(10);
+    expect(sculpture.querySelectorAll('[data-material-node]')).toHaveLength(3);
+    expect(sculpture.querySelector('[data-neural-input]')).not.toBeNull();
+    expect(sculpture.querySelector('[data-neural-output]')).not.toBeNull();
+    expect(sculpture.querySelector('image, filter, foreignObject')).toBeNull();
+    expect(sculpture.querySelectorAll('radialGradient')).toHaveLength(2);
+    sculpture.querySelectorAll('[data-neural-node]').forEach(node => {
+      expect(node.tagName.toLowerCase()).toBe('use');
+      const href = node.getAttribute('href')!;
+      expect(sculpture.querySelector(href)).not.toBeNull();
+    });
+  });
 });

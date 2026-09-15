@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SKILL_CHAPTERS } from './skillsData';
-import { getMaterialGeometry } from './skillGeometry';
+import { getMaterialGeometry, LEARNING_LINKS, LEARNING_NODES, projectMaterialPoint } from './skillGeometry';
 
 const commands = (path: string) => path.match(/[a-z]/gi);
 const coordinates = (path: string) => path.match(/-?\d*\.?\d+/g)?.map(Number) ?? [];
@@ -49,6 +49,21 @@ describe('one reconfigurable Skills material', () => {
         expect(signal.opacity).toBeLessThanOrEqual(1);
       });
     }
+  });
+
+  it.each(['full', 'economy'] as const)('anchors every %s neural route to its visible neurons with weighted emphasis', quality => {
+    const geometry = getMaterialGeometry('intelligence', quality);
+    LEARNING_LINKS.forEach(({ from, to, weight }, index) => {
+      const signal = geometry.signals[index];
+      expect(signal.points[0]).toEqual(projectMaterialPoint('intelligence', LEARNING_NODES[from]));
+      expect(signal.points[3]).toEqual(projectMaterialPoint('intelligence', LEARNING_NODES[to]));
+      expect(signal.opacity).toBe(weight);
+      expect(signal.points[0][0]).toBeLessThan(signal.points[1][0]);
+      expect(signal.points[1][0]).toBeLessThan(signal.points[2][0]);
+      expect(signal.points[2][0]).toBeLessThan(signal.points[3][0]);
+    });
+    expect(geometry.signals.filter(signal => signal.opacity === 1)).toHaveLength(2);
+    expect(geometry.signals.every(signal => signal.opacity > 0)).toBe(true);
   });
 
   it('alternates spatial compositions and gives every capability an intentional type treatment', () => {
