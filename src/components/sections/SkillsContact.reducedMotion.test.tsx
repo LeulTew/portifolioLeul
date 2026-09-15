@@ -42,7 +42,6 @@ afterEach(() => {
 });
 
 const cases = [
-  { name: 'Skills', content: <Skills />, entrance: 'translateY(40px)' },
   { name: 'Contact', content: <Contact />, entrance: 'translateX(-40px)' },
   {
     name: 'their kinetic heading',
@@ -66,6 +65,24 @@ describe.each(cases)('$name reduced-motion reveal', ({ content, entrance }) => {
     expect([...container.querySelectorAll<HTMLElement>('[style]')]
       .some(element => element.style.transform === entrance && element.style.opacity === '0'))
       .toBe(true);
+  });
+
+  describe('Skills reduced-motion presentation', () => {
+    it('exposes every chapter without pinning, hidden words, or animated transforms', async () => {
+      reducedMotion = true;
+      const { container } = render(<Skills />);
+      expect(container.querySelector('[data-staged="false"]')).not.toBeNull();
+      expect(container.querySelector('[data-skill-word]')).toBeNull();
+      expect(container.querySelectorAll('article')).toHaveLength(6);
+      expectReadable(container);
+      await act(async () => {
+        window.dispatchEvent(new WheelEvent('wheel', { deltaY: 1000 }));
+      });
+      expect(container.querySelector('[data-skills-active="true"]')).toBeNull();
+      expect([...container.querySelectorAll<HTMLElement>('[style]')]
+        .some(element => element.style.transform && element.style.transform !== 'none')).toBe(false);
+      expectReadable(container);
+    });
   });
 
   it('mounts readable final content and never starts a transform reveal on intersection', async () => {

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // JSDOM drops visibility priorities; restoration needs a conforming CSSOM.
 import { afterEach, describe, expect, it } from 'vitest';
-import { coverEducationBackground } from './educationCover';
+import { coverChapterBackground, coverEducationBackground } from './educationCover';
 
 afterEach(() => { document.body.replaceChildren(); });
 
@@ -21,7 +21,9 @@ function setup() {
   return { container, html, main, host, stage, overlay };
 }
 
-describe('opaque Education cover', () => {
+describe.each(['education', 'skills'] as const)('opaque %s cover', owner => {
+  const attribute = `data-${owner}-covered`;
+
   it('hides composited content and old overlays while keeping the native scrollport available', () => {
     const { container, html, host, stage, overlay } = setup();
     container.style.overflowY = 'auto';
@@ -30,13 +32,13 @@ describe('opaque Education cover', () => {
       clientHeight: { value: 900 },
     });
     html.style.transform = 'translate3d(0px, -1000px, 0px)';
-    const restore = coverEducationBackground(host, stage);
+    const restore = coverChapterBackground(host, stage, owner);
     expect(html.style.visibility).toBe('hidden');
     expect(overlay.style.visibility).toBe('hidden');
-    expect(html.hasAttribute('data-education-covered')).toBe(true);
-    expect(overlay.hasAttribute('data-education-covered')).toBe(true);
-    expect(container.hasAttribute('data-education-covered')).toBe(false);
-    expect(stage.hasAttribute('data-education-covered')).toBe(false);
+    expect(html.hasAttribute(attribute)).toBe(true);
+    expect(overlay.hasAttribute(attribute)).toBe(true);
+    expect(container.hasAttribute(attribute)).toBe(false);
+    expect(stage.hasAttribute(attribute)).toBe(false);
     expect(container.style.visibility).toBe('');
     expect(stage.style.visibility).toBe('');
     expect(html.style.transform).toBe('translate3d(0px, -1000px, 0px)');
@@ -45,14 +47,14 @@ describe('opaque Education cover', () => {
     restore();
     expect(html.style.visibility).toBe('');
     expect(overlay.style.visibility).toBe('visible');
-    expect(html.hasAttribute('data-education-covered')).toBe(false);
-    expect(overlay.hasAttribute('data-education-covered')).toBe(false);
+    expect(html.hasAttribute(attribute)).toBe(false);
+    expect(overlay.hasAttribute(attribute)).toBe(false);
     expect(overlay.style.getPropertyPriority('visibility')).toBe('important');
   });
 
   it('covers only main content in the ordinary document flow', () => {
     const { html, main, host, stage } = setup();
-    const restore = coverEducationBackground(host, stage);
+    const restore = coverChapterBackground(host, stage, owner);
     expect(main.style.visibility).toBe('hidden');
     expect(html.style.visibility).toBe('');
     expect(document.body.style.visibility).toBe('');
@@ -60,23 +62,32 @@ describe('opaque Education cover', () => {
     expect(main.style.visibility).toBe('');
   });
 
-  it('never hides a parent containing the Education stage', () => {
+  it('never hides a parent containing the active stage', () => {
     const { main, host, stage } = setup();
     main.appendChild(stage);
-    const restore = coverEducationBackground(host, stage);
+    const restore = coverChapterBackground(host, stage, owner);
     expect(main.style.visibility).toBe('');
-    expect(main.hasAttribute('data-education-covered')).toBe(false);
+    expect(main.hasAttribute(attribute)).toBe(false);
     restore();
   });
 
   it('restores an existing cover marker without retaining its own pause', () => {
     const { main, host, stage, overlay } = setup();
-    main.dataset.educationCovered = 'existing';
-    const restore = coverEducationBackground(host, stage);
-    expect(main.dataset.educationCovered).toBe('');
-    expect(overlay.dataset.educationCovered).toBe('');
+    main.setAttribute(attribute, 'existing');
+    const restore = coverChapterBackground(host, stage, owner);
+    expect(main.getAttribute(attribute)).toBe('');
+    expect(overlay.getAttribute(attribute)).toBe('');
     restore();
-    expect(main.dataset.educationCovered).toBe('existing');
-    expect(overlay.hasAttribute('data-education-covered')).toBe(false);
+    expect(main.getAttribute(attribute)).toBe('existing');
+    expect(overlay.hasAttribute(attribute)).toBe(false);
   });
+});
+
+it('preserves the Education entry point and its default owner', () => {
+  const { host, stage, main } = setup();
+  expect(coverEducationBackground).toBe(coverChapterBackground);
+  const restore = coverEducationBackground(host, stage);
+  expect(main.hasAttribute('data-education-covered')).toBe(true);
+  expect(main.hasAttribute('data-skills-covered')).toBe(false);
+  restore();
 });

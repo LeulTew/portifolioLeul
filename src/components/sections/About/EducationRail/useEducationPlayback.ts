@@ -52,6 +52,8 @@ export function useEducationPlayback(
     }
 
     const about = host.closest<HTMLElement>('#about') ?? document.getElementById('about');
+    const skills = host.closest('main')?.querySelector<HTMLElement>('#skills') ??
+      document.getElementById('skills');
     writeAttribute(outline, 'data-open', null);
     writeAttribute(heading, 'data-settled', null);
     let current = 0;
@@ -220,8 +222,8 @@ export function useEducationPlayback(
       open.play();
     };
     const releaseBack = () => {
-      flag('data-education-owned', false);
       flag('data-education-released', false);
+      flag('data-education-owned', false);
       side = 'before';
       current = 0;
       setActive(0);
@@ -232,13 +234,16 @@ export function useEducationPlayback(
       if (state === 'opening' || state === 'crossing' || state === 'closing') return;
       const rect = host.getBoundingClientRect();
       const height = viewport.offsetHeight;
+      // Drei briefly detaches its HTML layer when the scroll track is rebuilt.
+      // A zero rect is not a return to the beginning of the Education rail.
+      if (!host.isConnected || rect.height <= 0 || height <= 0) return;
       const canEnter = !about || (about.dataset.titleSettled === 'true' &&
         about.dataset.titleActive !== 'true' && about.dataset.reverseTransitionActive !== 'true');
       if (about?.dataset.titleSettled !== 'true') flag('data-education-returning', false);
 
       if (state === 'outside') {
         if (about && about.dataset.titleSettled !== 'true') handoffPending = true;
-        if (document.getElementById('skills')?.dataset.skillsActive === 'true') return;
+        if (skills?.dataset.skillsActive === 'true') return;
         if (!bypass && canEnter && ((side === 'before' && handoffPending && wave !== 'up' &&
             (about !== null || rect.top <= 0)) ||
             (side === 'after' && wave === 'up' &&
@@ -280,6 +285,8 @@ export function useEducationPlayback(
           side = 'before';
           current = 0;
           setActive(0);
+        } else if (target === 'skills' || target === 'projects' || target === 'contact') {
+          side = 'after';
         }
       } else apply();
     });
@@ -298,7 +305,6 @@ export function useEducationPlayback(
         attributeFilter: ['data-title-settled', 'data-title-active', 'data-reverse-transition-active'],
       });
     }
-    const skills = document.getElementById('skills');
     if (skills) observer.observe(skills, {
       attributes: true,
       attributeFilter: ['data-skills-active'],

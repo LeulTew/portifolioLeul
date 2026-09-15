@@ -45,7 +45,8 @@ export function useActiveSection(sectionIds: readonly string[]): string {
       }
 
       const update = (refreshGeometry = false) => {
-        const reading = sections.find(hasChapterOwnership);
+        const reading = sections.find(section => section.dataset.skillsActive === 'true') ??
+          sections.find(hasChapterOwnership);
         if (!reading && refreshGeometry) {
           const top = window.innerHeight * 0.45;
           const bottom = window.innerHeight * 0.55;

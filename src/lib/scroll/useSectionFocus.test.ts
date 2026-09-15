@@ -104,23 +104,54 @@ describe('useSectionFocus', () => {
     }
   });
 
-  it('does not spend a stale covered entrance when the chapter settles somewhere else', async () => {
+  it('keeps entrances unspent across the Education-to-Skills ownership handoff', async () => {
     const about = document.createElement('section');
     about.id = 'about';
     about.dataset.educationActive = 'true';
-    document.body.appendChild(about);
+    const skills = document.createElement('section');
+    skills.id = 'skills';
+    document.body.append(about, skills);
+    const { result, unmount } = renderHook(() => useSectionFocus(element));
+    try {
+      element.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 900, height: VIEWPORT });
+      cover(1);
+      expect(result.current.hasEntered).toBe(false);
+      await act(async () => {
+        skills.dataset.skillsActive = 'true';
+        delete about.dataset.educationActive;
+      });
+      expect(result.current.coverage).toBe(0);
+      expect(result.current.hasEntered).toBe(false);
+      await act(async () => { delete skills.dataset.skillsActive; });
+      expect(result.current.coverage).toBe(1);
+      expect(result.current.hasEntered).toBe(true);
+    } finally {
+      unmount();
+      about.remove();
+      skills.remove();
+    }
+  });
+
+  it.each([
+    ['about', 'educationActive'],
+    ['skills', 'skillsActive'],
+  ])('does not spend a stale entrance when %s settles somewhere else', async (id, attribute) => {
+    const owner = document.createElement('section');
+    owner.id = id;
+    owner.dataset[attribute] = 'true';
+    document.body.appendChild(owner);
     const { result, unmount } = renderHook(() => useSectionFocus(element));
     try {
       cover(1);
       element.getBoundingClientRect = () => DOMRect.fromRect({
         x: 0, y: 2000, width: 900, height: VIEWPORT,
       });
-      await act(async () => { delete about.dataset.educationActive; });
+      await act(async () => { delete owner.dataset[attribute]; });
       expect(result.current.coverage).toBe(0);
       expect(result.current.hasEntered).toBe(false);
     } finally {
       unmount();
-      about.remove();
+      owner.remove();
     }
   });
 

@@ -9,6 +9,11 @@ hold while you read, and resolve out as you scroll past.
 This document is the contract. Adding choreography to a new section means
 picking its cues and wiring the two hooks below — not inventing new timing.
 
+The coverage-based lifecycle below describes the original sections. Held
+chapters follow `.claude/rules/scroll-choreography.md` instead: position requests
+a beat, visible time paces it, and a completed beat plus a fresh gesture releases
+the next. Skills' implementation of that contract is documented in section 6.
+
 ---
 
 ## 1. The focus lifecycle
@@ -216,3 +221,164 @@ Under `prefers-reduced-motion: reduce`:
 
 The cue list is data, so the sequence is reviewable without reading animation
 code, and the tests assert the ordering rules rather than specific numbers.
+
+---
+
+## 6. Skills: one continuous scene, six distinct capabilities
+
+Desktop Skills is an **experience** surface: a light-first editorial stage,
+distinct capability-specific assets and one readable group at a time.
+All six categories and all 35 skills come from `data/cv.ts`. The short summaries
+and presentations in `Skills/skillsData.ts` describe those capabilities, not
+new credentials, employment, or performance claims.
+
+| Capability | Primary visual subject | Headline / inner-label grammar |
+| --- | --- | --- |
+| Languages | Solid processor, pins, source code and output | Cipher resolution / short decoded labels |
+| Frameworks & Web | Upright application window and mobile device | Component assembly / masked word assembly |
+| AI & Data Science | Layered neural connections, inputs and outputs, without a repeated housing | Focus / restrained word focus |
+| Databases | Solid relational storage tiers and query/schema elements | Horizontal scan / bounded typed labels |
+| Tools & Design | Beveled vector pen nib drawing a Bezier path | Curved character alignment / vector-line reveals |
+| Professional Skills | Separate collaborating 3D modules | Bilateral alignment / word-emphasis reveal |
+
+`skillGeometry.ts` authors compatible transition contours and signal paths.
+`SkillSculpture.tsx` keeps one scene, but not one repeated ring or object:
+solid surfaces, an application frame, a housing-free network, a sharp pen
+outline, and separate modules have different visual structures. Shared features
+morph while outgoing and incoming asset parts hand over. Continuity belongs
+to the choreography, not to forcing every capability into an identical asset.
+
+The visual track alternates sides, banks and changes scale. Ground and
+foreground construction lines have different relative travel and timing,
+producing actual layered parallax during the clock-paced transition. Copy
+also changes high/low alignment where the composition has room. The reading
+measure remains bounded while the sculpture gets a wider track at 4K; very
+wide, shallow windows use a height-aware content span.
+
+### Playback and integration
+
+`useSkillsPlayback.ts` owns a body-level portal, because the desktop's Drei
+HTML layer is transformed and cannot hold a normal CSS sticky element.
+It consumes the existing scroll-progress store and passive, wave-start gesture
+subscription; it never cancels wheel, touch, or keyboard input.
+
+`skillsTimeline.ts` builds one paused GSAP score. The first chapter reveals in
+1.81 seconds, each subsequent crossing in 2 seconds, followed by a 1200ms
+visible reading pause. Progress is advanced with `phaseFrameDelta`, not mapped
+to scroll distance. An unfinished crossing ignores new requests; gestures
+during movement or the reading pause are discarded, not queued. Reverse
+seeks the same score back to its previous resting point.
+
+Next/Previous use the same gate without consuming scroll distance. The next
+action names its destination instead of presenting a generic slide control.
+The progress readout changes when the new pose finishes, not over the outgoing
+heading. The final
+**See projects** action and the first **Back to About** action release the
+stage after its exit. Explicit global navigation can leave after the current
+movement and reading pause. Natural exits align the neighboring section only
+when the reader has not already scrolled beyond the Skills rail. Natural
+reverse returns to Education's trailing edge; only the labelled About button
+jumps to About's heading.
+
+Skills and Education respect each other's stage ownership on return.
+Natural forward entry waits for Education's explicit `data-education-released`
+signal, not merely the absence of an active overlay. Direct Skills navigation
+can skip earlier chapters deliberately. Ignored momentum never cancels a queued
+navigation request, and a newer destination is honored after an in-flight exit.
+On a track rebuild, App restores Drei's damped offset together with native
+`scrollTop`, before publishing geometry. Otherwise a new zero-based scroll
+state can briefly appear to revisit Education while the reader is in Skills.
+Unconnected or zero-height rails never request an entry.
+An About grid resize preserves its completed background ownership and the
+remaining rise without adding a post-rise rest. The shared `reconcileScrollLayer`
+cache avoids repeated scroll-layout reads caused by CSSOM serialization
+rounding, without rounding the authored geometry.
+`data-skills-active` keeps the global navigation on Skills even if a flick
+has physically passed its spacer. The keyed `skills` world-occlusion owner
+suppresses hidden world draws only while the stage is fully opaque, and clears
+on departure, mode change, and unmount. Section-local handover cues remain
+behind Skills; global navigation remains above it. Its white chapter-ink mirror
+is attenuated by the Skills plate's actual opacity, not the green geometry
+hidden underneath. The obscured main content is inert only while Skills owns
+the stage, so keyboard navigation cannot wander into hidden project controls.
+The shared ownership-aware section-entrance hook waits for both About/Education
+and Skills to release. It remeasures current viewport coverage, including the
+existing entrance inset, instead of spending later headings or Contact's
+entrance on an intersection cached underneath either stage.
+
+### Motion, type, and fallback
+
+React Bits' SplitText, DecryptedText, BlurText, TextType, ScrollReveal and
+TiltedCard are adapted locally
+in `SkillsMotion.tsx`. `skillTextMotion.ts` gives each capability its own score;
+there are no competing per-text ScrollTriggers. React-owned word/character
+masks wrap naturally as the self-hosted Space Grotesk font loads, without font
+measurements or DOM replacement. The cipher is a clipped, generated paint,
+not a React state interval or text that pollutes copy/paste. Supporting copy
+and tool names receive quieter, capability-specific reveals. Inner labels
+retain stable text and accessible list-item names; typing does not relayout
+the list, run a React interval, or leave a perpetual blinking cursor.
+
+Future text/detail tweens initialize lazily from scoped hidden poses instead
+of doing SVG/text layout work for every offscreen capability. The instrument's
+fine-pointer tilt uses GSAP `quickTo`, cached bounds, and no pointer-driven
+React renders. It yields while the camera moves and reacquires bounds at the
+new pose. Full quality uses the original vector sculpture and compatible
+Bezier attribute interpolation, without a separate morph plugin.
+
+Low-tier hardware keeps the same composition and morph, with fewer compatible
+contour segments. Its material is batched into a single 720x580 Canvas 2D paint
+in a compositor-friendly HTML layer alongside the SVG details, using the same
+geometry and cached theme colors. This
+avoids repeatedly laying out multiple SVG surface copies while the material
+changes. Supporting labels and details remain vector-based. No WebGL context,
+video, shader, image-generation service, or animation dependency is added.
+Low quality omits pointer tilt, unused perspective/depth contexts, headline blur,
+duplicate draft/rim strokes and detail-scale effects. Its headline grammars use
+word-sized units instead of individual glyphs, and supporting labels use plain
+text with restrained row motion instead of mounting hidden character masks.
+Ground parallax and the asset transformations remain.
+If Canvas 2D is unavailable, a warning is emitted and SVG remains the renderer.
+Quality is fixed for the mounted material and text so contour topology and
+animation units cannot change under an in-flight tween.
+
+Button tracers under the inert main content pause while Skills owns the opaque
+stage; invisible border loops must not keep invalidating style behind it.
+The shared reversible chapter-cover helper also hides the covered composited
+HTML and old pinned overlays once Skills is fully opaque, without changing
+their geometry or hiding the native scrollport. It restores their original
+visibility and markers before a transparent departure, on tab suspension, and
+on unmount. Global navigation and the Skills stage remain outside that cover.
+
+There are no ambient animation loops. The movement and reading clock stops at
+rest and pauses in hidden tabs. The active artifact can respond to the pointer;
+inactive artifacts do no animation work. GSAP contexts, frame requests,
+media-query/theme listeners, the optional material painter, and ownership are
+cleaned up together.
+
+The stage fits viewports at least 900px wide and 560px tall. Smaller windows
+and `prefers-reduced-motion` receive the entire toolkit in normal document
+flow with static, fully readable SVG instruments; this fallback needs no canvas.
+Both preferences are reactive.
+The separate mobile portfolio and the desktop's existing mobile redirect are
+unchanged. Skills has scoped light/dark material tokens and a fluid composition
+up to 4K; its self-hosted font does not change any neighboring section.
+
+React Bits' application-use license and attribution ship at
+`public/licenses/react-bits.txt`. The font's SIL Open Font License ships at
+`public/fonts/OFL.txt`. Do not redistribute these adapted components as a kit.
+
+### Local regression coverage
+
+`Skills.playback.test.tsx` exercises persistent geometry/opacity and parallax
+in addition to slow/flick timing, fresh input waves,
+completion/cooldown gates, reverse playback, both terminal exits, explicit
+navigation, Education ownership, hidden and stalled frames, idle writes,
+live reduced-motion/viewport changes, and cleanup. `Skills.test.tsx` retains
+the complete CV content and verifies the canvas-free fallback. Geometry and
+typography tests assert compatible topology and different actual animation
+mechanisms, not merely different preset names. Browser checks
+must also traverse Education -> Skills -> Projects and reverse, both themes,
+low-height desktop layouts, 4K, keyboard controls, and no-WebGL mode.
+Review transition recordings and intermediate frames: passing functional
+checks alone cannot establish continuity, motion variety, or design quality.

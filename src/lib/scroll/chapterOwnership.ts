@@ -1,5 +1,6 @@
-export const CHAPTER_OWNERSHIP_ATTRIBUTES = ['data-sequence-active', 'data-education-active'];
+export const CHAPTER_OWNERSHIP_ATTRIBUTES = ['data-sequence-active', 'data-education-active', 'data-skills-active'];
 
 export function hasChapterOwnership(section: HTMLElement): boolean {
-  return section.dataset.sequenceActive === 'true' || section.dataset.educationActive === 'true';
+  return section.dataset.sequenceActive === 'true' || section.dataset.educationActive === 'true' ||
+    section.dataset.skillsActive === 'true';
 }
