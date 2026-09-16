@@ -504,32 +504,6 @@
 .sequence {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 2vw, 3rem);
-}
-
-.counter {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-family: var(--skill-display);
-  font-size: clamp(1.1rem, 1.5vw, 2rem);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.counterTotal {
-  color: var(--skill-muted);
-  font-size: 0.7em;
-}
-
-.counterValue {
-  display: inline-block;
-  animation: count-arrival 360ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes count-arrival {
-  from { opacity: 0; transform: translateY(0.3em); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .progress {
@@ -559,66 +533,22 @@
   align-items: center;
   justify-self: end;
   gap: 0.65rem;
+  pointer-events: auto;
 }
 
 .previous,
 .next {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   height: 48px;
-  border: 1px solid var(--skill-rule);
-  border-radius: 6px;
-  font: inherit;
   font-size: 0.8125rem;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .previous {
   width: 48px;
-  background: transparent;
-  color: var(--skill-ink);
-  border-color: transparent;
-  border-radius: 50%;
 }
 
 .next {
   min-width: 136px;
-  padding: 0 1rem;
-  gap: 1.1rem;
-  color: var(--skill-ink);
-  background: transparent;
-  border-color: transparent;
-  border-bottom-color: var(--skill-rule);
-  border-radius: 0;
   white-space: nowrap;
-}
-
-.previous:disabled,
-.next:disabled {
-  cursor: default;
-  color: var(--skill-muted);
-  background: transparent;
-  border-color: var(--skill-rule);
-}
-
-.previous:focus-visible,
-.next:focus-visible {
-  outline: 2px solid var(--skill-accent);
-  outline-offset: 5px;
-}
-
-@media (hover: hover) {
-  .previous:hover:not(:disabled) {
-    background: var(--skill-inset);
-    border-color: var(--skill-accent);
-  }
-  .next:hover:not(:disabled) {
-    color: var(--skill-accent);
-    border-bottom-color: var(--skill-accent);
-  }
 }
 
 .stage ::selection {
@@ -724,8 +654,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .counterValue { animation: none; }
-  .progress > li,
-  .previous,
-  .next { transition: none; }
+  .progress > li { transition: none; }
 }

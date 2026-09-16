@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type CSSProperties, type WheelEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ControlButton } from '@/components/ui/ControlButton';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
 import { SKILL_CHAPTERS, type SkillChapter } from './skillsData';
 import { SkillInlineText, SkillText, TiltedInstrument } from './SkillsMotion';
@@ -133,10 +134,6 @@ export function Skills({ onNavigate }: { onNavigate?: (section: string) => void 
         {staged && (
           <footer className={styles.footer} data-skill-chrome="" onWheel={forwardWheel}>
             <div className={styles.sequence}>
-              <span className={styles.counter} aria-hidden="true">
-                <span className={styles.counterValue} key={settledIndex}>{String(settledIndex + 1).padStart(2, '0')}</span>
-                <span className={styles.counterTotal}>/ {String(SKILL_CHAPTERS.length).padStart(2, '0')}</span>
-              </span>
               <ol className={styles.progress} aria-label="Skills chapters">
                 {SKILL_CHAPTERS.map((chapter, index) => (
                   <li key={chapter.scene} aria-label={chapter.title}
@@ -146,18 +143,18 @@ export function Skills({ onNavigate }: { onNavigate?: (section: string) => void 
               </ol>
             </div>
             <div className={styles.controls}>
-              <button type="button" className={styles.previous} disabled={!ready}
+              <ControlButton iconOnly className={styles.previous} disabled={!ready}
                 onClick={event => { controlRef.current = event.currentTarget; step(-1); }}
                 aria-label={active === 0 ? 'Back to About' : 'Previous skill'}>
                 <ArrowLeft size={19} strokeWidth={1.5} aria-hidden="true" />
-              </button>
-              <button type="button" className={styles.next} disabled={!ready}
+              </ControlButton>
+              <ControlButton variant="primary" className={styles.next} disabled={!ready}
                 onClick={event => { controlRef.current = event.currentTarget; step(1); }}>
                 {settledIndex === SKILL_CHAPTERS.length - 1
                   ? 'See projects'
                   : `Next: ${SKILL_CHAPTERS[settledIndex + 1].title}`}
                 <ArrowRight size={18} strokeWidth={1.5} aria-hidden="true" />
-              </button>
+              </ControlButton>
             </div>
             <p className={styles.srOnly} role="status" aria-live="polite" aria-atomic="true">
               {visible && phase === 'reading'

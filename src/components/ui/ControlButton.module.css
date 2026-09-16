@@ -1,0 +1,114 @@
+@value chamferPath, brandMint, brandEmerald, navSurfaceLight, navSurfaceDark from './controlFoundation.module.css';
+
+.button {
+  --control-surface: navSurfaceDark;
+  --control-border: rgba(255, 255, 255, 0.38);
+  --control-color: #f0fff8;
+  --control-focus: brandMint;
+  --control-hover-surface: rgba(0, 30, 25, 0.95);
+  --control-hover-border: brandMint;
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--control-color);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+:global([data-theme='light']) .button,
+.button:global([data-theme='light']) {
+  --control-surface: navSurfaceLight;
+  --control-border: rgba(17, 24, 39, 0.48);
+  --control-color: #0a251e;
+  --control-focus: brandEmerald;
+  --control-hover-surface: rgba(240, 255, 250, 0.98);
+  --control-hover-border: brandEmerald;
+}
+
+.primary {
+  --control-surface: rgba(0, 45, 38, 0.94);
+  --control-border: rgba(0, 255, 157, 0.55);
+  --control-color: brandMint;
+  --control-hover-surface: rgba(0, 60, 44, 0.98);
+  font-weight: 600;
+}
+
+:global([data-theme='light']) .primary,
+.primary:global([data-theme='light']) {
+  --control-surface: rgba(240, 255, 250, 0.95);
+  --control-border: brandEmerald;
+  --control-color: #065f46;
+  --control-hover-surface: rgba(220, 252, 231, 0.98);
+}
+
+.secondary {
+  font-weight: 500;
+}
+
+.frame {
+  --chamfer-cut: 10px;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  padding: 1px;
+  background: var(--control-border);
+  clip-path: chamferPath;
+  transition: background-color 160ms ease;
+}
+
+.surface {
+  --chamfer-cut: 9.5px;
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.625rem 1rem;
+  background: var(--control-surface);
+  clip-path: chamferPath;
+  transition: background-color 160ms ease;
+}
+
+.iconOnly {
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.iconOnly .surface {
+  padding: 0.625rem;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--control-focus);
+  outline-offset: 3px;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:not(:disabled):hover {
+    --control-surface: var(--control-hover-surface);
+    --control-border: var(--control-hover-border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame,
+  .surface {
+    transition: none;
+  }
+}

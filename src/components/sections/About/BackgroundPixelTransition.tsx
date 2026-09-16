@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useContext } from 'react';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
+import { writeAttribute } from '@/lib/dom/cachedElement';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import {
   advancePhase,
@@ -499,6 +501,26 @@ export function BackgroundPixelTransition({
     updateRef.current = update;
     update();
     const unsubscribe = subscribeScrollProgress(update);
+    const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
+      if (options?.source !== 'navbar') return;
+      const past = target !== 'home' && target !== 'about';
+      phaseRef.current = { t: past ? 1 : 0, heading: past ? 1 : -1 };
+      wasActiveRef.current = past;
+      armedRef.current = false;
+      readyAtRef.current = 0;
+      returnRequestRef.current = UNREQUESTED_BEAT;
+      if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+      lastFrameRef.current = 0;
+      renderPhase(phaseRef.current.t);
+      const about = readAbout();
+      if (about) {
+        writeAttribute(about, 'data-bg-settled', past ? 'true' : null);
+        writeAttribute(about, 'data-bg-active', null);
+      }
+    });
 
     const unsubscribeGesture = subscribeScrollGesture((direction) => {
       if (direction === 'up') {
@@ -556,6 +578,7 @@ export function BackgroundPixelTransition({
 
     return () => {
       unsubscribe();
+      unsubscribeNavigation();
       unsubscribeGesture();
       gateObserver?.disconnect();
       if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
@@ -567,7 +590,7 @@ export function BackgroundPixelTransition({
         animFrameRef.current = 0;
       }
     };
-  }, [readAbout, update]);
+  }, [readAbout, renderPhase, update]);
 
   // Rebuilding the pixel grid must not revoke an already completed beat.
   // Ownership is released only when the background itself leaves the tree.

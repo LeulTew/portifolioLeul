@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { animationClock } from '@/test/animationClock';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { TITLE_WRITE } from './aboutBeats';
+import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 
 vi.mock('@/lib/gateways/animationGateway', () => ({
   getPrefersReducedMotion: () => false,
@@ -39,6 +40,22 @@ describe('the mounted title completion publisher', () => {
     await clock.frame(10);
     expect(about).toHaveAttribute('data-title-active', 'true');
     expect(about).not.toHaveAttribute('data-title-settled');
+  });
+
+  it('settles navbar skips through the same title painter and clears the interrupted frame', async () => {
+    const { clock, about } = await start();
+    await clock.frame(50);
+    expect(about).toHaveAttribute('data-title-active', 'true');
+    await act(async () => { publishSectionNavigation('projects', { source: 'navbar' }); });
+    expect(about).toHaveAttribute('data-title-settled', 'true');
+    expect(about).not.toHaveAttribute('data-title-active');
+    expect(about).not.toHaveAttribute('data-reverse-transition-active');
+    expect(about.querySelector('h2')).toHaveTextContent('Education');
+    expect(clock.pending).toBe(0);
+    await act(async () => { publishSectionNavigation('home', { source: 'navbar' }); });
+    expect(about).not.toHaveAttribute('data-title-settled');
+    expect(about.querySelector('h2')).toHaveTextContent('About Me');
+    expect(clock.pending).toBe(0);
   });
 
   it('publishes settled exactly once, including the terminal frame and idle updates', async () => {

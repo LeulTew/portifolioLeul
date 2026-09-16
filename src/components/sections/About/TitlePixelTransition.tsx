@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { BEAT_DEADBAND, TITLE_WRITE } from './aboutBeats';
 import { cachedElement, writeAttribute } from '@/lib/dom/cachedElement';
@@ -558,6 +559,18 @@ export function TitlePixelTransition({
   useEffect(() => {
     update();
     const unsubscribeScroll = subscribeScrollProgress(update);
+    const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
+      if (options?.source !== 'navbar') return;
+      const past = target !== 'home' && target !== 'about';
+      phaseRef.current = { t: past ? 1 : 0, heading: past ? 1 : -1 };
+      wasActiveRef.current = past;
+      armedRef.current = false;
+      lastSeqRef.current = past ? 1 : 0;
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+      lastFrameRef.current = 0;
+      renderPhase(phaseRef.current.t, document.documentElement.dataset.theme === 'light', past);
+    });
 
     const unsubscribeGesture = subscribeScrollGesture((direction) => {
       if (direction !== 'down') return;
@@ -600,6 +613,7 @@ export function TitlePixelTransition({
 
     return () => {
       unsubscribeScroll();
+      unsubscribeNavigation();
       unsubscribeGesture();
       gateObserver?.disconnect();
       window.removeEventListener('resize', update);
@@ -615,7 +629,7 @@ export function TitlePixelTransition({
         aboutSection?.removeAttribute('data-reverse-transition-active');
       }
     };
-  }, [readAbout, start, update]);
+  }, [readAbout, renderPhase, start, update]);
 
   return (
     <div

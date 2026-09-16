@@ -5,6 +5,7 @@ import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { advancePhase, easeInOutCubic, isPhaseAtTarget, phaseFrameDelta, phaseGate,
   PHASE_AT_REST, type PhaseState } from '@/lib/motion/triggeredPhase';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { BEAT_REST_MS, HEAD_SETTLE } from './aboutBeats';
 import { createAboutReader, createSeqReader } from './seqReader';
 import { centeredHeading } from './headingGeometry';
@@ -173,6 +174,18 @@ export function AboutHeading({ children }: { children: ReactNode }) {
     measure();
     update();
     const unsubscribe = subscribeScrollProgress(update);
+    const unsubscribeNavigation = subscribeSectionNavigation((destination, options) => {
+      if (options?.source !== 'navbar') return;
+      target = destination !== 'home' && destination !== 'about';
+      phase = { t: target ? 1 : 0, heading: target ? 1 : -1 };
+      presence = { t: 1, heading: 1 };
+      moved = target;
+      hold = target ? BEAT_REST_MS : 0;
+      cancelAnimationFrame(frame);
+      frame = 0;
+      last = 0;
+      render();
+    });
     window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', resize);
     motionQuery.addEventListener('change', resize);
@@ -180,6 +193,7 @@ export function AboutHeading({ children }: { children: ReactNode }) {
     return () => {
       disposed = true;
       unsubscribe();
+      unsubscribeNavigation();
       observer?.disconnect();
       stateObserver.disconnect();
       window.removeEventListener('scroll', update);

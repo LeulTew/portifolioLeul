@@ -17,3 +17,18 @@ it('publishes explicit destinations only to currently mounted readers', () => {
   publishSectionNavigation('home');
   expect(second).toHaveBeenCalledTimes(2);
 });
+
+it('distinguishes navbar bypass from an automatic immediate chapter landing', () => {
+  const listener = vi.fn();
+  const remove = subscribeSectionNavigation(listener);
+  try {
+    publishSectionNavigation('skills', { source: 'navbar' });
+    expect(listener).toHaveBeenLastCalledWith('skills', { source: 'navbar' });
+    publishSectionNavigation('skills', { immediate: true });
+    expect(listener).toHaveBeenLastCalledWith('skills', { immediate: true });
+    publishSectionNavigation('about');
+    expect(listener).toHaveBeenLastCalledWith('about');
+  } finally {
+    remove();
+  }
+});

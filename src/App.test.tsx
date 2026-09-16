@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import * as ReactModule from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
 import { setScrollProgress, subscribeScrollProgress } from "./lib/scroll/scrollProgress";
+import { subscribeSectionNavigation } from "./lib/scroll/sectionNavigation";
 
 /*
  * These exercise the 3D path, so they say so.
@@ -468,6 +469,27 @@ describe("App scroll position across a track resize", () => {
 
   const pagesOf = () =>
     Number(screen.getByTestId("scroll-controls").getAttribute("data-pages"));
+
+  it("settles navbar intent and physical/damped position together without traversing intermediate sections", () => {
+    renderApp();
+    const target = screen.getByTestId('contact-section');
+    target.id = 'contact';
+    Object.defineProperty(target, 'offsetTop', { configurable: true, value: 6000 });
+    const listener = vi.fn();
+    const unsubscribe = subscribeSectionNavigation(listener);
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
+      expect(listener).toHaveBeenCalledExactlyOnceWith('contact', { source: 'navbar' });
+      const ratio = (6000 - 80) / (contentHeight - track.clientHeight);
+      expect(mockScroll.offset).toBeCloseTo(ratio);
+      expect(mockScroll.delta).toBe(0);
+      expect(mockScroll.el.scrollTop).toBeCloseTo(ratio * (mockScroll.el.scrollHeight - track.clientHeight));
+      act(() => runFrames(5));
+      expect(mockScroll.offset).toBeCloseTo(ratio);
+    } finally {
+      unsubscribe();
+    }
+  });
 
   it("does not throw the reader back to the top when content grows", () => {
     // Regression: ScrollControls resets scrollTop to 1 whenever `pages`

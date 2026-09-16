@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import gsap from 'gsap';
 import { Skills } from './Skills';
-import { SKILL_CHAPTERS, SKILLS_STAGE_QUERY } from './skillsData';
+import { SKILL_CHAPTERS, SKILLS_REVEAL_SECONDS, SKILLS_STAGE_QUERY, SKILLS_TRANSITION_SECONDS } from './skillsData';
 import { getMaterialGeometry } from './skillGeometry';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { resetScrollGesture } from '@/lib/scroll/scrollGesture';
@@ -21,6 +21,10 @@ const originalRect = Element.prototype.getBoundingClientRect;
 const stage = () => screen.getByTestId('skills-stage');
 const index = () => Number(stage().dataset.activeSkill);
 const next = () => screen.getByRole('button', { name: /^Next:/ });
+const entranceMs = Math.round((SKILLS_REVEAL_SECONDS + 0.16) * 1000);
+const crossingMs = SKILLS_TRANSITION_SECONDS * 1000;
+// The imported gateway also owns ScrollTrigger frames; Skills must stop only its own clock.
+const playbackFrames = () => [...frames.values()].filter(callback => callback.name === 'tick');
 
 // Behavioral cases exercise the 50ms visible-frame ceiling; pacing cases use 16ms.
 function advance(ms: number, interval = 50) {
@@ -56,6 +60,11 @@ function wheel(deltaY: number) {
   gsap.ticker.sleep();
 }
 
+async function navbar(target: string) {
+  await act(async () => { publishSectionNavigation(target, { source: 'navbar' }); });
+  gsap.ticker.sleep();
+}
+
 function mount(onNavigate?: (section: string) => void) {
   render(<>
     <button type="button">Navigation utility</button>
@@ -70,13 +79,13 @@ function mount(onNavigate?: (section: string) => void) {
 function enter(onNavigate?: (section: string) => void) {
   mount(onNavigate);
   place(80);
-  advance(3100);
+  advance(entranceMs);
   expect(next()).toBeEnabled();
 }
 
 function cross() {
   fireEvent.click(next());
-  advance(3300);
+  advance(crossingMs);
 }
 
 beforeEach(() => {
@@ -151,19 +160,17 @@ describe('Skills completed-beat playback', () => {
     expect(getOverlayOcclusion()).toBe(true);
   });
 
-  it.each([40, 20000])('takes the same complete entry and reading time for a %ipx scroll', delta => {
+  it.each([40, 20000])('keeps the full entry duration with no extra pause for a %ipx scroll', delta => {
     mount();
     place(80);
     wheel(delta);
-    advance(1750, 16);
+    advance(entranceMs - 10, 16);
     expect(stage()).toHaveAttribute('data-phase', 'entering');
-    advance(100, 16);
+    expect(next()).toBeDisabled();
+    advance(10, 16);
     expect(stage()).toHaveAttribute('data-phase', 'reading');
-    expect(next()).toBeDisabled();
-    advance(1160, 16);
-    expect(next()).toBeDisabled();
-    advance(40, 16);
     expect(next()).toBeEnabled();
+    expect(playbackFrames()).toHaveLength(0);
   });
 
   it('does not spend scroll distance when using its controls', () => {
@@ -172,16 +179,19 @@ describe('Skills completed-beat playback', () => {
     expect(index()).toBe(1);
     expect(next()).toBeDisabled();
     expect(window.scrollBy).not.toHaveBeenCalled();
-    advance(1950);
+    advance(crossingMs - 10);
     expect(stage()).toHaveAttribute('data-phase', 'crossing');
-    advance(100);
-    expect(stage()).toHaveAttribute('data-phase', 'reading');
     expect(next()).toBeDisabled();
-    advance(1250);
+    advance(10);
+    expect(stage()).toHaveAttribute('data-phase', 'reading');
     expect(next()).toBeEnabled();
+    fireEvent.click(next());
+    expect(index()).toBe(2);
+    expect(stage()).toHaveAttribute('data-phase', 'crossing');
+    expect(window.scrollBy).not.toHaveBeenCalled();
   });
 
-  it('discards input during movement and rest, and requires a new momentum wave', () => {
+  it('discards input during movement and requires a new momentum wave without a completion cooldown', () => {
     enter();
     wheel(500);
     expect(index()).toBe(1);
@@ -194,6 +204,21 @@ describe('Skills completed-beat playback', () => {
     advance(251);
     wheel(500);
     expect(index()).toBe(2);
+  });
+
+  it('accepts a fresh scroll request on the exact completion frame in either direction', () => {
+    enter();
+    wheel(500);
+    advance(crossingMs);
+    expect(index()).toBe(1);
+    expect(next()).toBeEnabled();
+    wheel(-500);
+    expect(stage()).toHaveAttribute('data-phase', 'crossing');
+    advance(crossingMs);
+    expect(index()).toBe(0);
+    expect(next()).toBeEnabled();
+    wheel(500);
+    expect(index()).toBe(1);
   });
 
   it('does not queue a direction reversal or button click while crossing', () => {
@@ -250,6 +275,15 @@ describe('Skills completed-beat playback', () => {
     expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Languages');
     advance(1800);
     expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Frameworks & Web');
+  });
+
+  it('retains six labeled progress lines without a duplicate visual fraction', () => {
+    enter();
+    const progress = screen.getByRole('list', { name: 'Skills chapters' });
+    expect(progress.children).toHaveLength(6);
+    expect(screen.queryByText('/ 06')).not.toBeInTheDocument();
+    expect(screen.queryByText('01')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('1 of 6: Languages');
   });
   it('holds an unfinished sequence even after a flick spends its entire spacer', () => {
     enter();
@@ -340,20 +374,80 @@ describe('Skills completed-beat playback', () => {
     expect(next()).toBeEnabled();
   });
 
-  it('honors global navigation after the current movement and full reading pause', () => {
+  it('honors a chapter navigation intent immediately after the current movement completes', () => {
     const navigate = vi.fn();
     enter(navigate);
     fireEvent.click(next());
     act(() => publishSectionNavigation('contact'));
-    advance(3000);
+    advance(crossingMs - 10);
     expect(stage()).toHaveAttribute('data-visible', 'true');
-    expect(stage()).toHaveAttribute('data-phase', 'reading');
-    advance(900);
+    expect(stage()).toHaveAttribute('data-phase', 'crossing');
+    advance(10);
+    expect(stage()).toHaveAttribute('data-phase', 'leaving');
+    advance(600);
     expect(stage()).not.toHaveAttribute('data-visible');
     expect(navigate).not.toHaveBeenCalled();
     place(-20000);
     advance(5000);
     expect(stage()).toHaveAttribute('data-phase', 'outside');
+  });
+
+  it.each(['home', 'about', 'projects', 'contact'])('navbar %s bypasses an unfinished crossing and releases every owner', async target => {
+    enter();
+    fireEvent.click(next());
+    advance(200);
+    await navbar(target);
+    expect(stage()).toHaveAttribute('data-phase', 'outside');
+    expect(stage()).not.toHaveAttribute('data-visible');
+    expect(document.getElementById('skills')).not.toHaveAttribute('data-skills-active');
+    expect(screen.getByTestId('underlay')).not.toHaveAttribute('inert');
+    expect(document.querySelector('[data-skills-covered]')).toBeNull();
+    expect(getOverlayOcclusion()).toBe(false);
+    expect(playbackFrames()).toHaveLength(0);
+    advance(5000);
+    expect(stage()).toHaveAttribute('data-phase', 'outside');
+  });
+
+  it.each(['entering', 'reading', 'leaving'])('navbar navigation does not wait for the %s phase', async phase => {
+    mount();
+    place(80);
+    if (phase !== 'entering') advance(entranceMs);
+    if (phase === 'leaving') fireEvent.click(screen.getByRole('button', { name: 'Back to About' }));
+    expect(stage()).toHaveAttribute('data-phase', phase);
+    await navbar('contact');
+    expect(stage()).not.toHaveAttribute('data-visible');
+    expect(stage()).toHaveAttribute('data-phase', 'outside');
+    expect(playbackFrames()).toHaveLength(0);
+  });
+
+  it('navbar Skills opens its first settled pose without replaying earlier or interrupted chapters', async () => {
+    enter();
+    const sculpture = stage().querySelector('[data-skill-sculpture]');
+    fireEvent.click(next());
+    advance(200);
+    await navbar('skills');
+    expect(stage()).toHaveAttribute('data-phase', 'reading');
+    expect(stage()).toHaveAttribute('data-visible', 'true');
+    expect(index()).toBe(0);
+    expect(next()).toBeEnabled();
+    expect(stage().querySelector('[data-skill-sculpture]')).toBe(sculpture);
+    expect(playbackFrames()).toHaveLength(0);
+    wheel(500);
+    expect(index()).toBe(1);
+    advance(100);
+    expect(stage()).toHaveAttribute('data-phase', 'crossing');
+  });
+
+  it('a newer navbar destination cannot be reclaimed by a deferred Skills claim', async () => {
+    mount();
+    await act(async () => {
+      publishSectionNavigation('skills', { source: 'navbar' });
+      publishSectionNavigation('contact', { source: 'navbar' });
+    });
+    place(-10000);
+    advance(5000);
+    expect(stage()).toHaveAttribute('data-phase', 'outside');
+    expect(stage()).not.toHaveAttribute('data-visible');
   });
 
   it('does not intercept a global jump that passes Skills', () => {
@@ -462,7 +556,7 @@ describe('Skills completed-beat playback', () => {
     about.remove();
   });
 
-  it('does not advance a movement or its reading pause while the tab is hidden', () => {
+  it('resumes the unseen movement after a hidden tab and enables input on its final frame', () => {
     mount();
     place(80);
     advance(400);
@@ -473,17 +567,16 @@ describe('Skills completed-beat playback', () => {
     expect(stage()).toHaveAttribute('data-phase', 'entering');
     hidden.mockReturnValue(false);
     act(() => document.dispatchEvent(new Event('visibilitychange')));
-    advance(1500);
+    advance(entranceMs - 410);
     expect(next()).toBeDisabled();
     hidden.mockReturnValue(true);
     act(() => document.dispatchEvent(new Event('visibilitychange')));
     advance(10000);
     hidden.mockReturnValue(false);
     act(() => document.dispatchEvent(new Event('visibilitychange')));
-    advance(1100);
-    expect(next()).toBeDisabled();
-    advance(150);
+    advance(10);
     expect(next()).toBeEnabled();
+    expect(playbackFrames()).toHaveLength(0);
   });
 
   it('caps a stalled paint rather than completing an unseen movement', () => {

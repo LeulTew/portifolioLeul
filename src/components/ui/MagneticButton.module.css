@@ -1,3 +1,5 @@
+@value chamferPath, brandMint from './controlFoundation.module.css';
+
 .magneticWrapper {
   position: relative;
   display: inline-flex;
@@ -16,6 +18,7 @@
 }
 
 .cutoutFrame {
+  --chamfer-cut: 14px;
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -27,14 +30,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   overflow: hidden;
-  clip-path: polygon(
-    14px 0%, 
-    100% 0%, 
-    100% calc(100% - 14px), 
-    calc(100% - 14px) 100%, 
-    0% 100%, 
-    0% 14px
-  );
+  clip-path: chamferPath;
   transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1), 
               color 0.3s cubic-bezier(0.22, 1, 0.36, 1), 
               box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -42,13 +38,13 @@
 
 /* Primary Variant */
 .primary {
-  background: linear-gradient(135deg, #00ff9d 0%, #00d17a 100%);
+  background: linear-gradient(135deg, brandMint 0%, #00d17a 100%);
   color: #001a14;
   box-shadow: 0 0 25px rgba(0, 255, 157, 0.35), inset 0 0 12px rgba(255, 255, 255, 0.3);
 }
 
 .primary:hover {
-  background: linear-gradient(135deg, #26ffaa 0%, #00ff9d 100%);
+  background: linear-gradient(135deg, #26ffaa 0%, brandMint 100%);
   box-shadow: 0 0 35px rgba(0, 255, 157, 0.6), inset 0 0 18px rgba(255, 255, 255, 0.5);
 }
 
@@ -64,7 +60,7 @@
 .secondaryDark:hover {
   background: rgba(0, 45, 38, 0.85);
   box-shadow: 0 0 25px rgba(0, 255, 157, 0.35);
-  color: #00ff9d;
+  color: brandMint;
 }
 
 .secondaryLight {
@@ -92,7 +88,7 @@
 
 .glassDark:hover {
   background: rgba(15, 30, 30, 0.9);
-  color: #00ff9d;
+  color: brandMint;
 }
 
 .glassLight {
@@ -137,7 +133,7 @@
   width: calc(100% - 2px);
   height: calc(100% - 2px);
   fill: none;
-  stroke: #00ff9d;
+  stroke: brandMint;
   stroke-width: 2.5;
   stroke-dasharray: 45 180;
   stroke-dashoffset: 0;
@@ -169,8 +165,8 @@
   left: 2px;
   width: 6px;
   height: 6px;
-  border-top: 2px solid #00ff9d;
-  border-left: 2px solid #00ff9d;
+  border-top: 2px solid brandMint;
+  border-left: 2px solid brandMint;
   pointer-events: none;
   opacity: 0.6;
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -182,8 +178,8 @@
   right: 2px;
   width: 6px;
   height: 6px;
-  border-bottom: 2px solid #00ff9d;
-  border-right: 2px solid #00ff9d;
+  border-bottom: 2px solid brandMint;
+  border-right: 2px solid brandMint;
   pointer-events: none;
   opacity: 0.6;
   transition: opacity 0.3s ease, transform 0.3s ease;

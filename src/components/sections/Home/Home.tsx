@@ -10,6 +10,7 @@ import styles from './Home.module.css';
 import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { createTranslatedPositionReader } from '@/lib/scroll/translatedPosition';
 import {
   HERO_SCREENS,
@@ -463,11 +464,27 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
 
     apply();
     const unsubscribe = subscribeScrollProgress(apply);
+    const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
+      if (options?.source !== 'navbar') return;
+      const leaving = target !== 'home';
+      const phase: PhaseState = { t: leaving ? 1 : 0, heading: leaving ? 1 : -1 };
+      innerPhaseRef.current = phase;
+      cuePhaseRef.current = phase;
+      innerActiveRef.current = leaving;
+      cueTargetRef.current = phase.t;
+      cueWasHeld = false;
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
+      lastFrameRef.current = 0;
+      setHeroCue(phase.t);
+      if (sectionElement) writeAttribute(sectionElement, 'data-hero-handover-settled', leaving ? 'true' : null);
+    });
     applyRef.current = apply;
     window.addEventListener('resize', apply);
 
     return () => {
       unsubscribe();
+      unsubscribeNavigation();
       applyRef.current = null;
       positionReaderRef.current = null;
       chapterObserver.disconnect();

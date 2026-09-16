@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
 import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
@@ -303,6 +304,13 @@ export function PinnedSequence({
 
     apply();
     const unsubscribe = subscribeScrollProgress(apply, 'measure');
+    const unsubscribeNavigation = subscribeSectionNavigation((_target, options) => {
+      if (options?.source !== 'navbar') return;
+      const overlay = overlayRef.current;
+      if (overlay) writeAttribute(overlay, 'data-active', 'false');
+      publishOwnership(false);
+      if (occludesWorld) setOverlayOcclusion(false);
+    });
     window.addEventListener('resize', apply);
     const about = document.getElementById('about');
     const completionObserver = (about || home) && typeof MutationObserver !== 'undefined'
@@ -349,6 +357,7 @@ export function PinnedSequence({
 
     return () => {
       unsubscribe();
+      unsubscribeNavigation();
       observer?.disconnect();
       completionObserver?.disconnect();
       window.removeEventListener('resize', apply);
