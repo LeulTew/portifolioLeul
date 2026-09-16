@@ -273,7 +273,31 @@ export function useEducationPlayback(
         request(direction === 'down' ? 1 : -1);
       }
     }, { startsOnly: true });
-    const unsubscribeNavigation = subscribeSectionNavigation(target => {
+    const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
+      if (options?.source === 'navbar') {
+        landing = null;
+        playing?.pause();
+        playing = null;
+        clearReveal();
+        show(false);
+        open.pause(0, true);
+        exit.pause(0, true);
+        writeAttribute(outline, 'data-open', null);
+        writeAttribute(heading, 'data-settled', null);
+        flag('data-education-owned', false);
+        flag('data-education-released', false);
+        flag('data-education-returning', false);
+        bypass = true;
+        navigation = target;
+        wave = null;
+        handoffPending = false;
+        side = target === 'home' || target === 'about' ? 'before' : 'after';
+        current = side === 'before' ? 0 : total - 1;
+        setActive(current);
+        positionTrack(trackOffset(current, total));
+        changePhase('outside');
+        return;
+      }
       if (!aligning) landing = null;
       bypass = true;
       navigation = target;

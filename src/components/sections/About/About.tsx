@@ -12,6 +12,7 @@ import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
 import { AboutHeading } from './AboutHeading';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { createAboutReader, createSeqReader } from './seqReader';
@@ -432,6 +433,30 @@ function StatementsContainer({ children }: StatementsContainerProps) {
     updateRef.current = update;
     update();
     const unsubProgress = subscribeScrollProgress(update);
+    const unsubNavigation = subscribeSectionNavigation((target, options) => {
+      if (options?.source !== 'navbar') return;
+      const past = target !== 'home' && target !== 'about';
+      const phase: PhaseState = { t: past ? 1 : 0, heading: past ? 1 : -1 };
+      phaseRef.current = phase;
+      arrivePhaseRef.current = phase;
+      clearPhaseRef.current = phase;
+      wasActiveRef.current = past;
+      wasArrivingRef.current = past;
+      wasClearingRef.current = past;
+      arriveRestRef.current = 0;
+      arriveWaitingRef.current = false;
+      swapRequestRef.current = UNREQUESTED_BEAT;
+      clearRequestRef.current = UNREQUESTED_BEAT;
+      returnRequestRef.current = UNREQUESTED_BEAT;
+      unswapRequestRef.current = UNREQUESTED_BEAT;
+      leaveRequestRef.current = UNREQUESTED_BEAT;
+      if (cooldownTimerRef.current !== null) clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+      lastFrameRef.current = 0;
+      renderPhase(phase.t, phase.t, phase.t);
+    });
 
     const unsubGesture = subscribeScrollGesture((direction) => {
       const now = performance.now();
@@ -491,6 +516,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
 
     return () => {
       unsubProgress();
+      unsubNavigation();
       unsubGesture();
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update);
@@ -502,7 +528,7 @@ function StatementsContainer({ children }: StatementsContainerProps) {
         animFrameRef.current = 0;
       }
     };
-  }, [readAbout, update]);
+  }, [readAbout, renderPhase, update]);
 
   const forwardCopyWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
     const scrollport = findScrollContainer(readAbout());

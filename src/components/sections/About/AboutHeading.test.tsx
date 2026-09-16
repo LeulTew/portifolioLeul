@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { animationClock } from '@/test/animationClock';
 import { AboutHeading } from './AboutHeading';
 import { BEAT_REST_MS } from './aboutBeats';
+import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 
 const reduced = vi.fn(() => false);
 vi.mock('@/lib/gateways/animationGateway', () => ({ getPrefersReducedMotion: () => reduced() }));
@@ -47,6 +48,26 @@ function mount() {
 }
 
 describe('centered About arrival', () => {
+  it('settles skipped travel for navbar navigation, then allows normal heading entry on return', async () => {
+    const scene = mount();
+    await scene.position(0.5);
+    await scene.run(500);
+    expect(scene.travel()).toBeGreaterThan(0);
+    expect(scene.travel()).toBeLessThan(1);
+    await act(async () => { publishSectionNavigation('contact', { source: 'navbar' }); });
+    expect(scene.travel()).toBe(1);
+    expect(scene.about).not.toHaveAttribute('data-head-pending');
+    expect(scene.clock.pending).toBe(0);
+    await scene.position(0);
+    await act(async () => { publishSectionNavigation('about', { source: 'navbar' }); });
+    expect(scene.travel()).toBe(0);
+    expect(scene.clock.pending).toBe(0);
+    await scene.position(0.5);
+    await scene.run(500);
+    expect(scene.travel()).toBeGreaterThan(0);
+    expect(scene.travel()).toBeLessThan(1);
+  });
+
   it('holds the large centered pose, then docks without an extra gesture', async () => {
     const scene = mount();
     await scene.position(0.5);

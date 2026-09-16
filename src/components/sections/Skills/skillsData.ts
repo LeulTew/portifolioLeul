@@ -79,7 +79,6 @@ export const SKILL_CHAPTERS = cvData.skills.map(category => {
 
 export type SkillChapter = (typeof SKILL_CHAPTERS)[number];
 
-export const SKILLS_READING_MS = 1200;
 export const SKILLS_REVEAL_SECONDS = 1.65;
 export const SKILLS_TRANSITION_SECONDS = 2;
 export const SKILLS_STAGE_QUERY = '(min-width: 900px) and (min-height: 560px)';

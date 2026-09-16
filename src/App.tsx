@@ -397,7 +397,12 @@ function App() {
   const scrollToSection = useCallback((id: string, options?: SectionNavigationOptions) => {
     const target = document.getElementById(id);
     if (!target) return;
-    publishSectionNavigation(id);
+    const immediate = options?.immediate || options?.source === 'navbar';
+    if (options?.source === 'navbar') {
+      pendingRestoreRef.current = null;
+      restoreSyncFramesRef.current = 0;
+    }
+    publishSectionNavigation(id, options);
 
     if (scrollElement && mainRef.current) {
       const container = scrollElement;
@@ -434,16 +439,20 @@ function App() {
        * while a plain instant assignment worked. See `glideScrollTo`.
        */
       glideRef.current?.cancel();
-      if (options?.immediate && scrollStateRef.current) {
+      if (immediate) {
         glideRef.current = null;
-        settleScrollPosition(scrollStateRef.current, ratio);
+        if (scrollStateRef.current) settleScrollPosition(scrollStateRef.current, ratio);
+        else {
+          container.scrollTop = ratio * containerScrollable;
+          container.dispatchEvent(new Event('scroll'));
+        }
         return;
       }
       glideRef.current = glideScrollTo(container, ratio * containerScrollable);
       return;
     }
 
-    if (options?.immediate) {
+    if (immediate) {
       const inset = id === 'about' ? Math.round(window.innerHeight * 0.08) : -80;
       const top = id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
       window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });

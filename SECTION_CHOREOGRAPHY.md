@@ -236,7 +236,7 @@ new credentials, employment, or performance claims.
 | --- | --- | --- |
 | Languages | Solid processor, pins, source code and output | Cipher resolution / short decoded labels |
 | Frameworks & Web | Upright application window and mobile device | Component assembly / masked word assembly |
-| AI & Data Science | Layered neural connections, inputs and outputs, without a repeated housing | Focus / restrained word focus |
+| AI & Data Science | Three beveled neural slices, shaded neurons, weighted routes and tensor-to-prediction flow | Focus / restrained word focus |
 | Databases | Solid relational storage tiers and query/schema elements | Horizontal scan / bounded typed labels |
 | Tools & Design | Beveled vector pen nib drawing a Bezier path | Curved character alignment / vector-line reveals |
 | Professional Skills | Separate collaborating 3D modules | Bilateral alignment / word-emphasis reveal |
@@ -247,6 +247,10 @@ solid surfaces, an application frame, a housing-free network, a sharp pen
 outline, and separate modules have different visual structures. Shared features
 morph while outgoing and incoming asset parts hand over. Continuity belongs
 to the choreography, not to forcing every capability into an identical asset.
+The neural instrument keeps its ten neurons anchored to the same eight
+weighted routes in SVG and low-tier Canvas rendering. Three layer-level
+animation groups replace per-neuron motion; material depth comes from
+theme-aware vector gradients and bevels, not raster assets or blur filters.
 
 The visual track alternates sides, banks and changes scale. Ground and
 foreground construction lines have different relative travel and timing,
@@ -263,22 +267,40 @@ It consumes the existing scroll-progress store and passive, wave-start gesture
 subscription; it never cancels wheel, touch, or keyboard input.
 
 `skillsTimeline.ts` builds one paused GSAP score. The first chapter reveals in
-1.81 seconds, each subsequent crossing in 2 seconds, followed by a 1200ms
-visible reading pause. Progress is advanced with `phaseFrameDelta`, not mapped
-to scroll distance. An unfinished crossing ignores new requests; gestures
-during movement or the reading pause are discarded, not queued. Reverse
+1.81 seconds and each subsequent crossing in 2 seconds. Input is ready on
+the exact final animation frame, with no post-animation pause. Progress is
+advanced with `phaseFrameDelta`, not mapped to scroll distance. An unfinished
+crossing ignores new requests; gestures during movement are discarded, not
+queued. The existing 250ms wheel-idle interval groups momentum into one request,
+not a cooldown after completion. Reverse
 seeks the same score back to its previous resting point.
 
 Next/Previous use the same gate without consuming scroll distance. The next
 action names its destination instead of presenting a generic slide control.
-The progress readout changes when the new pose finishes, not over the outgoing
-heading. The final
+The six progress lines change when the new pose finishes, not over the outgoing
+heading. A separate visible numeric fraction is omitted because it duplicates
+those lines; the live accessible status retains the chapter name and position.
+The final
 **See projects** action and the first **Back to About** action release the
-stage after its exit. Explicit global navigation can leave after the current
-movement and reading pause. Natural exits align the neighboring section only
+stage after its exit. Chapter-generated navigation can leave after the current
+movement. Natural exits align the neighboring section only
 when the reader has not already scrolled beyond the Skills rail. Natural
 reverse returns to Education's trailing edge; only the labelled About button
 jumps to About's heading.
+
+Navbar activation is the intentional exception to scroll serialization. Its
+`source: 'navbar'` intent settles the native scrollport and Drei position
+together, releases old Skills/Education covers and pending landings, and settles
+skipped Home/About beats through their existing state painters. It does not play
+every intervening chapter. Direct Skills navigation shows its first settled
+pose; subsequent scroll still plays every requested crossing at the same speed.
+Automatic chapter landings (`immediate: true`) are not navbar bypasses.
+
+Skills controls use the shared native `ControlButton` with its focus, disabled,
+theme and hit-target rules. Navbar, Hero and these controls share the chamfer
+geometry and brand values in `ui/controlFoundation.module.css`; the incumbent
+navbar and Hero appearances are unchanged. Compact step controls do not inherit
+the Hero's magnetic pointer effects or ambient tracer loop.
 
 Skills and Education respect each other's stage ownership on return.
 Natural forward entry waits for Education's explicit `data-education-released`
@@ -350,8 +372,8 @@ their geometry or hiding the native scrollport. It restores their original
 visibility and markers before a transparent departure, on tab suspension, and
 on unmount. Global navigation and the Skills stage remain outside that cover.
 
-There are no ambient animation loops. The movement and reading clock stops at
-rest and pauses in hidden tabs. The active artifact can respond to the pointer;
+There are no ambient animation loops. The movement clock stops at completion
+and pauses in hidden tabs. The active artifact can respond to the pointer;
 inactive artifacts do no animation work. GSAP contexts, frame requests,
 media-query/theme listeners, the optional material painter, and ownership are
 cleaned up together.
@@ -372,7 +394,7 @@ React Bits' application-use license and attribution ship at
 
 `Skills.playback.test.tsx` exercises persistent geometry/opacity and parallax
 in addition to slow/flick timing, fresh input waves,
-completion/cooldown gates, reverse playback, both terminal exits, explicit
+completion/fresh-wave gates, reverse playback, both terminal exits, explicit
 navigation, Education ownership, hidden and stalled frames, idle writes,
 live reduced-motion/viewport changes, and cleanup. `Skills.test.tsx` retains
 the complete CV content and verifies the canvas-free fallback. Geometry and

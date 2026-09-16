@@ -5,6 +5,7 @@ import styles from './Navigation.module.css';
 import { ThemeContext } from './sections/theme/ThemeContext';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { useActiveSection } from '@/lib/scroll/useActiveSection';
+import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { ChapterInkLayer, InkLabel } from './ui/ChapterInkLayer/ChapterInkLayer';
 
 const SECTION_IDS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
@@ -18,7 +19,7 @@ const menuItems = [
 ];
 
 interface NavigationProps {
-  scrollToSection: (id: string) => void;
+  scrollToSection: SectionNavigate;
 }
 
 export function Navigation({ scrollToSection }: NavigationProps) {
@@ -43,7 +44,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
 
   const handleNavClick = (id: string, index: number = 0) => {
     soundFx.playTabHum(index);
-    scrollToSection(id);
+    scrollToSection(id, { source: 'navbar' });
     // Show the destination immediately, then hand back to live tracking once
     // the smooth scroll has actually arrived.
     setPinnedSection(id);

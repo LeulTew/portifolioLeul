@@ -55,7 +55,7 @@ describe('Navigation', () => {
       </ThemeContext.Provider>
     );
     fireEvent.click(screen.getByText('About'));
-    expect(mockScrollToSection).toHaveBeenCalledWith('about');
+    expect(mockScrollToSection).toHaveBeenCalledWith('about', { source: 'navbar' });
   });
 
   it('toggles theme', () => {
@@ -100,7 +100,7 @@ describe('Navigation', () => {
     const logo = screen.getByText('LT');
     fireEvent.click(logo);
 
-    expect(mockScrollToSection).toHaveBeenCalledWith('home');
+    expect(mockScrollToSection).toHaveBeenCalledWith('home', { source: 'navbar' });
   });
 
   it.each(['Enter', ' '])('leaves the logo activation key %j uncancelled', async (key) => {
@@ -116,7 +116,7 @@ describe('Navigation', () => {
     expect(logo.tagName).toBe('BUTTON');
     act(() => { logo.focus(); });
     await userEvent.keyboard(key === 'Enter' ? '{Enter}' : ' ');
-    expect(mockScrollToSection).toHaveBeenCalledWith('home');
+    expect(mockScrollToSection).toHaveBeenCalledWith('home', { source: 'navbar' });
   });
 
   it('handles window resize events', () => {

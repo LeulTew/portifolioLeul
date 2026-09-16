@@ -212,6 +212,21 @@ repeated keys cannot become additional requests. Next/Previous use the same
 completion gate, without spending scroll distance. Native control activation
 remains native.
 
+**Skills completion refinement (2026-09-16):** Skills also accepts a fresh input
+wave or Next/Previous on its exact final animation frame, with no post-animation
+reading delay. The existing 1.81-second entrance and 2-second crossings do not
+speed up. Its 250ms wheel-idle grouping remains momentum protection, not a
+completion cooldown; a wave started during motion is still discarded.
+
+**Navbar-only bypass (2026-09-16):** a navbar click or native keyboard activation
+may explicitly skip intervening beats. Carry `source: 'navbar'` through the
+navigation channel, settle physical and damped scroll together, and use each
+owner's existing painters/cleanup to release active text, covers, inert state
+and pending landing glides. Skills opens directly at its first settled pose.
+This exception must never be inferred from scroll position, an automatic
+chapter landing, wheel, touch, or scroll keys. Natural forward/reverse scrolling
+still plays every required movement and must have separate regressions.
+
 ---
 
 ## 6. A movement is never skippable, and never plays to an empty room

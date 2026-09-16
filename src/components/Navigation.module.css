@@ -1,3 +1,5 @@
+@value chamferPath, brandMint, brandEmerald, navSurfaceLight, navSurfaceDark from './ui/controlFoundation.module.css';
+
 .header {
   position: fixed;
   top: 0;
@@ -43,19 +45,13 @@
 
 /* Continuous 1px chamfer border wrapper (Cut-Out Pod) */
 .navBar {
+  --chamfer-cut: 10px;
   position: relative;
   display: inline-flex;
   align-items: center;
   padding: 1px;
   background: rgba(var(--text-color), 0.14);
-  clip-path: polygon(
-    10px 0%, 
-    100% 0%, 
-    100% calc(100% - 10px), 
-    calc(100% - 10px) 100%, 
-    0% 100%, 
-    0% 10px
-  );
+  clip-path: chamferPath;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
@@ -71,29 +67,23 @@
 }
 
 .navBarInner {
+  --chamfer-cut: 9.5px;
   display: flex;
   align-items: center;
   background: rgba(var(--bg-color), 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   padding: 0.35rem 0.5rem 0.35rem 1.25rem;
-  clip-path: polygon(
-    9.5px 0%, 
-    100% 0%, 
-    100% calc(100% - 9.5px), 
-    calc(100% - 9.5px) 100%, 
-    0% 100%, 
-    0% 9.5px
-  );
+  clip-path: chamferPath;
   width: 100%;
 }
 
 :global([data-theme='light']) .navBarInner {
-  background: rgba(255, 255, 255, 0.88);
+  background: navSurfaceLight;
 }
 
 :global([data-theme='dark']) .navBarInner {
-  background: rgba(0, 14, 18, 0.82);
+  background: navSurfaceDark;
 }
 
 .navItems {
@@ -135,14 +125,14 @@
 .navItem:focus-visible,
 .themeToggle:focus-visible,
 .logo:focus-visible {
-  outline: 2px solid #059669;
+  outline: 2px solid brandEmerald;
   outline-offset: 2px;
 }
 
 :global([data-theme='dark']) .navItem:focus-visible,
 :global([data-theme='dark']) .themeToggle:focus-visible,
 :global([data-theme='dark']) .logo:focus-visible {
-  outline: 2px solid #00ff9d;
+  outline: 2px solid brandMint;
   outline-offset: 2px;
 }
 
@@ -153,13 +143,13 @@
   left: 0;
   right: 0;
   height: 2.5px;
-  background: #059669; /* Brand emerald in light mode */
+  background: brandEmerald; /* Brand emerald in light mode */
   border-radius: 2px;
   box-shadow: none;
 }
 
 :global([data-theme='dark']) .activeIndicator {
-  background: #00ff9d; /* Cyber neon mint in dark mode */
+  background: brandMint; /* Cyber neon mint in dark mode */
   box-shadow: 0 0 10px rgba(0, 255, 157, 0.7);
 }
 
@@ -202,13 +192,13 @@
 
 .themeToggle:hover {
   background: rgba(var(--text-color), 0.08);
-  color: #059669;
+  color: brandEmerald;
   transform: scale(1.06);
 }
 
 :global([data-theme='dark']) .themeToggle:hover {
   background: rgba(0, 255, 157, 0.15);
-  color: #00ff9d;
+  color: brandMint;
 }
 
 .soundMutedIcon {
@@ -222,11 +212,11 @@
 }
 
 .soundActiveIcon {
-  color: #059669;
+  color: brandEmerald;
 }
 
 :global([data-theme='dark']) .soundActiveIcon {
-  color: #00ff9d;
+  color: brandMint;
 }
 
 /* 720p / Small Laptop Adjustments */

@@ -454,6 +454,45 @@ describe('Education completed-beat navigation', () => {
     expect(screen.getByTestId('education-stage')).not.toHaveAttribute('data-visible', 'true');
   });
 
+  it.each(['opening', 'reading', 'crossing', 'closing'])(
+    'navbar navigation releases Education immediately during %s without a stale landing', phase => {
+      const navigate = vi.fn();
+      mount(true, navigate);
+      if (phase !== 'opening') finish('education-sticky-header');
+      if (phase === 'crossing') fireEvent.click(screen.getByRole('button', { name: 'Next record' }));
+      if (phase === 'closing') wheel(-120);
+      const panel = screen.getByTestId('education-stage');
+      expect(panel).toHaveAttribute('data-phase', phase);
+      const before = navigate.mock.calls.length;
+      act(() => publishSectionNavigation('contact', { source: 'navbar' }));
+      expect(panel).toHaveAttribute('data-phase', 'outside');
+      expect(panel).not.toHaveAttribute('data-visible');
+      expect(panel).not.toHaveAttribute('data-reveal');
+      expect(document.querySelector('[data-education-covered]')).toBeNull();
+      expect(document.getElementById('about')).not.toHaveAttribute('data-education-owned');
+      expect(document.getElementById('about')).not.toHaveAttribute('data-education-released');
+      expect(document.querySelector('[data-edu-text-active]')).toBeNull();
+      advance(3000);
+      expect(panel).not.toHaveAttribute('data-visible');
+      expect(navigate).toHaveBeenCalledTimes(before);
+    },
+  );
+
+  it('preserves natural reverse entry after a navbar skip', () => {
+    mount();
+    act(() => publishSectionNavigation('skills', { source: 'navbar' }));
+    place(-2100);
+    advance(SCROLL_WAVE_IDLE_MS + 1);
+    wheel(-120);
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-phase', 'opening');
+    expect(selected()).toBe(3);
+    finish('education-sticky-header');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous record' }));
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-phase', 'crossing');
+    finish('education-track');
+    expect(selected()).toBe(2);
+  });
+
   it('releases the About title on reverse completion without replaying in-flight requests', () => {
     const navigate = vi.fn();
     mount(true, navigate);

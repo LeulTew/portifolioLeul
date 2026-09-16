@@ -1,0 +1,5 @@
+@value brandMint: #00ff9d;
+@value brandEmerald: #059669;
+@value navSurfaceLight: rgba(255, 255, 255, 0.88);
+@value navSurfaceDark: rgba(0, 14, 18, 0.82);
+@value chamferPath: polygon(var(--chamfer-cut) 0%, 100% 0%, 100% calc(100% - var(--chamfer-cut)), calc(100% - var(--chamfer-cut)) 100%, 0% 100%, 0% var(--chamfer-cut));

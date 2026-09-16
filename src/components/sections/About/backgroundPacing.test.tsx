@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { animationClock } from '@/test/animationClock';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { BACKGROUND_RISE, BEAT_COOLDOWN_MS } from './aboutBeats';
+import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 
 vi.mock('@/lib/gateways/animationGateway', () => ({
   getPrefersReducedMotion: () => false,
@@ -61,6 +62,20 @@ describe('the mounted background beat after a suspended frame', () => {
     expect(about).not.toHaveAttribute('data-bg-settled');
     await clock.frame(10);
     expect(about).toHaveAttribute('data-bg-settled', 'true');
+    expect(clock.pending).toBe(0);
+  });
+
+  it('settles a navbar bypass without leaving a rise or reverse frame pending', async () => {
+    const { clock, about } = await start();
+    await clock.frame(100);
+    expect(about).toHaveAttribute('data-bg-active', 'true');
+    await act(async () => { publishSectionNavigation('skills', { source: 'navbar' }); });
+    expect(about).toHaveAttribute('data-bg-settled', 'true');
+    expect(about).not.toHaveAttribute('data-bg-active');
+    expect(clock.pending).toBe(0);
+    await act(async () => { publishSectionNavigation('home', { source: 'navbar' }); });
+    expect(about).not.toHaveAttribute('data-bg-settled');
+    expect(about).not.toHaveAttribute('data-bg-transition');
     expect(clock.pending).toBe(0);
   });
 

@@ -10,7 +10,7 @@ import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { createSkillsTimeline } from './skillsTimeline';
-import { SKILLS_READING_MS, SKILLS_STAGE_QUERY } from './skillsData';
+import { SKILLS_STAGE_QUERY } from './skillsData';
 
 type Phase = 'outside' | 'entering' | 'reading' | 'crossing' | 'leaving';
 type Direction = -1 | 1;
@@ -65,11 +65,11 @@ export function useSkillsPlayback(
     let wave: ScrollDirection | null = null;
     let bypass = false;
     let directlyRequested = false;
+    let immediateEntry = false;
     let visited = false;
     let navigation: string | null = null;
     let frame = 0;
     let lastTime = 0;
-    let rest = 0;
     let alive = true;
     let observedOverlay: HTMLElement | null = null;
     let flight: { score: gsap.core.Timeline; target: number; complete: () => void } | null = null;
@@ -103,7 +103,7 @@ export function useSkillsPlayback(
     const changePhase = (next: Phase) => {
       state = next;
       setPhase(next);
-      setReady(false);
+      setReady(next === 'reading');
     };
     const show = (value: boolean) => {
       shown = value;
@@ -120,8 +120,7 @@ export function useSkillsPlayback(
     const reading = () => {
       setSettledIndex(current);
       changePhase('reading');
-      rest = SKILLS_READING_MS;
-      wake();
+      apply();
     };
     const run = (timeline: gsap.core.Timeline, target: number, complete: () => void) => {
       flight = { score: timeline, target, complete };
@@ -129,8 +128,7 @@ export function useSkillsPlayback(
       wake();
     };
 
-    // Only movement and the visible reading pause own frames. Idle Skills has
-    // no ticker; a suspended/long frame never consumes unseen choreography.
+    // Only a visible movement owns frames; reading has no timer or ticker.
     function tick(now: number) {
       frame = 0;
       if (!alive || document.hidden) return;
@@ -147,14 +145,8 @@ export function useSkillsPlayback(
           flight = null;
           playing.complete();
         }
-      } else if (state === 'reading' && rest > 0) {
-        rest = Math.max(0, rest - elapsed);
-        if (rest === 0) {
-          setReady(true);
-          apply();
-        }
       }
-      if (flight || rest > 0) wake();
+      if (flight) wake();
     }
 
     const alignAfterRelease = (direction: Direction, control: boolean) => {
@@ -177,7 +169,6 @@ export function useSkillsPlayback(
     };
     const leave = (direction: Direction, control = false) => {
       const ownedFocus = panel.contains(document.activeElement);
-      rest = 0;
       changePhase('leaving');
       cover(false);
       const released = () => {
@@ -206,12 +197,19 @@ export function useSkillsPlayback(
       navigation = null;
       directlyRequested = false;
       visited = true;
-      rest = 0;
       current = side === 'before' ? 0 : current;
       setActive(current);
       setSettledIndex(current);
       changePhase('entering');
       show(true);
+      if (immediateEntry) {
+        immediateEntry = false;
+        departure.pause(0, true);
+        score.timeline.pause(score.stops[current], true);
+        cover(true);
+        reading();
+        return;
+      }
       if (side === 'before') {
         departure.pause(0, true);
         score.timeline.pause(0, true);
@@ -246,7 +244,7 @@ export function useSkillsPlayback(
           attributeFilter: ['data-active'],
         });
       }
-      if (state === 'reading' && rest === 0 && navigation !== null) {
+      if (state === 'reading' && navigation !== null) {
         leave(navigation === 'home' || navigation === 'about' ? -1 : 1);
         return;
       }
@@ -260,7 +258,7 @@ export function useSkillsPlayback(
     }
 
     const request = (direction: Direction, control = false) => {
-      if (document.hidden || state !== 'reading' || rest > 0) return;
+      if (document.hidden || state !== 'reading') return;
       const next = current + direction;
       if (next < 0 || next >= score.stops.length) {
         leave(direction, control);
@@ -273,14 +271,43 @@ export function useSkillsPlayback(
     };
     requestRef.current = direction => request(direction, true);
     const unsubscribeGesture = subscribeScrollGesture(direction => {
-      if (state !== 'outside' && (state !== 'reading' || rest > 0)) return;
+      if (state !== 'outside' && state !== 'reading') return;
       wave = direction;
       bypass = false;
       navigation = null;
       if (state === 'outside') apply();
       else request(direction === 'down' ? 1 : -1);
     }, { startsOnly: true });
-    const unsubscribeNavigation = subscribeSectionNavigation(target => {
+    const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
+      if (options?.source === 'navbar') {
+        const ownedFocus = panel.contains(document.activeElement);
+        flight = null;
+        cancelAnimationFrame(frame);
+        frame = 0;
+        lastTime = 0;
+        score.timeline.pause();
+        departure.pause();
+        show(false);
+        changePhase('outside');
+        wave = null;
+        side = target === 'home' || target === 'about' || target === 'skills' ? 'before' : 'after';
+        current = side === 'before' ? 0 : score.stops.length - 1;
+        setActive(current);
+        setSettledIndex(current);
+        bypass = target !== 'skills';
+        directlyRequested = target === 'skills';
+        immediateEntry = directlyRequested;
+        navigation = directlyRequested ? null : target;
+        if (ownedFocus) {
+          document.querySelector<HTMLButtonElement>(
+            `button[data-ink-control="${target}"]:not([tabindex="-1"])`,
+          )?.focus({ preventScroll: true });
+        }
+        // Claim only after all previous owners have restored their covers.
+        queueMicrotask(() => { if (alive) apply(); });
+        return;
+      }
+      immediateEntry = false;
       if (target === 'skills') {
         bypass = false;
         navigation = state === 'leaving' ? 'skills' : null;
@@ -308,7 +335,7 @@ export function useSkillsPlayback(
       } else {
         lastTime = performance.now();
         cover(shown && state !== 'leaving' && Number(panel.style.opacity) === 1);
-        if (flight || rest > 0) wake();
+        if (flight) wake();
         apply();
       }
     };
