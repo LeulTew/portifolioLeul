@@ -212,11 +212,14 @@ repeated keys cannot become additional requests. Next/Previous use the same
 completion gate, without spending scroll distance. Native control activation
 remains native.
 
-**Skills completion refinement (2026-09-16):** Skills also accepts a fresh input
-wave or Next/Previous on its exact final animation frame, with no post-animation
-reading delay. The existing 1.81-second entrance and 2-second crossings do not
-speed up. Its 250ms wheel-idle grouping remains momentum protection, not a
-completion cooldown; a wave started during motion is still discarded.
+**Skills completion refinement (2026-09-16):** active Skills accepts the first
+wheel/touch/scroll-key event after its exact final animation frame, including a
+continuing gesture or held key. Do not require a 250ms quiet interval or a new
+wave between Skills. The existing 1.81-second entrance and 2-second crossings do
+not speed up; input before completion is discarded, not queued. Outside-stage
+entry still uses wave starts. Education's separate fresh-wave policy is unchanged.
+The progress lines are explicit navigation controls: selecting a named skill
+settles that pose directly without replaying intermediate chapters or scrolling.
 
 **Navbar-only bypass (2026-09-16):** a navbar click or native keyboard activation
 may explicitly skip intervening beats. Carry `source: 'navbar'` through the

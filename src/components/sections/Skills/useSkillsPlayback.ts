@@ -46,7 +46,9 @@ export function useSkillsPlayback(
   const [ready, setReady] = useState(false);
   const [visible, setVisible] = useState(false);
   const requestRef = useRef<((direction: Direction) => void) | null>(null);
+  const selectRef = useRef<((index: number) => void) | null>(null);
   const step = useCallback((direction: Direction) => requestRef.current?.(direction), []);
+  const select = useCallback((index: number) => selectRef.current?.(index), []);
 
   useEffect(() => {
     const rail = host.current;
@@ -270,13 +272,39 @@ export function useSkillsPlayback(
       run(score.timeline, score.stops[next], reading);
     };
     requestRef.current = direction => request(direction, true);
+    selectRef.current = index => {
+      if (document.hidden || !shown || state === 'leaving') return;
+      const stop = score.stops[index];
+      if (stop === undefined) throw new RangeError(`Skills chapter ${index} does not exist.`);
+      if (index === current && state === 'reading') return;
+      cancelAnimationFrame(frame);
+      frame = 0;
+      flight = null;
+      lastTime = 0;
+      navigation = null;
+      immediateEntry = false;
+      directlyRequested = false;
+      bypass = false;
+      current = index;
+      setActive(current);
+      departure.pause(0, true);
+      score.timeline.pause(stop, true);
+      cover(true);
+      reading();
+    };
     const unsubscribeGesture = subscribeScrollGesture(direction => {
-      if (state !== 'outside' && state !== 'reading') return;
+      if (document.hidden || state !== 'reading') return;
       wave = direction;
       bypass = false;
       navigation = null;
-      if (state === 'outside') apply();
-      else request(direction === 'down' ? 1 : -1);
+      request(direction === 'down' ? 1 : -1);
+    });
+    const unsubscribeEntryGesture = subscribeScrollGesture(direction => {
+      if (state !== 'outside') return;
+      wave = direction;
+      bypass = false;
+      navigation = null;
+      apply();
     }, { startsOnly: true });
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (options?.source === 'navbar') {
@@ -360,8 +388,10 @@ export function useSkillsPlayback(
     return () => {
       alive = false;
       requestRef.current = null;
+      selectRef.current = null;
       cancelAnimationFrame(frame);
       unsubscribeGesture();
+      unsubscribeEntryGesture();
       unsubscribeNavigation();
       unsubscribeScroll();
       observer.disconnect();
@@ -376,5 +406,5 @@ export function useSkillsPlayback(
     };
   }, [host, stage, staged, onNavigate]);
 
-  return { active, settledIndex, phase, ready, visible, step };
+  return { active, settledIndex, phase, ready, visible, step, select };
 }

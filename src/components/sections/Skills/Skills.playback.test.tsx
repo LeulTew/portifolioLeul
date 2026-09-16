@@ -191,22 +191,58 @@ describe('Skills completed-beat playback', () => {
     expect(window.scrollBy).not.toHaveBeenCalled();
   });
 
-  it('discards input during movement and requires a new momentum wave without a completion cooldown', () => {
+  it('accepts a continuing wheel stream on completion without requiring a quiet interval', () => {
     enter();
     wheel(500);
     expect(index()).toBe(1);
-    for (let count = 0; count < 90; count++) {
+    for (let count = 0; count < crossingMs / 50 - 1; count++) {
       advance(50);
       wheel(500);
+      expect(index()).toBe(1);
     }
+    expect(next()).toBeDisabled();
+    advance(50);
     expect(index()).toBe(1);
     expect(next()).toBeEnabled();
-    advance(251);
     wheel(500);
     expect(index()).toBe(2);
+    expect(stage()).toHaveAttribute('data-phase', 'crossing');
+    advance(crossingMs - 50);
+    wheel(-500);
+    expect(index()).toBe(2);
+    advance(50);
+    wheel(-500);
+    expect(index()).toBe(1);
   });
 
-  it('accepts a fresh scroll request on the exact completion frame in either direction', () => {
+  it.each(['touch', 'held key'])('accepts continued %s input after completion without changing movement duration', kind => {
+    enter();
+    let y = 500;
+    if (kind === 'touch') fireEvent.touchStart(window, { touches: [{ clientY: y }] });
+    const gesture = () => {
+      if (kind === 'touch') {
+        y -= 10;
+        expect(fireEvent.touchMove(window, { touches: [{ clientY: y }], cancelable: true })).toBe(true);
+      } else {
+        const event = new KeyboardEvent('keydown', { key: 'ArrowDown', repeat: true, bubbles: true, cancelable: true });
+        act(() => window.dispatchEvent(event));
+        expect(event.defaultPrevented).toBe(false);
+      }
+      gsap.ticker.sleep();
+    };
+    gesture();
+    expect(index()).toBe(1);
+    advance(crossingMs - 50);
+    gesture();
+    expect(index()).toBe(1);
+    advance(50);
+    expect(next()).toBeEnabled();
+    gesture();
+    expect(index()).toBe(2);
+    expect(stage()).toHaveAttribute('data-phase', 'crossing');
+  });
+
+  it('accepts scroll on the exact completion frame in either direction', () => {
     enter();
     wheel(500);
     advance(crossingMs);
@@ -272,9 +308,9 @@ describe('Skills completed-beat playback', () => {
     fireEvent.click(next());
     advance(300);
     const progress = screen.getByRole('list', { name: 'Skills chapters' });
-    expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Languages');
+    expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Show Languages');
     advance(1800);
-    expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Frameworks & Web');
+    expect(progress.querySelector('[aria-current="step"]')).toHaveAttribute('aria-label', 'Show Frameworks & Web');
   });
 
   it('retains six labeled progress lines without a duplicate visual fraction', () => {
@@ -284,6 +320,40 @@ describe('Skills completed-beat playback', () => {
     expect(screen.queryByText('/ 06')).not.toBeInTheDocument();
     expect(screen.queryByText('01')).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('1 of 6: Languages');
+  });
+
+  it('lets the progress lines jump directly to a skill and back without spending scroll distance', () => {
+    enter();
+    const sculpture = stage().querySelector('[data-skill-sculpture]');
+    const jump = screen.getByRole('button', { name: 'Show Professional Skills' });
+    fireEvent.click(jump);
+    expect(index()).toBe(5);
+    expect(stage()).toHaveAttribute('data-phase', 'reading');
+    expect(jump).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('button', { name: 'See projects' })).toBeEnabled();
+    expect(stage().querySelector('[data-skill-sculpture]')).toBe(sculpture);
+    expect(window.scrollBy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Show AI & Data Science' }));
+    expect(index()).toBe(2);
+    expect(screen.getByRole('heading', { name: 'AI & Data Science' })).toBeVisible();
+    expect(next()).toBeEnabled();
+  });
+
+  it('an explicit progress selection can replace an unfinished movement without a stale completion', () => {
+    enter();
+    fireEvent.click(next());
+    advance(200);
+    const choose = screen.getByRole('button', { name: 'Show Tools & Design' });
+    expect(choose).toBeEnabled();
+    fireEvent.click(choose);
+    expect(index()).toBe(4);
+    expect(stage()).toHaveAttribute('data-phase', 'reading');
+    advance(crossingMs);
+    expect(index()).toBe(4);
+    expect(playbackFrames()).toHaveLength(0);
+    wheel(-500);
+    expect(index()).toBe(3);
+    expect(stage()).toHaveAttribute('data-phase', 'crossing');
   });
   it('holds an unfinished sequence even after a flick spends its entire spacer', () => {
     enter();
