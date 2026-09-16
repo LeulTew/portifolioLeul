@@ -7,6 +7,7 @@
   --control-focus: brandMint;
   --control-hover-surface: rgba(0, 30, 25, 0.95);
   --control-hover-border: brandMint;
+  --control-hover-color: brandMint;
   position: relative;
   display: inline-flex;
   align-items: stretch;
@@ -33,21 +34,16 @@
   --control-focus: brandEmerald;
   --control-hover-surface: rgba(240, 255, 250, 0.98);
   --control-hover-border: brandEmerald;
+  --control-hover-color: #065f46;
 }
 
 .primary {
-  --control-surface: rgba(0, 45, 38, 0.94);
-  --control-border: rgba(0, 255, 157, 0.55);
-  --control-color: brandMint;
   --control-hover-surface: rgba(0, 60, 44, 0.98);
   font-weight: 600;
 }
 
 :global([data-theme='light']) .primary,
 .primary:global([data-theme='light']) {
-  --control-surface: rgba(240, 255, 250, 0.95);
-  --control-border: brandEmerald;
-  --control-color: #065f46;
   --control-hover-surface: rgba(220, 252, 231, 0.98);
 }
 
@@ -103,6 +99,7 @@
   .button:not(:disabled):hover {
     --control-surface: var(--control-hover-surface);
     --control-border: var(--control-hover-border);
+    color: var(--control-hover-color);
   }
 }
 

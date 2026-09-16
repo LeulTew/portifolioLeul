@@ -63,7 +63,7 @@ export function Skills({ onNavigate }: { onNavigate?: (section: string) => void 
   const stageRef = useRef<HTMLDivElement>(null);
   const controlRef = useRef<HTMLButtonElement | null>(null);
   const staged = useSkillsStaged();
-  const { active, settledIndex, phase, ready, visible, step } = useSkillsPlayback(
+  const { active, settledIndex, phase, ready, visible, step, select } = useSkillsPlayback(
     { host: hostRef, stage: stageRef }, staged, onNavigate,
   );
   useEffect(() => {
@@ -136,9 +136,13 @@ export function Skills({ onNavigate }: { onNavigate?: (section: string) => void 
             <div className={styles.sequence}>
               <ol className={styles.progress} aria-label="Skills chapters">
                 {SKILL_CHAPTERS.map((chapter, index) => (
-                  <li key={chapter.scene} aria-label={chapter.title}
-                    aria-current={settledIndex === index ? 'step' : undefined}
-                    data-complete={index < settledIndex ? 'true' : undefined} />
+                  <li key={chapter.scene} data-complete={index < settledIndex ? 'true' : undefined}>
+                    <button type="button" className={styles.progressButton}
+                      aria-label={`Show ${chapter.title}`} title={chapter.title}
+                      aria-current={settledIndex === index ? 'step' : undefined}
+                      disabled={!visible || phase === 'leaving'}
+                      onClick={event => { controlRef.current = event.currentTarget; select(index); }} />
+                  </li>
                 ))}
               </ol>
             </div>

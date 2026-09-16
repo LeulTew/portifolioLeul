@@ -183,8 +183,13 @@ describe('shared control styling contract', () => {
       '--control-color': '#0a251e',
     });
     expect(declarations(controlCss, ".button:global([data-theme='light'])")).toEqual(lightButton);
-    expect(declarations(controlCss, '.primary')['--control-color']).toBe('brandMint');
-    expect(declarations(controlCss, ":global([data-theme='light']) .primary")['--control-border']).toBe('brandEmerald');
+    for (const selector of ['.primary', ":global([data-theme='light']) .primary"]) {
+      const primary = declarations(controlCss, selector);
+      expect(primary['--control-color']).toBeUndefined();
+      expect(primary['--control-border']).toBeUndefined();
+      expect(primary['--control-surface']).toBeUndefined();
+      expect(primary['--control-hover-surface']).toBeDefined();
+    }
   });
 
   it('keeps 48px targets and an unclipped native keyboard focus outline', () => {
@@ -214,6 +219,15 @@ describe('shared control styling contract', () => {
       }
     });
     expect(hovers).toEqual(['.button:not(:disabled):hover']);
+    controlCss.walkRules('.button:not(:disabled):hover', rule => {
+      const values: Record<string, string> = {};
+      rule.walkDecls(declaration => { values[declaration.prop] = declaration.value; });
+      expect(values).toMatchObject({
+        '--control-border': 'var(--control-hover-border)',
+        '--control-surface': 'var(--control-hover-surface)',
+        color: 'var(--control-hover-color)',
+      });
+    });
     controlCss.walkDecls(declaration => {
       expect(declaration.prop).not.toMatch(/^(animation|filter|backdrop-filter|will-change)/);
     });

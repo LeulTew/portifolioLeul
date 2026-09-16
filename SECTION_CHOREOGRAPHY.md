@@ -270,9 +270,11 @@ subscription; it never cancels wheel, touch, or keyboard input.
 1.81 seconds and each subsequent crossing in 2 seconds. Input is ready on
 the exact final animation frame, with no post-animation pause. Progress is
 advanced with `phaseFrameDelta`, not mapped to scroll distance. An unfinished
-crossing ignores new requests; gestures during movement are discarded, not
-queued. The existing 250ms wheel-idle interval groups momentum into one request,
-not a cooldown after completion. Reverse
+crossing ignores new requests; input during movement is discarded, not
+queued. Once the stage is active, the first wheel/touch/scroll-key event after
+completion is accepted even if the same gesture is continuing. The reader need
+not pause or release a held key. Outside-stage entry retains wave-start gating,
+so leftover input cannot undo an explicit navbar destination. Reverse
 seeks the same score back to its previous resting point.
 
 Next/Previous use the same gate without consuming scroll distance. The next
@@ -280,6 +282,11 @@ action names its destination instead of presenting a generic slide control.
 The six progress lines change when the new pose finishes, not over the outgoing
 heading. A separate visible numeric fraction is omitted because it duplicates
 those lines; the live accessible status retains the chapter name and position.
+Each line is a named native button with an unchanged 2px visual stroke and a
+48px-tall transparent hit area. Hover labels and keyboard focus identify the
+destination. Explicit selection settles the requested skill directly, even
+from a crossing; it does not play intermediate skills or move the scrollport.
+The larger Previous/Next controls remain an alternative to the compact lines.
 The final
 **See projects** action and the first **Back to About** action release the
 stage after its exit. Chapter-generated navigation can leave after the current
@@ -301,6 +308,8 @@ theme and hit-target rules. Navbar, Hero and these controls share the chamfer
 geometry and brand values in `ui/controlFoundation.module.css`; the incumbent
 navbar and Hero appearances are unchanged. Compact step controls do not inherit
 the Hero's magnetic pointer effects or ambient tracer loop.
+Both step controls are neutral at rest; the brand-lit surface is hover-only.
+Keyboard focus keeps its visible outline without a persistent lit fill.
 
 Skills and Education respect each other's stage ownership on return.
 Natural forward entry waits for Education's explicit `data-education-released`
@@ -393,8 +402,8 @@ React Bits' application-use license and attribution ship at
 ### Local regression coverage
 
 `Skills.playback.test.tsx` exercises persistent geometry/opacity and parallax
-in addition to slow/flick timing, fresh input waves,
-completion/fresh-wave gates, reverse playback, both terminal exits, explicit
+in addition to slow/flick timing, continued wheel/touch/held-key input,
+completion gates, direct progress selection, reverse playback, both terminal exits, explicit
 navigation, Education ownership, hidden and stalled frames, idle writes,
 live reduced-motion/viewport changes, and cleanup. `Skills.test.tsx` retains
 the complete CV content and verifies the canvas-free fallback. Geometry and

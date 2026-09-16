@@ -517,15 +517,50 @@
 
 .progress > li {
   width: clamp(12px, 1.5vw, 28px);
+}
+
+.progressButton {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.progressButton::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - 1px);
+  inset-inline: 0;
   height: 2px;
   background: var(--skill-rule);
   border-radius: 2px;
   transition: background-color 0.3s ease;
 }
 
-.progress > li[aria-current],
-.progress > li[data-complete] {
+.progressButton[aria-current]::after,
+.progress > li[data-complete] .progressButton::after {
   background: var(--skill-accent);
+}
+
+.progressButton:focus-visible {
+  outline: 2px solid var(--skill-accent);
+  outline-offset: 2px;
+}
+
+.progressButton:disabled {
+  cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .progressButton:hover:not(:disabled)::after {
+    background: var(--skill-ink);
+  }
 }
 
 .controls {
@@ -654,5 +689,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .progress > li { transition: none; }
+  .progressButton::after { transition: none; }
 }
