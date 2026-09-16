@@ -18,7 +18,8 @@ const mockUseGLTF = vi.fn(() => ({
   },
 }));
 
-vi.mock('three', () => {
+vi.mock('three', async () => {
+  const actual = await vi.importActual<typeof import('three')>('three');
   const THREE = {
     Mesh: class {},
     MeshBasicMaterial: class {
@@ -39,7 +40,7 @@ vi.mock('three', () => {
     },
     DoubleSide: 2,
   };
-  return { ...THREE, default: THREE, ...THREE };
+  return { ...actual, ...THREE, default: actual };
 });
 
 vi.mock('@react-three/drei', () => ({

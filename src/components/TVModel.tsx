@@ -2,6 +2,11 @@ import { useGLTF, useVideoTexture } from '@react-three/drei';
 import { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { resolveSceneModel } from '@/lib/assets/criticalAssets';
+import { useProjectsActive } from '@/lib/projects/projectsScene';
+import {
+  TV_SCREEN_POSITION, TV_SCREEN_ROTATION, TV_SCREEN_PITCH, TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT,
+} from '@/lib/projects/tvScreen';
+import { TVScreenProjection } from './3d/TVScreenProjection';
 
 /** How long each clip holds the screen before the set changes. */
 const CLIP_DURATION_MS = 8000;
@@ -14,6 +19,7 @@ type TVModelProps = JSX.IntrinsicElements['group'] & {
 export function TVModel({ clips = 2, ...props }: TVModelProps) {
   const { scene } = useGLTF(resolveSceneModel('/models/crt-lite.glb'), false);
   const [videoIndex, setVideoIndex] = useState(0);
+  const projectsActive = useProjectsActive();
 
   /*
    * Not started here.
@@ -60,7 +66,7 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
   const currentTexture = textures[videoIndex] || texture1;
 
   useEffect(() => {
-    if (textures.length < 2) return;
+    if (textures.length < 2 || projectsActive) return;
     const interval = setInterval(() => {
       setVideoIndex((prev: number) => (prev + 1) % textures.length);
     }, CLIP_DURATION_MS);
@@ -68,7 +74,7 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
     return () => {
       clearInterval(interval);
     };
-  }, [textures.length]);
+  }, [textures.length, projectsActive]);
 
   /*
    * Only the clip on screen decodes.
@@ -78,19 +84,28 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
    * and a per-frame texture upload on an image that was not being drawn.
    */
   useEffect(() => {
-    textures.forEach((texture, index) => {
+    const updatePlayback = () => textures.forEach((texture, index) => {
       const video = texture?.image;
       if (!video || typeof video.play !== 'function') return;
 
-      if (index === videoIndex) {
+      if (index === videoIndex && !projectsActive && !document.hidden) {
         video.preload = 'auto';
         const playing = video.play();
-        if (playing && typeof playing.catch === 'function') playing.catch(() => {});
+        if (playing && typeof playing.catch === 'function') playing.catch((error: unknown) => {
+          if (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'NotAllowedError')) return;
+          console.warn('TV ambient video could not play:', error);
+        });
       } else if (typeof video.pause === 'function') {
         video.pause();
       }
     });
-  }, [textures, videoIndex]);
+    updatePlayback();
+    document.addEventListener('visibilitychange', updatePlayback);
+    return () => {
+      document.removeEventListener('visibilitychange', updatePlayback);
+      textures.forEach(texture => texture?.image?.pause?.());
+    };
+  }, [textures, videoIndex, projectsActive]);
 
   useEffect(() => {
     return () => {
@@ -106,33 +121,21 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
     };
   }, [texture2, texture1]);
 
-  useEffect(() => {
-    scene.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        // Check for screen or glass in the name
-        if (child.name.toLowerCase().includes('screen') || child.name.toLowerCase().includes('glass')) {
-            const material = new THREE.MeshBasicMaterial({
-                map: currentTexture,
-                toneMapped: false,
-            });
-            child.material = material;
-            currentTexture.flipY = false; // GLTF models usually expect flipY false
-        }
-      }
-    });
-  }, [scene, currentTexture]);
-
   return (
-    <group {...props} onClick={() => setVideoIndex((prev: number) => (prev + 1) % textures.length)}>
-      <primitive object={scene} />
+    <group {...props} onClick={() => {
+      if (!projectsActive) setVideoIndex((prev: number) => (prev + 1) % textures.length);
+    }}>
+      {/* The textured body and its geometry belong to the shared GLTF cache. */}
+      <primitive object={scene} dispose={null} />
 
       {/* Video Screen Plane */}
-      <group position={[0.145, 0.11, 0.13]} rotation={[-0.03, Math.PI / 2, 0]}>
-        <mesh rotation={[0.08, 0, 0]}>
-          <planeGeometry args={[0.55, 0.32]} />
+      <group position={[...TV_SCREEN_POSITION]} rotation={[...TV_SCREEN_ROTATION]}>
+        <mesh rotation={[TV_SCREEN_PITCH, 0, 0]}>
+          <planeGeometry args={[TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT]} />
           <meshBasicMaterial map={currentTexture} toneMapped={false} side={THREE.DoubleSide} />
         </mesh>
       </group>
+      <TVScreenProjection />
     </group>
   );
 }

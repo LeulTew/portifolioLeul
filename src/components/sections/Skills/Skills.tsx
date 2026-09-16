@@ -7,6 +7,7 @@ import { SKILL_CHAPTERS, type SkillChapter } from './skillsData';
 import { SkillInlineText, SkillText, TiltedInstrument } from './SkillsMotion';
 import { SkillSculpture } from './SkillSculpture';
 import { useSkillsPlayback, useSkillsStaged } from './useSkillsPlayback';
+import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import styles from './Skills.module.css';
 
 function Chapter({
@@ -58,7 +59,7 @@ function Chapter({
   );
 }
 
-export function Skills({ onNavigate }: { onNavigate?: (section: string) => void } = {}) {
+export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
   const hostRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const controlRef = useRef<HTMLButtonElement | null>(null);

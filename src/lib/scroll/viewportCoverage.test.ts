@@ -134,6 +134,28 @@ describe('useViewportCoverage', () => {
     expect(result.current).toBe(0);
   });
 
+  it('keeps a Contact entrance unspent under Projects and remeasures when the TV releases', async () => {
+    const main = document.createElement('main');
+    const projects = document.createElement('section');
+    const contact = document.createElement('section');
+    projects.id = 'projects';
+    projects.dataset.projectsActive = 'true';
+    contact.id = 'contact';
+    contact.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 900, height: window.innerHeight });
+    main.append(projects, contact);
+    document.body.append(main);
+    const { result, unmount } = renderHook(() => useViewportCoverage(contact));
+    try {
+      act(() => capturedCallback?.([entry(VIEWPORT)]));
+      expect(result.current).toBe(0);
+      await act(async () => { projects.removeAttribute('data-projects-active'); });
+      expect(result.current).toBe(1);
+    } finally {
+      unmount();
+      main.remove();
+    }
+  });
+
   it('disconnects on unmount', () => {
     const element = document.createElement('section');
     const { unmount } = renderHook(() => useViewportCoverage(element));

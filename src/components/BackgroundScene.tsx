@@ -25,6 +25,7 @@ import { getGpuTier } from '@/lib/gateways/gpuTier';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { isFrameDrawn } from '@/lib/render/frameGate';
 import { DEFAULT_REFLECTION_SIZE } from './ocean/oceanConfig';
+import { TV_POSITION, TV_ROTATION, TV_SCALE } from '@/lib/projects/tvScreen';
 
 const TERRAIN_URL = '/models/terrain-opt.glb';
 
@@ -162,9 +163,9 @@ function ResponsiveTV({ clips }: { clips: number }) {
   return (
     <TVModel
       clips={clips}
-      position={[-10, 0.5, -14]}
-      rotation={[0.1, Math.PI * 0.2, 0.1]}
-      scale={[8, 8, 8]}
+      position={[...TV_POSITION]}
+      rotation={[...TV_ROTATION]}
+      scale={TV_SCALE}
     />
   );
 }

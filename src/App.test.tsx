@@ -221,7 +221,12 @@ vi.mock("./components/sections/Skills/Skills", () => ({
 }));
 
 vi.mock("./components/sections/Projects/Projects", () => ({
-  Projects: () => <div data-testid="projects-section">Projects Section</div>,
+  Projects: ({ onNavigate }: { onNavigate?: import('./lib/scroll/sectionNavigation').SectionNavigate }) =>
+    <div data-testid="projects-section">Projects Section
+      <button onClick={() => onNavigate?.('skills', { immediate: true, edge: 'end' })}>
+        Return through Skills
+      </button>
+    </div>,
 }));
 
 vi.mock("./components/sections/Contact/Contact", () => ({
@@ -481,6 +486,28 @@ describe("App scroll position across a track resize", () => {
       fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
       expect(listener).toHaveBeenCalledExactlyOnceWith('contact', { source: 'navbar' });
       const ratio = (6000 - 80) / (contentHeight - track.clientHeight);
+      expect(mockScroll.offset).toBeCloseTo(ratio);
+      expect(mockScroll.delta).toBe(0);
+      expect(mockScroll.el.scrollTop).toBeCloseTo(ratio * (mockScroll.el.scrollHeight - track.clientHeight));
+      act(() => runFrames(5));
+      expect(mockScroll.offset).toBeCloseTo(ratio);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it("settles the Projects reverse landing at the trailing Skills edge without navbar bypass", () => {
+    renderApp();
+    const target = screen.getByTestId('skills-section');
+    target.id = 'skills';
+    Object.defineProperty(target, 'offsetTop', { configurable: true, value: 5000 });
+    Object.defineProperty(target, 'offsetHeight', { configurable: true, value: 3000 });
+    const listener = vi.fn();
+    const unsubscribe = subscribeSectionNavigation(listener);
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Return through Skills' }));
+      expect(listener).toHaveBeenCalledExactlyOnceWith('skills', { immediate: true, edge: 'end' });
+      const ratio = (5000 + 3000 - track.clientHeight + 80) / (contentHeight - track.clientHeight);
       expect(mockScroll.offset).toBeCloseTo(ratio);
       expect(mockScroll.delta).toBe(0);
       expect(mockScroll.el.scrollTop).toBeCloseTo(ratio * (mockScroll.el.scrollHeight - track.clientHeight));

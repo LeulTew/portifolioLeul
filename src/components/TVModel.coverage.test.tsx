@@ -46,7 +46,7 @@ vi.mock('@react-three/fiber', () => ({
 }));
 
 describe('TVModel Coverage', () => {
-  it('applies video texture to screen mesh', () => {
+  it('uses the explicit video plane without mutating the cached model', () => {
     // Setup traverse to call back with a mock mesh that passes the instanceof check
     mockTraverse.mockImplementation((callback: (obj: any) => void) => {
       const mockMesh = new THREE.Mesh();
@@ -54,15 +54,10 @@ describe('TVModel Coverage', () => {
       callback(mockMesh);
     });
 
-    render(<TVModel />);
+    const { container } = render(<TVModel />);
 
-    // Verify traverse was called
-    expect(mockTraverse).toHaveBeenCalled();
-    
-    // The side effects (material assignment) happen inside the callback.
-    // Since we mocked traverse to execute the callback, the code inside should run.
-    // We can't easily assert the side effect on the local mockMesh variable inside the component,
-    // but we can verify that MeshBasicMaterial was instantiated if we spy on it,
-    // or just trust that coverage will pick it up.
+    expect(mockTraverse).not.toHaveBeenCalled();
+    expect(container.querySelector('planeGeometry')).toHaveAttribute('args', '0.55,0.32');
+    expect(container.querySelectorAll('meshBasicMaterial')).toHaveLength(1);
   });
 });

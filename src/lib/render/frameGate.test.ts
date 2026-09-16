@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drawnFrameDelta, isFrameDrawn, isWorldOccluded, resetFrameGate, setFrameBudget } from './frameGate';
-import { setWorldOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
+import { setWorldOcclusion, setOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
+import { setProjectsView } from '@/lib/projects/projectsScene';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
 
 describe('frameGate', () => {
   beforeEach(() => {
+    setProjectsView(false, 0, 0);
     resetFrameGate();
     resetCameraHold();
     resetScrollProgress();
   });
 
   afterEach(() => {
+    setProjectsView(false, 0, 0);
     resetFrameGate();
     resetCameraHold();
     resetScrollProgress();
@@ -95,6 +98,18 @@ describe('frameGate', () => {
   });
 
   describe('behind an opaque section', () => {
+    it('keeps the revealed TV world drawing while spent reverse input crosses an old physical hold', () => {
+      setWorldOcclusion({ start: 0.2, end: 0.5 });
+      setScrollProgress(0.35);
+      setProjectsView(true, 1, 0.5);
+      expect(isWorldOccluded()).toBe(false);
+      expect(isFrameDrawn(1)).toBe(true);
+      setOverlayOcclusion(true, 'skills');
+      expect(isWorldOccluded()).toBe(true);
+      setOverlayOcclusion(false, 'skills');
+      setProjectsView(false, 0, 0);
+      expect(isWorldOccluded()).toBe(true);
+    });
     it('reports the world occluded only inside the hold', () => {
       setWorldOcclusion({ start: 0.2, end: 0.5 });
 

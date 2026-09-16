@@ -37,7 +37,12 @@ export type ScrollDirection = 'down' | 'up';
 
 type Listener = (direction: ScrollDirection) => void;
 
-const listeners = new Map<Listener, boolean>();
+interface GestureOptions {
+  startsOnly?: boolean;
+  ignoreTarget?: (target: EventTarget | null) => boolean;
+}
+
+const listeners = new Map<Listener, GestureOptions>();
 let started = false;
 let lastWheelAt = -Infinity;
 let wheelStarted = false;
@@ -63,9 +68,10 @@ const SCROLL_KEYS = new Map<string, ScrollDirection>([
   ['Home', 'up'],
 ]);
 
-function emit(direction: ScrollDirection, waveStart: boolean): void {
-  for (const [listener, startsOnly] of listeners) {
-    if (!startsOnly || waveStart) listener(direction);
+function emit(direction: ScrollDirection, waveStart: boolean, target: EventTarget | null): void {
+  for (const [listener, options] of listeners) {
+    if (options.ignoreTarget?.(target)) continue;
+    if (!options.startsOnly || waveStart) listener(direction);
   }
 }
 
@@ -74,7 +80,7 @@ function onWheel(event: WheelEvent): void {
   if (now - lastWheelAt >= SCROLL_WAVE_IDLE_MS) wheelStarted = false;
   lastWheelAt = now;
   if (Math.abs(event.deltaY) < WHEEL_THRESHOLD) return;
-  emit(event.deltaY > 0 ? 'down' : 'up', !wheelStarted);
+  emit(event.deltaY > 0 ? 'down' : 'up', !wheelStarted, event.target);
   wheelStarted = true;
 }
 
@@ -91,7 +97,7 @@ function onTouchMove(event: TouchEvent): void {
   const travelled = touchY - current;
   if (Math.abs(travelled) < TOUCH_THRESHOLD) return;
   touchY = current;
-  emit(travelled > 0 ? 'down' : 'up', !touchStarted);
+  emit(travelled > 0 ? 'down' : 'up', !touchStarted, event.target);
   touchStarted = true;
 }
 
@@ -107,7 +113,7 @@ function onKeyDown(event: KeyboardEvent): void {
     if ((event.key === ' ' || event.key === 'Spacebar') && target.closest('button')) return;
   }
   const direction = SCROLL_KEYS.get(event.key);
-  if (direction) emit(direction, !event.repeat);
+  if (direction) emit(direction, !event.repeat, event.target);
 }
 
 /** Starts listening. Safe to call more than once. */
@@ -141,9 +147,9 @@ function cleanupScrollGesture(): void {
 
 export function subscribeScrollGesture(
   listener: Listener,
-  options: { startsOnly?: boolean } = {}
+  options: GestureOptions = {}
 ): () => void {
-  listeners.set(listener, options.startsOnly ?? false);
+  listeners.set(listener, options);
   // Listening is what starts it, so nothing has to remember to initialise it.
   initScrollGesture();
   return () => {

@@ -1,6 +1,7 @@
 import { getWorldOcclusion, getOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { isWithinHold } from '@/lib/camera/holdRange';
 import { getScrollProgress } from '@/lib/scroll/scrollProgress';
+import { getProjectsView } from '@/lib/projects/projectsScene';
 
 /**
  * One decision per frame, shared by everything that would spend time on it:
@@ -61,7 +62,8 @@ export function setFrameBudget(secondsBetweenDraws: number): void {
 
 /** True while an opaque section covers the world completely. */
 export function isWorldOccluded(): boolean {
-  return getOverlayOcclusion() || isWithinHold(getScrollProgress(), getWorldOcclusion());
+  return getOverlayOcclusion() ||
+    (!getProjectsView().active && isWithinHold(getScrollProgress(), getWorldOcclusion()));
 }
 
 /**

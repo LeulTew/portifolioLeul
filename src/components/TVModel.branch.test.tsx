@@ -61,11 +61,9 @@ describe('TVModel Branch Coverage', () => {
     expect(() => unmount()).not.toThrow();
   });
 
-  it('applies material only to screen and glass meshes', () => {
+  it('preserves the cached textured body instead of replacing materials by guessed names', () => {
     render(<TVModel />);
     
-    // We can check if MeshBasicMaterial was instantiated
-    // It should be called for ScreenMesh and GlassMesh, but not OtherMesh or Group
-    expect(THREE.MeshBasicMaterial).toHaveBeenCalledTimes(2);
+    expect(THREE.MeshBasicMaterial).not.toHaveBeenCalled();
   });
 });

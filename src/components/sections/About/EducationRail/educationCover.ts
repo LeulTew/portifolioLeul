@@ -4,7 +4,7 @@ import { findScrollContainer } from './scrollContainer';
 export function coverChapterBackground(
   host: HTMLElement,
   stage: HTMLElement,
-  owner: 'education' | 'skills' = 'education',
+  owner: 'education' | 'skills' | 'projects' = 'education',
 ): () => void {
   const attribute = `data-${owner}-covered`;
   const main = host.closest('main');

@@ -221,6 +221,43 @@ entry still uses wave starts. Education's separate fresh-wave policy is unchange
 The progress lines are explicit navigation controls: selecting a named skill
 settles that pose directly without replaying intermediate chapters or scrolling.
 
+**Projects TV handoff (2026-09-16):** the final Skills request carries one
+coordinated handoff: its plate withdraws over the existing 600ms departure,
+then the original island spline turns visibly for 2200ms. Actual departure
+start/completion owns this seam; neither a physical Projects position nor
+scrolling harder may skip it. There is no empty-world gesture stop between
+withdrawal and turn. The first input after the turn completes, including a
+continuing wheel/touch stream or held key, requests the separate 1400ms approach.
+Input during either movement is discarded, not queued; no post-movement pause.
+
+The TV uses its existing explicit display plane and textured body. A single
+body-level semantic DOM reader projects onto that plane from the existing camera.
+Its native CSS-pixel reading size is independent of WebGL DPR. Tabs sit above the
+bezel; the common chamfer controls select projects without a second motion engine
+or autoplay. Full descriptions and technology remain reachable in Details.
+Vertical wheel, touch and page-scroll keys inside the scrollable copy/details
+region remain native and never request a scene movement, even at its boundaries.
+Left/right project shortcuts belong to the reader itself, not focused tabs,
+links, buttons, fields or scrollable text. Outside the reading region, vertical
+input requests scene continuation/reversal; it is never cancelled.
+
+Reverse retreats from the display, retraces the turn, then requests the trailing
+Skills pose with an immediate `edge: 'end'` landing. Keep the last camera pose
+until the returning Skills plate is actually opaque. A return from Contact
+starts at the real current camera pose, not a guessed or reset establishing aim.
+Forward departure finishes
+its retreat before releasing Contact. While Projects owns the viewport, later
+entrances remain unspent, earlier pinned paint cannot reclaim it, and physical
+About ranges cannot suppress the visible 3D world. Ownership, cover, inert and
+projection registration release together. The existing render governor and
+quality budgets remain in force; ambient TV decoding pauses while the screen
+is owned. Reduced motion cuts to readable poses, with a flat reader when the TV
+is unavailable or the viewport cannot support its spatial composition.
+A native return owed from Contact also gates earlier chapters before Projects
+claims: a hard upward flick must not let Education or Skills win the subscriber
+order and skip the TV. Navbar intent and unavailable/stopped staging clear that
+gate; it never selects Projects while Contact is being read.
+
 **Navbar-only bypass (2026-09-16):** a navbar click or native keyboard activation
 may explicitly skip intervening beats. Carry `source: 'navbar'` through the
 navigation channel, settle physical and damped scroll together, and use each

@@ -14,6 +14,8 @@ import { getCameraFreezes } from '@/lib/camera/cameraHold';
 import { isCameraFrozen } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
+import { getProjectsView } from '@/lib/projects/projectsScene';
+import { ProjectsCameraPose } from '@/lib/projects/tvScreen';
 
 /**
  * Scrubs the camera along the cinematic spline as the page scrolls, and parks
@@ -50,6 +52,9 @@ export function CinematicCameraController({
   const camera = useThree((state) => state.camera);
   const scroll = useScroll();
   const spline = useMemo(() => createCameraSpline(), []);
+  const projectsPose = useMemo(() => new ProjectsCameraPose(), []);
+  const projectsOrientation = useMemo(() => new THREE.Quaternion(), []);
+  const projectsVisit = useRef(-1);
   const hasSettled = useRef(false);
 
   useFrame((state, delta) => {
@@ -57,6 +62,25 @@ export function CinematicCameraController({
     // Same reasoning as the grade: the damping is exact over an accumulated
     // delta, so posing the camera for an undrawn frame buys nothing.
     if (!isFrameDrawn(state.clock.elapsedTime)) return;
+
+    const projects = getProjectsView();
+    if (projects.active) {
+      if (projectsVisit.current !== projects.visit) {
+        projectsVisit.current = projects.visit;
+        if (projects.entry === 'contact') projectsPose.begin(camera.position, camera.quaternion);
+        else projectsPose.begin();
+      }
+      projectsPose.sample(
+        projects.turn, projects.approach, state.size.width, state.size.height,
+        camera instanceof THREE.PerspectiveCamera ? camera.fov : 50,
+        desiredPosition, projectsOrientation,
+      );
+      camera.position.copy(desiredPosition);
+      camera.quaternion.copy(projectsOrientation);
+      smoothedTarget.set(0, 0, -20).applyQuaternion(projectsOrientation).add(desiredPosition);
+      hasSettled.current = true;
+      return;
+    }
 
     const reducedMotion = getPrefersReducedMotion();
     const offset = scroll?.offset ?? 0;
