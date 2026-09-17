@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   createTerrainIO, decodeShorePng, encodeShorePng, measureTerrainRimJoin, readTerrainSource, sha256,
-  surfaceFromSkirt, terrainRecords, verifyShoreRegistration,
+  surfaceFromContinuation, surfaceFromSkirt, terrainRecords, verifyShoreRegistration,
   TERRAIN_REPOSITORY, TERRAIN_SOURCE_REF, TERRAIN_SOURCES,
 } from './terrainAssetBake';
 import {
@@ -13,6 +13,7 @@ import {
 import { TERRAIN_RIM, TERRAIN_SOFTWARE_RIM } from './terrainRim';
 import type { TerrainRimPoint } from './terrainSkirt';
 import bake from './terrain-outline-bake.json';
+import { bakeShorePixels, isShoreCovered, sampleShorePixels, sliceShore, SHORE_BAKE_LAYOUT } from '../ocean/shoreFieldBake';
 
 async function loadAssets() {
   const io = await createTerrainIO();
@@ -165,13 +166,35 @@ describe('committed organic terrain assets', () => {
     }
   });
 
-  it('places surf on the final waterline including each variant-specific skirt', () => {
+  it('places surf on the final exposed waterline including the adjoining mainland', () => {
     assets.forEach((asset, index) => {
       const rim = index ? TERRAIN_SOFTWARE_RIM : TERRAIN_RIM;
-      const error = verifyShoreRegistration(pixels, [...asset.after, surfaceFromSkirt(rim)]);
+      const land = surfaceFromContinuation(rim);
+      const error = verifyShoreRegistration(pixels, [...asset.after, surfaceFromSkirt(rim), land], [land]);
       expect(error).toBeLessThanOrEqual(0.8);
       expect(error).toBeCloseTo(bake.variants[index].maximumShoreError, 4);
+      // Registration still covers distant shoreline samples outside the field,
+      // via the unchanged ClampToEdge sampler, not a looser acceptance mask.
+      const remote = sliceShore([land]).flat().filter(([x]) => Math.abs(x) > 90);
+      expect(remote.length).toBeGreaterThan(2);
+      for (const [x, z] of remote) {
+        expect(z).toBeCloseTo(-8, 4);
+        expect(Math.abs(sampleShorePixels(pixels, x, z))).toBeLessThan(0.8);
+      }
     });
+    expect(SHORE_BAKE_LAYOUT).toEqual({
+      resolution: 512, extent: 180, origin: [-90, -110], range: 48, waterline: -4,
+    });
+    const rim = TERRAIN_RIM;
+    const land = surfaceFromContinuation(rim);
+    expect(pixels).toEqual(bakeShorePixels([...assets[0].after, surfaceFromSkirt(rim), land]));
+    let buried = 0;
+    for (const [a, b] of sliceShore([surfaceFromSkirt(rim)])) {
+      const x = (a[0] + b[0]) / 2;
+      const z = (a[1] + b[1]) / 2;
+      if (isShoreCovered([land], x, z) && sampleShorePixels(pixels, x, z) < -1) buried++;
+    }
+    expect(buried).toBeGreaterThan(50);
   });
 
   it('closes the whole decoded top boundary, including joins between source mesh patches', () => {

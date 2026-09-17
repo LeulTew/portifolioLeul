@@ -27,6 +27,8 @@ describe('scene edge resource ownership', () => {
     expect(edges.skirt.material.roughness).toBe(material.roughness);
     expect(edges.skirt.material.metalness).toBe(material.metalness);
     expect(edges.skirt.material.envMapIntensity).toBe(material.envMapIntensity);
+    expect(edges.land.material).toBe(edges.skirt.material);
+    expect(edges.land.material.map).toBe(map);
     expect(clone).not.toHaveBeenCalled();
     expect(map.minFilter).toBe(THREE.LinearFilter);
     expect(map.generateMipmaps).toBe(false);
@@ -36,10 +38,10 @@ describe('scene edge resource ownership', () => {
     map.dispose();
   });
 
-  it('disposes only its two geometries and two materials, once', () => {
+  it('disposes only its three geometries and two materials, once', () => {
     const { mesh, map, material } = createTerrain();
     const edges = createEdgeResources(mesh);
-    const owned = [edges.skirt.geometry, edges.horizon.geometry, edges.skirt.material, edges.horizon.material];
+    const owned = [edges.skirt.geometry, edges.land.geometry, edges.horizon.geometry, edges.skirt.material, edges.horizon.material];
     const ownedDisposals = owned.map((resource) => vi.spyOn(resource, 'dispose'));
     const borrowed = [vi.spyOn(map, 'dispose'), vi.spyOn(material, 'dispose'), vi.spyOn(mesh.geometry, 'dispose')];
     edges.dispose();
@@ -74,7 +76,7 @@ describe('scene edge resource ownership', () => {
   it('uses opaque, depth-tested surfaces without new shadow or reflection work', () => {
     const { mesh, map, material } = createTerrain();
     const edges = createEdgeResources(mesh);
-    for (const edge of [edges.skirt, edges.horizon]) {
+    for (const edge of [edges.skirt, edges.land, edges.horizon]) {
       expect(edge.material.transparent).toBe(false);
       expect(edge.material.depthWrite).toBe(true);
       expect(edge.material.depthTest).toBe(true);
@@ -87,6 +89,8 @@ describe('scene edge resource ownership', () => {
     const restore = enableHorizonLayer(main);
     expect(main.layers.test(edges.skirt.layers)).toBe(true);
     expect(mirror.layers.test(edges.skirt.layers)).toBe(true);
+    expect(main.layers.test(edges.land.layers)).toBe(true);
+    expect(mirror.layers.test(edges.land.layers)).toBe(true);
     expect(main.layers.test(edges.horizon.layers)).toBe(true);
     expect(mirror.layers.test(edges.horizon.layers)).toBe(false);
     restore();

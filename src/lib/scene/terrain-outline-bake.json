@@ -23,6 +23,7 @@
       "rimSha256": "f805d8662a92d932f69088f23466d69564eda38f521ca9debf9542e6e83c2f35",
       "skirtTriangles": 684,
       "maximumRimJoinError": 0.016422632777187692,
+      "continuationTriangles": 372,
       "maximumShoreError": 0.29947211091799986
     },
     {
@@ -46,6 +47,7 @@
       "rimSha256": "bdd6d83f9d81e6d9d9ef4ad6f1a60488cc45f4d97d6797a743bac81ae52f64b0",
       "skirtTriangles": 656,
       "maximumRimJoinError": 0.01292829158769987,
+      "continuationTriangles": 361,
       "maximumShoreError": 0.5253629788354868
     }
   ],
@@ -58,7 +60,7 @@
     ],
     "range": 48,
     "waterline": -4,
-    "bytes": 23613,
-    "sha256": "c99bb91420f149a9e2f691c8ecd3ace8d02c4ba8eb69fff24d906798b3229914"
+    "bytes": 23668,
+    "sha256": "628c70286235ffdb4f4400622fedec2ffb1b4a33b1bc784f551a355a461bbd70"
   }
 }

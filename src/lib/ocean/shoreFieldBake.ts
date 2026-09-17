@@ -164,6 +164,26 @@ export function sliceShore(
   return segments;
 }
 
+/** A buried skirt waterline is no longer a coast after adjoining land is added. */
+export function isShoreCovered(
+  coveringMeshes: readonly ShoreMesh[], x: number, z: number,
+  waterline = SHORE_BAKE_LAYOUT.waterline,
+): boolean {
+  let covered = false;
+  visitShoreTriangles(coveringMeshes, (a, b, c) => {
+    if (covered || x < Math.min(a[0], b[0], c[0]) || x > Math.max(a[0], b[0], c[0]) ||
+        z < Math.min(a[2], b[2], c[2]) || z > Math.max(a[2], b[2], c[2])) return;
+    const denominator = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2]);
+    if (Math.abs(denominator) < 1e-12) return;
+    const u = ((b[2] - c[2]) * (x - c[0]) + (c[0] - b[0]) * (z - c[2])) / denominator;
+    const v = ((c[2] - a[2]) * (x - c[0]) + (a[0] - c[0]) * (z - c[2])) / denominator;
+    const w = 1 - u - v;
+    covered = u >= -1e-9 && v >= -1e-9 && w >= -1e-9 &&
+      u * a[1] + v * b[1] + w * c[1] > waterline + 0.0001;
+  });
+  return covered;
+}
+
 /** Matches LinearFilter + ClampToEdgeWrapping + flipY=false in the water. */
 export function sampleShorePixels(
   pixels: Uint8Array, x: number, z: number, layout: ShoreBakeLayout = SHORE_BAKE_LAYOUT,

@@ -72,16 +72,32 @@ Original terrain heights and the already submerged forward fringe are retained.
 faceted shoulder and sloped submerged foot. It borrows Terrain's already-uploaded
 albedo and material response, keeps the boundary's original UVs, and samples
 inward on the lower rings instead of stretching one border texel down a wall.
+A separate static mainland joins **every decoded rim vertex** to three coarse
+32-station rings at radii 48, 110 and 240 around `[0, -20]`. The back now continues
+as land rather than ending at the old island cliff. This additive surface leaves
+the original terrain, protected ground zones and all prop poses untouched. It
+shares the skirt's terrain-owned albedo/material response without another texture.
+The remote boundary stays beyond the **existing** fog (maximum far distance 92):
+camera-envelope tests cover the spline, TV turn/approach, pointer extremes,
+Contact flight and reflected flight at compact, 4K and ultrawide aspect ratios.
+No camera or fog settings are changed to conceal the edge.
+
 The existing 512-square shore field is rebaked from the final
-terrain **and** the skirt at waterline -4, with the same origin `[-90, -110]`,
+terrain, skirt **and mainland** at waterline -4, with the same origin `[-90, -110]`,
 180-unit span and 48-unit distance range. `bun run bake:shore` can regenerate
-only that field; neither command changes the wave algorithm.
+only that field; neither command changes the wave algorithm. Near-shore
+resolution remains 0.3515625 world units per texel. Buried skirt waterlines
+are excluded only when actual adjoining geometry covers them; exposed coast
+still has the strict 0.8-unit registration limit in both variants. Outside
+the field's X limits the new coast settles at Z=-8, matching the existing
+ClampToEdge sampler instead of shrinking near-shore detail or enlarging the texture.
 
 Pristine inputs are pinned to commit
 `6a02c49edb33b30e4f0c6d416a5a32fb3f43e03d` and checked by SHA-256. A shallow clone
 missing that object must run `git fetch origin 6a02c49edb33b30e4f0c6d416a5a32fb3f43e03d`
 before baking. The baker never feeds already-shaped output back into the
-transform. Edit `src/lib/scene/terrainOutline.ts`, then run `bun run bake:island`;
+transform. Edit `src/lib/scene/terrainOutline.ts` for the original island or
+`src/lib/scene/terrainContinuation.ts` for the adjoining land, then run `bun run bake:island`;
 commit both GLBs, `terrainRim.ts`, `terrain-outline-bake.json`, and
 `public/images/shore-field.png` together. The generated manifest records actual
 counts, hashes, byte sizes and measured shore-registration error and supplies
@@ -92,13 +108,15 @@ the fully fogged sea into the actual background at radii 320-900. It matches the
 existing theme's water alpha and Three's output-color-space fog; fragments before
 full fog are discarded. The existing swell ends at radius 70 and is untouched.
 
-The continuation still uses **2 draws in the main view and 1 in the existing
-reflection**. Optimized terrain has 684 skirt triangles (748 with the horizon;
-1,432 on a reflection-update frame). Software terrain has 656 (720 with the
-horizon; 1,376 on a reflection-update frame). The original terrain triangle counts
-remain 113,858 and 75,158. It owns two geometries and two materials, adds no
+The edge assembly uses **3 draws in the main view and 2 in the existing
+reflection**: the mainland adds exactly one batch and 372 triangles (361 on the
+software variant) per view. Optimized terrain has 684 skirt triangles, 372 land
+triangles and 64 horizon triangles: 1,120 main / 1,056 mirror. Software uses
+656 skirt + 361 land + 64 horizon: 1,081 main / 1,017 mirror. The original terrain
+triangle counts remain 113,858 and 75,158. The assembly owns three geometries
+and two materials, adds no
 textures, transparent fill, render targets, shadow passes, or animation loops.
-Layer 1 is reserved for the main-only horizon; the skirt remains on layer 0.
+Layer 1 is reserved for the main-only horizon; skirt and land remain on layer 0.
 Effect-owned resources survive StrictMode's rehearsal and dispose independently
 of Terrain's borrowed texture. These are geometry/draw budgets, not an FPS guarantee.
 

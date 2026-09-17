@@ -63,7 +63,7 @@ describe('SceneEdgeContinuity lifecycle', () => {
     const allocations: ReturnType<typeof originalCreate>[] = [];
     const create = vi.spyOn(edgeResources, 'createEdgeResources').mockImplementation((source) => {
       const next = originalCreate(source);
-      [next.skirt.geometry, next.horizon.geometry, next.skirt.material, next.horizon.material]
+      [next.skirt.geometry, next.land.geometry, next.horizon.geometry, next.skirt.material, next.horizon.material]
         .forEach(resource => vi.spyOn(resource, 'dispose'));
       allocations.push(next);
       return next;
@@ -74,11 +74,13 @@ describe('SceneEdgeContinuity lifecycle', () => {
     expect(create).toHaveBeenCalledTimes(2);
     const [rehearsal, committed] = allocations;
     expect(rehearsal.skirt.geometry.dispose).toHaveBeenCalledTimes(1);
+    expect(rehearsal.land.geometry.dispose).toHaveBeenCalledTimes(1);
     expect(rehearsal.horizon.material.dispose).toHaveBeenCalledTimes(1);
     expect(committed.skirt.geometry.dispose).not.toHaveBeenCalled();
+    expect(committed.land.geometry.dispose).not.toHaveBeenCalled();
     expect(committed.horizon.material.dispose).not.toHaveBeenCalled();
     unmount();
-    [committed.skirt.geometry, committed.horizon.geometry, committed.skirt.material, committed.horizon.material]
+    [committed.skirt.geometry, committed.land.geometry, committed.horizon.geometry, committed.skirt.material, committed.horizon.material]
       .forEach(resource => expect(resource.dispose).toHaveBeenCalledTimes(1));
     expect(borrowed).not.toHaveBeenCalled();
     disposeTerrain(owner);
