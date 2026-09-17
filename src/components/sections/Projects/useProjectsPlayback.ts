@@ -18,11 +18,23 @@ import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
+import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
+import {
+  beginContactFlight, getContactView, hasContactCamera, isContactPoseCommitted,
+  parkContactSky, releaseContactSky, setContactProgress, subscribeContactPose,
+} from '@/lib/contact/contactScene';
+import { clearContactPresentation } from '@/lib/contact/contactPresentation';
 
 interface Refs {
   host: RefObject<HTMLElement>;
   stage: RefObject<HTMLDivElement>;
   surface: RefObject<HTMLDivElement>;
+}
+
+function isContactEditingTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest(
+    '#contact input, #contact textarea, #contact select, #contact [contenteditable]:not([contenteditable="false"])',
+  );
 }
 
 export function useProjectsFits(): boolean {
@@ -67,6 +79,7 @@ export function useProjectsPlayback(
     let wave: ScrollDirection | null = null;
     let bypass = false;
     let continuedReturn = false;
+    let afterContactEdit = false;
     let navigating = false;
     let pendingNavigation: string | null = null;
     let turn = 0;
@@ -76,6 +89,7 @@ export function useProjectsPlayback(
     let alive = true;
     let ownedInert = false;
     let uncover: (() => void) | null = null;
+    let contactComplete: (() => void) | null = null;
     let flight: {
       from: number; target: number; elapsed: number; duration: number;
       axis: 'turn' | 'approach'; complete: () => void;
@@ -97,6 +111,7 @@ export function useProjectsPlayback(
       if (active) return;
       active = true;
       continuedReturn = false;
+      afterContactEdit = false;
       setProjectsReturnOwed(false);
       writeStyleProperty(screen, 'opacity', '0');
       writeAttribute(rail, 'data-projects-active', 'true');
@@ -107,18 +122,24 @@ export function useProjectsPlayback(
       cancelAnimationFrame(frame);
       frame = 0;
       flight = null;
+      contactComplete = null;
+      clearContactPresentation();
     };
-    const release = (keepCamera = false) => {
+    const release = (keepCamera = false, keepSky = false) => {
       cancel();
       active = false;
       continuedReturn = false;
+      afterContactEdit = false;
       wave = null;
       if (keepCamera) holdProjectsViewForSkills();
       else setProjectsView(false, turn, approach);
+      if (!keepSky) releaseContactSky();
       writeAttribute(rail, 'data-projects-active', null);
       writeAttribute(panel, 'data-visible', null);
       if (main && ownedInert) main.removeAttribute('inert');
       ownedInert = false;
+      writeAttribute(panel, 'data-contact-flight', null);
+      writeStyleProperty(panel, '--contact-flight-progress', '');
       uncover?.();
       uncover = null;
       changePhase('outside');
@@ -147,7 +168,8 @@ export function useProjectsPlayback(
     const leave = (target: 'skills' | 'contact') => {
       side = target === 'contact' ? 'after' : 'before';
       setProjectsReturnOwed(side === 'after');
-      release(target === 'skills' && skills?.dataset.staged === 'true');
+      release(target === 'skills' && skills?.dataset.staged === 'true', target === 'contact');
+      if (target === 'contact') parkContactSky();
       continuedReturn = target === 'contact' && pendingNavigation === null;
       focusNavigation(target);
       navigate(target, { immediate: true, ...(target === 'skills' ? { edge: 'end' as const } : {}) });
@@ -159,24 +181,39 @@ export function useProjectsPlayback(
       changePhase(next);
       if (pendingNavigation !== null) release();
     };
+    const finishContact = (complete: () => void) => {
+      if (!hasContactCamera() || isContactPoseCommitted() || getPrefersReducedMotion()) complete();
+      else contactComplete = complete;
+    };
+    const unsubscribeContactPose = subscribeContactPose(() => {
+      const complete = contactComplete;
+      if (!alive || !complete || !isContactPoseCommitted()) return;
+      contactComplete = null;
+      complete();
+    });
     const run = (axis: 'turn' | 'approach', target: number, next: ProjectsPhase, complete: () => void) => {
       changePhase(next);
+      const contact = getContactView().mode;
+      const skyFlight = contact === 'departing' || contact === 'returning';
+      writeAttribute(panel, 'data-contact-flight', skyFlight ? 'true' : null);
+      if (skyFlight) writeStyleProperty(panel, '--contact-flight-progress', String(1 - approach));
       if (getPrefersReducedMotion()) {
         if (axis === 'turn') turn = target;
         else approach = target;
+        if (skyFlight) setContactProgress(1 - approach);
         setProjectsView(true, turn, approach);
         complete();
         return;
       }
       flight = {
         axis, target, from: axis === 'turn' ? turn : approach, elapsed: 0,
-        duration: axis === 'turn' ? PROJECTS_TURN_MS : PROJECTS_APPROACH_MS,
-        complete,
+        duration: skyFlight ? CONTACT_FLIGHT_MS : axis === 'turn' ? PROJECTS_TURN_MS : PROJECTS_APPROACH_MS,
+        complete: skyFlight ? () => finishContact(complete) : complete,
       };
       lastTime = performance.now();
       wake();
     };
-    function tick(now: number) {
+    const tick = (now: number) => {
       frame = 0;
       if (!alive || document.hidden || !flight) return;
       const movement = flight;
@@ -185,6 +222,11 @@ export function useProjectsPlayback(
       const value = movement.from + (movement.target - movement.from) * movement.elapsed / movement.duration;
       if (movement.axis === 'turn') turn = value;
       else approach = value;
+      const contact = getContactView().mode;
+      if (contact === 'departing' || contact === 'returning') {
+        setContactProgress(1 - approach);
+        writeStyleProperty(panel, '--contact-flight-progress', String(1 - approach));
+      };
       setProjectsView(true, turn, approach);
       if (movement.elapsed === movement.duration) {
         flight = null;
@@ -194,6 +236,9 @@ export function useProjectsPlayback(
     }
     const ready = () => {
       cancel();
+      releaseContactSky();
+      writeAttribute(panel, 'data-contact-flight', null);
+      writeStyleProperty(panel, '--contact-flight-progress', '');
       show();
       inert();
       turn = approach = 1;
@@ -208,17 +253,27 @@ export function useProjectsPlayback(
       approach = 0;
       setProjectsView(true, turn, approach, from);
       if (getPrefersReducedMotion()) ready();
-      else if (from === 'contact') run('approach', 1, 'approaching', () => settled('reading'));
-      else run('turn', 1, 'turning', () => settled('framed'));
+      else if (from === 'contact') {
+        beginContactFlight(-1);
+        run('approach', 1, 'approaching', () => {
+          releaseContactSky();
+          writeAttribute(panel, 'data-contact-flight', null);
+          writeStyleProperty(panel, '--contact-flight-progress', '');
+          settled('reading');
+        });
+      } else run('turn', 1, 'turning', () => settled('framed'));
     };
     requestRef.current = direction => {
-      if (document.hidden || flight || !active) return;
+      if (document.hidden || flight || contactComplete || !active) return;
       if (state === 'framed') {
         if (direction > 0) run('approach', 1, 'approaching', () => settled('reading'));
         else run('turn', 0, 'unturning', () => settled('revealed'));
       } else if (state === 'reading') {
         if (direction < 0) run('approach', 0, 'retreating', () => settled('framed'));
-        else run('approach', 0, 'departing', () => leave('contact'));
+        else {
+          beginContactFlight(1);
+          run('approach', 0, 'departing', () => leave('contact'));
+        }
       } else if (state === 'revealed') {
         if (direction < 0) leave('skills');
         else run('turn', 1, 'turning', () => settled('framed'));
@@ -244,6 +299,7 @@ export function useProjectsPlayback(
       side = 'before';
       if (next === 'withdrawing') {
         cancel();
+        releaseContactSky();
         turn = approach = 0;
         show();
         setProjectsView(true, turn, approach, 'skills');
@@ -255,23 +311,47 @@ export function useProjectsPlayback(
         else run('turn', 1, 'turning', () => settled('framed'));
       }
     });
+    const ignoreSceneTarget = (target: EventTarget | null) => {
+      if (isContactEditingTarget(target)) {
+        wave = null;
+        afterContactEdit = side === 'after';
+        return true;
+      }
+      return isProjectsReadingTarget(target);
+    };
+    const focusEditing = (event: Event) => {
+      if (side !== 'after' || !isContactEditingTarget(event.target)) return;
+      wave = null;
+      afterContactEdit = true;
+    };
+    window.addEventListener('focusin', focusEditing, { passive: true });
+    window.addEventListener('input', focusEditing, { passive: true });
     const unsubscribeGesture = subscribeScrollGesture(direction => {
       if (document.hidden) return;
       if (active) {
         requestRef.current?.(direction === 'down' ? 1 : -1);
-      } else if (continuedReturn && direction === 'up') {
+      } else if ((continuedReturn || afterContactEdit) && direction === 'up') {
         wave = direction;
+        if (afterContactEdit) {
+          afterContactEdit = false;
+          bypass = false;
+          pendingNavigation = null;
+        }
         apply();
       }
-    }, { ignoreTarget: isProjectsReadingTarget });
+    }, { ignoreTarget: ignoreSceneTarget });
     const unsubscribeEntry = subscribeScrollGesture(direction => {
       if (active || document.hidden) return;
       wave = direction;
       bypass = false;
       pendingNavigation = null;
       apply();
-    }, { startsOnly: true, ignoreTarget: isProjectsReadingTarget });
+    }, { startsOnly: true, ignoreTarget: ignoreSceneTarget });
     const forwardReturnKey = (event: KeyboardEvent) => {
+      if (!active && side === 'after' && isContactEditingTarget(event.target)) {
+        focusEditing(event);
+        return;
+      }
       if (document.hidden || active || side !== 'after' || bypass || wave !== 'up') return;
       const scroller = findScrollContainer(rail);
       if (!scroller) return;
@@ -282,9 +362,11 @@ export function useProjectsPlayback(
       if (navigating) return;
       wave = null;
       continuedReturn = false;
+      afterContactEdit = false;
       if (options?.source === 'navbar') {
         pendingNavigation = null;
         release();
+        if (target === 'contact') parkContactSky();
         side = target === 'contact' ? 'after' : 'before';
         setProjectsReturnOwed(side === 'after');
         bypass = target !== 'projects';
@@ -296,7 +378,7 @@ export function useProjectsPlayback(
         pendingNavigation = target;
         side = target === 'contact' ? 'after' : 'before';
         setProjectsReturnOwed(side === 'after');
-        if (!flight) release();
+        if (!flight && !contactComplete) release();
       } else if (!active) {
         bypass = false;
         pendingNavigation = null;
@@ -316,7 +398,11 @@ export function useProjectsPlayback(
       }
     };
     preferenceRef.current = () => {
-      if (active && getPrefersReducedMotion()) ready();
+      if (!active || !getPrefersReducedMotion()) return;
+      if (state === 'departing') {
+        setContactProgress(1);
+        leave('contact');
+      } else ready();
     };
     const observer = new MutationObserver(apply);
     previous.forEach(owner => observer.observe(owner, {
@@ -342,9 +428,12 @@ export function useProjectsPlayback(
       unsubscribeGesture();
       unsubscribeEntry();
       unsubscribeNavigation();
+      unsubscribeContactPose();
       unsubscribeScroll();
       observer.disconnect();
       window.removeEventListener('keydown', forwardReturnKey);
+      window.removeEventListener('focusin', focusEditing);
+      window.removeEventListener('input', focusEditing);
       window.removeEventListener('scroll', apply);
       window.removeEventListener('resize', apply);
       document.removeEventListener('visibilitychange', visibility);

@@ -4,8 +4,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { CinematicCameraController } from './CinematicCameraController';
 import { CAMERA_CHAPTERS, CAMERA_ARC_END } from '@/lib/camera/cinematicSpline';
-import { setProjectsView } from '@/lib/projects/projectsScene';
+import { setProjectsReading, setProjectsView } from '@/lib/projects/projectsScene';
 import { ProjectsCameraPose } from '@/lib/projects/tvScreen';
+import { CONTACT_SKY_ORIENTATION, CONTACT_SKY_POSITION } from '@/lib/camera/contactFlight';
+import {
+  beginContactFlight, isContactPoseCommitted, parkContactSky, releaseContactSky, setContactProgress,
+} from '@/lib/contact/contactScene';
 
 const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
 
@@ -33,6 +37,7 @@ const reducedMotion = vi.fn(() => false);
 vi.mock('@/lib/gateways/animationGateway', () => ({
   getPrefersReducedMotion: () => reducedMotion(),
 }));
+vi.mock('@/lib/gateways/gpuTier', () => ({ getGpuTier: () => ({ tier: 'high' }) }));
 
 /** Runs `count` frames of the loop, which is how damping is meant to converge. */
 let clockTime = 0;
@@ -56,6 +61,7 @@ const chapterVec = (index: number) =>
 describe('CinematicCameraController', () => {
   beforeEach(() => {
     setProjectsView(false, 0, 0);
+    releaseContactSky();
     scrollState.offset = 0;
     pointer = { x: 0, y: 0 };
     frameCallback = null;
@@ -66,7 +72,9 @@ describe('CinematicCameraController', () => {
 
   afterEach(() => {
     setProjectsView(false, 0, 0);
+    releaseContactSky();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('renders nothing into the DOM', () => {
@@ -153,6 +161,91 @@ describe('CinematicCameraController', () => {
     scrollState.offset = 0;
     advance();
     expect(camera.position.distanceTo(expected)).toBeLessThan(1e-8);
+  });
+
+  it('composes one flight from actual TV parallax and retraces it before handing back to the TV', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: query.includes('pointer: fine'), media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+    mount();
+    setProjectsView(true, 1, 1, 'skills');
+    setProjectsReading(true);
+    advance();
+    window.dispatchEvent(new MouseEvent('pointermove', {
+      clientX: window.innerWidth - 1, clientY: 1,
+    }));
+    advance(200);
+    const actualTV = camera.position.clone();
+    const actualRotation = camera.quaternion.clone();
+    const nominal = new THREE.Vector3();
+    const nominalRotation = new THREE.Quaternion();
+    new ProjectsCameraPose().sample(1, 1, 1920, 1080, 50, nominal, nominalRotation);
+    expect(actualTV.distanceTo(nominal)).toBeGreaterThan(0.1);
+
+    beginContactFlight(1);
+    setProjectsReading(false);
+    advance();
+    expect(camera.position.distanceTo(actualTV)).toBeLessThan(1e-9);
+    expect(camera.quaternion.angleTo(actualRotation)).toBeLessThan(1e-7);
+    setContactProgress(0.45);
+    advance();
+    const outbound = camera.position.clone();
+    const outboundRotation = camera.quaternion.clone();
+    scrollState.offset = 0;
+    pointer = { x: -1, y: -1 };
+    advance(10);
+    expect(camera.position.equals(outbound)).toBe(true);
+    setContactProgress(1);
+    advance();
+    await Promise.resolve();
+    expect(isContactPoseCommitted()).toBe(true);
+    parkContactSky();
+    setProjectsView(false, 1, 0);
+    advance(100);
+    expect(camera.position.distanceTo(CONTACT_SKY_POSITION)).toBeLessThan(1e-9);
+    expect(camera.quaternion.angleTo(CONTACT_SKY_ORIENTATION)).toBeLessThan(1e-7);
+    expect(camera.fov).toBe(50);
+
+    setProjectsView(true, 1, 0, 'contact');
+    beginContactFlight(-1);
+    advance();
+    expect(camera.position.distanceTo(CONTACT_SKY_POSITION)).toBeLessThan(1e-9);
+    setContactProgress(0.45);
+    advance();
+    expect(camera.position.distanceTo(outbound)).toBeLessThan(1e-9);
+    expect(camera.quaternion.angleTo(outboundRotation)).toBeLessThan(1e-7);
+    setContactProgress(0);
+    setProjectsView(true, 1, 1);
+    advance();
+    await Promise.resolve();
+    expect(isContactPoseCommitted()).toBe(true);
+    expect(camera.position.distanceTo(actualTV)).toBeLessThan(1e-9);
+    releaseContactSky();
+    setProjectsReading(true);
+    advance();
+    expect(camera.position.distanceTo(actualTV)).toBeLessThan(1e-5);
+
+    setProjectsReading(false);
+    setProjectsView(true, 1, 0);
+    advance();
+    new ProjectsCameraPose().sample(1, 0, 1920, 1080, 50, nominal, nominalRotation);
+    expect(camera.position.distanceTo(nominal)).toBeLessThan(1e-9);
+    expect(camera.quaternion.angleTo(nominalRotation)).toBeLessThan(1e-7);
+  });
+
+  it('settles navbar Contact directly without changing camera layers or waiting for clouds', () => {
+    mount();
+    advance();
+    const layers = camera.layers.mask;
+    parkContactSky();
+    scrollState.offset = 0.1;
+    pointer = { x: 1, y: -1 };
+    advance();
+    expect(camera.position.equals(CONTACT_SKY_POSITION)).toBe(true);
+    expect(camera.layers.mask).toBe(layers);
+    advance(200);
+    expect(camera.position.equals(CONTACT_SKY_POSITION)).toBe(true);
   });
 
   it('tolerates a frame state with no pointer', () => {

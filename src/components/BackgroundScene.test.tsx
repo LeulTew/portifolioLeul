@@ -74,6 +74,7 @@ vi.mock('./MeModel', () => ({ MeModel: () => null }));
 // would resolve to a DOM node rather than a THREE.InstancedMesh.
 vi.mock('./3d/AtmosphericDrift', () => ({ AtmosphericDrift: () => null }));
 vi.mock('./3d/SceneEdgeContinuity', () => ({ SceneEdgeContinuity: () => null }));
+vi.mock('./3d/ContactSky', () => ({ ContactSky: () => null }));
 
 describe('BackgroundScene', () => {
   beforeEach(() => {

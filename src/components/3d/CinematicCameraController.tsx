@@ -18,11 +18,13 @@ import { getProjectsView } from '@/lib/projects/projectsScene';
 import { ProjectsCameraPose } from '@/lib/projects/tvScreen';
 import { TVParallax } from '@/lib/projects/tvParallax';
 import { getGpuTier } from '@/lib/gateways/gpuTier';
+import { ContactFlight, CONTACT_SKY_ORIENTATION, CONTACT_SKY_POSITION } from '@/lib/camera/contactFlight';
+import { commitContactPose, getContactView, registerContactCamera } from '@/lib/contact/contactScene';
+import { paintContactPresentation } from '@/lib/contact/contactPresentation';
 
 /**
- * Scrubs the camera along the cinematic spline as the page scrolls, and parks
- * it on the final shot once the arc completes so the DOM layer can keep
- * scrolling underneath. Scene objects are never touched.
+ * The sole camera writer: the original island spline, the TV's timed poses,
+ * and its composed Contact flight. Scene objects never move with the camera.
  */
 
 // Module-scope scratch. Allocating inside useFrame would churn the GC at 60fps.
@@ -58,8 +60,13 @@ export function CinematicCameraController({
   const projectsOrientation = useMemo(() => new THREE.Quaternion(), []);
   const projectsVisit = useRef(-1);
   const projectsParallax = useMemo(() => new TVParallax(), []);
+  const contactFlight = useMemo(() => new ContactFlight(), []);
+  const contactRevision = useRef(-1);
   const pointer = useRef({ x: 0, y: 0, width: 1, height: 1, fine: false });
   const hasSettled = useRef(false);
+
+  useEffect(() => registerContactCamera(), []);
+  useFrame(paintContactPresentation, 0.75);
 
   useEffect(() => {
     const media = window.matchMedia('(hover: hover) and (pointer: fine)');
@@ -97,14 +104,48 @@ export function CinematicCameraController({
     if (!isFrameDrawn(state.clock.elapsedTime)) return;
 
     const projects = getProjectsView();
-    if (projects.active) {
-      if (projectsVisit.current !== projects.visit) {
-        projectsVisit.current = projects.visit;
+    const contact = getContactView();
+    const parallaxAllowed = pointer.current.fine && !getPrefersReducedMotion() && getGpuTier().tier !== 'low';
+    if (projects.active && projectsVisit.current !== projects.visit) {
+      projectsVisit.current = projects.visit;
+      if (contact.mode !== 'returning' || !contactFlight.hasDeparture) {
         projectsParallax.reset();
         pointer.current.x = pointer.current.y = 0;
-        if (projects.entry === 'contact') projectsPose.begin(camera.position, camera.quaternion);
-        else projectsPose.begin();
       }
+      if (projects.entry === 'contact') projectsPose.begin(camera.position, camera.quaternion);
+      else projectsPose.begin();
+    }
+
+    if (contact.mode !== 'outside') {
+      if (contact.mode === 'parked') {
+        if (camera.position.equals(CONTACT_SKY_POSITION) && camera.quaternion.equals(CONTACT_SKY_ORIENTATION)) return;
+        desiredPosition.copy(CONTACT_SKY_POSITION);
+        projectsOrientation.copy(CONTACT_SKY_ORIENTATION);
+      } else {
+        if (contactRevision.current !== contact.revision) {
+          contactRevision.current = contact.revision;
+          if (contact.mode === 'departing') contactFlight.depart(camera.position, camera.quaternion);
+          else {
+            projectsPose.sample(1, 1, state.size.width, state.size.height,
+              camera instanceof THREE.PerspectiveCamera ? camera.fov : 50, desiredPosition, projectsOrientation);
+            projectsParallax.apply(desiredPosition, projectsOrientation, pointer.current.x, pointer.current.y,
+              false, parallaxAllowed, 1, 0);
+            contactFlight.return(camera.position, camera.quaternion, desiredPosition, projectsOrientation);
+          }
+        }
+        contactFlight.sample(contact.progress, desiredPosition, projectsOrientation);
+        // Subsequent TV-local retreat still returns to its original framed shot.
+        if (contact.mode === 'returning' && contact.progress === 0) projectsPose.begin();
+      }
+      camera.position.copy(desiredPosition);
+      camera.quaternion.copy(projectsOrientation);
+      smoothedTarget.set(0, 0, -20).applyQuaternion(projectsOrientation).add(desiredPosition);
+      hasSettled.current = true;
+      commitContactPose(contact.revision, contact.progress);
+      return;
+    }
+
+    if (projects.active) {
       projectsPose.sample(
         projects.turn, projects.approach, state.size.width, state.size.height,
         camera instanceof THREE.PerspectiveCamera ? camera.fov : 50,
@@ -112,7 +153,7 @@ export function CinematicCameraController({
       );
       projectsParallax.apply(
         desiredPosition, projectsOrientation, pointer.current.x, pointer.current.y,
-        projects.reading, pointer.current.fine && !getPrefersReducedMotion() && getGpuTier().tier !== 'low',
+        projects.reading, parallaxAllowed,
         projects.approach,
         Math.min(drawnFrameDelta(state.clock.elapsedTime, delta ?? 0), MAX_FRAME_DELTA),
       );
@@ -123,6 +164,7 @@ export function CinematicCameraController({
       return;
     }
     projectsParallax.reset();
+    contactFlight.reset();
 
     const reducedMotion = getPrefersReducedMotion();
     const offset = scroll?.offset ?? 0;

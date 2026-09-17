@@ -415,3 +415,74 @@ must also traverse Education -> Skills -> Projects and reverse, both themes,
 low-height desktop layouts, 4K, keyboard controls, and no-WebGL mode.
 Review transition recordings and intermediate frames: passing functional
 checks alone cannot establish continuity, motion variety, or design quality.
+
+## 7. Contact: the cloud clearing above the island
+
+Contact keeps its existing heading, form, contact details, social destinations
+and submission flow in one semantic DOM subtree. The scene moves toward the
+reader's next task; the form is not a 3D texture or duplicated portal, and its
+native reading/input surface is not pinned. Form state is not reset when
+camera ownership changes.
+
+The Projects Contact request replaces its former 1400ms outward approach with
+one 2000ms TV-to-clearing flight. `useProjectsPlayback` remains the input and
+visible-time owner; `contactScene` carries its frame-readable progress and final
+camera receipt. `CinematicCameraController` is still the sole camera writer.
+`ContactFlight` captures the actual offset TV pose, clears the cabinet, rises
+above the island and tilts up toward a quiet opening. FOV stays at 50 degrees.
+There is no additional orbit, transport sequence, input cooldown or scroll scrub.
+The TV controls recede on that same progress, rather than covering the sky.
+
+During the flight's final easing (progress 0.66 through 0.92), the actual
+Contact subtree overrides only its inherited cover visibility. Its existing
+heading and form entrances are pre-settled while their shared outer paint
+reveals on the flight clock. A priority-0.75 painter counter-translates that
+one section after Drei's HTML update; it never moves native scroll or clones
+fields. The complete form is visible before the camera endpoint, not followed
+by another 0.8-second arrival. Other kinetic-heading consumers keep their defaults.
+
+Projects retains its existing cover, projection and inert ownership through
+the final drawn sky pose, then clears the temporary Contact paint and settles
+the native/Drei Contact landing once. Editing becomes native at that release;
+navbar bypass exposes it immediately. A pending endpoint receipt is cancelled on explicit navigation,
+preference changes and cleanup. Hidden time is excluded; stalled visible frames
+spend at most 50ms. Natural reverse waits for the measured Projects boundary,
+captures the real current sky pose and retraces the flight to the fitted display.
+The following TV-local retreat still uses its original framed shot.
+The existing return-owed and outside-Drei held-key policies remain intact.
+Field focus/input invalidates old scene intent; field keys and wheel/touch input
+inside Contact editables do not request camera travel or queue a later return.
+A subsequent page-wheel event outside those editables may return normally even
+while the textarea retains focus. Do not blur a field or make focus a global
+camera lock.
+
+Explicit `source: 'navbar'` Contact navigation parks the sky and exposes the
+heading/form immediately without playing intermediate chapters or waiting for
+cloud textures. Reduced motion uses settled poses too. Compact flat readers
+remain normally scrollable; no-WebGL Contact uses the same form with a static,
+non-interactive cloud treatment. Low tier uses fewer static banks. These are
+degradations of decoration, not gates on reading or sending a message.
+
+The cloud group reuses the baked Home assets without altering Home. It adds no
+Canvas, atmospheric loop, light, shadow, postprocess or reflection pass.
+Contact uses main-camera layer 2, leaving the horizon's layer 1 untouched and
+the water mirror on its existing default layer. Cleanup restores only the
+cloud layer's previous bit and disposes only owned resources, including late
+texture arrivals. Optional asset failure is reported and cannot block the form.
+`ChapterGrading` alone blends the existing fog/lights on flight progress;
+the scene's background `Color` and `Fog` objects remain intact. At rest the
+clouds and grade perform no repeated writes. Theme-aware local reading surfaces
+replace full-viewport blur, retaining native text sizes and a bounded content
+width through 4K.
+On a first navbar Contact visit without a captured TV grade, reverse targets
+the existing scroll-mapped grade, not the nominal Projects table index. The
+committed return frame and subsequent normal grade must agree without recoloring
+the prior TV design.
+
+Regression coverage includes captured/parallax endpoints and intermediate
+reverse poses, fixed flight duration, final-frame ownership, navbar cancellation,
+held keys, form draft preservation, protected editables, hidden/resumed frames,
+reduced motion, optional assets and owned-resource cleanup. Browser review must
+also inspect both themes, compact desktop/4K framing, visible cloud continuity
+and the real native form. Submission checks must mock or block EmailJS; never
+send a real message as a visual or navigation test.

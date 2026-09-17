@@ -44,6 +44,12 @@
   background: rgba(var(--text-color), 0.05);
 }
 
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid var(--contact-accent, var(--primary-color));
+  outline-offset: 2px;
+}
+
 .textarea {
   min-height: 150px;
   resize: vertical;
@@ -78,9 +84,9 @@
 }
 
 .success {
-  color: #10b981;
+  color: var(--contact-success, #10b981);
 }
 
 .error {
-  color: #ef4444;
+  color: var(--contact-error, #ef4444);
 }

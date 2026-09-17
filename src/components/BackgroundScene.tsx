@@ -14,6 +14,7 @@ import { Ocean } from './Ocean';
 import { CinematicCameraController } from './3d/CinematicCameraController';
 import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { ChapterGrading } from './3d/ChapterGrading';
+import { ContactSky } from './3d/ContactSky';
 import { LocalEnvironment } from './3d/LocalEnvironment';
 import { SceneReady } from './3d/SceneReady';
 import { SceneEdgeContinuity } from './3d/SceneEdgeContinuity';
@@ -299,6 +300,7 @@ export function BackgroundScene({
       <ResponsiveCamera />
       <CinematicCameraController />
       <ChapterGrading isLight={isLight} ambientRef={ambientRef} keyLightRef={keyLightRef} />
+      <ContactSky isLight={isLight} />
       <color attach="background" args={[palette.background]} />
       <fog attach="fog" args={[palette.fog, 30, 70]} />
 

@@ -1,19 +1,22 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Github, Linkedin } from 'lucide-react';
 import { TelegramIcon } from '../../ui/TelegramIcon';
 import { KineticHeading } from '../../ui/KineticText';
 import { ContactForm } from './ContactForm';
 import { soundFx } from '@/lib/gateways/soundFx';
-import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import styles from './Contact.module.css';
 import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { useSectionEntrance } from '@/lib/scroll/useSectionFocus';
+import { useContactSky } from './useContactSky';
 
-export function Contact() {
-  const containerRef = useRef<HTMLElement>(null);
-  const reducedMotion = getPrefersReducedMotion();
+export function Contact({ spatial = false }: { spatial?: boolean }) {
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const { instant, mode } = useContactSky(container, spatial);
+  const settled = reducedMotion || instant;
   const formEntrance = useSectionEntrance(!reducedMotion);
   const infoEntrance = useSectionEntrance(!reducedMotion);
 
@@ -22,11 +25,21 @@ export function Contact() {
   };
 
   return (
-    <section ref={containerRef} className={styles.contact} id="contact">
-      {/* Left as a veil on purpose: the camera arc comes to rest here, on the
-          shot that turns the television to face the viewer. Covering this
-          section would hide the payoff of the whole scroll. */}
-      <FocusScrim />
+    <section
+      ref={setContainer} className={styles.contact} id="contact"
+      data-contact-spatial={spatial} data-contact-state={mode}
+      data-contact-ready={mode !== 'departing' && mode !== 'returning'}
+    >
+      {!spatial && <div className={styles.flatSky} aria-hidden="true">
+        {['body', 'vapor'].map(layer => <img
+          key={layer} src={`/textures/hero-cloud/${layer}.webp`} alt="" draggable={false}
+          onError={event => {
+            console.warn(`Contact sky ${layer} texture unavailable; keeping the readable plain sky.`);
+            event.currentTarget.style.visibility = 'hidden';
+          }}
+        />)}
+      </div>}
+      <FocusScrim maxOpacity={0.38} />
       <div className={styles.content}>
         <div className={styles.header}>
           <KineticHeading 
@@ -34,6 +47,7 @@ export function Contact() {
             as="h2" 
             className={styles.title} 
             highlightWords={["Connect"]} 
+            instant={settled}
           />
           <p className={styles.subtitle}>
             Get in touch for engineering opportunities, collaborative 3D builds, or just to say hi
@@ -44,10 +58,10 @@ export function Contact() {
           <motion.div 
             ref={formEntrance.ref}
             className={styles.formContainer}
-            initial={reducedMotion ? false : { opacity: 0, x: -40 }}
-            animate={reducedMotion ? undefined : formEntrance.hasEntered
+            initial={settled ? false : { opacity: 0, x: -40 }}
+            animate={settled ? { opacity: 1, x: 0 } : formEntrance.hasEntered
               ? { opacity: 1, x: 0 } : { opacity: 0, x: -40 }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            transition={{ duration: settled ? 0 : 0.8, ease: [0.76, 0, 0.24, 1] }}
           >
             <ContactForm />
           </motion.div>
@@ -55,10 +69,10 @@ export function Contact() {
           <motion.div 
             ref={infoEntrance.ref}
             className={styles.contactInfo}
-            initial={reducedMotion ? false : { opacity: 0, x: 40 }}
-            animate={reducedMotion ? undefined : infoEntrance.hasEntered
+            initial={settled ? false : { opacity: 0, x: 40 }}
+            animate={settled ? { opacity: 1, x: 0 } : infoEntrance.hasEntered
               ? { opacity: 1, x: 0 } : { opacity: 0, x: 40 }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.15 }}
+            transition={{ duration: settled ? 0 : 0.8, ease: [0.76, 0, 0.24, 1], delay: settled ? 0 : 0.15 }}
           >
             <div className={styles.infoItem}>
               <Phone className={styles.icon} />
@@ -114,7 +128,7 @@ export function Contact() {
                   aria-label="Telegram"
                   onMouseEnter={handleSocialHover}
                 >
-                  <TelegramIcon />
+                  <span className={styles.socialIcon} aria-hidden="true"><TelegramIcon /></span>
                 </a>
               </div>
             </div>

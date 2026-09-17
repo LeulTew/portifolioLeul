@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import gsap from 'gsap';
 import { animationClock } from '@/test/animationClock';
 import { TVProjects } from './TVProjects';
 import {
@@ -7,6 +8,10 @@ import {
   isProjectsReturnOwed, setProjectsView, setTVScreenReady,
 } from '@/lib/projects/projectsScene';
 import { PROJECTS_APPROACH_MS, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
+import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
+import {
+  commitContactPose, getContactView, registerContactCamera, releaseContactSky,
+} from '@/lib/contact/contactScene';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { resetScrollGesture, SCROLL_WAVE_IDLE_MS } from '@/lib/scroll/scrollGesture';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
@@ -31,6 +36,7 @@ beforeEach(() => {
   resetScrollGesture();
   resetScrollProgress();
   resetCameraHold();
+  releaseContactSky();
   setProjectsView(false, 0, 0);
   setTVScreenReady(true);
   vi.stubGlobal('innerWidth', 1440);
@@ -44,15 +50,21 @@ beforeEach(() => {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
     return this.id === 'projects' ? DOMRect.fromRect({ x: 0, y: top, width: 1440, height: 2340 }) : rect.call(this);
   });
+  // playVisible seeks paused scores; its test clock must not include GSAP's global ticker.
+  gsap.ticker.wake();
+  gsap.ticker.sleep();
+  vi.spyOn(gsap.ticker, 'wake').mockImplementation(() => {});
   clock = animationClock();
 });
 afterEach(() => {
   cleanup();
+  gsap.ticker.sleep();
   resetScrollGesture();
   resetScrollProgress();
   resetCameraHold();
   setTVScreenReady(false);
   setProjectsView(false, 0, 0);
+  releaseContactSky();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -67,7 +79,11 @@ const mount = (onNavigate = vi.fn()) => {
     <main data-testid="main">
       <section id="skills" data-staged="true" />
       <TVProjects onNavigate={onNavigate} />
-      <section id="contact">Contact copy</section>
+      <section id="contact">
+        Contact copy
+        <input aria-label="Contact name" defaultValue="Draft name" />
+        <textarea aria-label="Contact message" defaultValue="Unsent draft" />
+      </section>
     </main>
   </>;
   const result = render(tree());
@@ -193,11 +209,11 @@ describe('the completed-beat TV chapter', () => {
     expect(screen.getByTestId('main')).not.toHaveAttribute('data-projects-covered');
   });
 
-  it('releases Contact only after its departure finishes and can return naturally', async () => {
+  it('replaces the outbound retreat with one Contact flight and can return naturally', async () => {
     const { onNavigate } = mount();
     await navbar('projects');
     wheel(200);
-    await clock.run(PROJECTS_APPROACH_MS - 10);
+    await clock.run(CONTACT_FLIGHT_MS - 10);
     expect(onNavigate).not.toHaveBeenCalled();
     await clock.run(10);
     expect(onNavigate).toHaveBeenCalledExactlyOnceWith('contact', { immediate: true });
@@ -206,8 +222,97 @@ describe('the completed-beat TV chapter', () => {
     clock.wait(300);
     wheel(-200);
     expect(phase()).toBe('approaching');
-    await clock.run(PROJECTS_APPROACH_MS);
+    await clock.run(CONTACT_FLIGHT_MS);
     expect(phase()).toBe('reading');
+  });
+
+  it('keeps ownership until the final sky camera frame is committed, not just scheduled', async () => {
+    const removeCamera = registerContactCamera();
+    try {
+      const { onNavigate } = mount();
+      await navbar('projects');
+      wheel(200);
+      await clock.run(CONTACT_FLIGHT_MS);
+      expect(getContactView()).toMatchObject({ mode: 'departing', progress: 1 });
+      expect(phase()).toBe('departing');
+      expect(screen.getByTestId('main')).toHaveAttribute('inert');
+      expect(onNavigate).not.toHaveBeenCalled();
+      await act(async () => commitContactPose(getContactView().revision, 1));
+      expect(phase()).toBe('outside');
+      expect(getContactView().mode).toBe('parked');
+      expect(screen.getByTestId('main')).not.toHaveAttribute('inert');
+      expect(onNavigate).toHaveBeenCalledExactlyOnceWith('contact', { immediate: true });
+    } finally {
+      removeCamera();
+    }
+  });
+
+  it('cancels a pending camera receipt on navbar bypass without a late automatic landing', async () => {
+    const removeCamera = registerContactCamera();
+    try {
+      const { onNavigate } = mount();
+      await navbar('projects');
+      wheel(200);
+      await clock.run(CONTACT_FLIGHT_MS);
+      const revision = getContactView().revision;
+      await navbar('contact');
+      await act(async () => commitContactPose(revision, 1));
+      expect(phase()).toBe('outside');
+      expect(getContactView().mode).toBe('parked');
+      expect(onNavigate).not.toHaveBeenCalled();
+      expect(screen.getByTestId('main')).not.toHaveAttribute('inert');
+    } finally {
+      removeCamera();
+    }
+  });
+
+  it('protects field input but permits an outside-page return with textarea focus retained', async () => {
+    mount();
+    await navbar('contact');
+    top = -1300;
+    const field = screen.getByRole('textbox', { name: 'Contact message' });
+    fireEvent.change(field, { target: { value: 'Keep this unsent message' } });
+    field.focus();
+    for (const key of ['ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      fireEvent(field, event);
+      expect(event.defaultPrevented).toBe(false);
+    }
+    wheel(-20000, field);
+    fireEvent.touchStart(field, { touches: [{ clientY: 200 }] });
+    fireEvent.touchMove(field, { touches: [{ clientY: 500 }] });
+    fireEvent.touchEnd(field);
+    act(() => setScrollProgress(0.2));
+    expect(phase()).toBe('outside');
+    expect(field).toHaveFocus();
+    expect(field).toHaveValue('Keep this unsent message');
+    const blur = vi.spyOn(field, 'blur');
+    wheel(-200);
+    expect(phase()).toBe('approaching');
+    expect(blur).not.toHaveBeenCalled();
+    await clock.run(CONTACT_FLIGHT_MS);
+    expect(phase()).toBe('reading');
+    expect(field).toHaveValue('Keep this unsent message');
+  });
+
+  it('invalidates a pre-focus return wave without turning later typing or scroll publications into camera requests', async () => {
+    mount();
+    await navbar('contact');
+    top = -4000;
+    wheel(-200);
+    const field = screen.getByRole('textbox', { name: 'Contact message' });
+    field.focus();
+    wheel(-200);
+    expect(phase()).toBe('outside');
+    top = -1300;
+    fireEvent.keyDown(field, { key: 'ArrowUp', repeat: true });
+    fireEvent.change(field, { target: { value: 'Still editing' } });
+    act(() => setScrollProgress(0.2));
+    expect(phase()).toBe('outside');
+    expect(field).toHaveFocus();
+    wheel(-200);
+    expect(phase()).toBe('approaching');
+    expect(field).toHaveValue('Still editing');
   });
 
   it.each(['held key', 'wheel'] as const)(
@@ -217,7 +322,7 @@ describe('the completed-beat TV chapter', () => {
       top = -1300;
       wheel(200);
       returnInput(kind, false);
-      for (let elapsed = 0; elapsed < PROJECTS_APPROACH_MS - 50; elapsed += 50) {
+      for (let elapsed = 0; elapsed < CONTACT_FLIGHT_MS - 50; elapsed += 50) {
         await clock.frame(50);
         returnInput(kind);
         expect(phase()).toBe('departing');
@@ -235,7 +340,7 @@ describe('the completed-beat TV chapter', () => {
       expect(phase()).toBe('approaching');
       expect(isProjectsReturnOwed()).toBe(false);
       expect(getProjectsView().entry).toBe('contact');
-      await clock.run(PROJECTS_APPROACH_MS);
+      await clock.run(CONTACT_FLIGHT_MS);
       expect(phase()).toBe('reading');
     },
   );
@@ -249,7 +354,7 @@ describe('the completed-beat TV chapter', () => {
       top = -1300;
       wheel(200);
       returnInput(kind, false);
-      await clock.run(afterRelease ? PROJECTS_APPROACH_MS - 10 : 100);
+      await clock.run(afterRelease ? CONTACT_FLIGHT_MS - 10 : 100);
       returnInput(kind);
       if (afterRelease) await clock.frame(10);
       await navbar('contact');
@@ -282,7 +387,7 @@ describe('the completed-beat TV chapter', () => {
         DOMRect.fromRect({ x: 0, y: 12008 - scroller.scrollTop, width: 1440, height: 2340 });
       wheel(200);
       fireEvent.keyDown(navigationTarget, { key, repeat: false });
-      await clock.run(PROJECTS_APPROACH_MS - 10);
+      await clock.run(CONTACT_FLIGHT_MS - 10);
       fireEvent.keyDown(navigationTarget, { key, repeat: true });
       expect(scroller.scrollTop).toBe(14808);
       await clock.frame(10);
@@ -310,7 +415,7 @@ describe('the completed-beat TV chapter', () => {
     top = -2799;
     wheel(200);
     returnInput('held key', false);
-    await clock.run(PROJECTS_APPROACH_MS);
+    await clock.run(CONTACT_FLIGHT_MS);
     await navbar('contact');
     fireEvent.keyDown(screen.getByRole('button', { name: 'Contact navigation' }), { key: 'ArrowUp', repeat: true });
     expect(scroller.scrollTop).toBe(14808);
@@ -467,6 +572,41 @@ describe('the completed-beat TV chapter', () => {
     expect(getProjectsView().turn - before).toBeCloseTo(50 / PROJECTS_TURN_MS);
     await clock.run(PROJECTS_TURN_MS);
     expect(phase()).toBe('framed');
+  });
+
+  it('pauses the sky flight and its ownership receipt while hidden without adding a resume cooldown', async () => {
+    const { onNavigate } = mount();
+    await navbar('projects');
+    wheel(200);
+    await clock.run(500);
+    const before = getContactView().progress;
+    hidden = true;
+    fireEvent(document, new Event('visibilitychange'));
+    await clock.run(10000);
+    expect(getContactView().progress).toBe(before);
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(clock.pending).toBe(0);
+    hidden = false;
+    fireEvent(document, new Event('visibilitychange'));
+    await clock.frame(30000);
+    expect(getContactView().progress - before).toBeCloseTo(50 / CONTACT_FLIGHT_MS);
+    await clock.run(CONTACT_FLIGHT_MS - 550);
+    expect(phase()).toBe('outside');
+    expect(getContactView().mode).toBe('parked');
+    expect(onNavigate).toHaveBeenCalledExactlyOnceWith('contact', { immediate: true });
+  });
+
+  it('settles reduced motion toward the requested Contact destination rather than back onto the TV', async () => {
+    const { refresh, onNavigate } = mount();
+    await navbar('projects');
+    wheel(200);
+    await clock.run(500);
+    reduced = true;
+    refresh();
+    expect(phase()).toBe('outside');
+    expect(getContactView().mode).toBe('parked');
+    expect(stage()).not.toHaveAttribute('data-contact-flight');
+    expect(onNavigate).toHaveBeenCalledExactlyOnceWith('contact', { immediate: true });
   });
 
   it('settles a live reduced-motion preference without leaving stale animation or ownership', async () => {

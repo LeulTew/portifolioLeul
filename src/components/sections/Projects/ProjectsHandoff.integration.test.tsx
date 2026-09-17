@@ -6,6 +6,8 @@ import { SKILL_CHAPTERS } from '../Skills/skillsData';
 import { TVProjects } from './TVProjects';
 import { getProjectsView, isProjectsReturnOwed, setProjectsView, setTVScreenReady } from '@/lib/projects/projectsScene';
 import { PROJECTS_APPROACH_MS, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
+import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
+import { releaseContactSky } from '@/lib/contact/contactScene';
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 import { publishSectionNavigation, type SectionNavigationOptions } from '@/lib/scroll/sectionNavigation';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
@@ -31,6 +33,7 @@ beforeEach(() => {
   resetScrollGesture();
   resetScrollProgress();
   resetCameraHold();
+  releaseContactSky();
   setProjectsView(false, 0, 0);
   setTVScreenReady(true);
   vi.stubGlobal('innerWidth', 1440);
@@ -58,6 +61,7 @@ afterEach(() => {
   gsap.ticker.sleep();
   setProjectsView(false, 0, 0);
   setTVScreenReady(false);
+  releaseContactSky();
   resetScrollGesture();
   resetScrollProgress();
   resetCameraHold();
@@ -184,7 +188,7 @@ describe('the actual Skills / Projects ownership seam', () => {
     expect(skillPhase()).toBe('outside');
     expect(isProjectsReturnOwed()).toBe(false);
     expect(getProjectsView().entry).toBe('contact');
-    await advance(PROJECTS_APPROACH_MS);
+    await advance(CONTACT_FLIGHT_MS);
     expect(projectPhase()).toBe('reading');
   });
 

@@ -8,10 +8,13 @@ import {
   LIGHT_GRADES,
   createGradeTarget,
   sampleGrade,
+  type GradeTarget,
 } from '@/lib/atmosphere/chapterGrade';
 import { getCameraFreezes } from '@/lib/camera/cameraHold';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
+import { getContactView, type ContactMode } from '@/lib/contact/contactScene';
+import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
 
 /**
  * Cross-fades lighting and fog depth along the camera arc.
@@ -45,6 +48,32 @@ export function ChapterGrading({
   const scene = useThree((state) => state.scene);
   const scroll = useScroll();
   const grades = useMemo(() => (isLight ? LIGHT_GRADES : DARK_GRADES), [isLight]);
+  const contactGrade = useMemo(() => {
+    const skyGrade = createGradeTarget();
+    sampleGrade(grades, 1, skyGrade);
+    return {
+      ends: [createGradeTarget(), skyGrade] as const,
+      revision: -1,
+      departed: false,
+      mode: 'outside' as ContactMode,
+      progress: Number.NaN,
+      arc: Number.NaN,
+    };
+  }, [grades]);
+
+  const captureGrade = (out: GradeTarget) => {
+    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraFreezes()), out);
+    if (ambientRef.current) out.ambient = ambientRef.current.intensity;
+    if (keyLightRef.current) {
+      out.directional = keyLightRef.current.intensity;
+      out.keyColor.copy(keyLightRef.current.color);
+    }
+    if (scene?.fog instanceof THREE.Fog) {
+      out.fogNear = scene.fog.near;
+      out.fogFar = scene.fog.far;
+      out.fogColor.copy(scene.fog.color);
+    }
+  };
 
   useFrame((state, delta) => {
     // Damping is exponential in elapsed time, so a grade advanced only on
@@ -52,11 +81,39 @@ export function ChapterGrading({
     // them -- it simply is not computed for images that are never shown.
     if (!isFrameDrawn(state.clock.elapsedTime)) return;
 
-    sampleGrade(grades, mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraFreezes()), target);
+    const contact = getContactView();
+    const sky = contact.mode !== 'outside';
+    const mappedReturn = contact.mode === 'returning' && !contactGrade.departed;
+    const arc = !sky || mappedReturn
+      ? mapScrollToArc(scroll?.offset ?? 0, arcEnd, getCameraFreezes()) : Number.NaN;
+    if (sky) {
+      if (contactGrade.mode === contact.mode && contactGrade.progress === contact.progress &&
+          (contact.mode === 'parked' || contactGrade.revision === contact.revision) &&
+          (!mappedReturn || contactGrade.arc === arc)) return;
+      const [tvGrade, skyGrade] = contactGrade.ends;
+      if (contact.mode === 'parked') sampleGrade(grades, 1, target);
+      else {
+        if (contactGrade.revision !== contact.revision) {
+          contactGrade.revision = contact.revision;
+          if (contact.mode === 'departing') {
+            captureGrade(tvGrade);
+            sampleGrade(grades, 1, skyGrade);
+            contactGrade.departed = true;
+          } else {
+            captureGrade(skyGrade);
+          }
+        }
+        if (mappedReturn) sampleGrade(grades, arc, tvGrade);
+        sampleGrade(contactGrade.ends, easeInOutCubic(contact.progress), target);
+      }
+    } else sampleGrade(grades, arc, target);
+    contactGrade.mode = contact.mode;
+    contactGrade.progress = sky ? contact.progress : Number.NaN;
+    contactGrade.arc = arc;
 
     // Reduced motion still gets the grade, just without the easing: the point
     // is the depth and colour of the shot, not the transition.
-    const step = getPrefersReducedMotion()
+    const step = sky || getPrefersReducedMotion()
       ? 1
       : 1 - Math.exp(-GRADE_DAMPING * Math.min(drawnFrameDelta(state.clock.elapsedTime, delta ?? 0), MAX_FRAME_DELTA));
 

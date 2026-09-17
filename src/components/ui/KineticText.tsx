@@ -9,6 +9,7 @@ interface KineticHeadingProps {
   className?: string;
   highlightWords?: string[];
   delay?: number;
+  instant?: boolean;
   as?: 'h1' | 'h2' | 'h3' | 'h4' | 'div';
 }
 
@@ -17,6 +18,7 @@ export function KineticHeading({
   className,
   highlightWords = [],
   delay = 0,
+  instant = false,
   as: Component = 'h1',
 }: KineticHeadingProps) {
   const words = text.split(' ');
@@ -28,8 +30,9 @@ export function KineticHeading({
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.06,
-        delayChildren: delay,
+        ...(instant ? { duration: 0 } : {}),
+        staggerChildren: instant ? 0 : 0.06,
+        delayChildren: instant ? 0 : delay,
       },
     },
   };
@@ -47,7 +50,7 @@ export function KineticHeading({
       rotateX: 0,
       filter: 'blur(0px)',
       transition: {
-        duration: 0.7,
+        duration: instant ? 0 : 0.7,
         ease: Easings.easeOutCubic,
       },
     },
@@ -61,8 +64,8 @@ export function KineticHeading({
       <MotionSpan
         ref={entrance.ref}
         variants={containerVariants}
-        initial={prefersReduced ? false : 'hidden'}
-        animate={prefersReduced ? undefined : entrance.hasEntered ? 'visible' : 'hidden'}
+        initial={prefersReduced || instant ? false : 'hidden'}
+        animate={instant ? 'visible' : prefersReduced ? undefined : entrance.hasEntered ? 'visible' : 'hidden'}
         className="flex flex-wrap items-baseline gap-x-2"
       >
         {words.map((word, idx) => {

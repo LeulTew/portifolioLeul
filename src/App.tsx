@@ -495,7 +495,7 @@ function App() {
       <Skills onNavigate={scrollToSection} />
       <Projects theme={theme} spatial={show3D} onNavigate={scrollToSection} />
       <div className={styles.spacer} />
-      <Contact />
+      <Contact spatial={show3D} />
     </main>
   );
 
