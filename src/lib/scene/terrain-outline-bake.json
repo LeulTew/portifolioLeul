@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "sourceRef": "6a02c49edb33b30e4f0c6d416a5a32fb3f43e03d",
+  "variants": [
+    {
+      "variant": "optimized",
+      "sourceSha256": "643b8c00fc6acf030096acbe269f21e06a23fc65324f9bdcc46a268e1308a474",
+      "sha256": "b4f5789b6fde00e4b04c0e7eec249d0cd0071d9e5139ae379b53c234b780a212",
+      "bytes": 3851240,
+      "meshes": 15,
+      "triangles": 113858,
+      "vertices": 341574,
+      "changedVertices": 124976,
+      "unchangedVertices": 216598,
+      "unchangedNormalVertices": 214599,
+      "pinnedVertices": 24032,
+      "maximumDisplacement": 13.982552828648544,
+      "minimumOrientationCosine": 0.5888769192623271,
+      "minimumJacobianDeterminant": 0.043406943298343256,
+      "diagonalFlips": 1,
+      "retriangulatedFaces": 2,
+      "rimVertices": 212,
+      "rimSha256": "f805d8662a92d932f69088f23466d69564eda38f521ca9debf9542e6e83c2f35",
+      "skirtTriangles": 684,
+      "maximumRimJoinError": 0.016422632777187692,
+      "maximumShoreError": 0.29947211091799986
+    },
+    {
+      "variant": "software",
+      "sourceSha256": "ef190fdb33d48c8df1f857bc1d8c1bdca01318e7fcf95c66d4accb05e4e925f2",
+      "sha256": "60ff90c83785b370dba6e1b46bebd4464be18fd178408c4fc8782df0b371a822",
+      "bytes": 646688,
+      "meshes": 15,
+      "triangles": 75158,
+      "vertices": 55443,
+      "changedVertices": 20807,
+      "unchangedVertices": 34636,
+      "unchangedNormalVertices": 0,
+      "pinnedVertices": 3819,
+      "maximumDisplacement": 13.982552828648544,
+      "minimumOrientationCosine": 0.6800258945049931,
+      "minimumJacobianDeterminant": 0.04357816621904957,
+      "diagonalFlips": 0,
+      "retriangulatedFaces": 0,
+      "rimVertices": 201,
+      "rimSha256": "bdd6d83f9d81e6d9d9ef4ad6f1a60488cc45f4d97d6797a743bac81ae52f64b0",
+      "skirtTriangles": 656,
+      "maximumRimJoinError": 0.01292829158769987,
+      "maximumShoreError": 0.5253629788354868
+    }
+  ],
+  "shore": {
+    "resolution": 512,
+    "extent": 180,
+    "origin": [
+      -90,
+      -110
+    ],
+    "range": 48,
+    "waterline": -4,
+    "bytes": 23613,
+    "sha256": "c99bb91420f149a9e2f691c8ecd3ace8d02c4ba8eb69fff24d906798b3229914"
+  }
+}
