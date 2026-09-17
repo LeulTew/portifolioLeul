@@ -69,6 +69,16 @@ describe('Contact Section Component', () => {
     expect(emailjs.send).not.toHaveBeenCalled();
   });
 
+  it('settles the entire heading on the first painted navbar bypass frame', async () => {
+    const { container } = render(<Contact spatial />);
+    await act(async () => publishSectionNavigation('contact', { source: 'navbar' }));
+    await act(async () => { await new Promise(requestAnimationFrame); });
+    for (const word of container.querySelectorAll<HTMLElement>('h2 span')) {
+      expect(word.style.opacity).toBe('1');
+      expect(word.style.transform).not.toContain('25px');
+    }
+  });
+
   it('pre-settles the actual heading and form during final easing while editing remains under the owner', async () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
     const { container } = render(<main style={{ visibility: 'hidden' }}><Contact spatial /></main>);
@@ -88,7 +98,7 @@ describe('Contact Section Component', () => {
     expect(form.parentElement!.style.opacity).toBe('1');
     expect(form.parentElement!.style.transform).not.toContain('-40px');
     for (const word of section.querySelectorAll<HTMLElement>('h2 span')) {
-      expect(word.style.opacity).not.toBe('0');
+      expect(word.style.opacity).toBe('1');
       expect(word.style.transform).not.toContain('25px');
     }
     expect(main).toHaveAttribute('inert');

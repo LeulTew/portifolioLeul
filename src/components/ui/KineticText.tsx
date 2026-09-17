@@ -30,6 +30,7 @@ export function KineticHeading({
     visible: {
       opacity: 1,
       transition: {
+        ...(instant ? { duration: 0 } : {}),
         staggerChildren: instant ? 0 : 0.06,
         delayChildren: instant ? 0 : delay,
       },
