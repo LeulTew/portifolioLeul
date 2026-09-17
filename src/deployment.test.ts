@@ -7,8 +7,8 @@ describe('the deployed portfolio contract', () => {
     const config = JSON.parse(readFileSync('vercel.json', 'utf8'));
     expect(config).toMatchObject({
       framework: 'vite',
-      installCommand: 'bun install --frozen-lockfile',
-      buildCommand: 'bun run build',
+      installCommand: 'bunx bun@1.4.0 install --frozen-lockfile',
+      buildCommand: 'bunx bun@1.4.0 run build',
       outputDirectory: 'dist',
     });
     expect(config.rewrites).toContainEqual({ source: '/(.*)', destination: '/index.html' });

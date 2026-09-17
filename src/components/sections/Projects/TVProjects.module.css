@@ -79,11 +79,10 @@
   justify-content: center;
   gap: clamp(4px, 0.5vw, 10px);
   margin: 0 auto 24px;
-  padding: 8px;
+  padding: 0;
   width: fit-content;
   max-width: 100%;
-  background: var(--project-paper);
-  box-shadow: 0 12px 24px rgb(5 18 12 / 14%);
+  background: transparent;
 }
 
 .stage[data-staged='true'] .tabs {
@@ -108,7 +107,6 @@
   text-align: center;
   font-weight: 500;
   min-height: 52px;
-  filter: drop-shadow(0 3px 4px rgb(8 31 20 / 12%));
 }
 
 .tab[aria-selected='true'] {
