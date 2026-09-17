@@ -7,7 +7,7 @@ import {
 } from '@/lib/projects/tvScreen';
 import { TVScreenProjection } from './3d/TVScreenProjection';
 import { CRTHousing } from './3d/CRTHousing';
-import { CRTSupports } from './3d/CRTSupports';
+import { CRTSpeakerCabinet } from './3d/CRTSpeakerCabinet';
 
 /** How long each clip holds the screen before the set changes. */
 const CLIP_DURATION_MS = 8000;
@@ -128,7 +128,7 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
       <group position={[...TV_SCREEN_POSITION]} rotation={[...TV_SCREEN_ROTATION]}>
         <group rotation={[TV_SCREEN_PITCH, 0, 0]}>
           <CRTHousing active={projectsActive} />
-          <CRTSupports />
+          <CRTSpeakerCabinet />
           <mesh>
             <planeGeometry args={[TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT]} />
             <meshBasicMaterial
