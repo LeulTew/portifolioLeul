@@ -143,30 +143,6 @@ function App() {
   }, [gpuConfig.tier, gpuConfig.enableBackdropBlur]);
 
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
-
-    const ua = navigator.userAgent;
-
-    // Standard way to distinguish Android Phone vs Tablet: Phones have "Mobile" in UA
-    const isMobile = /Mobi/i.test(ua);
-    
-    // Refined Tablet detection: 
-    // 1. Explicit Tablet/iPad check
-    // 2. Large screen AND NOT "Mobi" (prevents landscape phones from being detected as tablets)
-    const isTablet = /Tablet|iPad/i.test(ua) || (window.innerWidth > 768 && !isMobile);
-
-    // Redirect mobile phones
-    if (isMobile && !isTablet) {
-      window.location.href = 'https://portifolio-x-leul.vercel.app';
-      return;
-    }
-
-    // Static mode for Tablets only if needed, but previously logic targeted phones.
-    // Since phones are redirected, we might not need static mode for them.
-    // Keeping logic simple: If not phone, we render normal content.
-  }, []);
-
   const handleScrollElement = useCallback((
     element: HTMLDivElement | null,
     state: ReturnType<typeof useScroll> | null

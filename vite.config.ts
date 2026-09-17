@@ -21,6 +21,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
+          // Keep Vite's shared import helper out of R3F so routing never loads the scene.
+          if (id === '\0vite/preload-helper.js') return 'preload-helper';
           if (id.includes('node_modules/three/')) {
             return 'three-core';
           }

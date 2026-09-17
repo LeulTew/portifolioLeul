@@ -7,9 +7,9 @@
 [![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![React Three Fiber](https://img.shields.io/badge/React_Three_Fiber-8.x-049EF4?style=for-the-badge&logo=three.js&logoColor=white)](https://docs.pmnd.rs/react-three-fiber/)
 [![Test Coverage](https://img.shields.io/badge/Test_Coverage-100%25-success?style=for-the-badge&logo=vitest&logoColor=white)]()
-[![Status](https://img.shields.io/badge/Status-Deployed-success?style=for-the-badge&logo=vercel&logoColor=white)](https://portifolio-leul.vercel.app)
+[![Status](https://img.shields.io/badge/Status-Deployed-success?style=for-the-badge&logo=vercel&logoColor=white)](https://leul-t-agonafer.vercel.app)
 
-**[🔴 LIVE DEMO: portifolio-leul.vercel.app](https://portifolio-leul.vercel.app)**
+**[🔴 LIVE DEMO: leul-t-agonafer.vercel.app](https://leul-t-agonafer.vercel.app)**
 
 </div>
 
@@ -136,6 +136,25 @@ hits and the measured edges of voids, with no invented ground or terrain edits.
 | **Testing**        | Vitest, React Testing Library (100% Coverage) |
 | **Deployment**     | Vercel                                        |
 
+### Production addresses and device routing
+
+- Desktop: https://leul-t-agonafer.vercel.app
+- Phone portfolio X: https://leul-t-agonafer-x.vercel.app
+
+Both existing `portifolio-leul.vercel.app` and `portifolio-x-leul.vercel.app`
+addresses remain supported. On those public aliases, phone identity selects X;
+desktop browsers and tablets select the desktop site. The small entry module
+uses `location.replace` before loading React or the 3D app, preserving the path,
+query and fragment. Resizing a desktop window or using a touchscreen laptop does
+not redirect. Localhost and deployment-preview hosts remain isolated for review.
+The mobile repository implements the same classification and canonical origins.
+
+Vercel uses the checked-in `bun.lock`, `bun install --frozen-lockfile`,
+`bun run build`, and `dist` explicitly. The obsolete pnpm lockfile was removed:
+automatic pnpm selection previously rejected the out-of-date dependency list
+and left production serving an older release. Keep the Bun lockfile current and
+verify both published aliases on desktop and phone after deployment.
+
 About's paired squares unfold into their corresponding text blocks, left first,
 then right, on the existing arrival/swap/clear clock. Shape transforms and text
 clipping share geometry measured only on layout changes; reverse travel folds
@@ -243,7 +262,7 @@ git clone https://github.com/LeulTew/portifolioLeul.git
 cd portifolioLeul
 
 # 2. Install
-bun install
+bun install --frozen-lockfile
 
 # 3. Configure Environment
 # Create .env.local and add your EmailJS credentials:
