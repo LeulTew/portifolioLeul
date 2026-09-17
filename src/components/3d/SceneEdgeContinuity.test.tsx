@@ -125,4 +125,21 @@ describe('SceneEdgeContinuity lifecycle', () => {
     expect(camera.layers.mask).toBe((1 << 0) | (1 << 6));
     disposeTerrain(owner);
   });
+
+  it('selects the profile belonging to the mounted software terrain without a new frame loop', () => {
+    const owner = terrain('#e9e2d4');
+    const create = vi.spyOn(edgeResources, 'createEdgeResources');
+    const { rerender, unmount } = renderHook(
+      ({ softwareRenderer }) => SceneEdgeContinuity({ terrain: owner, softwareRenderer }),
+      { initialProps: { softwareRenderer: false } },
+    );
+    const previous = create.mock.results[0].value;
+    const disposed = vi.spyOn(previous, 'dispose');
+    rerender({ softwareRenderer: true });
+    expect(create).toHaveBeenLastCalledWith(owner, 'light', true);
+    expect(disposed).toHaveBeenCalledTimes(1);
+    expect(useFrame).not.toHaveBeenCalled();
+    unmount();
+    disposeTerrain(owner);
+  });
 });

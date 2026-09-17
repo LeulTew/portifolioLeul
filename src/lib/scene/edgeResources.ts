@@ -23,7 +23,9 @@ function terrainAppearance(terrain: THREE.Object3D): THREE.MeshStandardMaterial 
   return appearance;
 }
 
-export function createEdgeResources(terrain: THREE.Object3D, theme: OceanTheme = 'light') {
+export function createEdgeResources(
+  terrain: THREE.Object3D, theme: OceanTheme = 'light', softwareRenderer = false,
+) {
   const appearance = terrainAppearance(terrain);
   const skirtMaterial = new THREE.MeshStandardMaterial({
     name: 'terrain-edge-material',
@@ -87,7 +89,7 @@ export function createEdgeResources(terrain: THREE.Object3D, theme: OceanTheme =
     polygonOffsetUnits: -2,
   });
 
-  const skirt = new THREE.Mesh(createTerrainSkirtGeometry(), skirtMaterial);
+  const skirt = new THREE.Mesh(createTerrainSkirtGeometry(softwareRenderer), skirtMaterial);
   skirt.name = 'terrain-edge-skirt';
   const horizon = new THREE.Mesh(createHorizonGeometry(), horizonMaterial);
   horizon.name = 'ocean-horizon-continuation';

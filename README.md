@@ -53,18 +53,48 @@ I achieved a **97% reduction** in initial load payload through aggressive asset 
 
 _> Total payload reduced by over **150MB**._\_
 
-### Scene edge continuation
+### Island outline and scene edge continuation
 
-The terrain is a tilted 60-unit heightfield tile. `SceneEdgeContinuity` closes
-its exposed cuts with a static, inset skirt, borrowing Terrain's already-uploaded
-albedo without moving the shoreline. A separate 32-segment horizon strip feathers
+The source terrain is a tilted 60-unit heightfield tile. `bun run bake:island`
+reshapes only its outer fringe into unequal headlands and recesses, preserving
+the core and every triangle touching the avatar's complete foot-contact zone,
+the padded TV footprint, or the prism. This changes the actual top edge and land
+volume, not just the faces of the old rectangular tile. Interior position and
+normal streams, original UV coordinates, embedded texture bytes, mesh counts and
+vertex/triangle counts are preserved. One outer diagonal is flipped in the
+optimized asset to prevent a measured 3D reversal in a long, thin source face;
+its two replacement faces carry the existing vertices and UVs. No protected
+or unchanged vertex participates. Meshopt is used for lossless buffer encoding without global
+requantization. Both optimized and software assets are baked independently.
+Original terrain heights and the already submerged forward fringe are retained.
+
+`SceneEdgeContinuity` joins each final decoded boundary with its matching static
+cliff profile, borrowing Terrain's already-uploaded albedo and the boundary's
+original UVs. The existing 512-square shore field is rebaked from the final
+terrain **and** the skirt at waterline -4, with the same origin `[-90, -110]`,
+180-unit span and 48-unit distance range. `bun run bake:shore` can regenerate
+only that field; neither command changes the wave algorithm.
+
+Pristine inputs are pinned to commit
+`6a02c49edb33b30e4f0c6d416a5a32fb3f43e03d` and checked by SHA-256. A shallow clone
+missing that object must run `git fetch origin 6a02c49edb33b30e4f0c6d416a5a32fb3f43e03d`
+before baking. The baker never feeds already-shaped output back into the
+transform. Edit `src/lib/scene/terrainOutline.ts`, then run `bun run bake:island`;
+commit both GLBs, `terrainRim.ts`, `terrain-outline-bake.json`, and
+`public/images/shore-field.png` together. The generated manifest records actual
+counts, hashes, byte sizes and measured shore-registration error and supplies
+the existing loader's byte estimates.
+
+A separate 32-segment horizon strip still feathers
 the fully fogged sea into the actual background at radii 320-900. It matches the
 existing theme's water alpha and Three's output-color-space fog; fragments before
 full fog are discarded. The existing swell ends at radius 70 and is untouched.
 
-The addition is **216 triangles / 2 draws in the main view**, plus
-**152 triangles / 1 draw in the existing reflection**: **368 triangles / 3 draws**
-on a reflection-update frame. It owns two geometries and two materials, adds no
+The continuation still uses **2 draws in the main view and 1 in the existing
+reflection**. Optimized terrain has 342 skirt triangles (406 with the horizon;
+748 on a reflection-update frame). Software terrain has 328 (392 with the
+horizon; 720 on a reflection-update frame). The original terrain triangle counts
+remain 113,858 and 75,158. It owns two geometries and two materials, adds no
 textures, transparent fill, render targets, shadow passes, or animation loops.
 Layer 1 is reserved for the main-only horizon; the skirt remains on layer 0.
 Effect-owned resources survive StrictMode's rehearsal and dispose independently

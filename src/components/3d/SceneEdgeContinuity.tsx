@@ -11,13 +11,14 @@ import {
 export function SceneEdgeContinuity({
   terrain,
   theme = 'light',
-}: { terrain: THREE.Object3D; theme?: OceanTheme }) {
+  softwareRenderer = false,
+}: { terrain: THREE.Object3D; theme?: OceanTheme; softwareRenderer?: boolean }) {
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
   const [resources, setResources] = useState<ReturnType<typeof createEdgeResources> | null>(null);
 
   useLayoutEffect(() => {
-    const next = createEdgeResources(terrain, theme);
+    const next = createEdgeResources(terrain, theme, softwareRenderer);
     try {
       bindHorizonBackground(next.horizon.material, scene);
       setResources(next);
@@ -26,7 +27,7 @@ export function SceneEdgeContinuity({
       throw error;
     }
     return () => next.dispose();
-  }, [terrain, scene, theme]);
+  }, [terrain, scene, theme, softwareRenderer]);
 
   useLayoutEffect(() => enableHorizonLayer(camera), [camera]);
 

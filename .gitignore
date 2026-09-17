@@ -46,6 +46,8 @@ portifolioXLeul/
 scripts/*
 !scripts/optimize-models.mjs
 !scripts/bake-hero-cloud.mjs
+!scripts/bake-island.mjs
+!scripts/bake-shore-field.mjs
 .impeccable/hook.cache.json
 
 

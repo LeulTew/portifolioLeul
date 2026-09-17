@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getGpuTier } from '@/lib/gateways/gpuTier';
+import terrainBake from '@/lib/scene/terrain-outline-bake.json';
 
 /**
  * The assets the first view cannot open without, fetched up front with real
@@ -55,10 +56,10 @@ export interface CriticalAsset {
  * after the loader had already claimed to be finished.
  */
 export const CRITICAL_ASSETS: readonly CriticalAsset[] = [
-  { url: '/models/terrain-opt.glb', bytes: 3_757_380, kind: 'model' },
+  { url: '/models/terrain-opt.glb', bytes: terrainBake.variants[0].bytes, kind: 'model' },
   { url: '/models/me-animated-lite.glb', bytes: 847_188, kind: 'model' },
   { url: '/images/waternormals.jpg', bytes: 248_813, kind: 'texture' },
-  { url: '/images/shore-field.png', bytes: 19_919, kind: 'texture' },
+  { url: '/images/shore-field.png', bytes: terrainBake.shore.bytes, kind: 'texture' },
   { url: '/images/leul-profile.webp', bytes: 41_616, kind: 'texture' },
   { url: '/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4', bytes: 599_097, kind: 'media' },
 ];
@@ -69,7 +70,7 @@ export const CRITICAL_MODELS: readonly string[] = CRITICAL_ASSETS.filter(
 ).map((asset) => asset.url);
 
 const SOFTWARE_MODELS: Readonly<Record<string, CriticalAsset>> = {
-  '/models/terrain-opt.glb': { url: '/models/terrain-software.glb', bytes: 639_252, kind: 'model' },
+  '/models/terrain-opt.glb': { url: '/models/terrain-software.glb', bytes: terrainBake.variants[1].bytes, kind: 'model' },
   '/models/me-animated-lite.glb': { url: '/models/me-animated-software.glb', bytes: 336_260, kind: 'model' },
   '/models/crt-lite.glb': { url: '/models/crt-software.glb', bytes: 142_812, kind: 'model' },
 };

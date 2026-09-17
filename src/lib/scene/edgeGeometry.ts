@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OCEAN_SIZE } from '@/components/ocean/oceanConfig';
-import { TERRAIN_RIM } from './terrainRim';
+import { TERRAIN_RIM, TERRAIN_SOFTWARE_RIM } from './terrainRim';
+import { createTerrainSkirtFromRim } from './terrainSkirt';
 
 export const EDGE_WATER_LEVEL = -4;
 export const HORIZON_SEGMENTS = 32;
@@ -9,73 +10,8 @@ export const HORIZON_OUTER_RADIUS = OCEAN_SIZE / 2 + 200;
 export const HORIZON_WATER_RADIUS = OCEAN_SIZE / 2;
 
 const ISLAND_Z = -20;
-const LIP_INSET = 0.35;
-const LIP_OVERLAP = 0.08;
-const WATERLINE_OVERLAP = 0.08;
-const SKIRT_BOTTOM = -8.2;
-
-export function createTerrainSkirtGeometry(): THREE.BufferGeometry {
-  const count = TERRAIN_RIM.length;
-  const positions = new Float32Array(count * 3 * 3);
-  const colors = new Float32Array(positions.length);
-  const uvs = new Float32Array(count * 3 * 2);
-  const indices: number[] = [];
-  const shades = [1, 0.58, 0.3];
-
-  TERRAIN_RIM.forEach(([x, y, z], index) => {
-    const distance = Math.hypot(x, z - ISLAND_Z);
-    const inwardX = -x / distance;
-    const inwardZ = (ISLAND_Z - z) / distance;
-    const top = y + LIP_OVERLAP;
-    const waterline = Math.min(EDGE_WATER_LEVEL - WATERLINE_OVERLAP, top - 0.18);
-    const side = Math.floor(index / 16);
-    const along = (index % 16) / 16;
-    const [u, v] = [
-      [along, 1],
-      [1, 1 - along],
-      [1 - along, 0],
-      [0, along],
-    ][side];
-    const insets = [LIP_INSET, 0, 0.75];
-    const heights = [top, waterline, SKIRT_BOTTOM];
-
-    for (let row = 0; row < 3; row += 1) {
-      const vertex = row * count + index;
-      positions.set(
-        [x + inwardX * insets[row], heights[row], z + inwardZ * insets[row]],
-        vertex * 3
-      );
-      colors.set([shades[row], shades[row], shades[row]], vertex * 3);
-      uvs.set([u, v], vertex * 2);
-    }
-  });
-
-  for (let index = 0; index < count; index += 1) {
-    const next = (index + 1) % count;
-    if (
-      TERRAIN_RIM[index][1] + LIP_OVERLAP <= EDGE_WATER_LEVEL - WATERLINE_OVERLAP &&
-      TERRAIN_RIM[next][1] + LIP_OVERLAP <= EDGE_WATER_LEVEL - WATERLINE_OVERLAP
-    ) continue;
-
-    for (let row = 0; row < 2; row += 1) {
-      const upper = row * count;
-      const lower = upper + count;
-      indices.push(
-        upper + index, upper + next, lower + index,
-        upper + next, lower + next, lower + index
-      );
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
+export function createTerrainSkirtGeometry(softwareRenderer = false): THREE.BufferGeometry {
+  return createTerrainSkirtFromRim(softwareRenderer ? TERRAIN_SOFTWARE_RIM : TERRAIN_RIM);
 }
 
 /**

@@ -121,7 +121,7 @@ function Terrain({ surfaceColor, theme }: TerrainProps) {
         scale={[30, 15, 30]}
         dispose={null}
       />
-      <SceneEdgeContinuity terrain={terrain} theme={theme} />
+      <SceneEdgeContinuity terrain={terrain} theme={theme} softwareRenderer={softwareRenderer} />
     </>
   );
 }

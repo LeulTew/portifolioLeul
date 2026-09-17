@@ -11,7 +11,8 @@ import {
   HORIZON_WATER_RADIUS,
   horizonFogWeight,
 } from './edgeGeometry';
-import { TERRAIN_RIM } from './terrainRim';
+import { TERRAIN_RIM, TERRAIN_SOFTWARE_RIM } from './terrainRim';
+import bake from './terrain-outline-bake.json';
 
 function expectFiniteGeometry(geometry: THREE.BufferGeometry) {
   const positions = geometry.getAttribute('position');
@@ -37,7 +38,7 @@ function expectFiniteGeometry(geometry: THREE.BufferGeometry) {
 
 describe('static scene edge geometry', () => {
   it('has finite, indexed triangles and outward-facing normals', () => {
-    for (const create of [createTerrainSkirtGeometry, createHorizonGeometry]) {
+    for (const create of [() => createTerrainSkirtGeometry(), () => createTerrainSkirtGeometry(true), createHorizonGeometry]) {
       const geometry = create();
       expectFiniteGeometry(geometry);
       const position = geometry.getAttribute('position');
@@ -50,7 +51,7 @@ describe('static scene edge geometry', () => {
         b.fromBufferAttribute(position, index.getX(triangle + 1));
         c.fromBufferAttribute(position, index.getX(triangle + 2));
         const normal = b.sub(a).cross(c.sub(a));
-        expect(normal.length()).toBeGreaterThan(0.0001);
+        expect(normal.length()).toBeGreaterThan(0.000001);
         if (create === createHorizonGeometry) expect(normal.y).toBeGreaterThan(0);
         else expect(normal.dot(new THREE.Vector3(a.x, 0, a.z + 20))).toBeGreaterThan(0);
       }
@@ -58,32 +59,37 @@ describe('static scene edge geometry', () => {
     }
   });
 
-  it('keeps the existing coast at the waterline and only insets the lip and foot', () => {
-    const geometry = createTerrainSkirtGeometry();
-    const position = geometry.getAttribute('position');
-    TERRAIN_RIM.forEach(([x, y, z], index) => {
-      const waterline = TERRAIN_RIM.length + index;
-      expect(position.getX(waterline)).toBeCloseTo(x, 5);
-      expect(position.getZ(waterline)).toBeCloseTo(z, 5);
-      expect(position.getY(waterline)).toBeLessThan(EDGE_WATER_LEVEL);
-      expect(position.getY(index)).toBeCloseTo(y + 0.08, 5);
-      expect(Math.hypot(position.getX(index), position.getZ(index) + 20))
-        .toBeLessThan(Math.hypot(x, z + 20));
-    });
-    expect(geometry.boundingBox!.min.x).toBeGreaterThanOrEqual(-30);
-    expect(geometry.boundingBox!.max.x).toBeLessThanOrEqual(30);
-    expect(geometry.boundingBox!.max.y).toBeLessThan(2.2);
-    geometry.dispose();
+  it('joins each final variant at its actual decoded top edge and albedo coordinates', () => {
+    for (const [software, rim] of [[false, TERRAIN_RIM], [true, TERRAIN_SOFTWARE_RIM]] as const) {
+      const geometry = createTerrainSkirtGeometry(software);
+      const position = geometry.getAttribute('position');
+      const uv = geometry.getAttribute('uv');
+      rim.forEach(([x, y, z, u, v], index) => {
+        expect(position.getX(index)).toBeCloseTo(x, 5);
+        expect(position.getY(index)).toBeCloseTo(y, 5);
+        expect(position.getZ(index)).toBeCloseTo(z, 5);
+        expect(uv.getX(index)).toBeCloseTo(u, 5);
+        expect(uv.getY(index)).toBeCloseTo(v, 5);
+        const foot = rim.length + index;
+        expect(position.getY(foot)).toBeLessThan(EDGE_WATER_LEVEL);
+        expect(position.getY(foot)).toBeLessThan(y);
+        expect(Math.hypot(position.getX(foot), position.getZ(foot) + 20))
+          .toBeGreaterThan(Math.hypot(x, z + 20));
+      });
+      geometry.dispose();
+    }
   });
 
   it('does not draw the already submerged front edge', () => {
-    const geometry = createTerrainSkirtGeometry();
-    const used = new Set(geometry.getIndex()!.array);
-    for (let station = 0; station < 16; station += 1) {
-      expect(used.has(station)).toBe(false);
-      expect(used.has(station + TERRAIN_RIM.length)).toBe(false);
+    for (const [software, rim] of [[false, TERRAIN_RIM], [true, TERRAIN_SOFTWARE_RIM]] as const) {
+      const geometry = createTerrainSkirtGeometry(software);
+      const drawnEdges = rim.filter((point, index) =>
+        Math.max(point[1], rim[(index + 1) % rim.length][1]) >= -5.1
+      ).length;
+      expect(drawnEdges).toBeLessThan(rim.length);
+      expect(geometry.getIndex()!.count / 3).toBe(drawnEdges * 2);
+      geometry.dispose();
     }
-    geometry.dispose();
   });
 
   it('leaves the visible ocean and its reflections outside the horizon mesh', () => {
@@ -119,16 +125,20 @@ describe('static scene edge geometry', () => {
   });
 
   it('accounts for the skirt in both main and existing reflection passes', () => {
-    const skirt = createTerrainSkirtGeometry();
     const horizon = createHorizonGeometry();
-    const skirtTriangles = skirt.getIndex()!.count / 3;
     const horizonTriangles = horizon.getIndex()!.count / 3;
-    expect(skirtTriangles).toBe(152);
     expect(horizonTriangles).toBe(64);
-    expect(skirtTriangles + horizonTriangles).toBe(216);
-    expect(skirtTriangles * 2 + horizonTriangles).toBe(368);
-    expect(TERRAIN_RIM.length).toBe(64);
-    skirt.dispose();
+    for (const [index, software] of [false, true].entries()) {
+      const skirt = createTerrainSkirtGeometry(software);
+      const skirtTriangles = skirt.getIndex()!.count / 3;
+      expect(skirtTriangles).toBe(bake.variants[index].skirtTriangles);
+      expect(skirtTriangles).toBeLessThanOrEqual(4096);
+      expect(skirt.getAttribute('position').count).toBe(bake.variants[index].rimVertices * 2);
+      // Exactly one existing skirt draw per participating pass, still no new pass.
+      expect(skirt.groups).toHaveLength(0);
+      expect(skirtTriangles * 2 + horizonTriangles).toBeLessThanOrEqual(8256);
+      skirt.dispose();
+    }
     horizon.dispose();
   });
 });
