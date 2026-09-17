@@ -4,7 +4,7 @@ import { TVModel } from './TVModel';
 import { vi } from 'vitest';
 
 vi.mock('./3d/CRTHousing', () => ({ CRTHousing: () => null }));
-vi.mock('./3d/CRTSupports', () => ({ CRTSupports: () => null }));
+vi.mock('./3d/CRTSpeakerCabinet', () => ({ CRTSpeakerCabinet: () => null }));
 
 // Mock three.js and drei
 const mockUseGLTF = vi.fn(() => ({

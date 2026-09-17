@@ -70,6 +70,30 @@ Layer 1 is reserved for the main-only horizon; the skirt remains on layer 0.
 Effect-owned resources survive StrictMode's rehearsal and dispose independently
 of Terrain's borrowed texture. These are geometry/draw budgets, not an FPS guarantee.
 
+### Floor-standing TV speaker cabinet
+
+`CRTSpeakerCabinet` replaces the two narrow supports with one integral graphite
+lower enclosure, a broad recessed perforated grille, a restrained satin brow and
+a closed, full-width ground plinth. It inherits the upper receiver's materials
+without changing `CRTHousing`, the 0.55 x 0.32 display aperture, screen transform,
+reading-camera fit, project reader or broadcast/input behavior.
+
+The lower cabinet uses **264 static triangles / 3 draws** per view and 600 stored
+vertices, with no added lights, shadow casting, render pass, animation loop or
+Canvas. When all three batches are visible to the existing water mirror, a
+reflection-update frame can submit **528 triangles / 6 draws** across both views;
+there are no cabinet shadow submissions. Its opaque 32 x 32 RGBA grille tile is
+4,096 bytes before mipmaps (5,460 bytes with the complete mip chain), shared by
+the material's color and bump inputs. R3F owns the three declared geometries/materials; the grille
+material disposes only its own generated texture. Ground tests raycast both
+actual terrain variants and the cabinet buffers, including the full underside
+and grille clearance, rather than inferring contact from the former feet. The
+terrain has pre-existing voids, independently confirmed in the loaded scene.
+A strict 561-cell footprint mask records those original gaps; every gap must
+have measured soil on opposite sides within 0.7 world units, beneath the
+continuous closed cabinet. New misses fail. The grille clears actual terrain
+hits and the measured edges of voids, with no invented ground or terrain edits.
+
 ## 🛠️ Tech Stack
 
 | Category           | Technologies                                  |
