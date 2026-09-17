@@ -16,6 +16,7 @@ import { AtmosphericDrift } from './3d/AtmosphericDrift';
 import { ChapterGrading } from './3d/ChapterGrading';
 import { LocalEnvironment } from './3d/LocalEnvironment';
 import { SceneReady } from './3d/SceneReady';
+import { SceneEdgeContinuity } from './3d/SceneEdgeContinuity';
 import {
   getCriticalModels,
   resolveSceneModel,
@@ -59,9 +60,10 @@ const DRIFT_BUDGET_SHARE = 0.3;
 
 interface TerrainProps {
   surfaceColor: string;
+  theme: Theme;
 }
 
-function Terrain({ surfaceColor }: TerrainProps) {
+function Terrain({ surfaceColor, theme }: TerrainProps) {
   const { scene } = useGLTF(resolveSceneModel(TERRAIN_URL), NO_DRACO);
   const softwareRenderer = getGpuTier().softwareRenderer;
   
@@ -111,13 +113,16 @@ function Terrain({ surfaceColor }: TerrainProps) {
   }, [terrain]);
 
   return (
-    <primitive 
-      object={terrain} 
-      position={[0, -4, -20]}
-      rotation={[0.15, Math.PI, 0]}
-      scale={[30, 15, 30]}
-      dispose={null}
-    />
+    <>
+      <primitive
+        object={terrain}
+        position={[0, -4, -20]}
+        rotation={[0.15, Math.PI, 0]}
+        scale={[30, 15, 30]}
+        dispose={null}
+      />
+      <SceneEdgeContinuity terrain={terrain} theme={theme} />
+    </>
   );
 }
 
@@ -318,7 +323,7 @@ export function BackgroundScene({
         </Suspense>
 
         <Suspense fallback={null}>
-          <Terrain surfaceColor={palette.terrain} />
+          <Terrain surfaceColor={palette.terrain} theme={theme} />
         </Suspense>
 
         {/* Neon Prism */}

@@ -53,6 +53,23 @@ I achieved a **97% reduction** in initial load payload through aggressive asset 
 
 _> Total payload reduced by over **150MB**._\_
 
+### Scene edge continuation
+
+The terrain is a tilted 60-unit heightfield tile. `SceneEdgeContinuity` closes
+its exposed cuts with a static, inset skirt, borrowing Terrain's already-uploaded
+albedo without moving the shoreline. A separate 32-segment horizon strip feathers
+the fully fogged sea into the actual background at radii 320-900. It matches the
+existing theme's water alpha and Three's output-color-space fog; fragments before
+full fog are discarded. The existing swell ends at radius 70 and is untouched.
+
+The addition is **216 triangles / 2 draws in the main view**, plus
+**152 triangles / 1 draw in the existing reflection**: **368 triangles / 3 draws**
+on a reflection-update frame. It owns two geometries and two materials, adds no
+textures, transparent fill, render targets, shadow passes, or animation loops.
+Layer 1 is reserved for the main-only horizon; the skirt remains on layer 0.
+Effect-owned resources survive StrictMode's rehearsal and dispose independently
+of Terrain's borrowed texture. These are geometry/draw budgets, not an FPS guarantee.
+
 ## 🛠️ Tech Stack
 
 | Category           | Technologies                                  |
