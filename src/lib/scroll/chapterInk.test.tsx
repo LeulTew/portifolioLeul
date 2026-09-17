@@ -88,6 +88,54 @@ describe('chrome painted through the actual chapter background', () => {
     expect(root.style.getPropertyValue('--chapter-ink-clip')).toBe('inset(70px 0px 0px 0px)');
   });
 
+  it.each(['ground', 'overlay', 'education'] as const)(
+    'does not paint the green navbar from a Projects-covered %s',
+    source => {
+      const { about, overlay, education, ground } = scene();
+      const target = { ground, overlay, education }[source];
+      vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(
+        new DOMRect(0, 0, window.innerWidth, window.innerHeight));
+      if (source === 'overlay') {
+        overlay.dataset.active = 'true';
+        overlay.style.setProperty('--ground-in', '1');
+        about.dataset.bgSettled = 'true';
+      } else if (source === 'education') education.dataset.visible = 'true';
+      updateChapterInk();
+      const painted = root.dataset.chapterInk;
+      expect(painted).not.toBe('none');
+      const covered = source === 'ground' ? about : target;
+      covered.setAttribute('data-projects-covered', '');
+      updateChapterInk();
+      expect(root.dataset.chapterInk).toBe('none');
+      expect(root.style.getPropertyValue('--chapter-ink-visibility')).toBe('hidden');
+      covered.removeAttribute('data-projects-covered');
+      updateChapterInk();
+      expect(root.dataset.chapterInk).toBe(painted);
+    },
+  );
+
+  it('refreshes hidden ground coverage on Projects claim and release without another scroll', async () => {
+    const { about, ground } = scene();
+    const projects = document.createElement('section');
+    projects.id = 'projects';
+    document.body.appendChild(projects);
+    vi.spyOn(ground, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, window.innerWidth, window.innerHeight));
+    const { unmount } = renderHook(useChapterInk);
+    expect(root.dataset.chapterInk).toBe('solid');
+    await act(async () => {
+      about.setAttribute('data-projects-covered', '');
+      projects.dataset.projectsActive = 'true';
+    });
+    expect(root.dataset.chapterInk).toBe('none');
+    await act(async () => {
+      about.removeAttribute('data-projects-covered');
+      delete projects.dataset.projectsActive;
+    });
+    expect(root.dataset.chapterInk).toBe('solid');
+    unmount();
+  });
+
   it('leaves identical frames alone', () => {
     scene();
     updateChapterInk();

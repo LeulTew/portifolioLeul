@@ -11,6 +11,7 @@ const findGround = cachedElement(() =>
   document.querySelector<HTMLElement>('#about [data-green-bg="true"]'));
 const findSkills = cachedElement(() =>
   document.querySelector<HTMLElement>('[data-testid="skills-stage"]'));
+const findProjects = cachedElement(() => document.getElementById('projects'));
 
 const properties = [
   '--chapter-ink-mask', '--chapter-ink-clip', '--chapter-ink-opacity', '--chapter-ink-visibility',
@@ -30,6 +31,7 @@ export function updateChapterInk(): void {
   let clip = 'inset(0px)';
 
   const cover = (element: HTMLElement) => {
+    if (element.closest('[data-projects-covered]')) return;
     const rect = element.getBoundingClientRect();
     if (rect.bottom <= 0 || rect.top >= window.innerHeight ||
         rect.right <= 0 || rect.left >= window.innerWidth) return;
@@ -42,7 +44,7 @@ export function updateChapterInk(): void {
     mode = 'none';
   } else if (education?.dataset.visible === 'true') {
     cover(education);
-  } else if (overlay?.dataset.active === 'true') {
+  } else if (overlay?.dataset.active === 'true' && !overlay.closest('[data-projects-covered]')) {
     if (about?.dataset.bgActive === 'true' || about?.dataset.bgSettled === 'true') {
       mode = 'pixels';
       opacity = Math.min(1, Math.max(0, Number(overlay.style.getPropertyValue('--ground-in'))));
@@ -68,13 +70,16 @@ export function useChapterInk(): void {
     const observer = new MutationObserver(update);
     const discovery = new MutationObserver(update);
     function update() {
-      const elements = [findAbout(), findOverlay(), findEducation(), findSkills()];
+      const elements = [findAbout(), findOverlay(), findEducation(), findSkills(), findProjects()];
       for (const element of elements) {
         if (element && !observed.has(element)) {
           observed.add(element);
           observer.observe(element, {
             attributes: true,
-            attributeFilter: ['style', 'data-active', 'data-visible', 'data-bg-active', 'data-bg-settled'],
+            attributeFilter: [
+              'style', 'data-active', 'data-visible', 'data-bg-active', 'data-bg-settled',
+              'data-projects-active', 'data-projects-covered',
+            ],
           });
         }
       }
