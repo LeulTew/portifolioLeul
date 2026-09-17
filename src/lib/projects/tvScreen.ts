@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
 import { createCameraSpline, sampleCameraPose } from '@/lib/camera/cinematicSpline';
+import { CRT_HOUSING_APERTURE, CRT_HOUSING_BOUNDS } from './crtHousingGeometry';
 
 export const TV_POSITION = [-10, 0.5, -14] as const;
 export const TV_ROTATION = [0.1, Math.PI * 0.2, 0.1] as const;
@@ -8,8 +9,8 @@ export const TV_SCALE = 8;
 export const TV_SCREEN_POSITION = [0.145, 0.11, 0.13] as const;
 export const TV_SCREEN_ROTATION = [-0.03, Math.PI / 2, 0] as const;
 export const TV_SCREEN_PITCH = 0.08;
-export const TV_SCREEN_WIDTH = 0.55;
-export const TV_SCREEN_HEIGHT = 0.32;
+export const TV_SCREEN_WIDTH = CRT_HOUSING_APERTURE.width;
+export const TV_SCREEN_HEIGHT = CRT_HOUSING_APERTURE.height;
 export const TV_SCREEN_ASPECT = TV_SCREEN_WIDTH / TV_SCREEN_HEIGHT;
 export const PROJECTS_TURN_MS = 2200;
 export const PROJECTS_APPROACH_MS = 1400;
@@ -41,14 +42,20 @@ const screenUp = new THREE.Vector3(0, 1, 0).applyQuaternion(TV_SCREEN_ORIENTATIO
 const worldUp = new THREE.Vector3(0, 1, 0);
 
 export function fitTVScreen(width: number, height: number) {
-  // Leave room for the physical upper bezel, the six tabs and fixed navigation.
-  const screenHeight = Math.max(160, Math.min((width - 112) / TV_SCREEN_ASPECT, (height - 154) / 1.42));
+  const above = CRT_HOUSING_BOUNDS.max[1] / TV_SCREEN_HEIGHT * 1.025;
+  const below = -CRT_HOUSING_BOUNDS.min[1] / TV_SCREEN_HEIGHT * 1.025;
+  const cabinetWidth = CRT_HOUSING_BOUNDS.size[0] / TV_SCREEN_WIDTH * 1.025;
+  // Fit the complete physical receiver, not just its luminous rectangle.
+  const screenHeight = Math.max(160, Math.min(
+    (width - 96) / cabinetWidth / TV_SCREEN_ASPECT,
+    (height - 214) / (above + below),
+  ));
   const screenWidth = screenHeight * TV_SCREEN_ASPECT;
   return {
     width: screenWidth,
     height: screenHeight,
     centerX: width / 2,
-    centerY: 92 + screenHeight * 0.42 + screenHeight / 2,
+    centerY: 134 + above * screenHeight,
   };
 }
 

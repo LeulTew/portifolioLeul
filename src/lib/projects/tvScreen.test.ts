@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { CAMERA_CHAPTERS } from '@/lib/camera/cinematicSpline';
 import {
+  CrtHousingGeometry, CRT_HOUSING_PARTS, CRT_SPEAKER_RIB_POSITIONS,
+} from './crtHousingGeometry';
+import {
   fitTVScreen, ProjectsCameraPose, TVScreenProjector, TV_SCREEN_ASPECT,
   TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT, TV_SCREEN_WORLD,
 } from './tvScreen';
@@ -43,6 +46,45 @@ describe('the real TV display framing', () => {
     expect(m[4]).toBeCloseTo(0, 5);
     expect(m[12]).toBeCloseTo(x, 5);
     expect(m[13]).toBeCloseTo(y, 5);
+  });
+
+  it.each(viewports)('keeps the actual cabinet, controls and feet in frame at %i x %i', (width, height) => {
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+    new ProjectsCameraPose().sample(1, 1, width, height, 50, camera.position, camera.quaternion);
+    camera.updateMatrixWorld();
+    const point = new THREE.Vector3();
+    for (const part of CRT_HOUSING_PARTS) {
+      const geometry = new CrtHousingGeometry(part);
+      try {
+        const position = geometry.getAttribute('position');
+        const offsets = part === 'speakerRib' ? CRT_SPEAKER_RIB_POSITIONS : [[0, 0, 0] as const];
+        let left = Infinity;
+        let top = Infinity;
+        let right = -Infinity;
+        let bottom = -Infinity;
+        for (const offset of offsets) {
+          for (let index = 0; index < position.count; index++) {
+            point.fromBufferAttribute(position, index);
+            point.x += offset[0];
+            point.y += offset[1];
+            point.z += offset[2];
+            point.applyMatrix4(TV_SCREEN_WORLD).project(camera);
+            const x = (point.x + 1) * width / 2;
+            const y = (1 - point.y) * height / 2;
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y);
+          }
+          expect(left).toBeGreaterThan(24);
+          expect(right).toBeLessThan(width - 24);
+          expect(top).toBeGreaterThan(72);
+          expect(bottom).toBeLessThan(height - 56);
+        }
+      } finally {
+        geometry.dispose();
+      }
+    }
   });
 
   it.each([0, 0.1, 0.35, 0.6, 0.85, 1])('pins all four DOM corners at approach %f', approach => {

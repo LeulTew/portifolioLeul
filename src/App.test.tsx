@@ -245,6 +245,13 @@ describe("App Component", () => {
     expect(screen.getByTestId("r3f-canvas")).toBeInTheDocument();
     expect(screen.getByTestId("background-scene")).toBeInTheDocument();
   });
+
+  it("marks both footer paints for the same Projects-only visibility rule", () => {
+    render(<ThemeProvider><App /></ThemeProvider>);
+    expect(document.querySelectorAll('[data-page-footer]')).toHaveLength(2);
+    expect(document.querySelector('[data-chapter-ink-layer] [data-page-footer]')).not.toBeNull();
+    expect(screen.getByTestId('page-footer')).toHaveAttribute('data-page-footer');
+  });
 });
 
 describe("what the loader is covering", () => {

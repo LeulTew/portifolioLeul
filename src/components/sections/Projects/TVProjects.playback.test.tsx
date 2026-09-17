@@ -4,13 +4,15 @@ import { animationClock } from '@/test/animationClock';
 import { TVProjects } from './TVProjects';
 import {
   getProjectsSurface, getProjectsView, publishSkillsProjectsHandoff,
-  setProjectsView, setTVScreenReady,
+  isProjectsReturnOwed, setProjectsView, setTVScreenReady,
 } from '@/lib/projects/projectsScene';
 import { PROJECTS_APPROACH_MS, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
-import { resetScrollGesture } from '@/lib/scroll/scrollGesture';
+import { resetScrollGesture, SCROLL_WAVE_IDLE_MS } from '@/lib/scroll/scrollGesture';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
+import * as scrollContainer from '../About/EducationRail/scrollContainer';
+import { CRT_POWER_ON_MS } from './projectBroadcast';
 
 let top = 1200;
 let reduced = false;
@@ -83,6 +85,14 @@ const handoff = () => {
   act(() => { publishSkillsProjectsHandoff('withdrawing'); });
   act(() => { publishSkillsProjectsHandoff('revealed'); });
 };
+const returnInput = (kind: 'held key' | 'wheel', repeat = true) => {
+  if (kind === 'wheel') wheel(-200);
+  else {
+    const event = new KeyboardEvent('keydown', { key: 'ArrowUp', repeat, bubbles: true, cancelable: true });
+    act(() => { window.dispatchEvent(event); });
+    expect(event.defaultPrevented).toBe(false);
+  }
+};
 
 describe('the completed-beat TV chapter', () => {
   it('does not claim a spent physical Projects position before Skills actually departs', async () => {
@@ -136,6 +146,7 @@ describe('the completed-beat TV chapter', () => {
     await clock.run(10);
     expect(phase()).toBe('reading');
     expect(screen.getByRole('button', { name: 'Next project' })).toBeEnabled();
+    await clock.run(CRT_POWER_ON_MS);
     expect(clock.pending).toBe(0);
   });
 
@@ -197,6 +208,167 @@ describe('the completed-beat TV chapter', () => {
     expect(phase()).toBe('approaching');
     await clock.run(PROJECTS_APPROACH_MS);
     expect(phase()).toBe('reading');
+  });
+
+  it.each(['held key', 'wheel'] as const)(
+    'accepts continued %s return input after departure completion without queuing the early input', async kind => {
+      const { onNavigate } = mount();
+      await navbar('projects');
+      top = -1300;
+      wheel(200);
+      returnInput(kind, false);
+      for (let elapsed = 0; elapsed < PROJECTS_APPROACH_MS - 50; elapsed += 50) {
+        await clock.frame(50);
+        returnInput(kind);
+        expect(phase()).toBe('departing');
+      }
+      await clock.frame(40);
+      returnInput(kind);
+      expect(phase()).toBe('departing');
+      expect(onNavigate).not.toHaveBeenCalled();
+      await clock.frame(10);
+      expect(phase()).toBe('outside');
+      expect(isProjectsReturnOwed()).toBe(true);
+      expect(onNavigate).toHaveBeenCalledExactlyOnceWith('contact', { immediate: true });
+      expect(clock.pending).toBe(0);
+      returnInput(kind);
+      expect(phase()).toBe('approaching');
+      expect(isProjectsReturnOwed()).toBe(false);
+      expect(getProjectsView().entry).toBe('contact');
+      await clock.run(PROJECTS_APPROACH_MS);
+      expect(phase()).toBe('reading');
+    },
+  );
+
+  it.each([
+    ['held key', false], ['wheel', false], ['held key', true], ['wheel', true],
+  ] as const)(
+    'keeps navbar cancellation authoritative for %s input, afterRelease=%s', async (kind, afterRelease) => {
+      mount();
+      await navbar('projects');
+      top = -1300;
+      wheel(200);
+      returnInput(kind, false);
+      await clock.run(afterRelease ? PROJECTS_APPROACH_MS - 10 : 100);
+      returnInput(kind);
+      if (afterRelease) await clock.frame(10);
+      await navbar('contact');
+      for (let count = 0; count < 4; count++) {
+        await clock.frame(50);
+        returnInput(kind);
+        expect(phase()).toBe('outside');
+        expect(getProjectsView().active).toBe(false);
+        expect(isProjectsReturnOwed()).toBe(true);
+      }
+      expect(screen.getByTestId('main')).not.toHaveAttribute('data-projects-covered');
+      expect(screen.getByTestId('main')).not.toHaveAttribute('inert');
+      if (kind === 'wheel') clock.wait(SCROLL_WAVE_IDLE_MS);
+      returnInput(kind, false);
+      expect(phase()).toBe('approaching');
+    },
+  );
+
+  it.each(['ArrowUp', 'PageUp', 'Home'])(
+    'moves real scroll-linked return geometry for accepted navbar-focused %s, without skipping the position gate', async key => {
+      mount();
+      await navbar('projects');
+      const navigationTarget = screen.getByRole('button', { name: 'Projects navigation' });
+      navigationTarget.focus();
+      const scroller = document.createElement('div');
+      Object.defineProperty(scroller, 'clientHeight', { value: 900 });
+      scroller.scrollTop = 14808;
+      vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scroller);
+      document.getElementById('projects')!.getBoundingClientRect = () =>
+        DOMRect.fromRect({ x: 0, y: 12008 - scroller.scrollTop, width: 1440, height: 2340 });
+      wheel(200);
+      fireEvent.keyDown(navigationTarget, { key, repeat: false });
+      await clock.run(PROJECTS_APPROACH_MS - 10);
+      fireEvent.keyDown(navigationTarget, { key, repeat: true });
+      expect(scroller.scrollTop).toBe(14808);
+      await clock.frame(10);
+      expect(phase()).toBe('outside');
+      const count = key === 'ArrowUp' ? 32 : key === 'PageUp' ? 2 : 1;
+      for (let index = 0; index < count; index++) {
+        const event = new KeyboardEvent('keydown', { key, repeat: true, bubbles: true, cancelable: true });
+        fireEvent(navigationTarget, event);
+        expect(event.defaultPrevented).toBe(false);
+        act(() => setScrollProgress(0.8 - (index + 1) / 1000));
+        if (index < count - 1) expect(phase()).toBe('outside');
+      }
+      expect(phase()).toBe('approaching');
+      expect(isProjectsReturnOwed()).toBe(false);
+      expect(navigationTarget).toHaveFocus();
+    },
+  );
+
+  it('does not forward a held return key after explicit navbar cancellation', async () => {
+    mount();
+    await navbar('projects');
+    const scroller = document.createElement('div');
+    scroller.scrollTop = 14808;
+    vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scroller);
+    top = -2799;
+    wheel(200);
+    returnInput('held key', false);
+    await clock.run(PROJECTS_APPROACH_MS);
+    await navbar('contact');
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Contact navigation' }), { key: 'ArrowUp', repeat: true });
+    expect(scroller.scrollTop).toBe(14808);
+    expect(phase()).toBe('outside');
+  });
+
+  it.each(['display', 'artwork', 'header', 'footer', 'link', 'control'] as const)(
+    'routes screen browsing through its %s without moving or leaving the scene', async region => {
+      mount();
+      await navbar('projects');
+      const scroller = document.createElement('div');
+      vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scroller);
+      const display = screen.getByRole('tabpanel');
+      const target = () => region === 'display' ? display
+        : region === 'artwork' ? display.querySelector('img')!
+          : region === 'header' ? display.querySelector('header')!
+            : region === 'footer' ? display.querySelector('footer')!
+              : region === 'link' ? screen.getByRole('link', { name: 'See project' })
+                : screen.getByRole('button', { name: 'Next project' });
+      for (const delta of [200, -200]) {
+        wheel(delta, target());
+        expect(phase()).toBe('reading');
+        expect(document.querySelector('[data-project-id]')).toHaveAttribute(
+          'data-project-id', delta > 0 ? '23' : '36',
+        );
+        expect(scroller.scrollTop).toBe(0);
+      }
+      const key = new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true, cancelable: true });
+      fireEvent(target(), key);
+      expect(key.defaultPrevented).toBe(false);
+      fireEvent.touchStart(target(), { touches: [{ clientY: 500 }] });
+      expect(fireEvent.touchMove(target(), { touches: [{ clientY: 300 }], cancelable: true })).toBe(true);
+      fireEvent.touchEnd(target());
+      expect(phase()).toBe('reading');
+      expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '36');
+      expect(scroller.scrollTop).toBe(0);
+      fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
+      expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '23');
+      fireEvent.click(screen.getByRole('button', { name: /^Contact$/ }));
+      expect(phase()).toBe('departing');
+    },
+  );
+
+  it('accepts consecutive screen wheel selections while the broadcast and CRT boot are still moving', async () => {
+    mount();
+    await navbar('projects');
+    const display = screen.getByRole('tabpanel');
+    wheel(100, display);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '23');
+    wheel(100, display);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '25');
+    wheel(100, display);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '28');
+    expect(screen.getByRole('button', { name: 'Next project' })).toBeEnabled();
+    expect(screen.getByRole('tab', { name: 'Mobile Apps' })).toBeEnabled();
+    expect(phase()).toBe('reading');
+    fireEvent.click(screen.getByRole('tab', { name: 'Mobile Apps' }));
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '36');
   });
 
   it('preserves native scrolling and control keys inside the reader without changing chapters', async () => {
@@ -263,6 +435,8 @@ describe('the completed-beat TV chapter', () => {
       expect(getProjectsView()).toMatchObject({ active: true, turn: 1, approach: 1 });
       await navbar('projects');
       expect(phase()).toBe('reading');
+      expect(screen.getByRole('button', { name: 'Next project' })).toBeEnabled();
+      await clock.run(CRT_POWER_ON_MS);
       expect(clock.pending).toBe(0);
     },
   );

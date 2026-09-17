@@ -3,6 +3,9 @@ import { render, act, fireEvent } from '@testing-library/react';
 import { TVModel } from './TVModel';
 import { vi } from 'vitest';
 
+vi.mock('./3d/CRTHousing', () => ({ CRTHousing: () => null }));
+vi.mock('./3d/CRTSupports', () => ({ CRTSupports: () => null }));
+
 // Mock three.js and drei
 const mockUseGLTF = vi.fn(() => ({
   scene: {

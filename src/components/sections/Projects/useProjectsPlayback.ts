@@ -11,11 +11,13 @@ import {
 import { hasChapterOwnership, CHAPTER_OWNERSHIP_ATTRIBUTES } from '@/lib/scroll/chapterOwnership';
 import {
   holdProjectsViewForSkills, registerProjectsSurface, setProjectsView,
-  setProjectsReturnOwed, subscribeSkillsProjectsHandoff, type ProjectsPhase,
+  setProjectsReading, setProjectsReturnOwed, subscribeSkillsProjectsHandoff, type ProjectsPhase,
 } from '@/lib/projects/projectsScene';
 import { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { isProjectsReadingTarget } from './projectsInput';
+import { projectsReturnKeyDelta } from './projectsReturnKey';
 
 interface Refs {
   host: RefObject<HTMLElement>;
@@ -64,6 +66,7 @@ export function useProjectsPlayback(
     setProjectsReturnOwed(side === 'after');
     let wave: ScrollDirection | null = null;
     let bypass = false;
+    let continuedReturn = false;
     let navigating = false;
     let pendingNavigation: string | null = null;
     let turn = 0;
@@ -80,6 +83,7 @@ export function useProjectsPlayback(
 
     const changePhase = (next: ProjectsPhase) => {
       state = next;
+      setProjectsReading(next === 'reading');
       writeAttribute(panel, 'data-phase', next);
       setPhase(next);
     };
@@ -92,6 +96,7 @@ export function useProjectsPlayback(
     const show = () => {
       if (active) return;
       active = true;
+      continuedReturn = false;
       setProjectsReturnOwed(false);
       writeStyleProperty(screen, 'opacity', '0');
       writeAttribute(rail, 'data-projects-active', 'true');
@@ -106,6 +111,8 @@ export function useProjectsPlayback(
     const release = (keepCamera = false) => {
       cancel();
       active = false;
+      continuedReturn = false;
+      wave = null;
       if (keepCamera) holdProjectsViewForSkills();
       else setProjectsView(false, turn, approach);
       writeAttribute(rail, 'data-projects-active', null);
@@ -141,6 +148,7 @@ export function useProjectsPlayback(
       side = target === 'contact' ? 'after' : 'before';
       setProjectsReturnOwed(side === 'after');
       release(target === 'skills' && skills?.dataset.staged === 'true');
+      continuedReturn = target === 'contact' && pendingNavigation === null;
       focusNavigation(target);
       navigate(target, { immediate: true, ...(target === 'skills' ? { edge: 'end' as const } : {}) });
     };
@@ -247,22 +255,33 @@ export function useProjectsPlayback(
         else run('turn', 1, 'turning', () => settled('framed'));
       }
     });
-    const ignoreTarget = (target: EventTarget | null) =>
-      target instanceof Element && !!target.closest('[data-projects-scrollable], [data-projects-tabs]');
     const unsubscribeGesture = subscribeScrollGesture(direction => {
-      if (!active || document.hidden) return;
-      requestRef.current?.(direction === 'down' ? 1 : -1);
-    }, { ignoreTarget });
+      if (document.hidden) return;
+      if (active) {
+        requestRef.current?.(direction === 'down' ? 1 : -1);
+      } else if (continuedReturn && direction === 'up') {
+        wave = direction;
+        apply();
+      }
+    }, { ignoreTarget: isProjectsReadingTarget });
     const unsubscribeEntry = subscribeScrollGesture(direction => {
       if (active || document.hidden) return;
       wave = direction;
       bypass = false;
       pendingNavigation = null;
       apply();
-    }, { startsOnly: true, ignoreTarget });
+    }, { startsOnly: true, ignoreTarget: isProjectsReadingTarget });
+    const forwardReturnKey = (event: KeyboardEvent) => {
+      if (document.hidden || active || side !== 'after' || bypass || wave !== 'up') return;
+      const scroller = findScrollContainer(rail);
+      if (!scroller) return;
+      scrollContainerBy(scroller, projectsReturnKeyDelta(event, scroller));
+    };
+    window.addEventListener('keydown', forwardReturnKey, { passive: true });
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (navigating) return;
       wave = null;
+      continuedReturn = false;
       if (options?.source === 'navbar') {
         pendingNavigation = null;
         release();
@@ -325,6 +344,7 @@ export function useProjectsPlayback(
       unsubscribeNavigation();
       unsubscribeScroll();
       observer.disconnect();
+      window.removeEventListener('keydown', forwardReturnKey);
       window.removeEventListener('scroll', apply);
       window.removeEventListener('resize', apply);
       document.removeEventListener('visibilitychange', visibility);

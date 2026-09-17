@@ -230,16 +230,48 @@ withdrawal and turn. The first input after the turn completes, including a
 continuing wheel/touch stream or held key, requests the separate 1400ms approach.
 Input during either movement is discarded, not queued; no post-movement pause.
 
-The TV uses its existing explicit display plane and textured body. A single
+The revised CRT uses the existing measured display plane and an authored,
+lightweight housing in place of the faceted scan. A single
 body-level semantic DOM reader projects onto that plane from the existing camera.
 Its native CSS-pixel reading size is independent of WebGL DPR. Tabs sit above the
-bezel; the common chamfer controls select projects without a second motion engine
-or autoplay. Full descriptions and technology remain reachable in Details.
-Vertical wheel, touch and page-scroll keys inside the scrollable copy/details
-region remain native and never request a scene movement, even at its boundaries.
+bezel; the common chamfer controls select projects without a second animation
+dependency or autoplay. Full descriptions and technology remain reachable in Details.
+
+**User-revised screen browsing:** wheel input on the normal display selects
+projects, including while a broadcast transition or CRT power-on is moving.
+Normalize pixel/line/page deltas and trackpad direction before applying the
+distance threshold. One native event requests at most one page; discard its
+excess after a step so a hard notch cannot bank later changes. Reversing input
+resets accumulated distance. Never gate selection on `isAnimating`, elapsed
+cooldown or a fresh wave after animation. Buttons, tabs and lateral selection
+are immediate too. Latest selection wins: dispose the old reveal and retarget
+the current image/lower-third score. Loop first/last within the current category;
+screen browsing never implicitly exits to Contact.
+
+Expanded Details is the intentional native-reading exception: display wheel,
+touch and page-scroll keys stay native and do not select another project or
+request a scene movement. Its explicit Preview action returns to browsing.
+The reader fills
+the existing rectangular aperture without rounded transparent corners exposing
+the paused ambient video beneath it.
 Left/right project shortcuts belong to the reader itself, not focused tabs,
-links, buttons, fields or scrollable text. Outside the reading region, vertical
+links, buttons, fields or scrollable text. Outside the display, vertical
 input requests scene continuation/reversal; it is never cancelled.
+
+CRT power-on is a bounded horizontal beam -> vertical opening -> raster settle,
+not a flicker loop or simple whole-reader fade. Keep controls live throughout.
+Reduced motion shows the readable screen directly. Broadcast text keeps its
+original semantic content; no interval-driven accessible glyph scrambling.
+Power/reveal frames advance only while visible and are disposed on retarget,
+navigation, preference changes and unmount.
+
+Only the readable TV on fine-pointer, non-low-tier, motion-enabled clients has
+small pointer parallax. Cache viewport geometry outside frames; use the actual
+rendered camera for DOM projection. Departure starts at the real offset pose,
+then blends that offset out on the authored approach clock. No per-frame React
+state, independent CSS camera transition, extra WebGL context or carryover to
+another chapter. Hide both ordinary and ink-mirror footer paints only while
+Projects owns the viewport; do not leave two competing scroll instructions.
 
 Reverse retreats from the display, retraces the turn, then requests the trailing
 Skills pose with an immediate `edge: 'end'` landing. Keep the last camera pose
@@ -257,6 +289,18 @@ A native return owed from Contact also gates earlier chapters before Projects
 claims: a hard upward flick must not let Education or Skills win the subscriber
 order and skip the TV. Navbar intent and unavailable/stopped staging clear that
 gate; it never selects Projects while Contact is being read.
+After a natural departure has fully completed, the first upward input event can
+request that return even if its wheel wave or held key began during departure.
+Pre-completion input is discarded, never queued. Explicit navigation cancels
+this continuation allowance; outside entry after navbar intent still requires
+a fresh input wave. No timer or post-departure pause is added.
+Accepted upward return keys from navbar/body focus bridge to the actual Drei
+scrollport because it is not their native scroll ancestor. The scoped policy
+is ArrowUp40px, PageUp90% of the scrollport height, Home to its top. Keep focus
+where it is; do not cancel events or remove the position gate. Do not forward
+while a beat is active, after navbar cancellation without new intent, from
+inside the native scrollport, or from editables/display/details/tabs and native
+arrow-owning controls. Modified platform shortcuts remain native.
 
 **Navbar-only bypass (2026-09-16):** a navbar click or native keyboard activation
 may explicitly skip intervening beats. Carry `source: 'navbar'` through the

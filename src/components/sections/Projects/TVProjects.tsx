@@ -1,5 +1,5 @@
 import {
-  useCallback, useEffect, useRef, useState, type KeyboardEvent,
+  useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent,
   type PointerEvent, type WheelEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -12,6 +12,9 @@ import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/s
 import { projectsData, type Project } from '@/data/projects';
 import { useProjectsFits, useProjectsPlayback } from './useProjectsPlayback';
 import { PROJECT_CATEGORIES } from './projectCategories';
+import { isProjectsReadingTarget } from './projectsInput';
+import { ProjectWheelPaging } from './projectPaging';
+import { useCRTPowerOn, useProjectBroadcast } from './projectBroadcast';
 import styles from './TVProjects.module.css';
 
 function ProjectDescription({ project }: { project: Project }) {
@@ -49,11 +52,14 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const stage = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  const display = useRef<HTMLDivElement>(null);
+  const broadcast = useRef<HTMLDivElement>(null);
+  const paging = useRef<ProjectWheelPaging | null>(null);
+  if (paging.current === null) paging.current = new ProjectWheelPaging();
   const detailsButton = useRef<HTMLButtonElement>(null);
   const sceneControl = useRef<{ element: HTMLButtonElement; enterScreen: boolean } | null>(null);
   const pointer = useRef<{ x: number; y: number; id: number } | null>(null);
-  const [category, setCategory] = useState<string>('All');
-  const [index, setIndex] = useState(0);
+  const [{ category, index }, setSelection] = useState({ category: 'All', index: 0 });
   const [details, setDetails] = useState(false);
   const available = useTVScreenReady();
   const fits = useProjectsFits();
@@ -61,20 +67,29 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const staged = available && fits;
   const { phase, visible, ready, step } = useProjectsPlayback({ host, stage, surface }, staged, reduced, onNavigate);
   const interactive = !staged || ready;
-  const filtered = category === 'All' ? projectsData : projectsData.filter(project => project.categories.includes(category));
+  const filtered = useMemo(() => category === 'All'
+    ? projectsData : projectsData.filter(project => project.categories.includes(category)), [category]);
   const project = filtered[index % Math.max(filtered.length, 1)];
   const activeTab = PROJECT_CATEGORIES.findIndex(value => value === category);
+  useCRTPowerOn(display, staged && ready, reduced);
+  useProjectBroadcast(broadcast, project?.id ?? 0, interactive, reduced, details);
 
   const selectCategory = (value: string) => {
     if (!interactive) return;
-    setCategory(value);
-    setIndex(0);
+    setSelection({ category: value, index: 0 });
     setDetails(false);
+    paging.current?.reset();
   };
   const selectProject = (direction: -1 | 1) => {
-    if (!interactive || filtered.length < 2) return;
-    setIndex(previous => (previous + direction + filtered.length) % filtered.length);
+    if (!interactive) return;
+    setSelection(previous => {
+      const count = previous.category === 'All' ? projectsData.length
+        : projectsData.filter(project => project.categories.includes(previous.category)).length;
+      if (count < 2) return previous;
+      return { ...previous, index: (previous.index + direction + count) % count };
+    });
     setDetails(false);
+    paging.current?.reset();
   };
   const tabsKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!interactive || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
@@ -95,13 +110,17 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     else if (event.key === 'ArrowRight') selectProject(1);
   };
   const forwardWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
-    if (!staged || !visible ||
-        (event.target instanceof Element && event.target.closest('[data-projects-scrollable]'))) return;
+    if (!staged || !visible || isProjectsReadingTarget(event.target)) return;
     const scroller = findScrollContainer(host.current);
     if (!scroller) return;
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
     scrollContainerBy(scroller, event.deltaY * unit);
   }, [staged, visible]);
+  const browseWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (!interactive || details) return;
+    const direction = paging.current?.take(event, window.innerHeight);
+    if (direction) selectProject(direction);
+  };
   const swipeStart = (event: PointerEvent<HTMLDivElement>) => {
     if (!interactive || (event.pointerType === 'mouse' && event.button !== 0)) return;
     pointer.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
@@ -117,7 +136,9 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
 
   useEffect(() => {
     if (content.current) content.current.scrollTop = 0;
+    paging.current?.reset();
   }, [project?.id, details]);
+  useEffect(() => { if (!interactive) paging.current?.reset(); }, [interactive]);
   useEffect(() => {
     if (!stage.current) return;
     stage.current.inert = staged && !visible;
@@ -161,10 +182,10 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
           ))}
         </div>
         <div
-          id="project-display" className={styles.display} role="tabpanel"
+          ref={display} id="project-display" className={styles.display} role="tabpanel"
           aria-labelledby={`project-category-${activeTab}`} tabIndex={interactive ? 0 : -1}
           aria-hidden={!interactive ? true : undefined} onKeyDown={readerKeyboard}
-          data-details={details}
+          data-details={details} data-projects-display="" onWheel={browseWheel}
         >
           <header className={styles.displayHeader}>
             <h2 id="projects-heading">Projects</h2>
@@ -173,9 +194,10 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
             </span>
           </header>
           {project ? (
-            <div className={styles.work} key={project.id} data-project-id={project.id}>
+            <div ref={broadcast} className={styles.work} data-project-id={project.id}>
+              <div className={styles.broadcastSignal} data-broadcast-signal="" aria-hidden="true" />
               {!details && <div
-                className={styles.image} onPointerDown={swipeStart} onPointerUp={swipeEnd}
+                className={styles.image} data-broadcast-image="" onPointerDown={swipeStart} onPointerUp={swipeEnd}
                 onPointerCancel={() => { pointer.current = null; }}
               >
                 <ProjectImage key={project.id} project={project} />
@@ -185,7 +207,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                 tabIndex={interactive ? 0 : -1}
                 aria-label={`${project.title} ${details ? 'details' : 'summary'}`}
               >
-                <h3>{project.title}</h3>
+                <h3 data-broadcast-title="">{project.title}</h3>
                 {details ? <>
                   <ProjectDescription project={project} />
                   <dl className={styles.technology}>
@@ -193,10 +215,10 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                     <dt>Categories</dt><dd>{project.categories.join(' / ')}</dd>
                   </dl>
                 </> : <>
-                  <p className={styles.summary}>{project.description}</p>
-                  <p className={styles.stack}>{project.tech}</p>
+                  <p className={styles.summary} data-broadcast-copy="">{project.description}</p>
+                  <p className={styles.stack} data-broadcast-copy="">{project.tech}</p>
                 </>}
-                <div className={styles.links}>
+                <div className={styles.links} data-broadcast-copy="">
                   {project.demoUrl && <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
                     See project <ArrowUpRight size={17} aria-hidden="true" />
                   </a>}
@@ -211,7 +233,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
             <ControlButton
               ref={detailsButton} disabled={!interactive || !project}
               aria-expanded={details} aria-controls="project-display"
-              onClick={() => setDetails(value => !value)} className={styles.detailsButton}
+              onClick={() => { paging.current?.reset(); setDetails(value => !value); }} className={styles.detailsButton}
             >
               {details ? 'Preview' : 'Details'}
               {details ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
@@ -227,6 +249,9 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               </ControlButton>
             </div>
           </footer>
+          <div className={styles.crtShutter} data-crt-shutter="" aria-hidden="true" />
+          <div className={styles.crtBeam} data-crt-beam="" aria-hidden="true" />
+          <div className={styles.crtRaster} data-crt-raster="" aria-hidden="true" />
         </div>
       </div>
       {staged && <div className={styles.sceneControls} aria-hidden={!visible ? true : undefined}>
@@ -243,7 +268,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
             : phase === 'approaching' ? 'Approaching the display'
               : phase === 'departing' ? 'Continuing to Contact'
                 : phase === 'unturning' || phase === 'retreating' ? 'Returning through the scene'
-                  : phase === 'reading' ? 'Read inside the screen. Scroll outside to continue.'
+                  : phase === 'reading'
+                    ? details ? 'Scroll to read. Preview returns to browsing.' : 'Scroll on the screen to browse. Scroll outside to continue.'
                     : phase === 'revealed' ? 'The tools behind the work'
                       : 'The work is on the screen'}
         </p>

@@ -588,6 +588,7 @@ function PageFooter({ painted = false }: { painted?: boolean }) {
     <motion.div
       className={`${styles.footer} ${painted ? styles.paintedFooter : ''}`}
       data-testid={painted ? undefined : 'page-footer'}
+      data-page-footer=""
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1, ease: [0.76, 0, 0.24, 1], delay: 0.4 }}

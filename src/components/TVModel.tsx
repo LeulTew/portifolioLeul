@@ -1,12 +1,13 @@
-import { useGLTF, useVideoTexture } from '@react-three/drei';
+import { useVideoTexture } from '@react-three/drei';
 import { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
-import { resolveSceneModel } from '@/lib/assets/criticalAssets';
 import { useProjectsActive } from '@/lib/projects/projectsScene';
 import {
   TV_SCREEN_POSITION, TV_SCREEN_ROTATION, TV_SCREEN_PITCH, TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT,
 } from '@/lib/projects/tvScreen';
 import { TVScreenProjection } from './3d/TVScreenProjection';
+import { CRTHousing } from './3d/CRTHousing';
+import { CRTSupports } from './3d/CRTSupports';
 
 /** How long each clip holds the screen before the set changes. */
 const CLIP_DURATION_MS = 8000;
@@ -17,7 +18,6 @@ type TVModelProps = JSX.IntrinsicElements['group'] & {
 };
 
 export function TVModel({ clips = 2, ...props }: TVModelProps) {
-  const { scene } = useGLTF(resolveSceneModel('/models/crt-lite.glb'), false);
   const [videoIndex, setVideoIndex] = useState(0);
   const projectsActive = useProjectsActive();
 
@@ -125,15 +125,19 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
     <group {...props} onClick={() => {
       if (!projectsActive) setVideoIndex((prev: number) => (prev + 1) % textures.length);
     }}>
-      {/* The textured body and its geometry belong to the shared GLTF cache. */}
-      <primitive object={scene} dispose={null} />
-
-      {/* Video Screen Plane */}
       <group position={[...TV_SCREEN_POSITION]} rotation={[...TV_SCREEN_ROTATION]}>
-        <mesh rotation={[TV_SCREEN_PITCH, 0, 0]}>
-          <planeGeometry args={[TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT]} />
-          <meshBasicMaterial map={currentTexture} toneMapped={false} side={THREE.DoubleSide} />
-        </mesh>
+        <group rotation={[TV_SCREEN_PITCH, 0, 0]}>
+          <CRTHousing active={projectsActive} />
+          <CRTSupports />
+          <mesh>
+            <planeGeometry args={[TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT]} />
+            <meshBasicMaterial
+              map={projectsActive ? null : currentTexture}
+              color={projectsActive ? '#06100b' : '#ffffff'}
+              toneMapped={false} side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
       </group>
       <TVScreenProjection />
     </group>

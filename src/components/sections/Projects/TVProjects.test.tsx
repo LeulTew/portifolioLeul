@@ -5,6 +5,12 @@ import { PROJECT_CATEGORIES } from './projectCategories';
 import { projectsData } from '@/data/projects';
 import { setProjectsView, setTVScreenReady } from '@/lib/projects/projectsScene';
 
+// Animation clocks and retargeting are exercised in projectBroadcast and playback tests.
+vi.mock('./projectBroadcast', () => ({
+  useProjectBroadcast: () => {},
+  useCRTPowerOn: () => {},
+}));
+
 beforeEach(() => {
   setProjectsView(false, 0, 0);
   setTVScreenReady(false);
@@ -23,27 +29,25 @@ describe('the semantic TV project reader', () => {
     expect(screen.getByRole('button', { name: 'Next project' })).toBeEnabled();
   });
 
-  it('retains every real project and original link in every category, including looping', () => {
+  it.each(PROJECT_CATEGORIES)('retains every real %s project and original link, including looping', category => {
     render(<TVProjects />);
-    for (const category of PROJECT_CATEGORIES) {
-      fireEvent.click(screen.getByRole('tab', { name: category }));
-      const items = category === 'All' ? projectsData : projectsData.filter(project => project.categories.includes(category));
-      for (const project of items) {
-        expect(screen.getByRole('heading', { name: project.title, level: 3 })).toBeVisible();
-        expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
-        const links = screen.getAllByRole('link');
-        expect(links.map(link => link.getAttribute('href')))
-          .toEqual([project.demoUrl, project.githubUrl].filter(Boolean));
-        links.forEach(link => {
-          expect(link).toHaveAttribute('target', '_blank');
-          expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-        });
-        fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
-      }
-      expect(screen.getByRole('heading', { name: items[0].title, level: 3 })).toBeVisible();
-      fireEvent.click(screen.getByRole('button', { name: 'Previous project' }));
-      expect(screen.getByRole('heading', { name: items[items.length - 1].title, level: 3 })).toBeVisible();
+    fireEvent.click(screen.getByRole('tab', { name: category }));
+    const items = category === 'All' ? projectsData : projectsData.filter(project => project.categories.includes(category));
+    for (const project of items) {
+      expect(screen.getByRole('heading', { name: project.title, level: 3 })).toBeVisible();
+      expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
+      const links = screen.getAllByRole('link');
+      expect(links.map(link => link.getAttribute('href')))
+        .toEqual([project.demoUrl, project.githubUrl].filter(Boolean));
+      links.forEach(link => {
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
     }
+    expect(screen.getByRole('heading', { name: items[0].title, level: 3 })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Previous project' }));
+    expect(screen.getByRole('heading', { name: items[items.length - 1].title, level: 3 })).toBeVisible();
   });
 
   it('shows complete factual descriptions and technology in its own scrollable details view', () => {
@@ -101,7 +105,7 @@ describe('the semantic TV project reader', () => {
     expect(screen.getByRole('img', { name: `${projectsData[1].title} preview` })).toBeVisible();
   });
 
-  it('has no autoplay and never changes the project on vertical reading input', () => {
+  it('has no autoplay and keeps expanded Details isolated from vertical page browsing', () => {
     vi.useFakeTimers();
     try {
       render(<TVProjects />);

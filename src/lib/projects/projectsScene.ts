@@ -10,9 +10,10 @@ export interface ProjectsView {
   approach: number;
   visit: number;
   entry: 'skills' | 'contact';
+  reading: boolean;
 }
 
-const view: ProjectsView = { active: false, turn: 0, approach: 0, visit: 0, entry: 'skills' };
+const view: ProjectsView = { active: false, turn: 0, approach: 0, visit: 0, entry: 'skills', reading: false };
 const activeListeners = new Set<() => void>();
 const readyListeners = new Set<() => void>();
 const handoffListeners = new Set<(phase: 'withdrawing' | 'revealed') => void>();
@@ -31,12 +32,19 @@ export function setProjectsView(
 ): void {
   const changed = view.active !== active;
   if (changed && active) view.visit++;
-  if (!active) holdingForSkills = false;
+  if (!active) {
+    holdingForSkills = false;
+    view.reading = false;
+  }
   view.active = active;
   view.turn = turn;
   view.approach = approach;
   if (entry) view.entry = entry;
   if (changed) activeListeners.forEach(listener => listener());
+}
+
+export function setProjectsReading(reading: boolean): void {
+  view.reading = reading;
 }
 
 export function holdProjectsViewForSkills(): void {

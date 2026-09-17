@@ -66,7 +66,9 @@ afterEach(() => {
 });
 const advance = async (ms: number) => {
   gsap.ticker.sleep();
-  await clock.run(ms);
+  for (let elapsed = 0; elapsed < ms; elapsed += 50) {
+    await clock.frame(Math.min(50, ms - elapsed));
+  }
   gsap.ticker.sleep();
 };
 const mount = async () => {
@@ -102,8 +104,10 @@ const projectPhase = () => screen.getByTestId('projects-stage').dataset.phase;
 const skillPhase = () => screen.getByTestId('skills-stage').dataset.phase;
 
 describe('the actual Skills / Projects ownership seam', () => {
+  let navigate: Awaited<ReturnType<typeof mount>>;
+  beforeEach(async () => { navigate = await mount(); });
+
   it('withdraws the real Skills plate before automatically playing a visible turn', async () => {
-    const navigate = await mount();
     expect(getOverlayOcclusion()).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'See projects' }));
     expect(projectPhase()).toBe('withdrawing');
@@ -126,7 +130,6 @@ describe('the actual Skills / Projects ownership seam', () => {
   });
 
   it('retraces the camera and keeps it held until the returning last Skills plate is opaque', async () => {
-    const navigate = await mount();
     fireEvent.click(screen.getByRole('button', { name: 'See projects' }));
     await advance(600 + PROJECTS_TURN_MS);
     fireEvent.click(screen.getByRole('button', { name: 'Open the screen' }));
@@ -152,7 +155,6 @@ describe('the actual Skills / Projects ownership seam', () => {
   });
 
   it('cancels an unfinished handoff for repeated navbar destinations without a late landing', async () => {
-    const navigate = await mount();
     fireEvent.click(screen.getByRole('button', { name: 'See projects' }));
     await advance(200);
     await act(async () => publishSectionNavigation('contact', { source: 'navbar' }));
@@ -170,7 +172,6 @@ describe('the actual Skills / Projects ownership seam', () => {
   });
 
   it('visits the TV first when an upward Contact flick crosses the entire Skills spacer', async () => {
-    await mount();
     await act(async () => publishSectionNavigation('contact', { source: 'navbar' }));
     expect(isProjectsReturnOwed()).toBe(true);
     skillsTop = 2000;
@@ -189,7 +190,6 @@ describe('the actual Skills / Projects ownership seam', () => {
 
   it.each(['reduced motion', 'viewport fallback', 'navbar', 'unmount'])(
     'releases the retained return pose on %s even if Skills never becomes opaque', async mode => {
-      await mount();
       await act(async () => publishSectionNavigation('projects', { source: 'navbar' }));
       fireEvent.click(screen.getByRole('button', { name: 'Back to the scene' }));
       await advance(PROJECTS_APPROACH_MS);
