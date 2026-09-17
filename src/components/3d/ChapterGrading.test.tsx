@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createRef } from 'react';
 import * as THREE from 'three';
 import { ChapterGrading } from './ChapterGrading';
-import { CAMERA_ARC_END } from '@/lib/camera/cinematicSpline';
-import { DARK_GRADES, LIGHT_GRADES } from '@/lib/atmosphere/chapterGrade';
+import { CAMERA_ARC_END, mapScrollToArc } from '@/lib/camera/cinematicSpline';
+import { createGradeTarget, DARK_GRADES, LIGHT_GRADES, sampleGrade } from '@/lib/atmosphere/chapterGrade';
+import { getCameraFreezes } from '@/lib/camera/cameraHold';
+import { beginContactFlight, parkContactSky, releaseContactSky, setContactProgress } from '@/lib/contact/contactScene';
 
 const scene = new THREE.Scene();
 const scrollState = { offset: 0 };
@@ -62,7 +64,9 @@ describe('ChapterGrading', () => {
     scrollState.offset = 0;
     reducedMotion.mockReturnValue(false);
     scene.fog = new THREE.Fog('#001a1a', 30, 70);
+    releaseContactSky();
   });
+  afterEach(() => releaseContactSky());
 
   it('renders nothing into the DOM', () => {
     const ambientRef = createRef<THREE.AmbientLight>();
@@ -123,6 +127,69 @@ describe('ChapterGrading', () => {
 
     expect(ambientRef.current!.intensity).toBeCloseTo(LIGHT_GRADES[0].ambient, 3);
   });
+
+  it.each([false, true])('grades Contact on the same progress as its flight, light=%s', isLight => {
+    const { ambientRef } = setup(isLight);
+    advance(400);
+    const before = ambientRef.current!.intensity;
+    const fog = scene.fog as THREE.Fog;
+    const originalFog = scene.fog;
+    const background = scene.background;
+    beginContactFlight(1);
+    advance();
+    expect(ambientRef.current!.intensity).toBe(before);
+    scrollState.offset = 1;
+    setContactProgress(0.5);
+    advance();
+    const last = (isLight ? LIGHT_GRADES : DARK_GRADES)[4];
+    expect(ambientRef.current!.intensity).toBeCloseTo((before + last.ambient) / 2, 8);
+    scrollState.offset = 0;
+    advance(20);
+    expect(ambientRef.current!.intensity).toBeCloseTo((before + last.ambient) / 2, 8);
+    setContactProgress(1);
+    advance();
+    expect(fog.far).toBe(last.fogFar);
+    expect(fog.color.equals(last.fogColor)).toBe(true);
+    expect(scene.fog).toBe(originalFog);
+    expect(scene.background).toBe(background);
+    parkContactSky();
+    advance();
+    const colorWrite = vi.spyOn(fog.color, 'lerp');
+    advance(100);
+    expect(colorWrite).not.toHaveBeenCalled();
+    beginContactFlight(-1);
+    advance();
+    setContactProgress(0);
+    advance();
+    expect(ambientRef.current!.intensity).toBeCloseTo(before, 8);
+  });
+
+  it.each([0.96, 0.41])(
+    'returns a first navbar Contact visit to the actual mapped TV grade at offset %s, without a next-frame color pulse', offset => {
+      const { ambientRef } = setup(true);
+      parkContactSky();
+      advance();
+      beginContactFlight(-1);
+      advance();
+      setContactProgress(0.5);
+      advance();
+      scrollState.offset = offset;
+      setContactProgress(0);
+      advance();
+      const expected = createGradeTarget();
+      sampleGrade(LIGHT_GRADES, mapScrollToArc(offset, CAMERA_ARC_END, getCameraFreezes()), expected);
+      const fog = scene.fog as THREE.Fog;
+      expect(fog.color.equals(expected.fogColor)).toBe(true);
+      expect(fog.far).toBe(expected.fogFar);
+      expect(ambientRef.current!.intensity).toBe(expected.ambient);
+      const committed = fog.color.clone();
+      releaseContactSky();
+      advance();
+      expect(fog.color.equals(committed)).toBe(true);
+      advance(60);
+      expect(fog.color.equals(committed)).toBe(true);
+    },
+  );
 
   it('applies the grade immediately under reduced motion', () => {
     reducedMotion.mockReturnValue(true);

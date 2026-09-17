@@ -277,8 +277,20 @@ Reverse retreats from the display, retraces the turn, then requests the trailing
 Skills pose with an immediate `edge: 'end'` landing. Keep the last camera pose
 until the returning Skills plate is actually opaque. A return from Contact
 starts at the real current camera pose, not a guessed or reset establishing aim.
-Forward departure finishes
-its retreat before releasing Contact. While Projects owns the viewport, later
+Forward departure now replaces the old retreat with one 2000ms rise into the
+Contact cloud clearing; it does not append another flight after that retreat.
+Capture the real TV pose, including its current pointer offset. Camera and
+grade sample the same visible-time progress, and reverse retraces that path
+from the actual parked camera to the current viewport's fitted TV pose.
+During progress 0.66 through 0.92, reveal the actual Contact heading and form
+under the existing owner, not an extra entrance after the flight. Only the
+single section's outer paint overrides inherited cover visibility and
+counter-translates after Drei HTML; its controls remain inert until release.
+Do not release Contact until the terminal camera frame has been committed by
+the existing renderer. Navbar Contact settles the clearing and readable DOM
+directly, cancelling both unfinished clocks and pending endpoint receipts.
+The form remains the same native DOM subtree; its draft, focus, edit keys and
+textarea scrolling never become scene requests. While Projects owns the viewport, later
 entrances remain unspent, earlier pinned paint cannot reclaim it, and physical
 About ranges cannot suppress the visible 3D world. Ownership, cover, inert and
 projection registration release together. The existing render governor and

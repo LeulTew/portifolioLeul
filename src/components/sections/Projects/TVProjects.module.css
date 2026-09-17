@@ -352,6 +352,11 @@
   inset: auto max(24px, 3vw) 24px;
 }
 
+.stage[data-contact-flight='true'] .sceneControls {
+  opacity: clamp(0, 1 - var(--contact-flight-progress, 0) * 5, 1);
+  pointer-events: none;
+}
+
 .stage[data-phase='reading'] .cue {
   position: static;
   text-align: center;
