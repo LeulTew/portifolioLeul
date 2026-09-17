@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://portifolio-leul.vercel.app/sitemap.xml
+Sitemap: https://leul-t-agonafer.vercel.app/sitemap.xml
 
 # Host
-Host: https://portifolio-leul.vercel.app
+Host: https://leul-t-agonafer.vercel.app
