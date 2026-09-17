@@ -68,9 +68,11 @@ or unchanged vertex participates. Meshopt is used for lossless buffer encoding w
 requantization. Both optimized and software assets are baked independently.
 Original terrain heights and the already submerged forward fringe are retained.
 
-`SceneEdgeContinuity` joins each final decoded boundary with its matching static
-cliff profile, borrowing Terrain's already-uploaded albedo and the boundary's
-original UVs. The existing 512-square shore field is rebaked from the final
+`SceneEdgeContinuity` joins each final decoded boundary with its matching static,
+faceted shoulder and sloped submerged foot. It borrows Terrain's already-uploaded
+albedo and material response, keeps the boundary's original UVs, and samples
+inward on the lower rings instead of stretching one border texel down a wall.
+The existing 512-square shore field is rebaked from the final
 terrain **and** the skirt at waterline -4, with the same origin `[-90, -110]`,
 180-unit span and 48-unit distance range. `bun run bake:shore` can regenerate
 only that field; neither command changes the wave algorithm.
@@ -91,9 +93,9 @@ existing theme's water alpha and Three's output-color-space fog; fragments befor
 full fog are discarded. The existing swell ends at radius 70 and is untouched.
 
 The continuation still uses **2 draws in the main view and 1 in the existing
-reflection**. Optimized terrain has 342 skirt triangles (406 with the horizon;
-748 on a reflection-update frame). Software terrain has 328 (392 with the
-horizon; 720 on a reflection-update frame). The original terrain triangle counts
+reflection**. Optimized terrain has 684 skirt triangles (748 with the horizon;
+1,432 on a reflection-update frame). Software terrain has 656 (720 with the
+horizon; 1,376 on a reflection-update frame). The original terrain triangle counts
 remain 113,858 and 75,158. It owns two geometries and two materials, adds no
 textures, transparent fill, render targets, shadow passes, or animation loops.
 Layer 1 is reserved for the main-only horizon; the skirt remains on layer 0.

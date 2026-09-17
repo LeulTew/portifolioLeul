@@ -21,9 +21,9 @@
       "retriangulatedFaces": 2,
       "rimVertices": 212,
       "rimSha256": "f805d8662a92d932f69088f23466d69564eda38f521ca9debf9542e6e83c2f35",
-      "skirtTriangles": 342,
+      "skirtTriangles": 684,
       "maximumRimJoinError": 0.016422632777187692,
-      "maximumShoreError": 0.4216443478687495
+      "maximumShoreError": 0.29947211091799986
     },
     {
       "variant": "software",
@@ -44,7 +44,7 @@
       "retriangulatedFaces": 0,
       "rimVertices": 201,
       "rimSha256": "bdd6d83f9d81e6d9d9ef4ad6f1a60488cc45f4d97d6797a743bac81ae52f64b0",
-      "skirtTriangles": 328,
+      "skirtTriangles": 656,
       "maximumRimJoinError": 0.01292829158769987,
       "maximumShoreError": 0.5253629788354868
     }
@@ -58,7 +58,7 @@
     ],
     "range": 48,
     "waterline": -4,
-    "bytes": 23366,
-    "sha256": "e800eb360b93849e1b4883b659b46fd7f38d6a080b2c0ab51a808c685d2a9a09"
+    "bytes": 23613,
+    "sha256": "c99bb91420f149a9e2f691c8ecd3ace8d02c4ba8eb69fff24d906798b3229914"
   }
 }

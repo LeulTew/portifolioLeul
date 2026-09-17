@@ -70,7 +70,7 @@ describe('static scene edge geometry', () => {
         expect(position.getZ(index)).toBeCloseTo(z, 5);
         expect(uv.getX(index)).toBeCloseTo(u, 5);
         expect(uv.getY(index)).toBeCloseTo(v, 5);
-        const foot = rim.length + index;
+        const foot = rim.length * 2 + index;
         expect(position.getY(foot)).toBeLessThan(EDGE_WATER_LEVEL);
         expect(position.getY(foot)).toBeLessThan(y);
         expect(Math.hypot(position.getX(foot), position.getZ(foot) + 20))
@@ -87,7 +87,7 @@ describe('static scene edge geometry', () => {
         Math.max(point[1], rim[(index + 1) % rim.length][1]) >= -5.1
       ).length;
       expect(drawnEdges).toBeLessThan(rim.length);
-      expect(geometry.getIndex()!.count / 3).toBe(drawnEdges * 2);
+      expect(geometry.getIndex()!.count / 3).toBe(drawnEdges * 4);
       geometry.dispose();
     }
   });
@@ -133,7 +133,7 @@ describe('static scene edge geometry', () => {
       const skirtTriangles = skirt.getIndex()!.count / 3;
       expect(skirtTriangles).toBe(bake.variants[index].skirtTriangles);
       expect(skirtTriangles).toBeLessThanOrEqual(4096);
-      expect(skirt.getAttribute('position').count).toBe(bake.variants[index].rimVertices * 2);
+      expect(skirt.getAttribute('position').count).toBe(bake.variants[index].rimVertices * 3);
       // Exactly one existing skirt draw per participating pass, still no new pass.
       expect(skirt.groups).toHaveLength(0);
       expect(skirtTriangles * 2 + horizonTriangles).toBeLessThanOrEqual(8256);

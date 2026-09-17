@@ -24,6 +24,9 @@ describe('scene edge resource ownership', () => {
     const edges = createEdgeResources(mesh);
     expect(edges.skirt.material.map).toBe(map);
     expect(edges.skirt.material.color).toEqual(material.color);
+    expect(edges.skirt.material.roughness).toBe(material.roughness);
+    expect(edges.skirt.material.metalness).toBe(material.metalness);
+    expect(edges.skirt.material.envMapIntensity).toBe(material.envMapIntensity);
     expect(clone).not.toHaveBeenCalled();
     expect(map.minFilter).toBe(THREE.LinearFilter);
     expect(map.generateMipmaps).toBe(false);
