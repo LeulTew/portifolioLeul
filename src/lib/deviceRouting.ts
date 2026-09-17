@@ -29,6 +29,7 @@ export function portfolioRedirect(href: string, device: DeviceIdentity): string 
   if (current.origin === target.origin) return null;
   current.protocol = target.protocol;
   current.host = target.host;
+  current.port = target.port;
   return current.href;
 }
 

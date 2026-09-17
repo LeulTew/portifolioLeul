@@ -57,6 +57,13 @@ describe('production portfolio routing', () => {
     expect(portfolioRedirect(`${DESKTOP_ORIGIN}${suffix}`, phone)).toBe(`${MOBILE_ORIGIN}${suffix}`);
   });
 
+  it('canonicalizes the protocol and clears a nonstandard source port', () => {
+    expect(portfolioRedirect('http://portifolio-leul.vercel.app:8080/?a=1#contact', phone))
+      .toBe(`${MOBILE_ORIGIN}/?a=1#contact`);
+    expect(portfolioRedirect('http://leul-t-agonafer.vercel.app:8080/', desktop))
+      .toBe(`${DESKTOP_ORIGIN}/`);
+  });
+
   it('redirects a phone before importing React, Three.js, or application styles', async () => {
     const replace = vi.fn();
     const load = vi.fn().mockResolvedValue(undefined);
