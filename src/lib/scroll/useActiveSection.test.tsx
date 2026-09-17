@@ -137,6 +137,21 @@ describe('useActiveSection', () => {
     expect(getByTestId('active').textContent).toBe('contact');
   });
 
+  it('keeps Projects selected while its TV chapter holds a spent Contact position', async () => {
+    addSections();
+    const { getByTestId } = render(<Probe />);
+    act(() => capturedCallback?.(band({ contact: 260 })));
+    await act(async () => {
+      document.getElementById('projects')!.dataset.projectsActive = 'true';
+    });
+    expect(getByTestId('active').textContent).toBe('projects');
+    await act(async () => {
+      document.getElementById('projects')!.removeAttribute('data-projects-active');
+    });
+    act(() => capturedCallback?.(band({ contact: 260 })));
+    expect(getByTestId('active').textContent).toBe('contact');
+  });
+
   it('keeps About selected through its pinned sequence and Education handoff', async () => {
     addSections();
     const { getByTestId } = render(<Probe />);

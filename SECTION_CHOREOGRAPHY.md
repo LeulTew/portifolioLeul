@@ -330,7 +330,9 @@ suppresses hidden world draws only while the stage is fully opaque, and clears
 on departure, mode change, and unmount. Section-local handover cues remain
 behind Skills; global navigation remains above it. Its white chapter-ink mirror
 is attenuated by the Skills plate's actual opacity, not the green geometry
-hidden underneath. The obscured main content is inert only while Skills owns
+hidden underneath. About/Education surfaces hidden by `data-projects-covered`
+cannot paint that mirror either; Projects claim/release refreshes the ink even
+when scrolling has stopped. The obscured main content is inert only while Skills owns
 the stage, so keyboard navigation cannot wander into hidden project controls.
 The shared ownership-aware section-entrance hook waits for both About/Education
 and Skills to release. It remeasures current viewport coverage, including the

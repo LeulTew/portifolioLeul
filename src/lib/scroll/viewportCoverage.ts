@@ -97,7 +97,7 @@ export function useViewportShareEffect(
     if (!element || typeof IntersectionObserver === 'undefined') return;
 
     const main = element.closest('main');
-    const owners = ['about', 'skills']
+    const owners = ['about', 'skills', 'projects']
       .map(id => main?.querySelector<HTMLElement>(`#${id}`) ?? document.getElementById(id))
       .filter((owner): owner is HTMLElement => owner !== null && !owner.contains(element));
     const covered = () => owners.some(hasChapterOwnership);

@@ -6,7 +6,10 @@ import { writeAttribute } from '@/lib/dom/cachedElement';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
-import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
+import { subscribeSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
+import {
+  finishProjectsSkillsReturn, isProjectsReturnOwed, publishSkillsProjectsHandoff,
+} from '@/lib/projects/projectsScene';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { createSkillsTimeline } from './skillsTimeline';
@@ -38,7 +41,7 @@ export function useSkillsStaged() {
 export function useSkillsPlayback(
   { host, stage }: Refs,
   staged: boolean,
-  onNavigate?: (section: string) => void,
+  onNavigate?: SectionNavigate,
 ) {
   const [active, setActive] = useState(0);
   const [settledIndex, setSettledIndex] = useState(0);
@@ -81,8 +84,8 @@ export function useSkillsPlayback(
     const context = gsap.context(() => {
       score = createSkillsTimeline(panel);
       departure = gsap.timeline({ paused: true })
-        .fromTo(panel, { opacity: 1 }, {
-          opacity: 0, duration: 0.6, ease: 'power2.inOut', immediateRender: false,
+        .fromTo(panel, { opacity: 1, yPercent: 0 }, {
+          opacity: 0, yPercent: -100, duration: 0.6, ease: 'power2.inOut', immediateRender: false,
         });
     }, panel);
     if (side === 'after') current = score!.stops.length - 1;
@@ -122,6 +125,7 @@ export function useSkillsPlayback(
     const reading = () => {
       setSettledIndex(current);
       changePhase('reading');
+      finishProjectsSkillsReturn();
       apply();
     };
     const run = (timeline: gsap.core.Timeline, target: number, complete: () => void) => {
@@ -173,15 +177,22 @@ export function useSkillsPlayback(
       const ownedFocus = panel.contains(document.activeElement);
       changePhase('leaving');
       cover(false);
+      const projectsHandoff = direction > 0 && navigation === null &&
+        publishSkillsProjectsHandoff('withdrawing');
       const released = () => {
         const destination = navigation ?? (direction > 0 ? 'projects' : 'about');
         const returningToSkills = navigation === 'skills';
         show(false);
+        writeAttribute(rail, 'data-skills-released', direction > 0 ? 'true' : null);
         side = returningToSkills || direction < 0 ? 'before' : 'after';
         changePhase('outside');
         if (returningToSkills) {
           directlyRequested = true;
           apply();
+        } else if (projectsHandoff && navigation === null) {
+          publishSkillsProjectsHandoff('revealed');
+          if (onNavigate) onNavigate('projects', { immediate: true });
+          else alignAfterRelease(direction, control);
         } else alignAfterRelease(direction, control);
         if (ownedFocus && (document.activeElement === document.body || panel.contains(document.activeElement))) {
           document.querySelector<HTMLButtonElement>(
@@ -199,6 +210,7 @@ export function useSkillsPlayback(
       navigation = null;
       directlyRequested = false;
       visited = true;
+      writeAttribute(rail, 'data-skills-released', null);
       current = side === 'before' ? 0 : current;
       setActive(current);
       setSettledIndex(current);
@@ -225,6 +237,7 @@ export function useSkillsPlayback(
     const about = main?.querySelector<HTMLElement>('#about') ?? document.getElementById('about');
     const educationRail = about?.querySelector<HTMLElement>('[data-testid="education-rail"]');
     const otherChapterOwnsStage = () => {
+      if (isProjectsReturnOwed() || document.getElementById('projects')?.dataset.projectsActive === 'true') return true;
       if (!about) return false;
       if (side === 'before' && !directlyRequested) {
         if (about.dataset.titleSettled !== 'true') return true;
@@ -255,7 +268,7 @@ export function useSkillsPlayback(
       if (rect.height <= 0) return;
       const entering = side === 'before'
         ? (directlyRequested || wave !== 'up') && rect.top <= 96
-        : wave === 'up' && rect.bottom >= window.innerHeight - 96;
+        : directlyRequested || (wave === 'up' && rect.bottom >= window.innerHeight - 96);
       if (entering) claim();
     }
 
@@ -318,6 +331,7 @@ export function useSkillsPlayback(
         show(false);
         changePhase('outside');
         wave = null;
+        writeAttribute(rail, 'data-skills-released', null);
         side = target === 'home' || target === 'about' || target === 'skills' ? 'before' : 'after';
         current = side === 'before' ? 0 : score.stops.length - 1;
         setActive(current);
@@ -340,7 +354,10 @@ export function useSkillsPlayback(
         bypass = false;
         navigation = state === 'leaving' ? 'skills' : null;
         directlyRequested = state === 'outside' || state === 'leaving';
-        if (state === 'outside') side = 'before';
+        if (state === 'outside') {
+          side = options?.edge === 'end' ? 'after' : 'before';
+          if (side === 'after') current = score.stops.length - 1;
+        }
       } else {
         bypass = true;
         directlyRequested = false;
@@ -399,8 +416,10 @@ export function useSkillsPlayback(
       window.removeEventListener('resize', apply);
       document.removeEventListener('visibilitychange', visibility);
       writeAttribute(rail, 'data-skills-active', null);
+      writeAttribute(rail, 'data-skills-released', null);
       if (main && !previouslyInert) writeAttribute(main, 'inert', null);
       cover(false);
+      finishProjectsSkillsReturn();
       context.revert();
       score.dispose();
     };

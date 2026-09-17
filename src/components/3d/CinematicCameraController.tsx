@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
@@ -14,6 +14,10 @@ import { getCameraFreezes } from '@/lib/camera/cameraHold';
 import { isCameraFrozen } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
+import { getProjectsView } from '@/lib/projects/projectsScene';
+import { ProjectsCameraPose } from '@/lib/projects/tvScreen';
+import { TVParallax } from '@/lib/projects/tvParallax';
+import { getGpuTier } from '@/lib/gateways/gpuTier';
 
 /**
  * Scrubs the camera along the cinematic spline as the page scrolls, and parks
@@ -50,13 +54,75 @@ export function CinematicCameraController({
   const camera = useThree((state) => state.camera);
   const scroll = useScroll();
   const spline = useMemo(() => createCameraSpline(), []);
+  const projectsPose = useMemo(() => new ProjectsCameraPose(), []);
+  const projectsOrientation = useMemo(() => new THREE.Quaternion(), []);
+  const projectsVisit = useRef(-1);
+  const projectsParallax = useMemo(() => new TVParallax(), []);
+  const pointer = useRef({ x: 0, y: 0, width: 1, height: 1, fine: false });
   const hasSettled = useRef(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const update = () => {
+      pointer.current.width = window.innerWidth;
+      pointer.current.height = window.innerHeight;
+      pointer.current.fine = media.matches;
+      if (!media.matches) pointer.current.x = pointer.current.y = 0;
+    };
+    const move = (event: PointerEvent) => {
+      if (!getProjectsView().reading || !pointer.current.fine || event.pointerType === 'touch') return;
+      pointer.current.x = THREE.MathUtils.clamp(event.clientX / pointer.current.width * 2 - 1, -1, 1);
+      pointer.current.y = THREE.MathUtils.clamp(1 - event.clientY / pointer.current.height * 2, -1, 1);
+    };
+    const reset = () => { pointer.current.x = pointer.current.y = 0; };
+    update();
+    media.addEventListener('change', update);
+    window.addEventListener('resize', update);
+    window.addEventListener('pointermove', move, { passive: true });
+    window.addEventListener('blur', reset);
+    document.documentElement.addEventListener('pointerleave', reset, { passive: true });
+    return () => {
+      media.removeEventListener('change', update);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('blur', reset);
+      document.documentElement.removeEventListener('pointerleave', reset);
+    };
+  }, []);
 
   useFrame((state, delta) => {
     if (!camera) return;
     // Same reasoning as the grade: the damping is exact over an accumulated
     // delta, so posing the camera for an undrawn frame buys nothing.
     if (!isFrameDrawn(state.clock.elapsedTime)) return;
+
+    const projects = getProjectsView();
+    if (projects.active) {
+      if (projectsVisit.current !== projects.visit) {
+        projectsVisit.current = projects.visit;
+        projectsParallax.reset();
+        pointer.current.x = pointer.current.y = 0;
+        if (projects.entry === 'contact') projectsPose.begin(camera.position, camera.quaternion);
+        else projectsPose.begin();
+      }
+      projectsPose.sample(
+        projects.turn, projects.approach, state.size.width, state.size.height,
+        camera instanceof THREE.PerspectiveCamera ? camera.fov : 50,
+        desiredPosition, projectsOrientation,
+      );
+      projectsParallax.apply(
+        desiredPosition, projectsOrientation, pointer.current.x, pointer.current.y,
+        projects.reading, pointer.current.fine && !getPrefersReducedMotion() && getGpuTier().tier !== 'low',
+        projects.approach,
+        Math.min(drawnFrameDelta(state.clock.elapsedTime, delta ?? 0), MAX_FRAME_DELTA),
+      );
+      camera.position.copy(desiredPosition);
+      camera.quaternion.copy(projectsOrientation);
+      smoothedTarget.set(0, 0, -20).applyQuaternion(projectsOrientation).add(desiredPosition);
+      hasSettled.current = true;
+      return;
+    }
+    projectsParallax.reset();
 
     const reducedMotion = getPrefersReducedMotion();
     const offset = scroll?.offset ?? 0;

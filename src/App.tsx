@@ -421,6 +421,8 @@ function App() {
         // is at full rest directly pointing at the heading before statements arrive.
         const clientHeight = container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
         adjustedOffset = rawOffset + Math.round(clientHeight * 0.08);
+      } else if (options?.edge === 'end') {
+        adjustedOffset = Math.max(rawOffset + target.offsetHeight - container.clientHeight + 80, 0);
       } else {
         adjustedOffset = Math.max(rawOffset - 80, 0);
       }
@@ -453,7 +455,9 @@ function App() {
     }
 
     if (immediate) {
-      const inset = id === 'about' ? Math.round(window.innerHeight * 0.08) : -80;
+      const inset = options?.edge === 'end'
+        ? target.offsetHeight - window.innerHeight + 80
+        : id === 'about' ? Math.round(window.innerHeight * 0.08) : -80;
       const top = id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
       window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
       return;
@@ -489,7 +493,7 @@ function App() {
       <Home onNavigate={scrollToSection} theme={theme} flat={!show3D} />
       <About onNavigate={scrollToSection} />
       <Skills onNavigate={scrollToSection} />
-      <Projects theme={theme} />
+      <Projects theme={theme} spatial={show3D} onNavigate={scrollToSection} />
       <div className={styles.spacer} />
       <Contact />
     </main>
@@ -584,6 +588,7 @@ function PageFooter({ painted = false }: { painted?: boolean }) {
     <motion.div
       className={`${styles.footer} ${painted ? styles.paintedFooter : ''}`}
       data-testid={painted ? undefined : 'page-footer'}
+      data-page-footer=""
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1, ease: [0.76, 0, 0.24, 1], delay: 0.4 }}

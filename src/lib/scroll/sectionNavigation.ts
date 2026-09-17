@@ -5,6 +5,8 @@ export interface SectionNavigationOptions {
   immediate?: boolean;
   /** Navbar intent may settle intervening chapters; native scroll never sets this. */
   source?: 'navbar';
+  /** A reverse chapter handoff lands on the trailing record, not its heading. */
+  edge?: 'end';
 }
 
 export type SectionNavigate = (section: string, options?: SectionNavigationOptions) => void;

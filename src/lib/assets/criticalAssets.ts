@@ -57,7 +57,6 @@ export interface CriticalAsset {
 export const CRITICAL_ASSETS: readonly CriticalAsset[] = [
   { url: '/models/terrain-opt.glb', bytes: 3_757_380, kind: 'model' },
   { url: '/models/me-animated-lite.glb', bytes: 847_188, kind: 'model' },
-  { url: '/models/crt-lite.glb', bytes: 392_744, kind: 'model' },
   { url: '/images/waternormals.jpg', bytes: 248_813, kind: 'texture' },
   { url: '/images/shore-field.png', bytes: 19_919, kind: 'texture' },
   { url: '/images/leul-profile.webp', bytes: 41_616, kind: 'texture' },

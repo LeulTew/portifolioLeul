@@ -6,6 +6,7 @@ import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
 import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
+import { getProjectsView, isProjectsReturnOwed } from '@/lib/projects/projectsScene';
 import styles from './PinnedSequence.module.css';
 
 /**
@@ -162,6 +163,11 @@ export function PinnedSequence({
       const overlay = overlayRef.current;
       if (!overlay) return;
       if (occludesWorld) setOverlayOcclusion(false);
+      if (getProjectsView().active || isProjectsReturnOwed()) {
+        writeAttribute(overlay, 'data-active', 'false');
+        publishOwnership(false);
+        return;
+      }
       // Flat/reduced-motion Home publishes ready immediately; standalone
       // sequences with no Home keep their existing eligibility.
       const eligible = !home || home.getAttribute('data-hero-handover-settled') === 'true';

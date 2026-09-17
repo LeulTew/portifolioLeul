@@ -5,6 +5,7 @@ import { localProgress } from './localProgress';
 import { setScrollProgress, resetScrollProgress, subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { resetCameraHold } from '@/lib/camera/cameraHold';
 import { isWorldOccluded, isFrameDrawn, resetFrameGate } from '@/lib/render/frameGate';
+import { setProjectsView } from '@/lib/projects/projectsScene';
 
 describe('localProgress', () => {
   it('is nothing before the stretch reaches the top of the screen', () => {
@@ -42,11 +43,15 @@ const LAYERS = [
 
 describe('PinnedSequence world coverage', () => {
   beforeEach(() => {
+    setProjectsView(false, 0, 0);
     resetScrollProgress();
     resetCameraHold();
     resetFrameGate();
   });
-  afterEach(() => resetCameraHold());
+  afterEach(() => {
+    resetCameraHold();
+    setProjectsView(false, 0, 0);
+  });
   const layers = [{ name: 'ground', start: 0, end: 1, feather: 0.1 }];
   const mount = () => {
     const rendered = render(
@@ -86,6 +91,20 @@ describe('PinnedSequence world coverage', () => {
     const { unmount } = mount();
     expect(isWorldOccluded()).toBe(true);
     unmount();
+    expect(isWorldOccluded()).toBe(false);
+  });
+
+  it('does not reclaim About paint or occlusion underneath an owned TV movement', () => {
+    mount();
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    const originalSequence = overlay.style.getPropertyValue('--seq');
+    act(() => {
+      setProjectsView(true, 1, 0.5);
+      setScrollProgress(0.2);
+    });
+    expect(overlay).toHaveAttribute('data-active', 'false');
+    expect(overlay.style.getPropertyValue('--seq')).toBe(originalSequence);
+    expect(document.getElementById('about')).not.toHaveAttribute('data-sequence-active');
     expect(isWorldOccluded()).toBe(false);
   });
 

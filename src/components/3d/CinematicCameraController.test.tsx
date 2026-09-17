@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { CinematicCameraController } from './CinematicCameraController';
 import { CAMERA_CHAPTERS, CAMERA_ARC_END } from '@/lib/camera/cinematicSpline';
+import { setProjectsView } from '@/lib/projects/projectsScene';
+import { ProjectsCameraPose } from '@/lib/projects/tvScreen';
 
 const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
 
@@ -41,7 +43,7 @@ const advance = (count = 1, delta = 0.016) => {
     // call would ask the render gate to accept time running backwards.
     clockTime += delta;
     const now = clockTime;
-    frameCallback?.({ mouse: pointer, clock: { elapsedTime: now } }, delta);
+    frameCallback?.({ mouse: pointer, size: { width: 1920, height: 1080 }, clock: { elapsedTime: now } }, delta);
   }
 };
 
@@ -53,6 +55,7 @@ const chapterVec = (index: number) =>
 
 describe('CinematicCameraController', () => {
   beforeEach(() => {
+    setProjectsView(false, 0, 0);
     scrollState.offset = 0;
     pointer = { x: 0, y: 0 };
     frameCallback = null;
@@ -62,6 +65,7 @@ describe('CinematicCameraController', () => {
   });
 
   afterEach(() => {
+    setProjectsView(false, 0, 0);
     vi.clearAllMocks();
   });
 
@@ -132,6 +136,23 @@ describe('CinematicCameraController', () => {
     advance(1);
 
     expect(camera.position.distanceTo(chapterVec(0))).toBeCloseTo(0, 5);
+  });
+
+  it('uses the time-paced Projects pose exactly, regardless of spent scroll or pointer', () => {
+    mount({ mouseSway: 5 });
+    advance();
+    setProjectsView(true, 1, 0.6);
+    scrollState.offset = 1;
+    pointer = { x: 1, y: 1 };
+    advance();
+    const expected = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    new ProjectsCameraPose().sample(1, 0.6, 1920, 1080, 50, expected, quaternion);
+    expect(camera.position.distanceTo(expected)).toBeLessThan(1e-8);
+    expect(camera.quaternion.angleTo(quaternion)).toBeLessThan(1e-7);
+    scrollState.offset = 0;
+    advance();
+    expect(camera.position.distanceTo(expected)).toBeLessThan(1e-8);
   });
 
   it('tolerates a frame state with no pointer', () => {

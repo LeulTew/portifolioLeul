@@ -3,6 +3,9 @@ import { render, act, fireEvent } from '@testing-library/react';
 import { TVModel } from './TVModel';
 import { vi } from 'vitest';
 
+vi.mock('./3d/CRTHousing', () => ({ CRTHousing: () => null }));
+vi.mock('./3d/CRTSupports', () => ({ CRTSupports: () => null }));
+
 // Mock three.js and drei
 const mockUseGLTF = vi.fn(() => ({
   scene: {
@@ -18,7 +21,8 @@ const mockUseGLTF = vi.fn(() => ({
   },
 }));
 
-vi.mock('three', () => {
+vi.mock('three', async () => {
+  const actual = await vi.importActual<typeof import('three')>('three');
   const THREE = {
     Mesh: class {},
     MeshBasicMaterial: class {
@@ -39,7 +43,7 @@ vi.mock('three', () => {
     },
     DoubleSide: 2,
   };
-  return { ...THREE, default: THREE, ...THREE };
+  return { ...actual, ...THREE, default: actual };
 });
 
 vi.mock('@react-three/drei', () => ({

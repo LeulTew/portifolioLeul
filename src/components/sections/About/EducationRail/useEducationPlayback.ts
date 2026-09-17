@@ -8,6 +8,7 @@ import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { openingTimeline, recordTimeline } from './educationMotion';
 import { createEducationReveal, EDUCATION_REVEAL_MS } from './educationReveal';
 import { coverEducationBackground } from './educationCover';
+import { isProjectsReturnOwed } from '@/lib/projects/projectsScene';
 import { stageVisible, trackOffset } from './railTransit';
 import { findScrollContainer, scrollContainerBy } from './scrollContainer';
 
@@ -243,7 +244,8 @@ export function useEducationPlayback(
 
       if (state === 'outside') {
         if (about && about.dataset.titleSettled !== 'true') handoffPending = true;
-        if (skills?.dataset.skillsActive === 'true') return;
+        if (isProjectsReturnOwed() || skills?.dataset.skillsActive === 'true' ||
+            document.getElementById('projects')?.dataset.projectsActive === 'true') return;
         if (!bypass && canEnter && ((side === 'before' && handoffPending && wave !== 'up' &&
             (about !== null || rect.top <= 0)) ||
             (side === 'after' && wave === 'up' &&

@@ -47,6 +47,31 @@ describe('scrollGesture', () => {
     off();
   });
 
+  it('lets a reader exclude its own native scroll region without suppressing other subscribers', () => {
+    const details = document.createElement('div');
+    details.dataset.projectsScrollable = '';
+    document.body.append(details);
+    const scene = vi.fn();
+    const all = vi.fn();
+    const offScene = subscribeScrollGesture(scene, {
+      ignoreTarget: target => target instanceof Element && !!target.closest('[data-projects-scrollable]'),
+    });
+    const offAll = subscribeScrollGesture(all);
+    for (const event of [
+      new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true }),
+      new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true, cancelable: true }),
+    ]) {
+      details.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    }
+    expect(scene).not.toHaveBeenCalled();
+    expect(all).toHaveBeenCalledTimes(2);
+    window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120 }));
+    expect(scene).toHaveBeenCalledExactlyOnceWith('down');
+    offScene();
+    offAll();
+  });
+
   it('registers every listener as passive, so cancelling is impossible', () => {
     /*
      * Asserted at the registration rather than at the event, because passive is
