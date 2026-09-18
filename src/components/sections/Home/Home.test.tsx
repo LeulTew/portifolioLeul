@@ -228,6 +228,36 @@ describe('Home choreography', () => {
     vi.useRealTimers();
   });
 
+  it('keeps the name entrance unspent under a slow loader, then plays its full first-load score', () => {
+    vi.useFakeTimers();
+    const { rerender, getAllByTestId, getByTestId } = render(<Home introReady={false} />);
+    const content = getByTestId('hero-content');
+    const originalWords = getAllByTestId('liquid-fill-text');
+    enterHero();
+    act(() => vi.advanceTimersByTime(20000));
+    for (const word of originalWords) {
+      expect(word).toHaveAttribute('data-filling', 'false');
+      expect(word).toHaveAttribute('data-settled', 'false');
+    }
+    expect(content.className).not.toMatch(/entered|settled/);
+
+    rerender(<Home introReady />);
+    enterHero();
+    const words = getAllByTestId('liquid-fill-text');
+    expect(words[0]).toBe(originalWords[0]);
+    expect(words[1]).toBe(originalWords[1]);
+    for (const word of words) {
+      expect(word).toHaveAttribute('data-filling', 'true');
+      expect(word).toHaveAttribute('data-settled', 'false');
+      expect(word.style.getPropertyValue('--snow-duration')).toBe('2400ms');
+      expect(word.style.getPropertyValue('--word-delay')).toBe('1000ms');
+    }
+    act(() => vi.advanceTimersByTime(sequenceDuration(HERO_SEQUENCE) * 1000 * 0.8));
+    expect(content.className).not.toMatch(/settled/);
+    act(() => vi.advanceTimersByTime(2000));
+    expect(content.className).toMatch(/settled/);
+  });
+
   it('puts every layer on its own beat from the cue list', () => {
     const { container } = render(<Home />);
     const layers = [...container.querySelectorAll('[data-cue-layer]')].map((el) => ({
