@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { TerrainRimPoint } from './terrainSkirt';
 
 export const TERRAIN_CONTINUATION_SEGMENTS = 32;
-export const TERRAIN_CONTINUATION_RADII = [48, 110, 240] as const;
+export const TERRAIN_CONTINUATION_RADII = [46, 65, 115, 240] as const;
 const TAU = Math.PI * 2;
 
 function angleOf(point: TerrainRimPoint): number {
@@ -10,10 +10,12 @@ function angleOf(point: TerrainRimPoint): number {
 }
 
 function heightAt(x: number, z: number): number {
-  // Away from the joined headland, the coast settles at Z=-8. This also
+  // Away from the joined headland, the coast settles at Z=-28. This also
   // continues the clamped shore field correctly beyond its existing X limits.
-  const rise = THREE.MathUtils.smoothstep(-z, 35, 85);
-  return Math.min(9, -4 - (z + 8) * 0.07 +
+  const coastalVariation = (1 - THREE.MathUtils.smoothstep(Math.abs(x), 35, 55)) *
+    (8 * Math.sin(x * 0.065 + 0.35) + 4 * Math.sin(x * 0.12));
+  const rise = THREE.MathUtils.smoothstep(-z, 85, 135);
+  return Math.min(9, -4 - (z + 28 - coastalVariation) * 0.14 +
     rise * (1.3 * Math.sin(x * 0.043 + 0.4) + 0.9 * Math.cos(z * 0.057)));
 }
 
@@ -46,12 +48,16 @@ export function createTerrainContinuation(rim: readonly TerrainRimPoint[]): THRE
       const previous = (next + count - 1) % count;
       const span = (angles[next] - angles[previous] + TAU) % TAU;
       const mix = ((wrapped - angles[previous] + TAU) % TAU) / span;
-      const x = Math.cos(angle) * radius;
-      const z = -20 + Math.sin(angle) * radius;
-      positions.push(x, heightAt(x, z), z);
+      const spread = radius + (ring < 2 ? (ring ? 3 : 2) * Math.sin(5 * angle + ring * 0.6) : 0);
+      const x = Math.cos(angle) * spread;
+      const z = -20 + Math.sin(angle) * spread;
+      const edgeHeight = THREE.MathUtils.lerp(rim[previous][1], rim[next][1], mix);
+      const shoulderHeight = edgeHeight + (edgeHeight < -4 ? -0.5 :
+        0.7 * Math.sin(5 * angle + 0.4) + 0.5 * Math.sin(11 * angle));
+      positions.push(x, ring === 0 ? shoulderHeight : heightAt(x, z), z);
       for (const axis of [3, 4] as const) {
         const edgeUV = THREE.MathUtils.lerp(rim[previous][axis], rim[next][axis], mix);
-        uvs.push(THREE.MathUtils.lerp(edgeUV, 0.5, [0.18, 0.35, 0.1][ring]));
+        uvs.push(THREE.MathUtils.lerp(edgeUV, 0.5, [0.12, 0.28, 0.35, 0.1][ring]));
       }
     }
   }

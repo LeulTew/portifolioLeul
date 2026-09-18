@@ -21,9 +21,9 @@ describe('static distant mainland', () => {
       expect(uv.getY(index)).toBeCloseTo(point[4], 6);
     });
     expect(JSON.stringify(rim)).toBe(before);
-    expect(positions.count).toBe(rim.length + 96);
-    expect(land.index!.count / 3).toBe(rim.length + 160);
-    expect(land.index!.count / 3).toBeLessThan(400);
+    expect(positions.count).toBe(rim.length + 128);
+    expect(land.index!.count / 3).toBe(rim.length + 224);
+    expect(land.index!.count / 3).toBeLessThan(450);
     expect(land.groups).toHaveLength(0);
     expect(land.morphAttributes).toEqual({});
     land.dispose();
@@ -69,7 +69,7 @@ describe('static distant mainland', () => {
   it('keeps every visible remote edge beyond unmodified fog throughout the authored camera envelope', () => {
     const land = createTerrainContinuation(TERRAIN_RIM);
     const positions = land.getAttribute('position');
-    const remote = TERRAIN_RIM.length + 2 * TERRAIN_CONTINUATION_SEGMENTS;
+    const remote = TERRAIN_RIM.length + 3 * TERRAIN_CONTINUATION_SEGMENTS;
     const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
     const spline = createCameraSpline();
     const position = new THREE.Vector3();
@@ -97,7 +97,6 @@ describe('static distant mainland', () => {
           if (Math.abs(ndc.x) > 1 || Math.abs(ndc.y) > 1 || Math.abs(ndc.z) > 1) continue;
           const depth = -view.applyMatrix4(camera.matrixWorldInverse).z;
           minimumVisibleDepth = Math.min(minimumVisibleDepth, depth);
-          expect(depth).toBeGreaterThan(maximumFog);
           visibleSamples++;
         }
       }
@@ -142,8 +141,9 @@ describe('static distant mainland', () => {
     expect(maximumFog).toBe(92);
     expect(maximumCameraRadius).toBeLessThan(60);
     expect(visibleSamples).toBeGreaterThan(1000);
+    expect(minimumVisibleDepth).toBeGreaterThan(maximumFog);
     expect(minimumVisibleDepth).toBeGreaterThan(130);
-    expect(TERRAIN_CONTINUATION_RADII[2]).toBe(240);
+    expect(TERRAIN_CONTINUATION_RADII[3]).toBe(240);
     land.dispose();
   });
 

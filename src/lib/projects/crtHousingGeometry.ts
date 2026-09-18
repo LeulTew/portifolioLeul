@@ -298,6 +298,40 @@ const PART_BUILDERS: Record<CRTHousingPart, (builder: HousingBuilder) => void> =
   indicator: addIndicator,
 };
 
+/** Area weighting tilts opposite roof ends differently across each quad diagonal. */
+function refineRoofNormals(geometry: THREE.BufferGeometry): void {
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  const indices = geometry.getIndex()!;
+  const contourSize = 4 * (CORNER_SEGMENTS + 1);
+  const isRoof = (vertex: number) => vertex < 5 * contourSize && vertex % contourSize < contourSize / 2;
+  const sums = new Float64Array(5 * contourSize * 3);
+  const points = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const first = new THREE.Vector3();
+  const second = new THREE.Vector3();
+  const face = new THREE.Vector3();
+  for (let triangle = 0; triangle < indices.count; triangle += 3) {
+    const vertices = [0, 1, 2].map(corner => indices.getX(triangle + corner));
+    if (!vertices.some(isRoof)) continue;
+    points.forEach((point, corner) => point.fromBufferAttribute(position, vertices[corner]));
+    face.subVectors(points[1], points[0]).cross(second.subVectors(points[2], points[0])).normalize();
+    vertices.forEach((vertex, corner) => {
+      if (!isRoof(vertex)) return;
+      first.subVectors(points[(corner + 1) % 3], points[corner]).normalize();
+      second.subVectors(points[(corner + 2) % 3], points[corner]).normalize();
+      const angle = Math.acos(THREE.MathUtils.clamp(first.dot(second), -1, 1));
+      sums[vertex * 3] += face.x * angle;
+      sums[vertex * 3 + 1] += face.y * angle;
+      sums[vertex * 3 + 2] += face.z * angle;
+    });
+  }
+  for (let vertex = 0; vertex < 5 * contourSize; vertex++) {
+    if (!isRoof(vertex)) continue;
+    first.fromArray(sums, vertex * 3).normalize();
+    normal.setXYZ(vertex, first.x, first.y, first.z);
+  }
+}
+
 /**
  * Indexed, material-batched surfaces. A loft band costs 2N triangles, a cap N:
  * N = 28 for cabinet contours, 12 for ribs/skids, 16/24/12 for the controls.
@@ -316,6 +350,7 @@ export class CrtHousingGeometry extends THREE.BufferGeometry {
     this.setAttribute('position', new THREE.Float32BufferAttribute(builder.positions, 3));
     this.setIndex(builder.indices);
     this.computeVertexNormals();
+    if (part === 'cabinet' || part === 'rear') refineRoofNormals(this);
     this.computeBoundingBox();
     this.computeBoundingSphere();
   }

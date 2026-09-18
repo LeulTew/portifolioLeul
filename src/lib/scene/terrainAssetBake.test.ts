@@ -178,7 +178,7 @@ describe('committed organic terrain assets', () => {
       const remote = sliceShore([land]).flat().filter(([x]) => Math.abs(x) > 90);
       expect(remote.length).toBeGreaterThan(2);
       for (const [x, z] of remote) {
-        expect(z).toBeCloseTo(-8, 4);
+        expect(z).toBeCloseTo(-28, 4);
         expect(Math.abs(sampleShorePixels(pixels, x, z))).toBeLessThan(0.8);
       }
     });

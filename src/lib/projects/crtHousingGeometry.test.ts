@@ -45,6 +45,37 @@ function clip(
 }
 
 describe('the authored CRT housing geometry', () => {
+  it.each(['cabinet', 'rear'] as const)('%s keeps the broad roof straight and its rounded normals symmetric', part => {
+    const geometry = geometryFor(part);
+    const position = geometry.getAttribute('position');
+    const normal = geometry.getAttribute('normal');
+    const original = new THREE.BufferGeometry().copy(geometry);
+    original.computeVertexNormals();
+    const originalNormal = original.getAttribute('normal');
+    let oldBias = 0;
+    for (let ring = 0; ring < 5; ring++) {
+      for (let corner = 0; corner < 7; corner++) {
+        const right = ring * 28 + corner;
+        const left = ring * 28 + 13 - corner;
+        expect(position.getX(right)).toBeCloseTo(-position.getX(left), 7);
+        expect(position.getY(right)).toBe(position.getY(left));
+        expect(position.getZ(right)).toBe(position.getZ(left));
+        expect(normal.getX(right)).toBeCloseTo(-normal.getX(left), 5);
+        expect(normal.getY(right)).toBeCloseTo(normal.getY(left), 5);
+        expect(normal.getZ(right)).toBeCloseTo(normal.getZ(left), 5);
+        oldBias = Math.max(oldBias, Math.abs(originalNormal.getZ(right) - originalNormal.getZ(left)));
+      }
+    }
+    expect(oldBias).toBeGreaterThan(0.04);
+    // The front face, controls, lower corners, rear cap and skids stay untouched.
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      if (vertex < 140 && vertex % 28 < 14) continue;
+      expect([normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex)])
+        .toEqual([originalNormal.getX(vertex), originalNormal.getY(vertex), originalNormal.getZ(vertex)]);
+    }
+    original.dispose();
+  });
+
   it.each(CRT_HOUSING_PARTS)('%s has finite, indexed, non-degenerate surfaces and unit normals', part => {
     const geometry = geometryFor(part);
     const position = geometry.getAttribute('position');

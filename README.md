@@ -72,8 +72,10 @@ Original terrain heights and the already submerged forward fringe are retained.
 faceted shoulder and sloped submerged foot. It borrows Terrain's already-uploaded
 albedo and material response, keeps the boundary's original UVs, and samples
 inward on the lower rings instead of stretching one border texel down a wall.
-A separate static mainland joins **every decoded rim vertex** to three coarse
-32-station rings at radii 48, 110 and 240 around `[0, -20]`. The back now continues
+A separate static mainland joins **every decoded rim vertex** to four coarse
+32-station rings near radii 46, 65, 115 and 240 around `[0, -20]`. The near shoulder
+inherits the original rim heights with unequal rocky rises and recesses, rather
+than extending a flat shelf around the island. The back now continues
 as land rather than ending at the old island cliff. This additive surface leaves
 the original terrain, protected ground zones and all prop poses untouched. It
 shares the skirt's terrain-owned albedo/material response without another texture.
@@ -89,7 +91,7 @@ only that field; neither command changes the wave algorithm. Near-shore
 resolution remains 0.3515625 world units per texel. Buried skirt waterlines
 are excluded only when actual adjoining geometry covers them; exposed coast
 still has the strict 0.8-unit registration limit in both variants. Outside
-the field's X limits the new coast settles at Z=-8, matching the existing
+the field's X limits the new coast settles at Z=-28, matching the existing
 ClampToEdge sampler instead of shrinking near-shore detail or enlarging the texture.
 
 Pristine inputs are pinned to commit
@@ -109,10 +111,10 @@ existing theme's water alpha and Three's output-color-space fog; fragments befor
 full fog are discarded. The existing swell ends at radius 70 and is untouched.
 
 The edge assembly uses **3 draws in the main view and 2 in the existing
-reflection**: the mainland adds exactly one batch and 372 triangles (361 on the
-software variant) per view. Optimized terrain has 684 skirt triangles, 372 land
-triangles and 64 horizon triangles: 1,120 main / 1,056 mirror. Software uses
-656 skirt + 361 land + 64 horizon: 1,081 main / 1,017 mirror. The original terrain
+reflection**: the mainland adds exactly one batch and 436 triangles (425 on the
+software variant) per view. Optimized terrain has 684 skirt triangles, 436 land
+triangles and 64 horizon triangles: 1,184 main / 1,120 mirror. Software uses
+656 skirt + 425 land + 64 horizon: 1,145 main / 1,081 mirror. The original terrain
 triangle counts remain 113,858 and 75,158. The assembly owns three geometries
 and two materials, adds no
 textures, transparent fill, render targets, shadow passes, or animation loops.
@@ -121,6 +123,12 @@ Effect-owned resources survive StrictMode's rehearsal and dispose independently
 of Terrain's borrowed texture. These are geometry/draw budgets, not an FPS guarantee.
 
 ### Floor-standing TV speaker cabinet
+
+The upper receiver retains its authored angle and silhouette. Its broad roof
+spans are planar, but area-weighted normals previously biased opposite ends of
+each long quad differently. Angle-weighted normals now remove that diagonal
+shading bias only on the cabinet/rear upper lofts, preserving rounded corners.
+No positions, indices, bounds, aperture, materials, draws or triangle counts change.
 
 `CRTSpeakerCabinet` replaces the two narrow supports with one integral graphite
 lower enclosure, a broad recessed perforated grille, a restrained satin brow and
