@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import emailjs from '@emailjs/browser';
 import { ContactForm } from './ContactForm';
@@ -71,10 +71,15 @@ describe('ContactForm', () => {
 
     expect(submitButton).toBeDisabled();
     expect(submitButton).toHaveTextContent('Sending...');
+    expect(nameInput).toHaveAttribute('readonly');
+    expect(emailInput).toHaveAttribute('readonly');
+    expect(messageInput).toHaveAttribute('readonly');
+    expect(submitButton.closest('form')).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByText('Message sent successfully!')).not.toBeInTheDocument();
 
     await act(async () => resolveSend({ status: 200, text: 'OK' }));
     expect(submitButton).toBeEnabled();
+    expect(nameInput).not.toHaveAttribute('readonly');
   });
 
   it('shows success message on successful submission', async () => {
@@ -107,6 +112,19 @@ describe('ContactForm', () => {
       { from_name: 'John Doe', from_email: 'john@example.com', message: 'Hello world' },
       'public_test'
     );
+    expect(screen.getByRole('status')).toHaveTextContent('Message sent successfully!');
+
+    await user.type(nameInput, '   ');
+    await user.type(emailInput, 'john@example.com');
+    await user.type(messageInput, '   ');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await user.click(submitButton);
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+    expect(messageInput).toHaveAttribute('aria-invalid', 'true');
+    expect(nameInput).toHaveAccessibleDescription('Name is required');
+    expect(messageInput).toHaveAccessibleDescription('Message is required');
+    expect(screen.getAllByRole('alert')).toHaveLength(2);
+    expect(emailjs.send).toHaveBeenCalledTimes(1);
   });
 
   it.each(['absent', 'incomplete'])('shows the error UI and retains input when EmailJS settings are %s', async (configuration) => {
@@ -134,6 +152,30 @@ describe('ContactForm', () => {
     expect(emailInput).toHaveValue('john@example.com');
     expect(messageInput).toHaveValue('Hello world');
     expect(submitButton).toBeEnabled();
+    expect(emailjs.send).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to send message');
+    const fallback = screen.getByRole('link', { name: 'Open this draft in your email app' });
+    const draft = new URL(fallback.getAttribute('href')!);
+    expect(draft.protocol).toBe('mailto:');
+    expect(draft.pathname).toBe('leulman2@gmail.com');
+    expect(draft.searchParams.get('subject')).toBe('Portfolio message from John Doe');
+    expect(draft.searchParams.get('body')).toBe('Name: John Doe\nEmail: john@example.com\n\nHello world');
+  });
+
+  it('shows field errors and clears them when the visitor corrects the draft', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<ContactForm />);
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    const email = screen.getByRole('textbox', { name: 'Email' });
+    const message = screen.getByRole('textbox', { name: 'Message' });
+    fireEvent.submit(name.closest('form')!);
+    expect(screen.getAllByRole('alert')).toHaveLength(3);
+    expect(name).toHaveAccessibleDescription('Name is required');
+    expect(email).toHaveAccessibleDescription('Email is required');
+    expect(message).toHaveAccessibleDescription('Message is required');
+    await user.type(name, 'Leul');
+    expect(name).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.queryByText('Name is required')).not.toBeInTheDocument();
     expect(emailjs.send).not.toHaveBeenCalled();
   });
 

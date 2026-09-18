@@ -184,6 +184,31 @@ automatic pnpm selection previously rejected the out-of-date dependency list
 and left production serving an older release. Keep the Bun lockfile current and
 verify both published aliases on desktop and phone after deployment.
 
+### Contact delivery
+
+The Contact form uses the deployed `VITE_EMAILJS_SERVICE_ID`,
+`VITE_EMAILJS_TEMPLATE_ID`, and `VITE_EMAILJS_PUBLIC_KEY`. These are client-side
+EmailJS identifiers; never put an EmailJS private key in a `VITE_` variable.
+The template receives `from_name`, `from_email`, and `message`. Confirm the
+template's recipient and reply-to settings in EmailJS, and allow the production
+origin if origin restrictions are enabled.
+
+Success appears only after EmailJS accepts the request. Invalid fields are
+labelled inline, duplicate submissions are prevented, and fields stay read-only
+while sending so a late response cannot erase a newer draft. Editing starts a
+new draft and clears the previous delivery status. On failure the draft remains,
+with a retry and an explicit link to open it in the visitor's email app; that
+link does not pretend the message was sent. The contact email and phone are
+native `mailto:` and `tel:` links.
+
+The Contact finale carries the existing Skills typography and chamfered control
+language into an asymmetric cloud-clearing composition: direct contact links on
+the left and one message surface on the right. Its authored folded-plane SVG
+responds to field focus and successful submission without a render loop; reduced
+motion keeps it static. The existing camera handoff still reveals the same form
+subtree during its final easing. No new animation dependency or WebGL canvas is
+needed, and delivery feedback is immediately visible rather than animated away.
+
 About's paired squares unfold into their corresponding text blocks, left first,
 then right, on the existing arrival/swap/clear clock. Shape transforms and text
 clipping share geometry measured only on layout changes; reverse travel folds

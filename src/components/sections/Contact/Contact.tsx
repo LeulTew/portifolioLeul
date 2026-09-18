@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Github, Linkedin } from 'lucide-react';
+import { ArrowUpRight, MapPin, Github, Linkedin } from 'lucide-react';
 import { TelegramIcon } from '../../ui/TelegramIcon';
 import { KineticHeading } from '../../ui/KineticText';
 import { ContactForm } from './ContactForm';
@@ -41,97 +41,105 @@ export function Contact({ spatial = false }: { spatial?: boolean }) {
       </div>}
       <FocusScrim maxOpacity={0.38} />
       <div className={styles.content}>
-        <div className={styles.header}>
-          <KineticHeading 
-            text="Let's Connect" 
-            as="h2" 
-            className={styles.title} 
-            highlightWords={["Connect"]} 
-            instant={settled}
-          />
-          <p className={styles.subtitle}>
-            Get in touch for engineering opportunities, collaborative 3D builds, or just to say hi
-          </p>
-        </div>
-
         <div className={styles.grid}>
-          <motion.div 
-            ref={formEntrance.ref}
-            className={styles.formContainer}
-            initial={settled ? false : { opacity: 0, x: -40 }}
-            animate={settled ? { opacity: 1, x: 0 } : formEntrance.hasEntered
-              ? { opacity: 1, x: 0 } : { opacity: 0, x: -40 }}
-            transition={{ duration: settled ? 0 : 0.8, ease: [0.76, 0, 0.24, 1] }}
-          >
-            <ContactForm />
-          </motion.div>
-
-          <motion.div 
-            ref={infoEntrance.ref}
-            className={styles.contactInfo}
-            initial={settled ? false : { opacity: 0, x: 40 }}
-            animate={settled ? { opacity: 1, x: 0 } : infoEntrance.hasEntered
-              ? { opacity: 1, x: 0 } : { opacity: 0, x: 40 }}
-            transition={{ duration: settled ? 0 : 0.8, ease: [0.76, 0, 0.24, 1], delay: settled ? 0 : 0.15 }}
-          >
-            <div className={styles.infoItem}>
-              <Phone className={styles.icon} />
-              <div>
-                <h3 className={styles.infoLabel}>Phone</h3>
-                <p className={styles.infoValue}>{cvData.contact.phone}</p>
-              </div>
+          <div className={styles.introduction}>
+            <div className={styles.header}>
+              <svg className={styles.messagePlane} viewBox="0 0 200 160" fill="none" aria-hidden="true">
+                <path className={styles.flightPath} d="M8 141C46 146 19 74 59 76C98 78 72 109 117 83" />
+                <path className={styles.planeWing} d="M55 58L183 17L139 138L112 89Z" />
+                <path className={styles.planeFold} d="M55 58L112 89L183 17Z" />
+                <path className={styles.planeEdge} d="M183 17L112 89L105 119L126 109" />
+              </svg>
+              <KineticHeading
+                text="Let's Connect"
+                as="h2"
+                className={styles.title}
+                highlightWords={["Connect"]}
+                instant={settled}
+              />
+              <p className={styles.subtitle}>
+                Engineering opportunities, collaborative builds, or a good conversation.
+                It starts with a message.
+              </p>
             </div>
 
-            <div className={styles.infoItem}>
-              <Mail className={styles.icon} />
-              <div>
-                <h3 className={styles.infoLabel}>Email</h3>
-                <p className={styles.infoValue}>{cvData.contact.email}</p>
-              </div>
-            </div>
+            <motion.div
+              ref={infoEntrance.ref}
+              className={styles.contactInfo}
+              initial={settled ? false : { opacity: 0, y: 20 }}
+              animate={settled ? { opacity: 1, y: 0 } : infoEntrance.hasEntered
+                ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ duration: settled ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <a className={styles.emailLink} href={`mailto:${cvData.contact.email}`} aria-label={`Email ${cvData.contact.email}`}>
+                <span>
+                  <span className={styles.infoLabel}>Email</span>
+                  <span className={styles.emailAddress}>{cvData.contact.email}</span>
+                </span>
+                <ArrowUpRight size={28} aria-hidden="true" />
+              </a>
 
-            <div className={styles.infoItem}>
-              <MapPin className={styles.icon} />
-              <div>
-                <h3 className={styles.infoLabel}>Location</h3>
-                <p className={styles.infoValue}>{cvData.contact.location}</p>
+              <div className={styles.detailsRow}>
+                <a className={styles.phoneLink} href={`tel:${cvData.contact.phone.replace(/[^\d+]/g, '')}`} aria-label={`Phone ${cvData.contact.phone}`}>
+                  <span className={styles.infoLabel}>Phone</span>
+                  <span className={styles.infoValue}>{cvData.contact.phone}</span>
+                </a>
+                <div className={styles.location}>
+                  <span className={styles.infoLabel}>Location</span>
+                  <span className={styles.infoValue}>
+                    <MapPin size={16} aria-hidden="true" />
+                    {cvData.contact.location}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div>
               <div className={styles.socialLinks}>
-                <a 
-                  href={cvData.contact.social.github} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={styles.socialLink} 
+                <a
+                  href={cvData.contact.social.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.socialLink}
                   aria-label="GitHub"
                   onMouseEnter={handleSocialHover}
                 >
-                  <Github size={22} />
+                  <Github size={18} aria-hidden="true" />
+                  <span>GitHub</span>
                 </a>
-                <a 
-                  href={cvData.contact.social.linkedin} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={styles.socialLink} 
+                <a
+                  href={cvData.contact.social.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.socialLink}
                   aria-label="LinkedIn"
                   onMouseEnter={handleSocialHover}
                 >
-                  <Linkedin size={22} />
+                  <Linkedin size={18} aria-hidden="true" />
+                  <span>LinkedIn</span>
                 </a>
-                <a 
-                  href={cvData.contact.social.telegram} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={styles.socialLink} 
+                <a
+                  href={cvData.contact.social.telegram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.socialLink}
                   aria-label="Telegram"
                   onMouseEnter={handleSocialHover}
                 >
                   <span className={styles.socialIcon} aria-hidden="true"><TelegramIcon /></span>
+                  <span>Telegram</span>
                 </a>
               </div>
-            </div>
+            </motion.div>
+          </div>
+
+          <motion.div
+            ref={formEntrance.ref}
+            className={styles.formContainer}
+            initial={settled ? false : { opacity: 0, x: 28 }}
+            animate={settled ? { opacity: 1, x: 0 } : formEntrance.hasEntered
+              ? { opacity: 1, x: 0 } : { opacity: 0, x: 28 }}
+            transition={{ duration: settled ? 0 : 0.75, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <ContactForm />
           </motion.div>
         </div>
       </div>

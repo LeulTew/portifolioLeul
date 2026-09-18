@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import emailjs from '@emailjs/browser';
 import { useContactForm } from './useContactForm';
@@ -232,5 +232,43 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('email-input')).toHaveValue('');
     expect(screen.getByTestId('message-input')).toHaveValue('');
     expect(screen.getByTestId('submit-button')).toBeEnabled();
+  });
+
+  it('sends only once for two same-frame submissions and protects the in-flight draft', async () => {
+    let resolveSend!: () => void;
+    const submit = vi.fn(() => new Promise<void>(resolve => { resolveSend = resolve; }));
+    render(<TestComponent submitFn={submit} />);
+    const name = screen.getByTestId('name-input');
+    fireEvent.change(name, { target: { name: 'name', value: 'Leul' } });
+    fireEvent.change(screen.getByTestId('email-input'), { target: { name: 'email', value: 'leul@example.com' } });
+    fireEvent.change(screen.getByTestId('message-input'), { target: { name: 'message', value: 'One message' } });
+    act(() => {
+      fireEvent.submit(name.closest('form')!);
+      fireEvent.submit(name.closest('form')!);
+    });
+    expect(submit).toHaveBeenCalledOnce();
+    fireEvent.change(name, { target: { name: 'name', value: 'Changed while sending' } });
+    expect(name).toHaveValue('Leul');
+    await act(async () => resolveSend());
+    expect(name).toHaveValue('');
+    expect(screen.getByTestId('success-message')).toBeInTheDocument();
+  });
+
+  it('normalizes surrounding email/config whitespace without altering the message body', async () => {
+    vi.stubEnv('VITE_EMAILJS_SERVICE_ID', ' service_test\n');
+    vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', ' template_test ');
+    vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', ' public_test ');
+    render(<TestComponent />);
+    const name = screen.getByTestId('name-input');
+    fireEvent.change(name, { target: { name: 'name', value: ' Leul ' } });
+    fireEvent.change(screen.getByTestId('email-input'), { target: { name: 'email', value: ' leul@example.com ' } });
+    fireEvent.change(screen.getByTestId('message-input'), { target: { name: 'message', value: '  A message\nwith spacing' } });
+    fireEvent.submit(name.closest('form')!);
+    await waitFor(() => expect(screen.getByTestId('success-message')).toBeInTheDocument());
+    expect(emailjs.send).toHaveBeenCalledExactlyOnceWith(
+      'service_test', 'template_test',
+      { from_name: 'Leul', from_email: 'leul@example.com', message: '  A message\nwith spacing' },
+      'public_test',
+    );
   });
 });

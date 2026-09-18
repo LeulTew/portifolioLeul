@@ -25,6 +25,10 @@ describe('Contact Section Component', () => {
     expect(screen.getByLabelText('GitHub')).toBeInTheDocument();
     expect(screen.getByLabelText('LinkedIn')).toBeInTheDocument();
     expect(screen.getByLabelText('Telegram')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Email leulman2@gmail.com/i }))
+      .toHaveAttribute('href', 'mailto:leulman2@gmail.com');
+    expect(screen.getByRole('link', { name: /Phone \+251 966 23 53 33/i }))
+      .toHaveAttribute('href', 'tel:+251966235333');
   });
 
   it('handles social link hover without crashing', () => {
@@ -96,7 +100,7 @@ describe('Contact Section Component', () => {
     expect(section).toHaveAttribute('data-contact-presenting', 'true');
     expect(section.style.getPropertyValue('--contact-flight-reveal')).toBe('1');
     expect(form.parentElement!.style.opacity).toBe('1');
-    expect(form.parentElement!.style.transform).not.toContain('-40px');
+    expect(form.parentElement!.style.transform).toBe('none');
     for (const word of section.querySelectorAll<HTMLElement>('h2 span')) {
       expect(word.style.opacity).toBe('1');
       expect(word.style.transform).not.toContain('25px');

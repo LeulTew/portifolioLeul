@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 const cases = [
-  { name: 'Contact', content: <Contact />, entrance: 'translateX(-40px)' },
+  { name: 'Contact', content: <Contact />, entrance: 'translateX(28px)' },
   {
     name: 'their kinetic heading',
     content: <KineticHeading text="Let's Connect" as="h2" highlightWords={['Connect']} />,
@@ -60,7 +60,7 @@ function expectReadable(container: HTMLElement) {
 }
 
 describe.each(cases)('$name reduced-motion reveal', ({ content, entrance }) => {
-  it('keeps the original hidden, transformed entrance without a reduced-motion preference', () => {
+  it('keeps the authored hidden, transformed entrance without a reduced-motion preference', () => {
     const { container } = render(content);
     expect([...container.querySelectorAll<HTMLElement>('[style]')]
       .some(element => element.style.transform === entrance && element.style.opacity === '0'))
