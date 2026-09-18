@@ -9,7 +9,7 @@ import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extension
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import * as THREE from 'three';
 import {
-  bakeShorePixels, sampleShorePixels, sliceShore, SHORE_BAKE_LAYOUT,
+  bakeShorePixels, isShoreCovered, sampleShorePixels, sliceShore, SHORE_BAKE_LAYOUT,
   type ShoreMesh,
 } from '../ocean/shoreFieldBake';
 import {
@@ -19,6 +19,7 @@ import {
 import { createTerrainSkirtFromRim, type TerrainRimPoint } from './terrainSkirt';
 import { terrainFaceOrientation } from './terrainOrientation';
 import { repairTerrainDiagonals } from './terrainDiagonals';
+import { createTerrainContinuation } from './terrainContinuation';
 
 export const TERRAIN_SOURCE_REF = '6a02c49edb33b30e4f0c6d416a5a32fb3f43e03d';
 export const TERRAIN_SOURCES = [
@@ -224,15 +225,28 @@ export function surfaceFromSkirt(rim: readonly TerrainRimPoint[]): ShoreMesh {
   return { positions, indices };
 }
 
-export function verifyShoreRegistration(pixels: Uint8Array, meshes: readonly ShoreMesh[]): number {
+export function surfaceFromContinuation(rim: readonly TerrainRimPoint[]): ShoreMesh {
+  const geometry = createTerrainContinuation(rim);
+  const positions = Float64Array.from(geometry.getAttribute('position').array);
+  const indices = geometry.getIndex()!.array.slice();
+  geometry.dispose();
+  return { positions, indices };
+}
+
+export function verifyShoreRegistration(
+  pixels: Uint8Array, meshes: readonly ShoreMesh[], coveringMeshes: readonly ShoreMesh[] = [],
+): number {
   const segments = sliceShore(meshes);
   if (!segments.length) throw new Error('Final terrain has no waterline intersection.');
   let maximumError = 0;
   for (const [a, b] of segments) {
     for (let sample = 0; sample <= 4; sample += 1) {
       const t = sample / 4;
+      const x = a[0] + t * (b[0] - a[0]);
+      const z = a[1] + t * (b[1] - a[1]);
+      if (isShoreCovered(coveringMeshes, x, z)) continue;
       maximumError = Math.max(maximumError, Math.abs(sampleShorePixels(
-        pixels, a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]),
+        pixels, x, z,
       )));
     }
   }
@@ -428,8 +442,9 @@ export async function reshapeTerrainAsset(io: NodeIO, source: typeof TERRAIN_SOU
   rim.sort((a, b) => boundaryAngle(a) - boundaryAngle(b));
   const maximumRimJoinError = measureTerrainRimJoin(after, rim);
   const skirt = surfaceFromSkirt(rim);
+  const continuation = surfaceFromContinuation(rim);
   return {
-    bytes, rim, meshes: [...after, skirt],
+    bytes, rim, continuation, meshes: [...after, skirt, continuation],
     stats: {
       variant: source.variant, sourceSha256: source.sha256, sha256: sha256(bytes), bytes: bytes.length,
       meshes: after.length, triangles, vertices: after.reduce((sum, record) => sum + record.position.getCount(), 0),
@@ -438,6 +453,7 @@ export async function reshapeTerrainAsset(io: NodeIO, source: typeof TERRAIN_SOU
       diagonalFlips, retriangulatedFaces,
       rimVertices: rim.length, rimSha256: sha256(Buffer.from(JSON.stringify(rim))),
       skirtTriangles: skirt.indices!.length / 3, maximumRimJoinError,
+      continuationTriangles: continuation.indices!.length / 3,
     },
   };
 }
@@ -511,7 +527,7 @@ export async function bakeTerrainAssets(): Promise<void> {
   const results = [];
   for (const source of TERRAIN_SOURCES) results.push(await reshapeTerrainAsset(io, source));
   const pixels = bakeShorePixels(results[0].meshes);
-  const registration = results.map(result => verifyShoreRegistration(pixels, result.meshes));
+  const registration = results.map(result => verifyShoreRegistration(pixels, result.meshes, [result.continuation]));
   const png = encodeShorePng(pixels);
   const profile = results.map((result, index) =>
     `export const ${index ? 'TERRAIN_SOFTWARE_RIM' : 'TERRAIN_RIM'}: readonly TerrainRimPoint[] = [\n` +
@@ -555,10 +571,10 @@ export async function rebakeShoreField(): Promise<void> {
     const document = await io.readBinary(bytes);
     const extras = document.getRoot().getExtras();
     if (!extras.terrainOutline) throw new Error('Terrain has not been shaped. Run "bun run bake:island" first.');
-    surfaces.push([...terrainRecords(document), surfaceFromSkirt(rims[index])]);
+    surfaces.push([...terrainRecords(document), surfaceFromSkirt(rims[index]), surfaceFromContinuation(rims[index])]);
   }
   const pixels = bakeShorePixels(surfaces[0]);
-  const registration = surfaces.map(surface => verifyShoreRegistration(pixels, surface));
+  const registration = surfaces.map(surface => verifyShoreRegistration(pixels, surface, [surface[surface.length - 1]]));
   const png = encodeShorePng(pixels);
   const manifestPath = join(TERRAIN_REPOSITORY, 'src', 'lib', 'scene', 'terrain-outline-bake.json');
   manifest.shore = { ...SHORE_BAKE_LAYOUT, origin: [...SHORE_BAKE_LAYOUT.origin], bytes: png.length, sha256: sha256(png) };

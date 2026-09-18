@@ -6,6 +6,8 @@ import {
   HORIZON_INNER_RADIUS,
   HORIZON_OUTER_RADIUS,
 } from './edgeGeometry';
+import { createTerrainContinuation } from './terrainContinuation';
+import { TERRAIN_RIM, TERRAIN_SOFTWARE_RIM } from './terrainRim';
 
 export const HORIZON_LAYER = 1;
 
@@ -91,6 +93,10 @@ export function createEdgeResources(
 
   const skirt = new THREE.Mesh(createTerrainSkirtGeometry(softwareRenderer), skirtMaterial);
   skirt.name = 'terrain-edge-skirt';
+  const land = new THREE.Mesh(
+    createTerrainContinuation(softwareRenderer ? TERRAIN_SOFTWARE_RIM : TERRAIN_RIM), skirtMaterial,
+  );
+  land.name = 'terrain-land-continuation';
   const horizon = new THREE.Mesh(createHorizonGeometry(), horizonMaterial);
   horizon.name = 'ocean-horizon-continuation';
   horizon.layers.set(HORIZON_LAYER);
@@ -98,11 +104,13 @@ export function createEdgeResources(
   let disposed = false;
   return {
     skirt,
+    land,
     horizon,
     dispose() {
       if (disposed) return;
       disposed = true;
       skirt.geometry.dispose();
+      land.geometry.dispose();
       horizon.geometry.dispose();
       skirtMaterial.dispose();
       horizonMaterial.dispose();

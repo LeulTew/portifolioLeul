@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bakeShorePixels, rasterizeShore, sampleShorePixels, sliceShore,
+  bakeShorePixels, isShoreCovered, rasterizeShore, sampleShorePixels, sliceShore,
   SHORE_BAKE_LAYOUT, type ShoreMesh,
 } from './shoreFieldBake';
 import { SHORE_FIELD_LAYOUT } from '@/components/ocean/waveShader';
@@ -67,5 +67,12 @@ describe('reproducible shore-field bake', () => {
     expect(() => bakeShorePixels([], layout)).toThrow('land and sea');
     expect(() => bakeShorePixels([plane(-4, 4, -4, 4)], { ...layout, resolution: 1 })).toThrow('layout');
     expect(() => rasterizeShore([{ positions: new Float64Array(6), indices: null }], layout)).toThrow('complete triangles');
+  });
+
+  it('excludes only waterline samples demonstrably buried beneath final land', () => {
+    expect(isShoreCovered([plane(-2, 2, -2, 2, 1)], 0, 0, 0)).toBe(true);
+    expect(isShoreCovered([plane(-2, 2, -2, 2, 1)], 4, 0, 0)).toBe(false);
+    expect(isShoreCovered([plane(-2, 2, -2, 2, 0)], 0, 0, 0)).toBe(false);
+    expect(isShoreCovered([plane(-2, 2, -2, 2, -1)], 0, 0, 0)).toBe(false);
   });
 });

@@ -36,6 +36,7 @@ export function SceneEdgeContinuity({
   return (
     <>
       <primitive object={resources.skirt} dispose={null} />
+      <primitive object={resources.land} dispose={null} />
       <primitive object={resources.horizon} dispose={null} />
     </>
   );
