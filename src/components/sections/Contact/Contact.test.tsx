@@ -99,8 +99,10 @@ describe('Contact Section Component', () => {
     expect(getContactView()).toMatchObject({ mode: 'departing', progress: 0.94, revealed: true });
     expect(section).toHaveAttribute('data-contact-presenting', 'true');
     expect(section.style.getPropertyValue('--contact-flight-reveal')).toBe('1');
-    expect(form.parentElement!.style.opacity).toBe('1');
-    expect(form.parentElement!.style.transform).toBe('none');
+    const entrance = form.closest<HTMLElement>('[data-contact-form-entrance]')!;
+    expect(entrance.style.opacity).toBe('1');
+    expect(entrance.style.transform).toBe('none');
+    expect(form.parentElement).not.toBe(entrance);
     for (const word of section.querySelectorAll<HTMLElement>('h2 span')) {
       expect(word.style.opacity).toBe('1');
       expect(word.style.transform).not.toContain('25px');

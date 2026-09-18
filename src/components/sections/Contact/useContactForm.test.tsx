@@ -11,6 +11,7 @@ const TestComponent = ({ submitFn }: { submitFn?: () => Promise<void> } = {}) =>
     submitStatus,
     handleSubmit,
     handleChange,
+    resetForm,
   } = useContactForm(submitFn);
 
   return (
@@ -42,6 +43,7 @@ const TestComponent = ({ submitFn }: { submitFn?: () => Promise<void> } = {}) =>
       <button type="submit" disabled={isSubmitting} data-testid="submit-button">
         {isSubmitting ? 'Submitting...' : 'Submit'}
       </button>
+      <button type="button" onClick={resetForm}>New draft</button>
 
       {submitStatus === 'success' && <span data-testid="success-message">Success!</span>}
       {submitStatus === 'error' && <span data-testid="error-message">Error!</span>}
@@ -159,10 +161,15 @@ describe('useContactForm', () => {
 
     expect(mockSubmit).toHaveBeenCalled();
     expect(screen.getByTestId('success-message')).toHaveTextContent('Success!');
+    expect(screen.getByTestId('name-input')).toHaveValue('John');
+    expect(screen.getByTestId('email-input')).toHaveValue('john@example.com');
+    expect(screen.getByTestId('message-input')).toHaveValue('Message');
+    await user.click(screen.getByRole('button', { name: 'New draft' }));
     expect(screen.getByTestId('name-input')).toHaveValue('');
     expect(screen.getByTestId('email-input')).toHaveValue('');
     expect(screen.getByTestId('message-input')).toHaveValue('');
     expect(screen.getByTestId('submit-button')).toBeEnabled();
+    expect(screen.queryByTestId('success-message')).not.toBeInTheDocument();
     expect(emailjs.send).not.toHaveBeenCalled();
   });
 
@@ -197,7 +204,7 @@ describe('useContactForm', () => {
     expect(console.error).toHaveBeenCalledWith('EmailJS Error:', expect.any(Error));
   });
 
-  it('waits for configured EmailJS delivery before reporting success and clearing input', async () => {
+  it('waits for configured EmailJS delivery and retains accepted input until an explicit reset', async () => {
     vi.stubEnv('VITE_EMAILJS_SERVICE_ID', 'service_test');
     vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', 'template_test');
     vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', 'public_test');
@@ -217,6 +224,8 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('submit-button')).toBeDisabled();
     expect(screen.queryByTestId('success-message')).not.toBeInTheDocument();
     expect(screen.getByTestId('name-input')).toHaveValue('John');
+    await user.click(screen.getByRole('button', { name: 'New draft' }));
+    expect(screen.getByTestId('name-input')).toHaveValue('John');
     expect(emailjs.send).toHaveBeenCalledExactlyOnceWith(
       'service_test',
       'template_test',
@@ -228,6 +237,10 @@ describe('useContactForm', () => {
     await waitFor(() => {
       expect(screen.getByTestId('success-message')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('name-input')).toHaveValue('John');
+    expect(screen.getByTestId('email-input')).toHaveValue('john@example.com');
+    expect(screen.getByTestId('message-input')).toHaveValue('Message');
+    await user.click(screen.getByRole('button', { name: 'New draft' }));
     expect(screen.getByTestId('name-input')).toHaveValue('');
     expect(screen.getByTestId('email-input')).toHaveValue('');
     expect(screen.getByTestId('message-input')).toHaveValue('');
@@ -250,8 +263,13 @@ describe('useContactForm', () => {
     fireEvent.change(name, { target: { name: 'name', value: 'Changed while sending' } });
     expect(name).toHaveValue('Leul');
     await act(async () => resolveSend());
-    expect(name).toHaveValue('');
+    expect(name).toHaveValue('Leul');
     expect(screen.getByTestId('success-message')).toBeInTheDocument();
+    fireEvent.submit(name.closest('form')!);
+    expect(submit).toHaveBeenCalledOnce();
+    fireEvent.change(name, { target: { name: 'name', value: 'A new draft' } });
+    expect(screen.queryByTestId('success-message')).not.toBeInTheDocument();
+    expect(name).toHaveValue('A new draft');
   });
 
   it('normalizes surrounding email/config whitespace without altering the message body', async () => {

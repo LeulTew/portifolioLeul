@@ -19,11 +19,13 @@ describe('scroll entrance property ownership', () => {
   });
 
   it.each([
-    ['Skills', '.chapter'],
-    ['Skills', '.instrumentTilt'],
-    ['Contact', '.formContainer'],
-  ])('%s %s leaves per-frame transform and opacity to its animation owner', (section, selector) => {
-    const css = postcss.parse(readFileSync(join(__dirname, section, `${section}.module.css`), 'utf8'));
+    ['Skills', 'Skills', '.chapter'],
+    ['Skills', 'Skills', '.instrumentTilt'],
+    ['Contact', 'Contact', '.formContainer'],
+    ['Contact', 'ContactForm', '.sheet'],
+    ['Contact', 'ContactForm', '.form'],
+  ])('%s %s %s leaves per-frame transform and opacity to its animation owner', (section, file, selector) => {
+    const css = postcss.parse(readFileSync(join(__dirname, section, `${file}.module.css`), 'utf8'));
     const properties: string[] = [];
     let matched = false;
     css.walkRules(selector, (rule) => {
@@ -31,11 +33,11 @@ describe('scroll entrance property ownership', () => {
       rule.walkDecls(/^transition(?:-property)?$/, (declaration) => {
         properties.push(...postcss.list.comma(declaration.value).map((part) => part.trim().split(/\s+/)[0]));
       });
-      expect(matched).toBe(true);
     });
+    if (section === 'Contact') expect(matched).toBe(true);
     expect(properties).not.toContain('all');
     expect(properties).not.toContain('transform');
     expect(properties).not.toContain('opacity');
-    if (section === 'Contact') expect(properties).toContain('border-color');
+    if (selector === '.form') expect(properties).toContain('border-color');
   });
 });

@@ -11,6 +11,7 @@ import { cvData } from '../../../data/cv';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { useSectionEntrance } from '@/lib/scroll/useSectionFocus';
 import { useContactSky } from './useContactSky';
+import { CONTACT_PAPER_PLANE } from './contactSendFlight';
 
 export function Contact({ spatial = false }: { spatial?: boolean }) {
   const [container, setContainer] = useState<HTMLElement | null>(null);
@@ -46,9 +47,9 @@ export function Contact({ spatial = false }: { spatial?: boolean }) {
             <div className={styles.header}>
               <svg className={styles.messagePlane} viewBox="0 0 200 160" fill="none" aria-hidden="true">
                 <path className={styles.flightPath} d="M8 141C46 146 19 74 59 76C98 78 72 109 117 83" />
-                <path className={styles.planeWing} d="M55 58L183 17L139 138L112 89Z" />
-                <path className={styles.planeFold} d="M55 58L112 89L183 17Z" />
-                <path className={styles.planeEdge} d="M183 17L112 89L105 119L126 109" />
+                <path className={styles.planeWing} d={CONTACT_PAPER_PLANE.outline} />
+                <path className={styles.planeFold} d={CONTACT_PAPER_PLANE.wing} />
+                <path className={styles.planeEdge} d={CONTACT_PAPER_PLANE.crease} />
               </svg>
               <KineticHeading
                 text="Let's Connect"
@@ -134,12 +135,13 @@ export function Contact({ spatial = false }: { spatial?: boolean }) {
           <motion.div
             ref={formEntrance.ref}
             className={styles.formContainer}
+            data-contact-form-entrance
             initial={settled ? false : { opacity: 0, x: 28 }}
             animate={settled ? { opacity: 1, x: 0 } : formEntrance.hasEntered
               ? { opacity: 1, x: 0 } : { opacity: 0, x: 28 }}
             transition={{ duration: settled ? 0 : 0.75, ease: [0.22, 1, 0.36, 1] }}
           >
-            <ContactForm />
+            <ContactForm flightEnabled={!spatial || mode === 'parked'} />
           </motion.div>
         </div>
       </div>

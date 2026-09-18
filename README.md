@@ -195,8 +195,9 @@ origin if origin restrictions are enabled.
 
 Success appears only after EmailJS accepts the request. Invalid fields are
 labelled inline, duplicate submissions are prevented, and fields stay read-only
-while sending so a late response cannot erase a newer draft. Editing starts a
-new draft and clears the previous delivery status. On failure the draft remains,
+while sending so a late response cannot erase a newer draft. Accepted content
+stays in the original native form through its fold and flight; **Send another
+message** clears it and restores the same fields without reloading. On failure the draft remains,
 with a retry and an explicit link to open it in the visitor's email app; that
 link does not pretend the message was sent. The contact email and phone are
 native `mailto:` and `tel:` links.
@@ -204,10 +205,19 @@ native `mailto:` and `tel:` links.
 The Contact finale carries the existing Skills typography and chamfered control
 language into an asymmetric cloud-clearing composition: direct contact links on
 the left and one message surface on the right. Its authored folded-plane SVG
-responds to field focus and successful submission without a render loop; reduced
-motion keeps it static. The existing camera handoff still reveals the same form
-subtree during its final easing. No new animation dependency or WebGL canvas is
-needed, and delivery feedback is immediately visible rather than animated away.
+responds to field focus. After provider acceptance, the filled message panel folds
+into that same authored plane geometry and flies toward the cloud opening on one
+2.35-second GSAP score. The native form is never cloned or reparented, and the
+animation never sends another request. Its inner sheet owns the send transforms;
+Motion still owns the outer entrance, independently of the camera presentation.
+Only visible time advances (at most 50ms per frame), with no idle animation loop.
+Reduced motion skips the flight. Navigation, resize, or a live reduced-motion
+change settles to the truthful, recoverable **Sent** confirmation; cleanup cancels
+the score. Focus moves to the reset control only if it was still in the retiring
+form, never back from navigation. The existing camera handoff still reveals the
+same form subtree during its final easing. No new dependency or WebGL canvas is
+needed. QA must intercept EmailJS requests; simulated provider responses belong
+only in tests, never in the application.
 
 About's paired squares unfold into their corresponding text blocks, left first,
 then right, on the existing arrival/swap/clear clock. Shape transforms and text
