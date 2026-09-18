@@ -8,24 +8,64 @@ import { ContactFlight } from '../camera/contactFlight';
 import { ProjectsCameraPose } from '../projects/tvScreen';
 import { TVParallax } from '../projects/tvParallax';
 import { DARK_GRADES, LIGHT_GRADES } from '../atmosphere/chapterGrade';
+import { createTerrainSkirtFromRim } from './terrainSkirt';
 
 describe('static distant mainland', () => {
-  it.each([{ rim: TERRAIN_RIM }, { rim: TERRAIN_SOFTWARE_RIM }])('joins every decoded rim position and UV without changing the rim', ({ rim }) => {
+  it.each([{ rim: TERRAIN_RIM }, { rim: TERRAIN_SOFTWARE_RIM }])('joins the rear rim and existing submerged foot without extending foreground dry land', ({ rim }) => {
     const before = JSON.stringify(rim);
     const land = createTerrainContinuation(rim);
     const positions = land.getAttribute('position');
     const uv = land.getAttribute('uv');
+    const skirt = createTerrainSkirtFromRim(rim);
+    const skirtPosition = skirt.getAttribute('position');
+    const skirtUV = skirt.getAttribute('uv');
+    let rearJoins = 0;
+    let submergedJoins = 0;
     rim.forEach((point, index) => {
-      point.slice(0, 3).forEach((value, axis) => expect(positions.array[index * 3 + axis]).toBeCloseTo(value, 5));
-      expect(uv.getX(index)).toBeCloseTo(point[3], 6);
-      expect(uv.getY(index)).toBeCloseTo(point[4], 6);
+      const rear = -(point[2] + 20) / Math.hypot(point[0], point[2] + 20);
+      if (rear >= 0.85) {
+        point.slice(0, 3).forEach((value, axis) => expect(positions.array[index * 3 + axis]).toBeCloseTo(value, 5));
+        expect(uv.getX(index)).toBeCloseTo(point[3], 6);
+        expect(uv.getY(index)).toBeCloseTo(point[4], 6);
+        rearJoins++;
+      } else if (rear <= 0.55) {
+        const foot = 2 * rim.length + index;
+        for (let axis = 0; axis < 3; axis++) {
+          expect(positions.array[index * 3 + axis]).toBe(skirtPosition.array[foot * 3 + axis]);
+        }
+        expect(uv.getX(index)).toBe(skirtUV.getX(foot));
+        expect(uv.getY(index)).toBe(skirtUV.getY(foot));
+        expect(positions.getY(index)).toBeLessThan(-5.1);
+        submergedJoins++;
+      }
     });
+    expect(rearJoins).toBeGreaterThan(20);
+    expect(submergedJoins).toBeGreaterThan(50);
     expect(JSON.stringify(rim)).toBe(before);
     expect(positions.count).toBe(rim.length + 128);
     expect(land.index!.count / 3).toBe(rim.length + 224);
     expect(land.index!.count / 3).toBeLessThan(450);
     expect(land.groups).toHaveLength(0);
     expect(land.morphAttributes).toEqual({});
+    land.dispose();
+    skirt.dispose();
+  });
+
+  it('does not put new dry triangles through the measured TV-right foreground wedge', () => {
+    const land = createTerrainContinuation(TERRAIN_RIM);
+    const mesh = new THREE.Mesh(land, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    const camera = new THREE.PerspectiveCamera(50, 3840 / 2160, 0.1, 1000);
+    new ProjectsCameraPose().sample(1, 0, 3840, 2160, 50, camera.position, camera.quaternion);
+    camera.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster();
+    for (const x of [0.7, 0.8, 0.9, 1]) {
+      for (const y of [-0.3, -0.2, -0.1]) {
+        ray.setFromCamera(new THREE.Vector2(x, y), camera);
+        const visibleShelf = ray.intersectObject(mesh).filter(hit => hit.point.y >= -4 && hit.distance < 70);
+        expect(visibleShelf).toHaveLength(0);
+      }
+    }
+    mesh.material.dispose();
     land.dispose();
   });
 

@@ -1,12 +1,16 @@
 import * as THREE from 'three';
-import type { TerrainRimPoint } from './terrainSkirt';
+import { createTerrainSkirtFromRim, TERRAIN_SKIRT_BOTTOM, type TerrainRimPoint } from './terrainSkirt';
 
 export const TERRAIN_CONTINUATION_SEGMENTS = 32;
-export const TERRAIN_CONTINUATION_RADII = [46, 65, 115, 240] as const;
+export const TERRAIN_CONTINUATION_RADII = [52, 65, 115, 240] as const;
 const TAU = Math.PI * 2;
 
 function angleOf(point: TerrainRimPoint): number {
   return (Math.atan2(point[2] + 20, point[0]) + TAU) % TAU;
+}
+
+function rearJoin(angle: number): number {
+  return THREE.MathUtils.smoothstep(-Math.sin(angle), 0.55, 0.85);
 }
 
 function heightAt(x: number, z: number): number {
@@ -19,7 +23,7 @@ function heightAt(x: number, z: number): number {
     rise * (1.3 * Math.sin(x * 0.043 + 0.4) + 0.9 * Math.cos(z * 0.057)));
 }
 
-/** Static land, not a skirt: the exact decoded rim opens into a distant mainland. */
+/** Only the rear headland opens into mainland; visible side/front shores stay intact. */
 export function createTerrainContinuation(rim: readonly TerrainRimPoint[]): THREE.BufferGeometry {
   if (rim.length < 3 || rim.some(point => !point.every(Number.isFinite))) {
     throw new Error('Terrain continuation requires a finite decoded boundary.');
@@ -34,10 +38,27 @@ export function createTerrainContinuation(rim: readonly TerrainRimPoint[]): THRE
   const positions: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
-  for (const [x, y, z, u, v] of rim) {
-    positions.push(x, y, z);
-    uvs.push(u, v);
+  const skirt = createTerrainSkirtFromRim(rim);
+  const skirtPosition = skirt.getAttribute('position');
+  const skirtUV = skirt.getAttribute('uv');
+  for (let index = 0; index < count; index++) {
+    // Join the dry rear rim, but start below water at the *existing* skirt foot
+    // elsewhere. A top-rim annulus here would fill visible sea with flat slabs.
+    const level = (1 - rearJoin(angles[index])) * 2;
+    const upper = Math.floor(level) * count + index;
+    const lower = Math.min(Math.floor(level) + 1, 2) * count + index;
+    const blend = level % 1;
+    for (let axis = 0; axis < 3; axis++) {
+      positions.push(THREE.MathUtils.lerp(
+        skirtPosition.array[upper * 3 + axis], skirtPosition.array[lower * 3 + axis], blend,
+      ));
+    }
+    uvs.push(
+      THREE.MathUtils.lerp(skirtUV.getX(upper), skirtUV.getX(lower), blend),
+      THREE.MathUtils.lerp(skirtUV.getY(upper), skirtUV.getY(lower), blend),
+    );
   }
+  skirt.dispose();
   const start = angles[0];
   for (const [ring, radius] of TERRAIN_CONTINUATION_RADII.entries()) {
     for (let station = 0; station < segments; station++) {
@@ -54,7 +75,9 @@ export function createTerrainContinuation(rim: readonly TerrainRimPoint[]): THRE
       const edgeHeight = THREE.MathUtils.lerp(rim[previous][1], rim[next][1], mix);
       const shoulderHeight = edgeHeight + (edgeHeight < -4 ? -0.5 :
         0.7 * Math.sin(5 * angle + 0.4) + 0.5 * Math.sin(11 * angle));
-      positions.push(x, ring === 0 ? shoulderHeight : heightAt(x, z), z);
+      positions.push(x, ring === 0
+        ? THREE.MathUtils.lerp(TERRAIN_SKIRT_BOTTOM, shoulderHeight, rearJoin(angle))
+        : heightAt(x, z), z);
       for (const axis of [3, 4] as const) {
         const edgeUV = THREE.MathUtils.lerp(rim[previous][axis], rim[next][axis], mix);
         uvs.push(THREE.MathUtils.lerp(edgeUV, 0.5, [0.12, 0.28, 0.35, 0.1][ring]));

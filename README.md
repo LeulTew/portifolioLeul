@@ -72,10 +72,11 @@ Original terrain heights and the already submerged forward fringe are retained.
 faceted shoulder and sloped submerged foot. It borrows Terrain's already-uploaded
 albedo and material response, keeps the boundary's original UVs, and samples
 inward on the lower rings instead of stretching one border texel down a wall.
-A separate static mainland joins **every decoded rim vertex** to four coarse
-32-station rings near radii 46, 65, 115 and 240 around `[0, -20]`. The near shoulder
-inherits the original rim heights with unequal rocky rises and recesses, rather
-than extending a flat shelf around the island. The back now continues
+A separate static mainland joins the **decoded rear headland** to four coarse
+32-station rings near radii 52, 65, 115 and 240 around `[0, -20]`. Side/front joins
+start at the existing submerged skirt foot, not the dry top rim: new land must
+not form a shallow shelf through the visible sea beside the TV. The rear shoulder
+inherits the original rim heights with unequal rocky rises and recesses. The back now continues
 as land rather than ending at the old island cliff. This additive surface leaves
 the original terrain, protected ground zones and all prop poses untouched. It
 shares the skirt's terrain-owned albedo/material response without another texture.
