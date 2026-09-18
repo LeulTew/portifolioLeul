@@ -4,11 +4,17 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { isFrameDrawn } from '@/lib/render/frameGate';
 import { resolveSceneModel } from '@/lib/assets/criticalAssets';
+import { CAMERA_CHAPTERS } from '@/lib/camera/cinematicSpline';
+import { publishAvatarEchoFrame } from '@/lib/avatar/avatarEchoScene';
 
 const MODEL_PATH = '/models/me-animated-lite.glb';
 
 /** See BackgroundScene: meshopt everywhere, so no gstatic decoder fetch. */
 const NO_DRACO = false;
+const homePosition = new THREE.Vector3(...CAMERA_CHAPTERS[0].position);
+const homeCamera = new THREE.PerspectiveCamera(50);
+homeCamera.position.copy(homePosition);
+homeCamera.lookAt(...CAMERA_CHAPTERS[0].target);
 
 interface MeModelProps {
   position?: [number, number, number];
@@ -25,6 +31,8 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
   
   // Setup animations
   const { actions, names } = useAnimations(animations, groupRef);
+
+  useEffect(() => () => publishAvatarEchoFrame(false, 0), []);
 
   // Play animations on mount
   useEffect(() => {
@@ -65,6 +73,15 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
       const time = state.clock.elapsedTime;
       groupRef.current.position.y = position[1] + Math.sin(time * 0.8) * 0.15;
     }
+    const action = actions[names[0]];
+    const camera = state.camera;
+    publishAvatarEchoFrame(
+      Boolean(action && camera instanceof THREE.PerspectiveCamera &&
+        camera.position.distanceToSquared(homePosition) < 0.000001 &&
+        1 - Math.abs(camera.quaternion.dot(homeCamera.quaternion)) < 0.000001 &&
+        camera.fov === homeCamera.fov),
+      action?.time ?? 0,
+    );
   });
 
   return (

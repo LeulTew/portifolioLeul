@@ -184,6 +184,36 @@ automatic pnpm selection previously rejected the out-of-date dependency list
 and left production serving an older release. Keep the Bun lockfile current and
 verify both published aliases on desktop and phone after deployment.
 
+### The avatar's drawn double
+
+After the loader and the existing Hero name sequence settle, **Say hello** is a
+native button over the actual island avatar. Its contour steps out into the
+foreground, plays the avatar's own greeting once, and accompanies a short,
+factual introduction. **Back to the island** or Escape reunites the drawing with
+the current pose; **Keep exploring** uses the existing Home-to-About action.
+Nothing is required to reach the portfolio.
+
+The contours and sparse face/jacket ink are baked from the shipped skinned
+model, its UV texture and its original 4.2-second clip, not a stock silhouette.
+Regenerate them with
+`bun scripts/bake-avatar-echo.mjs` if that asset or the opening shot changes.
+The bake uses existing dependencies, never writes the GLB, and is checked
+against its source hash and a 50KB gzip ceiling (currently approximately 41KB).
+The runtime adds one finite SVG score, no WebGL draws, lights, models, textures,
+render passes, camera writer or animation library. It samples the original
+clip's current phase without changing the rig or its cached resources.
+
+The native controls stay inside the real scrollport. Scroll, navigation,
+resize, hidden tabs and leaving the Hero cancel the encounter without cancelling
+input, queueing a replay or stealing navigation focus. Per-frame time is capped
+at 50ms, React receives phase changes only, and no encounter RAF remains after
+the greeting settles. Reduced motion and no-WebGL retain the same introduction
+and links without the travelling drawing. Hero choreography and the encounter
+own separate wrappers; the original name reveal, cloud, and scroll cue keep
+their existing clocks. An existing, static cloud mask protects the greeting's
+contrast, while a bounded composition keeps the drawn portrait close to its
+copy at 4K and deliberately clear of the real avatar.
+
 ### Contact delivery
 
 The Contact form uses the deployed `VITE_EMAILJS_SERVICE_ID`,

@@ -52,6 +52,7 @@ import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
 import { HeroCloud } from './HeroCloud';
 import { cloudBounds, measureHeroContent } from './heroContentBounds';
+import { AvatarEcho } from './AvatarEcho';
 
 /**
  * Rendered width of the cue, matching the stylesheet.
@@ -103,7 +104,12 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
+  const introductionRef = useRef<HTMLDivElement | null>(null);
+  const [avatarActive, setAvatarActive] = useState(false);
 
+  useLayoutEffect(() => {
+    if (introductionRef.current) introductionRef.current.inert = avatarActive;
+  }, [avatarActive]);
 
   const reducedMotion = getPrefersReducedMotion();
 
@@ -829,11 +835,13 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
         handover. One transform on one wrapper, so the aperture, the copy and
         the cue pin as a single composited layer and cannot drift apart.
       */}
-      <div ref={pinRef} className={styles.pinned}>
+      <div ref={pinRef} className={styles.pinned} data-testid="hero-pinned">
       {/* Opens the world from a slit on arrival. Behind the copy, in front of
           the canvas. The exit belongs to the plate, not to this. */}
       <HeroAperture />
 
+      <div ref={introductionRef} className={styles.introductionStage}
+        data-avatar-active={avatarActive || undefined} aria-hidden={avatarActive || undefined}>
       <div
         ref={contentRef}
         className={[
@@ -854,7 +862,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           data-cue-layer="backdrop"
           data-cloud-active={cloudActive}
         >
-          <HeroCloud active={cloudActive} theme={theme} />
+          <HeroCloud active={cloudActive && !avatarActive} theme={theme} />
         </div>
 
         {/* Always present: it is the frame the sequenced layers arrive into. */}
@@ -937,6 +945,10 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           </MagneticButton>
         </div>
       </div>
+      </div>
+
+      <AvatarEcho ready={introReady && settled && (!isReentering || reentrySettled)} flat={flat}
+        onActiveChange={setAvatarActive} onExplore={scrollToAbout} />
 
       <motion.div 
         className={styles.profileImage}

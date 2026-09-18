@@ -120,6 +120,20 @@
   padding-left: max(4rem, 10vw);
 }
 
+.introductionStage {
+  width: 100%;
+  transition: opacity 180ms ease;
+}
+
+.introductionStage[data-avatar-active] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .introductionStage { transition: none; }
+}
+
 .header {
   margin-bottom: clamp(1.5rem, 3vw, 3rem);
   display: flex;

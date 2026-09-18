@@ -48,6 +48,7 @@ scripts/*
 !scripts/bake-hero-cloud.mjs
 !scripts/bake-island.mjs
 !scripts/bake-shore-field.mjs
+!scripts/bake-avatar-echo.mjs
 .impeccable/hook.cache.json
 
 

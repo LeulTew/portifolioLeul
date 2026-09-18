@@ -726,8 +726,7 @@ describe('Home choreography', () => {
     const { container } = render(<Home />);
     enterHero();
 
-    const pinned = container.querySelector('[data-testid="hero-content"]')
-      ?.parentElement as HTMLElement;
+    const pinned = container.querySelector<HTMLElement>('[data-testid="hero-pinned"]')!;
 
     scrollIntoHold(0.5);
 
@@ -742,8 +741,7 @@ describe('Home choreography', () => {
     const { container } = render(<Home />);
     enterHero();
 
-    const pinned = container.querySelector('[data-testid="hero-content"]')
-      ?.parentElement as HTMLElement;
+    const pinned = container.querySelector<HTMLElement>('[data-testid="hero-pinned"]')!;
 
     scrollIntoHold(3);
 
