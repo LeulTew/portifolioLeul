@@ -1,5 +1,3 @@
-@value chamferPath from '../../ui/controlFoundation.module.css';
-
 .contact {
   --contact-surface: rgba(10, 28, 27, 0.96);
   --contact-ink: #edf6ef;
@@ -253,17 +251,7 @@
 }
 
 .formContainer {
-  --chamfer-cut: 26px;
   min-width: 0;
-  padding: clamp(1.5rem, 3vw, 3rem);
-  background: var(--contact-surface);
-  border: 1px solid var(--contact-border);
-  clip-path: chamferPath;
-  transition: border-color 160ms ease;
-}
-
-.formContainer:focus-within {
-  border-color: var(--contact-accent);
 }
 
 .flatSky {
@@ -318,7 +306,6 @@
   .grid { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
   .title { font-size: clamp(3.5rem, 11vw, 5rem); }
   .messagePlane { width: 130px; top: 0; right: 0; }
-  .formContainer { padding: 1.5rem; }
 }
 
 @media (max-height: 700px) and (min-width: 761px) {
@@ -331,8 +318,7 @@
 @media (prefers-reduced-motion: reduce) {
   .messagePlane,
   .emailLink > svg,
-  .socialLink,
-  .formContainer { transition: none; }
+  .socialLink { transition: none; }
   .contact:has(form:focus-within) .messagePlane,
   .contact:has(form[data-status='success']) .messagePlane { transform: rotate(-8deg); }
 }

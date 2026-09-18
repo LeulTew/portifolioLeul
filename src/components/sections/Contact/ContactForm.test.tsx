@@ -78,6 +78,10 @@ describe('ContactForm', () => {
     expect(screen.queryByText('Message sent successfully!')).not.toBeInTheDocument();
 
     await act(async () => resolveSend({ status: 200, text: 'OK' }));
+    expect(submitButton).toBeDisabled();
+    expect(nameInput).toHaveAttribute('readonly');
+    expect(submitButton.closest('form')).toHaveAttribute('aria-busy', 'false');
+    await user.click(screen.getByRole('button', { name: 'Send another message' }));
     expect(submitButton).toBeEnabled();
     expect(nameInput).not.toHaveAttribute('readonly');
   });
@@ -102,10 +106,9 @@ describe('ContactForm', () => {
       expect(screen.getByText('Message sent successfully!')).toBeInTheDocument();
     }, { timeout: 2000 });
 
-    // Form should be cleared
-    expect(nameInput).toHaveValue('');
-    expect(emailInput).toHaveValue('');
-    expect(messageInput).toHaveValue('');
+    expect(nameInput).toHaveValue('John Doe');
+    expect(emailInput).toHaveValue('john@example.com');
+    expect(messageInput).toHaveValue('Hello world');
     expect(emailjs.send).toHaveBeenCalledExactlyOnceWith(
       'service_test',
       'template_test',
@@ -114,6 +117,12 @@ describe('ContactForm', () => {
     );
     expect(screen.getByRole('status')).toHaveTextContent('Message sent successfully!');
 
+    await user.click(screen.getByRole('button', { name: 'Send another message' }));
+    expect(nameInput).toHaveFocus();
+    expect(nameInput).toBe(screen.getByRole('textbox', { name: 'Name' }));
+    expect(nameInput).toHaveValue('');
+    expect(emailInput).toHaveValue('');
+    expect(messageInput).toHaveValue('');
     await user.type(nameInput, '   ');
     await user.type(emailInput, 'john@example.com');
     await user.type(messageInput, '   ');
@@ -208,6 +217,9 @@ describe('ContactForm', () => {
       expect(screen.getByText('Message sent successfully!')).toBeInTheDocument();
     });
     expect(screen.queryByText('Failed to send message. Please try again.')).not.toBeInTheDocument();
+    expect(nameInput).toHaveValue('John Doe');
+    expect(messageInput).toHaveValue('Hello world');
+    await user.click(screen.getByRole('button', { name: 'Send another message' }));
     expect(nameInput).toHaveValue('');
     expect(emailInput).toHaveValue('');
     expect(messageInput).toHaveValue('');

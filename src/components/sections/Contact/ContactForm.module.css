@@ -1,8 +1,111 @@
+@value chamferPath from '../../ui/controlFoundation.module.css';
+
+.stage {
+  position: relative;
+  isolation: isolate;
+}
+
+.sheet {
+  position: relative;
+  z-index: 1;
+  transform-origin: 50% 50%;
+}
+
+.stage[data-send-phase='folding'] .sheet {
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.stage[data-send-phase='sent'] .sheet {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .form {
+  --chamfer-cut: 26px;
+  position: relative;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
   width: 100%;
+  padding: clamp(1.5rem, 3vw, 3rem);
+  background: var(--contact-surface);
+  border: 1px solid var(--contact-border);
+  clip-path: chamferPath;
+  transition: border-color 160ms ease;
+}
+
+.form:focus-within {
+  border-color: var(--contact-accent);
+}
+
+.paper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+  color: var(--contact-accent);
+}
+
+.paper path {
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.paperOutline {
+  fill: var(--contact-surface);
+}
+
+.paperWing,
+.paperKeel {
+  fill: color-mix(in srgb, var(--contact-surface) 87%, var(--contact-accent));
+}
+
+.paperTail {
+  fill: var(--contact-surface);
+}
+
+.paperCrease {
+  fill: none;
+}
+
+.confirmation {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(1.5rem, 3vw, 3rem);
+}
+
+.confirmation[hidden] {
+  display: none;
+}
+
+.confirmation h3 {
+  margin: 0 0 1rem;
+  font-size: clamp(2.5rem, 4vw, 4rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.confirmation .anotherButton {
+  --control-surface: var(--contact-surface);
+  --control-border: var(--contact-border);
+  --control-color: var(--contact-ink);
+  --control-hover-surface: var(--contact-accent);
+  --control-hover-border: var(--contact-accent);
+  --control-hover-color: var(--contact-on-accent);
+  margin-top: 2rem;
+  min-height: 52px;
 }
 
 .heading h3 {
@@ -122,6 +225,9 @@
 }
 
 .fallbackLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 0.2em;
@@ -142,6 +248,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .form,
   .input,
   .textarea { transition: none; }
   .sendingIcon { animation: none; }

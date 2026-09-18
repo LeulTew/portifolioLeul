@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ContactFormData, FormErrors } from './types';
 import emailjs from '@emailjs/browser';
 
@@ -12,6 +12,13 @@ export function useContactForm(submitFn?: () => Promise<void>) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const pending = useRef(false);
+  const accepted = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -36,7 +43,7 @@ export function useContactForm(submitFn?: () => Promise<void>) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pending.current) return;
+    if (pending.current || accepted.current) return;
     setSubmitStatus('idle');
     if (!validateForm()) return;
 
@@ -66,25 +73,36 @@ export function useContactForm(submitFn?: () => Promise<void>) {
           throw new Error('EmailJS configuration is incomplete.');
         }
       }
-      setSubmitStatus('success');
-      setFormData({ name: '', email: '', message: '' });
+      if (mounted.current) {
+        accepted.current = true;
+        setSubmitStatus('success');
+      }
     } catch (error) {
       console.error('EmailJS Error:', error);
-      setSubmitStatus('error');
+      if (mounted.current) setSubmitStatus('error');
     } finally {
       pending.current = false;
-      setIsSubmitting(false);
+      if (mounted.current) setIsSubmitting(false);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (pending.current) return;
     const { name, value } = e.target;
+    accepted.current = false;
     setSubmitStatus('idle');
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
+  };
+
+  const resetForm = () => {
+    if (pending.current) return;
+    accepted.current = false;
+    setFormData({ name: '', email: '', message: '' });
+    setErrors({});
+    setSubmitStatus('idle');
   };
 
   return {
@@ -94,5 +112,6 @@ export function useContactForm(submitFn?: () => Promise<void>) {
     submitStatus,
     handleSubmit,
     handleChange,
+    resetForm,
   };
 }

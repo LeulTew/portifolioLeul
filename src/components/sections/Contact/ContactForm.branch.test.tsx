@@ -11,6 +11,7 @@ vi.mock('./useContactForm', () => ({
     isSubmitting: false,
     submitStatus: 'error', // Force error state
     errors: {},
+    resetForm: vi.fn(),
   })),
 }));
 
