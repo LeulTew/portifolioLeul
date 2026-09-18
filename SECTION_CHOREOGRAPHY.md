@@ -47,12 +47,23 @@ An entry is an ordered list of **cues**. A cue names a layer, when it starts
 
 ```ts
 export const HERO_SEQUENCE: readonly SectionCue[] = [
-  { id: 'backdrop', at: 0,    duration: 0.90, engine: 'framer' },
-  { id: 'portrait', at: 0.18, duration: 0.70, engine: 'framer' },
-  { id: 'title',    at: 0.32, duration: 0.90, engine: 'gsap'   },
+  { id: 'backdrop', at: 0,   duration: 0.70, engine: 'css' },
+  { id: 'portrait', at: 0.6, duration: 0.55, engine: 'css' },
+  { id: 'title',    at: 1.0, duration: 2.40, engine: 'css' },
   ...
 ];
 ```
+
+### First-load visibility gate
+
+The hero stays mounted beneath the loader so fonts, images, layout and the
+scroll track can settle. Mounting is not permission to play its entrance:
+`App` passes `introReady` only after the loader completes its exit. Until then
+Home neither observes its entry coverage nor arms its entrance-settle backstop.
+This keeps the name's snow/fill sequence from finishing under an opaque loader.
+The original cue offsets, durations, scroll handover, re-entry and reduced-motion
+behavior are unchanged. A recording must capture the visible empty, partial and
+full name states before its first scroll, not just a finished Home screenshot.
 
 ### Ordering rule: ground before figure
 

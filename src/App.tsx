@@ -466,7 +466,7 @@ function App() {
    */
   const sections = (
     <main ref={attachMain} className={styles.main}>
-      <Home onNavigate={scrollToSection} theme={theme} flat={!show3D} />
+      <Home onNavigate={scrollToSection} theme={theme} flat={!show3D} introReady={!isLoading} />
       <About onNavigate={scrollToSection} />
       <Skills onNavigate={scrollToSection} />
       <Projects theme={theme} spatial={show3D} onNavigate={scrollToSection} />

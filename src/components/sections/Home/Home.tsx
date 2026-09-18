@@ -86,6 +86,8 @@ const REENTRY_LEAD_MS = 280;
 interface HomeProps {
   onNavigate?: (sectionId: string) => void;
   theme?: string;
+  /** Keep layout mounted beneath the loader without spending the visible entrance. */
+  introReady?: boolean;
   /**
    * Renders the hero as an ordinary section, with no hold at all.
    *
@@ -97,7 +99,7 @@ interface HomeProps {
   flat?: boolean;
 }
 
-export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
+export function Home({ onNavigate, theme = 'light', flat = false, introReady = true }: HomeProps) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
@@ -126,7 +128,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    */
   // Only the arrival latch is needed from the observer now; the departure is
   // driven by the hold below, which is measured per frame.
-  const hasEntered = useSectionFocusEffect(sectionElement, () => {});
+  const hasEntered = useSectionFocusEffect(introReady ? sectionElement : null, () => {});
 
   /*
    * The handover's phases and their shared frame loop.
@@ -372,7 +374,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
        * their rest state, which is where they were heading anyway, and the
        * exit takes them from there.
        */
-      if (!settledRef.current && (inner > 0 || shut > 0)) {
+      if (introReady && !settledRef.current && (inner > 0 || shut > 0)) {
         settledRef.current = true;
         firstLoadSettledRef.current = true;
         setSettled(true);
@@ -501,7 +503,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       lastFrameRef.current = 0;
       if (reentryTimerRef.current) clearTimeout(reentryTimerRef.current);
     };
-  }, [sectionElement, reducedMotion, held]);
+  }, [sectionElement, reducedMotion, held, introReady]);
 
   /**
    * The rail the cue runs along, measured rather than declared.
@@ -753,6 +755,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
    * Guarantees the hero ends up visible, however the entrance goes.
    */
   useEffect(() => {
+    if (!introReady) return;
     /*
      * Restarted when the entrance actually begins.
      *
@@ -777,7 +780,7 @@ export function Home({ onNavigate, theme = 'light', flat = false }: HomeProps) {
       hasEntered ? (sequenceDuration(HERO_SEQUENCE) + 0.8) * 1000 : NEVER_ENTERED_MS
     );
     return () => clearTimeout(settle);
-  }, [hasEntered]);
+  }, [hasEntered, introReady]);
 
   /**
    * Puts a layer on its beats: when it arrives, and when it leaves.

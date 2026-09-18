@@ -192,9 +192,11 @@ vi.mock("@react-three/drei", () => ({
  * *underneath* a loader that is still up.
  */
 let loaderCompletesImmediately = true;
+let completeLoader: (() => void) | undefined;
 
 vi.mock("./components/Loader", () => ({
   Loader: ({ onLoaded }: any) => {
+    completeLoader = onLoaded;
     if (loaderCompletesImmediately) onLoaded?.();
     return <div data-testid="loader" role="progressbar" />;
   },
@@ -209,7 +211,8 @@ vi.mock("./components/ParticleBackground", () => ({
 }));
 
 vi.mock("./components/sections/Home/Home", () => ({
-  Home: () => <div data-testid="home-section">Home Section</div>,
+  Home: ({ introReady }: { introReady?: boolean }) =>
+    <div data-testid="home-section" data-intro-ready={introReady}>Home Section</div>,
 }));
 
 vi.mock("./components/sections/About/About", () => ({
@@ -300,6 +303,17 @@ describe("what the loader is covering", () => {
 
     expect(screen.queryByRole("navigation")).toBeNull();
     expect(screen.queryByTestId("page-footer")).toBeNull();
+  });
+
+  it("releases the mounted hero entrance only when the loader finishes its exit", () => {
+    render(<ThemeProvider><App /></ThemeProvider>);
+    const home = screen.getByTestId("home-section");
+    expect(home).toHaveAttribute("data-intro-ready", "false");
+    expect(screen.getByTestId("loader")).toBeInTheDocument();
+    act(() => completeLoader?.());
+    expect(screen.queryByTestId("loader")).not.toBeInTheDocument();
+    expect(screen.getByTestId("home-section")).toBe(home);
+    expect(home).toHaveAttribute("data-intro-ready", "true");
   });
 });
 
