@@ -346,6 +346,10 @@
   flex-shrink: 0;
 }
 
+.sceneBack { grid-column: 1; }
+.sceneNext { grid-column: 3; }
+.sceneControls[data-avatar-active] { visibility: hidden; pointer-events: none; }
+
 .stage[data-phase='reading'] .sceneControls {
   inset: auto max(24px, 3vw) 24px;
 }

@@ -12,6 +12,11 @@ vi.mock('@react-three/drei', () => {
     new THREE.MeshStandardMaterial({ roughness: 0.5 })
   );
   scene.add(mesh);
+  for (const name of ['Spine2', 'Neck', 'Head']) {
+    const bone = new THREE.Bone();
+    bone.name = `mixamorig${name}`;
+    scene.add(bone);
+  }
 
   return {
     useGLTF: Object.assign(
@@ -39,7 +44,8 @@ vi.mock('@react-three/drei', () => {
 // Mock @react-three/fiber
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn((callback) => {
-    callback({ clock: { elapsedTime: 1.0 } }, 0.016);
+    callback({ clock: { elapsedTime: 1.0 }, camera: new THREE.PerspectiveCamera(50),
+      size: { width: 1440, height: 900 } }, 0.016);
   }),
 }));
 

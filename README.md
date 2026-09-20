@@ -184,35 +184,62 @@ automatic pnpm selection previously rejected the out-of-date dependency list
 and left production serving an older release. Keep the Bun lockfile current and
 verify both published aliases on desktop and phone after deployment.
 
-### The avatar's drawn double
+### Meet the character in the scene
 
-After the loader and the existing Hero name sequence settle, **Say hello** is a
-native button over the actual island avatar. Its contour steps out into the
-foreground, plays the avatar's own greeting once, and accompanies a short,
-factual introduction. **Back to the island** or Escape reunites the drawing with
-the current pose; **Keep exploring** uses the existing Home-to-About action.
-Nothing is required to reach the portfolio.
+**Meet Leul** appears only on hover or keyboard focus; the native model-aligned
+target remains clickable wherever the avatar is actionable
+in the exposed island, including Hero and Projects' revealed pre-TV view. It
+waits for the original Hero name entrance, but is not mounted in Hero or in the
+covered/inert main content. Its portal remains inside the real scrollport.
+Its zero-height sticky layer preserves native wheel travel over the controls;
+new entry waits for the existing scroll-track measurement/repair to settle.
 
-The contours and sparse face/jacket ink are baked from the shipped skinned
-model, its UV texture and its original 4.2-second clip, not a stock silhouette.
-Regenerate them with
-`bun scripts/bake-avatar-echo.mjs` if that asset or the opening shot changes.
-The bake uses existing dependencies, never writes the GLB, and is checked
-against its source hash and a 50KB gzip ceiling (currently approximately 41KB).
-The runtime adds one finite SVG score, no WebGL draws, lights, models, textures,
-render passes, camera writer or animation library. It samples the original
-clip's current phase without changing the rig or its cached resources.
+Clicking takes the existing camera along a 1.65-second curved approach to a new
+three-quarter medium portrait. The original textured figure turns its upper
+torso/head and gives a finite nod; the underlying wave is never reset or
+replaced. Only identification and a return control accompany the character.
+There is no duplicate figure, SVG portrait, extra model, Canvas, lighting rig,
+render pass, runtime dependency or mandatory chapter beat.
 
-The native controls stay inside the real scrollport. Scroll, navigation,
-resize, hidden tabs and leaving the Hero cancel the encounter without cancelling
-input, queueing a replay or stealing navigation focus. Per-frame time is capped
-at 50ms, React receives phase changes only, and no encounter RAF remains after
-the greeting settles. Reduced motion and no-WebGL retain the same introduction
-and links without the travelling drawing. Hero choreography and the encounter
-own separate wrappers; the original name reveal, cloud, and scroll cue keep
-their existing clocks. An existing, static cloud mask protects the greeting's
-contrast, while a bounded composition keeps the drawn portrait close to its
-copy at 4K and deliberately clear of the real avatar.
+`CinematicCameraController` remains the only camera writer. It computes the
+normal chapter pose separately, then composes the optional encounter. Return
+retraces the approach toward the live base; native scrolling and resize blend
+out from the displayed pose while chapter input continues normally. Navbar
+intent, hidden documents and Contact priority cannot be reclaimed by a stale
+return. Reduced motion uses deliberate camera cuts without rig flourishes.
+Unavailable WebGL leaves the existing flat portfolio, not a false avatar target.
+
+The same drawn-frame clock paces the camera and acknowledgement, capped at 50ms.
+The rig restores its additive offsets without overwriting newer mixer samples
+or disposing cached GLTF resources. The avatar's world placement and feet,
+terrain, CRT, Contact flight and Hero name reveal remain unchanged. Projects'
+revealed controls omit the removed caption while retaining their edge positions.
+
+### The green prism's hidden experiment
+
+The green prism has its own hover/focus-only **Unfold** affordance in the exposed
+island. Deliberate activation lifts the existing object, lets the line tie into
+an open spatial knot, and unthreads it back into the exact original beam.
+It does not move the camera, open a panel, retime the character or modify the
+ocean. The ordinary bob and existing point light keep their original owner.
+
+The curve grows through enlarged subarcs rather than interpolating a straight
+shaft through itself. Parallel-transport frames keep the rectangular material
+coherent. One capped 644-triangle body and one sparse line cage replace the two
+ordinary visible draws only during the interaction; original box geometry and
+material references return at rest. Buffers are allocated once and reused.
+No additional light, shadow map, render target, shader pass or dependency is
+introduced. The interaction material is opaque and lit so crossings remain
+readable, including in the dark theme; the ordinary dark additive beam is
+restored afterward.
+
+A single drawn-frame clock runs the finite 5.7-second reveal/hold/return and a
+shorter requested reversal. Escape, native scroll and resize can reverse it;
+navigation, hidden/covered scenes and teardown restore the beam. Reduced motion
+retains the stationary object with brief wire-intensity feedback. An exclusive
+island-secret lease prevents the prism and avatar encounters from competing.
+Both use the real scrollport, stay absent behind opaque chapters, and expose no
+imaginary target without WebGL.
 
 ### Contact delivery
 

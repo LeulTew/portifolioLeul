@@ -1,20 +1,17 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { isFrameDrawn } from '@/lib/render/frameGate';
+import { isFrameDrawn, isWorldOccluded } from '@/lib/render/frameGate';
 import { resolveSceneModel } from '@/lib/assets/criticalAssets';
-import { CAMERA_CHAPTERS } from '@/lib/camera/cinematicSpline';
-import { publishAvatarEchoFrame } from '@/lib/avatar/avatarEchoScene';
+import { getAvatarEncounter, setAvatarAvailability } from '@/lib/avatar/avatarEncounter';
+import { AvatarAcknowledgement } from '@/lib/avatar/avatarRig';
+import { AvatarProjection } from '@/lib/avatar/avatarProjection';
 
 const MODEL_PATH = '/models/me-animated-lite.glb';
 
 /** See BackgroundScene: meshopt everywhere, so no gstatic decoder fetch. */
 const NO_DRACO = false;
-const homePosition = new THREE.Vector3(...CAMERA_CHAPTERS[0].position);
-const homeCamera = new THREE.PerspectiveCamera(50);
-homeCamera.position.copy(homePosition);
-homeCamera.lookAt(...CAMERA_CHAPTERS[0].target);
 
 interface MeModelProps {
   position?: [number, number, number];
@@ -31,8 +28,13 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
   
   // Setup animations
   const { actions, names } = useAnimations(animations, groupRef);
+  const acknowledgement = useMemo(() => new AvatarAcknowledgement(scene), [scene]);
+  const projection = useMemo(() => new AvatarProjection(scene.getObjectByName('mixamorigSpine2')), [scene]);
 
-  useEffect(() => () => publishAvatarEchoFrame(false, 0), []);
+  useEffect(() => () => {
+    acknowledgement.restore();
+    setAvatarAvailability(false);
+  }, [acknowledgement]);
 
   // Play animations on mount
   useEffect(() => {
@@ -67,21 +69,18 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
 
   // Fallback: subtle floating if no animations
   useFrame((state) => {
-    if (!isFrameDrawn(state.clock.elapsedTime)) return;
+    if (!isFrameDrawn(state.clock.elapsedTime)) {
+      if (document.hidden || isWorldOccluded()) setAvatarAvailability(false);
+      return;
+    }
 
     if (groupRef.current && names.length === 0) {
       const time = state.clock.elapsedTime;
       groupRef.current.position.y = position[1] + Math.sin(time * 0.8) * 0.15;
     }
-    const action = actions[names[0]];
-    const camera = state.camera;
-    publishAvatarEchoFrame(
-      Boolean(action && camera instanceof THREE.PerspectiveCamera &&
-        camera.position.distanceToSquared(homePosition) < 0.000001 &&
-        1 - Math.abs(camera.quaternion.dot(homeCamera.quaternion)) < 0.000001 &&
-        camera.fov === homeCamera.fov),
-      action?.time ?? 0,
-    );
+    const encounter = getAvatarEncounter();
+    acknowledgement.apply(encounter.attention, encounter.nod);
+    projection.paint(state.camera, state.size.width, state.size.height, acknowledgement.supported);
   });
 
   return (

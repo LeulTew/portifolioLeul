@@ -31,6 +31,8 @@ import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
+import { AvatarEncounter } from './components/avatar/AvatarEncounter';
+import { setAvatarLayoutReady } from './lib/avatar/avatarEncounter';
 
 import './index.css';
 import styles from './App.module.css';
@@ -258,7 +260,11 @@ function App() {
 
     const previousPages = scrollPagesRef.current;
 
-    if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) return;
+    if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) {
+      setAvatarLayoutReady(!pendingRestoreRef.current && restoreSyncFramesRef.current === 0 &&
+        !settleTimerRef.current);
+      return;
+    }
 
     // ScrollControls rebuilds its track whenever `pages` changes, and that
     // rebuild resets scrollTop to 1. Capture where the reader is *now*, while
@@ -267,6 +273,7 @@ function App() {
     // state updater, which React may defer or re-run.
     const track = scrollElementRef.current;
     if (track) {
+      setAvatarLayoutReady(false);
       pendingRestoreRef.current = {
         offset: readScrollOffset(track),
         fromPages: previousPages,
@@ -303,10 +310,14 @@ function App() {
       // ScrollControls ignores scroll events for one frame after a rebuild, so
       // re-announce the position once that guard has lifted.
       track.dispatchEvent(new Event('scroll'));
+      if (restoreSyncFramesRef.current === 0 && !settleTimerRef.current) setAvatarLayoutReady(true);
       return restoredOffsetRef.current;
     }
 
-    if (!pending) return null;
+    if (!pending) {
+      if (!settleTimerRef.current) setAvatarLayoutReady(true);
+      return null;
+    }
 
     const scrollable = track.scrollHeight - track.clientHeight;
     if (scrollable <= 0) return expectedOffset;
@@ -344,8 +355,12 @@ function App() {
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => {
         watcher.poke();
+        setAvatarLayoutReady(false);
         if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-        settleTimerRef.current = setTimeout(updateScrollPages, CONTENT_SETTLE_MS);
+        settleTimerRef.current = setTimeout(() => {
+          settleTimerRef.current = null;
+          updateScrollPages();
+        }, CONTENT_SETTLE_MS);
       });
       observer.observe(node);
       contentObserverRef.current = observer;
@@ -548,6 +563,8 @@ function App() {
 
       </ErrorBoundary>
       )}
+
+      <AvatarEncounter enabled={!isLoading && show3D} scrollElement={scrollElement} />
 
       {!isLoading && <>
         <PageFooter />

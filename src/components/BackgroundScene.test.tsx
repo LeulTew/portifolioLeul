@@ -75,6 +75,7 @@ vi.mock('./MeModel', () => ({ MeModel: () => null }));
 vi.mock('./3d/AtmosphericDrift', () => ({ AtmosphericDrift: () => null }));
 vi.mock('./3d/SceneEdgeContinuity', () => ({ SceneEdgeContinuity: () => null }));
 vi.mock('./3d/ContactSky', () => ({ ContactSky: () => null }));
+vi.mock('./3d/GreenPrism', () => ({ GreenPrism: () => null }));
 
 describe('BackgroundScene', () => {
   beforeEach(() => {

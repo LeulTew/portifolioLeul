@@ -52,7 +52,7 @@ import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
 import { HeroCloud } from './HeroCloud';
 import { cloudBounds, measureHeroContent } from './heroContentBounds';
-import { AvatarEcho } from './AvatarEcho';
+import { setAvatarHeroReady, useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
 
 /**
  * Rendered width of the cue, matching the stylesheet.
@@ -105,7 +105,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
   const introductionRef = useRef<HTMLDivElement | null>(null);
-  const [avatarActive, setAvatarActive] = useState(false);
+  const avatarActive = useAvatarEncounterPresenting();
 
   useLayoutEffect(() => {
     if (introductionRef.current) introductionRef.current.inert = avatarActive;
@@ -160,6 +160,11 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
   const [reentryCount, setReentryCount] = useState(0);
   const [isReentering, setIsReentering] = useState(false);
   const [reentrySettled, setReentrySettled] = useState(false);
+
+  useEffect(() => {
+    setAvatarHeroReady(introReady && settled && (!isReentering || reentrySettled));
+    return () => setAvatarHeroReady(false);
+  }, [introReady, settled, isReentering, reentrySettled]);
 
   const firstLoadSettledRef = useRef(false);
   const hasLeftHomeRef = useRef(false);
@@ -946,9 +951,6 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
         </div>
       </div>
       </div>
-
-      <AvatarEcho ready={introReady && settled && (!isReentering || reentrySettled)} flat={flat}
-        onActiveChange={setAvatarActive} onExplore={scrollToAbout} />
 
       <motion.div 
         className={styles.profileImage}

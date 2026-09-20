@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, ChevronDown, ChevronUp } from 'luc
 import { ControlButton } from '@/components/ui/ControlButton';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { useTVScreenReady } from '@/lib/projects/projectsScene';
+import { useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
 import { projectsData, type Project } from '@/data/projects';
@@ -64,6 +65,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const available = useTVScreenReady();
   const fits = useProjectsFits();
   const reduced = usePrefersReducedMotion();
+  const avatarPresenting = useAvatarEncounterPresenting();
   const staged = available && fits;
   const { phase, visible, ready, step } = useProjectsPlayback({ host, stage, surface }, staged, reduced, onNavigate);
   const interactive = !staged || ready;
@@ -254,30 +256,30 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
           <div className={styles.crtRaster} data-crt-raster="" aria-hidden="true" />
         </div>
       </div>
-      {staged && <div className={styles.sceneControls} aria-hidden={!visible ? true : undefined}>
+      {staged && <div className={styles.sceneControls} data-avatar-active={avatarPresenting || undefined}
+        aria-hidden={!visible || avatarPresenting ? true : undefined}>
         <ControlButton onClick={event => {
           sceneControl.current = { element: event.currentTarget, enterScreen: false };
           step(-1);
         }}
-          disabled={!['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneBack}>
+          disabled={avatarPresenting || !['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneBack}>
           <ArrowLeft size={17} aria-hidden="true" />
           {phase === 'revealed' ? 'Back to Skills' : 'Back to the scene'}
         </ControlButton>
-        <p className={styles.cue} role="status">
+        {phase !== 'revealed' && <p className={styles.cue} role="status">
           {phase === 'withdrawing' || phase === 'turning' ? 'Turning toward the work'
             : phase === 'approaching' ? 'Approaching the display'
               : phase === 'departing' ? 'Continuing to Contact'
                 : phase === 'unturning' || phase === 'retreating' ? 'Returning through the scene'
                   : phase === 'reading'
                     ? details ? 'Scroll to read. Preview returns to browsing.' : 'Scroll on the screen to browse. Scroll outside to continue.'
-                    : phase === 'revealed' ? 'The tools behind the work'
-                      : 'The work is on the screen'}
-        </p>
+                    : 'The work is on the screen'}
+        </p>}
         <ControlButton variant="primary" onClick={event => {
           sceneControl.current = { element: event.currentTarget, enterScreen: phase === 'framed' };
           step(1);
         }}
-          disabled={!['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneNext}>
+          disabled={avatarPresenting || !['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneNext}>
           {phase === 'reading' ? 'Contact' : phase === 'revealed' ? 'Turn to the TV' : 'Open the screen'}
           <ArrowRight size={17} aria-hidden="true" />
         </ControlButton>

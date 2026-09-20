@@ -1,5 +1,4 @@
 import { useRef, useMemo, useEffect, Suspense, Component, type ReactNode } from 'react';
-import { useFrame } from '@react-three/fiber';
 import {
   useGLTF,
   PerspectiveCamera,
@@ -18,16 +17,16 @@ import { ContactSky } from './3d/ContactSky';
 import { LocalEnvironment } from './3d/LocalEnvironment';
 import { SceneReady } from './3d/SceneReady';
 import { SceneEdgeContinuity } from './3d/SceneEdgeContinuity';
+import { GreenPrism } from './3d/GreenPrism';
 import {
   getCriticalModels,
   resolveSceneModel,
   CRITICAL_SCENE_TEXTURES,
 } from '@/lib/assets/criticalAssets';
 import { getGpuTier } from '@/lib/gateways/gpuTier';
-import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import { isFrameDrawn } from '@/lib/render/frameGate';
 import { DEFAULT_REFLECTION_SIZE } from './ocean/oceanConfig';
 import { TV_POSITION, TV_ROTATION, TV_SCALE } from '@/lib/projects/tvScreen';
+import { AVATAR_POSITION, AVATAR_ROTATION, AVATAR_SCALE } from '@/lib/avatar/avatarCamera';
 
 const TERRAIN_URL = '/models/terrain-opt.glb';
 
@@ -241,7 +240,6 @@ export function BackgroundScene({
   // A fraction of the starfield budget: motes are animated every frame, so they
   // cost far more per instance than the static point cloud.
   const driftCount = Math.max(Math.round(particleCount * DRIFT_BUDGET_SHARE), 0);
-  const prismRef = useRef<THREE.Group>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const keyLightRef = useRef<THREE.DirectionalLight>(null);
 
@@ -258,42 +256,8 @@ export function BackgroundScene({
       directional: isLight ? 1.1 : 0.5,
       spotIntensity: isLight ? 0.8 : 1,
       spotColor: '#00ff9d',
-      pointIntensity: isLight ? 4 : 5,
     };
   }, [isLight]);
-
-  const prismAppearance = useMemo(() => {
-    return isLight
-      ? {
-          solid: '#0a6b4a',
-          glow: '#11b978',
-          light: '#00d17a',
-          emissive: '#04402a',
-          opacity: 1,
-        }
-      : {
-          solid: '#00ff9d',
-          glow: '#00ff9d',
-          light: '#00ff9d',
-          emissive: '#004428',
-          opacity: 0.9,
-        };
-  }, [isLight]);
-
-  useFrame((state) => {
-    if (!prismRef.current) return;
-
-    // The world holds completely still behind an opaque section, and redraws
-    // no faster than the tier allows.
-    const time = state.clock.elapsedTime;
-    if (!isFrameDrawn(time)) return;
-
-    const reducedMotion = getPrefersReducedMotion();
-
-    // Parallax now lives on the camera, not on this group: rotating the world
-    // to fake it displaced every authored object placement along with it.
-    prismRef.current.position.y = reducedMotion ? 2 : Math.sin(time * 0.5) * 0.2 + 2;
-  });
 
   return (
     <>
@@ -328,53 +292,7 @@ export function BackgroundScene({
           <Terrain surfaceColor={palette.terrain} theme={theme} />
         </Suspense>
 
-        {/* Neon Prism */}
-        <group 
-          ref={prismRef} 
-          position={[12, 2, -15]}
-          rotation={[0, 0, -0.3]}
-        >
-          {/* Main prism body */}
-          <mesh scale={[0.3, 12, 0.3]} castShadow>
-            <boxGeometry />
-            {isLight ? (
-              <meshStandardMaterial
-                color={prismAppearance.solid}
-                metalness={0.15}
-                roughness={0.4}
-                emissive={prismAppearance.emissive}
-                emissiveIntensity={0.4}
-                transparent={false}
-              />
-            ) : (
-              <meshBasicMaterial
-                color={prismAppearance.solid}
-                wireframe={false}
-                transparent
-                opacity={prismAppearance.opacity}
-                blending={THREE.AdditiveBlending}
-              />
-            )}
-          </mesh>
-          {/* Outer glow */}
-          <mesh scale={[0.4, 12.2, 0.4]}>
-            <boxGeometry />
-            <meshBasicMaterial
-              color={prismAppearance.glow}
-              wireframe={true}
-              transparent
-              opacity={isLight ? 0.25 : 0.4}
-              blending={THREE.AdditiveBlending}
-            />
-          </mesh>
-          <pointLight
-            intensity={palette.pointIntensity}
-            color={prismAppearance.light}
-            distance={20}
-            decay={2}
-            castShadow
-          />
-        </group>
+        <GreenPrism isLight={isLight} />
 
         {/* Distant starfield */}
         <Particles color={palette.highlight} count={particleCount} />
@@ -392,9 +310,9 @@ export function BackgroundScene({
           {/* Placed next to the prism [12, 2, -15] */}
           {/* Adjusted Y to be on ground (-4) */}
           <MeModel 
-            position={[22, -2.5, -15]} 
-            scale={[8, 8, 8]} 
-            rotation={[0, Math.PI / 0.55, 0]} 
+            position={[...AVATAR_POSITION]}
+            scale={[...AVATAR_SCALE]}
+            rotation={[...AVATAR_ROTATION]}
           />
           
           {/* TV Model with Video */}

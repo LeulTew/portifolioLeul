@@ -96,6 +96,10 @@
   z-index: 1001;
 }
 
+:global(body:has([data-avatar-presenting='true']) [data-page-footer]) {
+  visibility: hidden;
+}
+
 .paintedFooter .scroll,
 .paintedFooter .year {
   color: #ffffff;
