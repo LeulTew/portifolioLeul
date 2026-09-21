@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { ControlButton } from '@/components/ui/ControlButton';
 import {
   abortAvatarEncounter,
@@ -161,10 +161,7 @@ export function AvatarEncounter({ enabled, scrollElement }: AvatarEncounterProps
           if (requestAvatarEncounter()) focusReturnAfterCommit.current = true;
         }}
       >
-        <span className={styles.cue}>
-          Meet Leul
-          <ArrowUpRight size={15} strokeWidth={1.75} aria-hidden="true" />
-        </span>
+        <span className={styles.cue} aria-hidden="true" />
       </button>
       <PrismTrigger enabled={sceneEnabled} scrollElement={scrollElement} />
       <div id={captionId} className={styles.caption} hidden={!showPortrait}>

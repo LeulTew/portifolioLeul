@@ -67,6 +67,15 @@ afterEach(() => {
 });
 
 describe('the original-avatar encounter overlay', () => {
+  it('uses a wordless decorative cue while retaining the accessible action name', () => {
+    const { target } = setup();
+    expect(target).toHaveAccessibleName('Meet Leul in 3D');
+    expect(target.textContent).toBe('');
+    expect(target.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
+    expect(target.querySelector('svg')).toBeNull();
+    expect(target).not.toHaveAttribute('title');
+  });
+
   it('portals into the actual scrollport, outside an inert main and the render host', () => {
     const { root, main, scroller, container, navigation } = setup();
     expect(root.parentElement).toBe(scroller);
@@ -523,6 +532,12 @@ describe('discreet scene overlay styling', () => {
     }
     expect(declarations('.cue').left).toBe('var(--avatar-cue-x, 50%)');
     expect(declarations('.cue')).toMatchObject({ opacity: '0', visibility: 'hidden', 'pointer-events': 'none' });
+    expect(declarations('.cue')).toMatchObject({
+      width: '5px', height: '5px', 'border-radius': '50%',
+      background: 'var(--avatar-focus)', 'box-shadow': '0 0 9px 2px var(--avatar-glint)',
+    });
+    expect(declarations('.cue').border).toBeUndefined();
+    expect(declarations('.cue').padding).toBeUndefined();
     expect(declarations('.target:focus-visible .cue')).toMatchObject({ opacity: '1', visibility: 'visible' });
     expect(declarations('.target:not(:disabled):hover .cue')).toMatchObject({ opacity: '1', visibility: 'visible' });
     expect(declarations('.caption').opacity).toBe('var(--avatar-reveal, 0)');

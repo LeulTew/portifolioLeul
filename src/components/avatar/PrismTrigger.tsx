@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Sparkle } from 'lucide-react';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { registerPrismTarget } from '@/lib/prism/prismProjection';
@@ -56,6 +55,6 @@ export function PrismTrigger({ enabled, scrollElement }: {
       if (getPrismExperiment().phase === 'rest') requestPrismExperiment(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
       else closePrismExperiment();
     }}>
-    <span className={styles.cue}>{active ? 'Let go' : 'Unfold'} <Sparkle size={14} strokeWidth={1.5} aria-hidden="true" /></span>
+    <span className={styles.cue} aria-hidden="true" />
   </button>;
 }

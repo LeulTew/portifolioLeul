@@ -29,6 +29,18 @@ function open() { fireEvent.click(screen.getByRole('button', { name: 'Unfold the
 function move() { act(() => { for (let i = 0; i < 15; i++) advancePrismExperiment(50, false); }); }
 
 describe('hidden native prism discovery', () => {
+  it('never puts text or icons on the object, including its restore state', () => {
+    setup();
+    const target = screen.getByRole('button', { name: 'Unfold the green prism' });
+    expect(target.textContent).toBe('');
+    expect(target.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
+    expect(target.querySelector('svg')).toBeNull();
+    expect(target).not.toHaveAttribute('title');
+    open();
+    expect(target).toHaveAccessibleName('Restore the green prism');
+    expect(target.textContent).toBe('');
+  });
+
   it('only offers a target for an enabled, actually exposed object', () => {
     setup(false);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();

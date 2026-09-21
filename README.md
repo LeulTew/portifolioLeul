@@ -186,8 +186,8 @@ verify both published aliases on desktop and phone after deployment.
 
 ### Meet the character in the scene
 
-**Meet Leul** appears only on hover or keyboard focus; the native model-aligned
-target remains clickable wherever the avatar is actionable
+A small, wordless light cue appears only on hover or keyboard focus; the native
+model-aligned target remains clickable wherever the avatar is actionable
 in the exposed island, including Hero and Projects' revealed pre-TV view. It
 waits for the original Hero name entrance, but is not mounted in Hero or in the
 covered/inert main content. Its portal remains inside the real scrollport.
@@ -217,8 +217,9 @@ revealed controls omit the removed caption while retaining their edge positions.
 
 ### The green prism's hidden experiment
 
-The green prism has its own hover/focus-only **Unfold** affordance in the exposed
-island. Deliberate activation lifts the existing object, lets the line tie into
+The green prism uses the same subtle, wordless hover/focus glint in the exposed
+island. Accessible button names remain available to assistive technology,
+without visible labels, badges or icons. Deliberate activation lifts the existing object, lets the line tie into
 an open spatial knot, and unthreads it back into the exact original beam.
 It does not move the camera, open a panel, retime the character or modify the
 ocean. The ordinary bob and existing point light keep their original owner.

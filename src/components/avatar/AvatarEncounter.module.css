@@ -4,8 +4,8 @@
   --avatar-ink: #f0fff8;
   --avatar-muted: #c0d7cb;
   --avatar-surface: navSurfaceDark;
-  --avatar-rule: rgba(255, 255, 255, 0.38);
   --avatar-focus: brandMint;
+  --avatar-glint: rgba(0, 255, 157, 0.24);
   --avatar-gutter: clamp(1.5rem, 4vw, 7rem);
   --avatar-bottom: clamp(4.5rem, 9vh, 7rem);
   position: sticky;
@@ -32,8 +32,8 @@
   --avatar-ink: #0a251e;
   --avatar-muted: #354f42;
   --avatar-surface: navSurfaceLight;
-  --avatar-rule: rgba(17, 24, 39, 0.48);
   --avatar-focus: brandEmerald;
+  --avatar-glint: rgba(5, 150, 105, 0.2);
 }
 
 .encounter:focus {
@@ -74,21 +74,16 @@
   position: absolute;
   left: var(--avatar-cue-x, 50%);
   bottom: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--avatar-rule);
-  background: var(--avatar-surface);
-  font-size: clamp(0.75rem, 0.7rem + 0.15vw, 0.875rem);
-  font-weight: 500;
-  line-height: 1.4;
-  white-space: nowrap;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--avatar-focus);
+  box-shadow: 0 0 9px 2px var(--avatar-glint);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateX(-50%);
-  transition: opacity 140ms ease, border-color 120ms ease;
+  transition: opacity 140ms ease;
 }
 
 .target:focus-visible .cue {
@@ -136,7 +131,6 @@
   .target:not(:disabled):hover .cue {
     opacity: 1;
     visibility: visible;
-    border-color: var(--avatar-focus);
   }
 }
 
