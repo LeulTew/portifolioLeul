@@ -6,6 +6,7 @@
 class SoundFxGateway {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = true; // Default to muted for polite UX, persist user preference
+  private lastTVSound = -Infinity;
 
   constructor() {
     try {
@@ -66,6 +67,30 @@ class SoundFxGateway {
       }
     } catch {
       // Storage safety
+    }
+  }
+
+  /** A short mechanical knock, triggered by a TV action rather than hover. */
+  public playTVPress(kind: 'channel' | 'power-on' | 'power-off'): void {
+    if (this.isMuted || (typeof document !== 'undefined' && document.hidden)) return;
+    const ctx = this.initContext();
+    if (!ctx || ctx.currentTime - this.lastTVSound < 0.055) return;
+    this.lastTVSound = ctx.currentTime;
+    const duration = kind === 'channel' ? 0.04 : 0.085;
+    try {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(kind === 'channel' ? 155 : kind === 'power-on' ? 105 : 78, ctx.currentTime);
+      gain.gain.setValueAtTime(0.045, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + duration);
+    } catch (error) {
+      console.warn('TV tactile audio was unavailable; the physical control remains usable.', error);
     }
   }
 

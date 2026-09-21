@@ -163,6 +163,61 @@ hits and the measured edges of voids, with no invented ground or terrain edits.
 | **Testing**        | Vitest, React Testing Library (100% Coverage) |
 | **Deployment**     | Vercel                                        |
 
+### Physical TV controls and screen modes
+
+The television starts **off**. Its physical power control opens a local CRT
+signal in the exposed, front-facing scene; previous/next select the existing
+small video or an original animated test card. The former automatic eight-second
+video cycle and whole-cabinet click handler are removed. No video is fetched
+at startup or counted as a loader-critical asset.
+
+During the Projects approach, reading and retreat, the display belongs
+exclusively to the existing semantic project reader. The CRT entertainment
+shader does not process project text, images or links. The physical previous/
+next keys invoke the reader's original filtered selection callbacks; Details,
+categories, keyboard browsing and project selection stay intact. Conventional
+project paging remains the fallback when physical 48px targets cannot fit or
+the flat reader is used.
+
+Power-off in Projects uses its existing back-to-scene retreat, then leaves
+dark glass. Entering Projects always makes the reader available, even when
+broadcast was off. A normal exit restores the previous broadcast preference
+and channel; it does not conflate those with the current project. The existing
+camera, island geometry, water, lighting, avatar, prism and Contact journey are
+unchanged.
+
+Native buttons are projected onto the hardware, in a zero-height sticky layer
+inside the real scrollport rather than inside covered/inert main content.
+Back-facing, occluded, hidden and moving-scene controls cannot be activated.
+Separate key targets never overlap. The physical caps and native controls
+share one action; physical press/focus/hover feedback does not invent another
+navigation handler. A keyboard power-off returns focus to the existing visible
+scene-navigation control, not an invisible retired TV surface.
+
+The complete TV now submits **2,520 triangles in 11 main-view draws**:
+1,778 static housing, 476 moving controls, 264 lower cabinet and two display
+triangles. The existing water mirror may submit the TV again; that cost is not
+an added render pass. Channel-key centers remain at least 54.85px apart even
+in the pre-close-up 900x560 shot. One material-batched cap buffer moves the three
+keys independently, with 75ms depression, 50ms minimum dwell and 130ms release.
+The redundant upper grille is replaced by the broad hardware strip; the approved
+lower speaker, original aperture and world bounds remain intact.
+
+Mechanical audio uses the existing muted-by-default Audio FX preference.
+One short bounded knock accompanies an accepted action; hover is silent,
+repeat input is rate-limited, and ended oscillator/gain nodes disconnect.
+Broadcast media remains muted. The screen-local wake, shutdown and tuning
+effects honor reduced motion and the 50ms visible-frame cap, without a new
+Canvas, light, shadow map or full-scene postprocessing pass.
+
+Only one video element/decoder is created, on deliberate power-on. It pauses
+while off, hidden, in Projects or outside useful screen visibility. The owned
+video texture cancels its `requestVideoFrameCallback` on pause/disposal
+(Three.js r161's built-in implementation does not own that cleanup).
+Late playback promises cannot restart a retired source. Playback rejection
+and media errors announce a recoverable test-card fallback, never false
+successful playback. The test card adds no media download.
+
 ### Production addresses and device routing
 
 - Desktop: https://leul-t-agonafer.vercel.app

@@ -24,6 +24,7 @@ import {
   parkContactSky, releaseContactSky, setContactProgress, subscribeContactPose,
 } from '@/lib/contact/contactScene';
 import { clearContactPresentation } from '@/lib/contact/contactPresentation';
+import { setTVProjectPhase } from '@/lib/tv/tvState';
 
 interface Refs {
   host: RefObject<HTMLElement>;
@@ -98,6 +99,7 @@ export function useProjectsPlayback(
     const changePhase = (next: ProjectsPhase) => {
       state = next;
       setProjectsReading(next === 'reading');
+      setTVProjectPhase(next);
       writeAttribute(panel, 'data-phase', next);
       setPhase(next);
     };

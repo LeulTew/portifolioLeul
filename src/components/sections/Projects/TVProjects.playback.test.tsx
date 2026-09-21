@@ -18,6 +18,7 @@ import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgr
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 import * as scrollContainer from '../About/EducationRail/scrollContainer';
 import { CRT_POWER_ON_MS } from './projectBroadcast';
+import { activateTV, getTVState, resetTVState, setTVExposure } from '@/lib/tv/tvState';
 
 let top = 1200;
 let reduced = false;
@@ -31,6 +32,7 @@ vi.mock('@/lib/gateways/animationGateway', () => ({
 }));
 
 beforeEach(() => {
+  resetTVState();
   top = 1200;
   reduced = hidden = false;
   resetScrollGesture();
@@ -111,6 +113,32 @@ const returnInput = (kind: 'held key' | 'wheel', repeat = true) => {
 };
 
 describe('the completed-beat TV chapter', () => {
+  it('pages the current category with physical keys and powers off through the original retreat', async () => {
+    mount();
+    await navbar('projects');
+    await clock.run(CRT_POWER_ON_MS);
+    act(() => setTVExposure(true, 'all'));
+    expect(phase()).toBe('reading');
+    const first = document.querySelector('[data-project-id]')?.getAttribute('data-project-id');
+    expect(screen.queryByRole('button', { name: 'Next project' })).not.toBeInTheDocument();
+    act(() => { expect(activateTV('next')).toBe(true); });
+    expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).not.toBe(first);
+    act(() => activateTV('previous'));
+    expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe(first);
+    act(() => activateTV('power'));
+    expect(phase()).toBe('retreating');
+    expect(getTVState()).toMatchObject({ source: 'projects', broadcastOn: false });
+    await clock.run(PROJECTS_APPROACH_MS);
+    expect(phase()).toBe('framed');
+    expect(getTVState().source).toBe('off');
+    act(() => activateTV('power'));
+    expect(getTVState().source).toBe('broadcast');
+    fireEvent.click(screen.getByRole('button', { name: 'Open the screen' }));
+    await clock.run(PROJECTS_APPROACH_MS);
+    expect(getTVState()).toMatchObject({ source: 'projects', broadcastOn: true });
+    expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe(first);
+  });
+
   it('does not claim a spent physical Projects position before Skills actually departs', async () => {
     mount();
     top = -4000;

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { TV_CONTROLS, TV_CONTROL_IDS } from '../tv/tvHardware';
+import { getTVControlWellContour, TV_CONTROL_WELL } from '../tv/tvHardwareGeometry';
 
 /** Screen-local coordinates: the separate, rectangular video/DOM display is at z = 0. */
 export const CRT_HOUSING_APERTURE = {
@@ -7,7 +9,7 @@ export const CRT_HOUSING_APERTURE = {
   z: 0,
 } as const;
 
-/** Includes the cabinet, underside skids and the foremost tactile button faces. */
+/** Unchanged assembly envelope, including the separately batched mechanical caps. */
 export const CRT_HOUSING_BOUNDS = {
   min: [-0.36, -0.274, -0.38],
   max: [0.36, 0.2, 0.046],
@@ -15,33 +17,29 @@ export const CRT_HOUSING_BOUNDS = {
   size: [0.72, 0.474, 0.426],
 } as const;
 
-export const CRT_HOUSING_PARTS = [
-  'cabinet', 'rear', 'recess', 'metal', 'glassEdge', 'speakerRib', 'indicator',
-] as const;
-
-export type CRTHousingPart = typeof CRT_HOUSING_PARTS[number];
+export type CRTHousingPart =
+  'cabinet' | 'rear' | 'recess' | 'metal' | 'glassEdge' | 'speakerRib' | 'indicator';
+export const CRT_HOUSING_PARTS: readonly CRTHousingPart[] = [
+  'cabinet', 'rear', 'recess', 'metal', 'glassEdge', 'indicator',
+];
 
 export const CRT_HOUSING_BUDGET = {
-  drawCalls: 7,
+  drawCalls: 6,
   maxStoredVertices: 1800,
   maxSubmittedTriangles: 2700,
 } as const;
 
-const CONTROL_Y = -0.218;
+const CONTROL_Y = TV_CONTROLS.power.position[1];
 
-export const CRT_SPEAKER_RIB_POSITIONS: ReadonlyArray<readonly [number, number, number]> =
-  Array.from({ length: 7 }, (_, index) => [-0.118, CONTROL_Y + (index - 3) * 0.0058, 0.0315] as const);
+/** Compatibility for assembly-bound consumers; the redundant upper grille is no longer submitted. */
+export const CRT_SPEAKER_RIB_POSITIONS: ReadonlyArray<readonly [number, number, number]> = [];
 
 type Point = readonly [number, number, number];
 type Contour = readonly Point[];
 
 const CORNER_SEGMENTS = 6;
 const DETAIL_CORNER_SEGMENTS = 2;
-const SMALL_BUTTON_SEGMENTS = 16;
-const POWER_BUTTON_SEGMENTS = 24;
 const INDICATOR_SEGMENTS = 12;
-const SMALL_BUTTON_X = [0.138, 0.183] as const;
-const POWER_BUTTON_X = 0.27;
 const INDICATOR_X = 0.31;
 
 function rectangle(
@@ -138,14 +136,23 @@ class HousingBuilder {
       this.indices.push(center, rear ? b : a, rear ? a : b);
     }
   }
+
+  faceWithHoles(contour: Contour, holes: readonly Contour[]) {
+    const start = this.positions.length / 3;
+    const boundary = contour.map(([x, y]) => new THREE.Vector2(x, y));
+    const cutouts = holes.map(hole => hole.map(([x, y]) => new THREE.Vector2(x, y)));
+    const triangles = THREE.ShapeUtils.triangulateShape(boundary, cutouts);
+    for (const ring of [contour, ...holes]) {
+      for (const point of ring) this.positions.push(...point);
+    }
+    for (const [a, b, c] of triangles) this.indices.push(start + a, start + b, start + c);
+  }
 }
 
 const cabinetFace = () => rectangle(0.698, 0.442, 0.031, 0.028, 0, -0.03);
 const trimOutside = () => rectangle(0.63, 0.36, 0.018, 0.028);
 const trimInside = () => rectangle(0.619, 0.349, 0.0125, 0.028);
 const glassOutside = () => rectangle(0.555, 0.325, 0.0025, 0.002);
-const speakerMouth = () => rectangle(0.344, 0.049, 0.005, 0.035, -0.118, CONTROL_Y);
-const speakerBed = () => rectangle(0.336, 0.041, 0.003, 0.0295, -0.118, CONTROL_Y);
 
 function addCabinet(builder: HousingBuilder) {
   builder.loft([
@@ -155,7 +162,9 @@ function addCabinet(builder: HousingBuilder) {
     rectangle(0.714, 0.454, 0.039, 0.014, 0, -0.03),
     cabinetFace(),
   ]);
-  builder.loft([cabinetFace(), trimOutside()]);
+  builder.faceWithHoles(cabinetFace(), [
+    trimOutside(), ...TV_CONTROL_IDS.map(id => getTVControlWellContour(id, 0.028, 'outer')),
+  ]);
 
   const fasciaFace = rectangle(0.637, 0.058, 0.006, 0.035, 0, CONTROL_Y);
   builder.loft([
@@ -163,16 +172,9 @@ function addCabinet(builder: HousingBuilder) {
     rectangle(0.641, 0.06, 0.007, 0.0335, 0, CONTROL_Y),
     fasciaFace,
   ]);
-  // The fascia has a real recessed grille opening, not black stripes on a slab.
-  builder.loft([fasciaFace, speakerMouth()]);
-
-  const powerFace = circle(0.0104, 0.046, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS);
-  builder.loft([
-    circle(0.0113, 0.038, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-    circle(0.0113, 0.043, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-    powerFace,
-  ]);
-  builder.cap(powerFace);
+  // Both skin layers are pierced: pressed caps enter wells, not a painted slab.
+  builder.faceWithHoles(fasciaFace,
+    TV_CONTROL_IDS.map(id => getTVControlWellContour(id, 0.035, 'outer')));
 }
 
 function addRear(builder: HousingBuilder) {
@@ -210,20 +212,14 @@ function addRecesses(builder: HousingBuilder) {
     rectangle(0.712, 0.452, 0.04, -0.083, 0, -0.03),
     rectangle(0.712, 0.452, 0.04, -0.079, 0, -0.03),
   ]);
-  builder.loft([speakerMouth(), speakerBed()]);
-  builder.cap(speakerBed());
-
-  for (const x of SMALL_BUTTON_X) {
-    const gasket = circle(0.0118, 0.037, x, SMALL_BUTTON_SEGMENTS);
-    builder.loft([circle(0.0118, 0.035, x, SMALL_BUTTON_SEGMENTS), gasket]);
-    builder.cap(gasket);
+  for (const id of TV_CONTROL_IDS) {
+    const floor = getTVControlWellContour(id, TV_CONTROL_WELL.floorZ, 'mouth');
+    builder.loft([
+      getTVControlWellContour(id, TV_CONTROL_WELL.rimZ, 'mouth'),
+      floor,
+    ]);
+    builder.cap(floor);
   }
-  const powerGasket = circle(0.0175, 0.037, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS);
-  builder.loft([
-    circle(0.0175, 0.035, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-    powerGasket,
-  ]);
-  builder.cap(powerGasket);
 }
 
 function addMetal(builder: HousingBuilder) {
@@ -234,23 +230,13 @@ function addMetal(builder: HousingBuilder) {
     trimInside(),
   ]);
 
-  for (const x of SMALL_BUTTON_X) {
-    const face = circle(0.0085, 0.046, x, SMALL_BUTTON_SEGMENTS);
+  for (const id of TV_CONTROL_IDS) {
     builder.loft([
-      circle(0.0098, 0.037, x, SMALL_BUTTON_SEGMENTS),
-      circle(0.0098, 0.043, x, SMALL_BUTTON_SEGMENTS),
-      face,
+      getTVControlWellContour(id, 0.035, 'outer'),
+      getTVControlWellContour(id, TV_CONTROL_WELL.rimZ, 'lip'),
+      getTVControlWellContour(id, TV_CONTROL_WELL.rimZ, 'mouth'),
     ]);
-    builder.cap(face);
   }
-
-  builder.loft([
-    circle(0.0155, 0.037, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-    circle(0.0155, 0.0405, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-    circle(0.0145, 0.042, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-    circle(0.0119, 0.042, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-    circle(0.0119, 0.038, POWER_BUTTON_X, POWER_BUTTON_SEGMENTS),
-  ]);
   builder.loft([
     circle(0.0042, 0.035, INDICATOR_X, INDICATOR_SEGMENTS),
     circle(0.0042, 0.037, INDICATOR_X, INDICATOR_SEGMENTS),
@@ -334,9 +320,9 @@ function refineRoofNormals(geometry: THREE.BufferGeometry): void {
 
 /**
  * Indexed, material-batched surfaces. A loft band costs 2N triangles, a cap N:
- * N = 28 for cabinet contours, 12 for ribs/skids, 16/24/12 for the controls.
- * The seven owned buffers store 1,738 vertices; seven rib instances bring the
- * submitted total to 2,616 triangles in seven draws (no shadow or extra passes).
+ * N = 28 for cabinet contours and 12 for skids/control wells.
+ * Six static draws plus TVHardware's single independently moving cap batch;
+ * the exact complete-TV budget is checked alongside the hardware geometry.
  *
  * Register as an R3F geometry element for declarative disposal; standalone
  * callers, including tests, own disposal. Nothing comes from the GLTF cache.

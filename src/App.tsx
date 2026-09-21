@@ -32,6 +32,7 @@ import { publishSectionNavigation, type SectionNavigationOptions } from './lib/s
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
 import { AvatarEncounter } from './components/avatar/AvatarEncounter';
+import { TVControls } from './components/tv/TVControls';
 import { setAvatarLayoutReady } from './lib/avatar/avatarEncounter';
 
 import './index.css';
@@ -565,6 +566,7 @@ function App() {
       )}
 
       <AvatarEncounter enabled={!isLoading && show3D} scrollElement={scrollElement} />
+      <TVControls enabled={!isLoading && show3D} scrollElement={scrollElement} />
 
       {!isLoading && <>
         <PageFooter />

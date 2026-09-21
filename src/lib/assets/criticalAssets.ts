@@ -44,16 +44,9 @@ export interface CriticalAsset {
 /**
  * Everything the opening shot needs.
  *
- * Deliberately not the whole site: project images are lazy, and the CRT's
- * second clip is deferred by TVModel itself -- it sets `preload = 'metadata'`
- * until that clip becomes the current one, which is the right call for 4.5MB
- * of video playing on a prop some sixty pixels across. These are the files
- * that decide whether the first thing a visitor sees is the island or an
- * empty sea.
- *
- * The CRT's *first* clip is on that screen the moment the page opens, so it
- * belongs here: leaving it out is what made the prop light up a second or two
- * after the loader had already claimed to be finished.
+ * Project images are lazy. The CRT now starts genuinely off, so its optional
+ * broadcast loads only after the visitor presses its physical power switch.
+ * No video belongs to scene readiness or can delay the visible Hero reveal.
  */
 export const CRITICAL_ASSETS: readonly CriticalAsset[] = [
   { url: '/models/terrain-opt.glb', bytes: terrainBake.variants[0].bytes, kind: 'model' },
@@ -61,7 +54,6 @@ export const CRITICAL_ASSETS: readonly CriticalAsset[] = [
   { url: '/images/waternormals.jpg', bytes: 248_813, kind: 'texture' },
   { url: '/images/shore-field.png', bytes: terrainBake.shore.bytes, kind: 'texture' },
   { url: '/images/leul-profile.webp', bytes: 41_616, kind: 'texture' },
-  { url: '/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4', bytes: 599_097, kind: 'media' },
 ];
 
 /** The models among the critical assets. */

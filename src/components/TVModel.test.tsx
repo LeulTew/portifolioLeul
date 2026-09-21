@@ -1,139 +1,72 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, act, fireEvent } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TVModel } from './TVModel';
-import { vi } from 'vitest';
+import { activateTV, getTVState, resetTVState, setTVExposure, setTVProjectPhase } from '@/lib/tv/tvState';
 
 vi.mock('./3d/CRTHousing', () => ({ CRTHousing: () => null }));
 vi.mock('./3d/CRTSpeakerCabinet', () => ({ CRTSpeakerCabinet: () => null }));
+vi.mock('./3d/TVHardware', () => ({ TVHardware: () => null }));
+vi.mock('./3d/TVScreenProjection', () => ({ TVScreenProjection: () => null }));
+vi.mock('@react-three/fiber', () => ({ useFrame: vi.fn() }));
 
-// Mock three.js and drei
-const mockUseGLTF = vi.fn(() => ({
-  scene: {
-    traverse: vi.fn((callback: (obj: any) => void) => {
-      // Mock traversal finding a screen mesh
-      const mockMesh = {
-        isMesh: true,
-        name: 'Screen_Glass',
-        material: {},
-      };
-      callback(mockMesh);
-    }),
-  },
-}));
-
-vi.mock('three', async () => {
-  const actual = await vi.importActual<typeof import('three')>('three');
-  const THREE = {
-    Mesh: class {},
-    MeshBasicMaterial: class {
-      map: any;
-      toneMapped: boolean;
-      constructor(opts: any) {
-        this.map = opts.map;
-        this.toneMapped = opts.toneMapped;
-      }
-    },
-    Group: class {},
-    Texture: class {
-      flipY: boolean = true;
-    },
-    VideoTexture: class {
-      flipY: boolean = true;
-      constructor() {}
-    },
-    DoubleSide: 2,
-  };
-  return { ...actual, ...THREE, default: actual };
+beforeEach(() => {
+  resetTVState();
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
 });
+afterEach(() => { cleanup(); resetTVState(); vi.restoreAllMocks(); });
 
-vi.mock('@react-three/drei', () => ({
-  useGLTF: () => mockUseGLTF(),
-  useVideoTexture: () => ({
-    flipY: true,
-  }),
-}));
-
-vi.mock('@react-three/fiber', () => ({
-  useFrame: vi.fn(),
-}));
-
-// Mock document.createElement for video
-const originalCreateElement = document.createElement;
-document.createElement = vi.fn((tagName: string) => {
-  if (tagName === 'video') {
-    return {
-      src: '',
-      crossOrigin: '',
-      loop: false,
-      muted: false,
-      play: vi.fn(),
-      pause: vi.fn(),
-      setAttribute: vi.fn(),
-    } as unknown as HTMLVideoElement;
-  }
-  return originalCreateElement.call(document, tagName);
-}) as any;
-
-describe('TVModel', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('renders without crashing', () => {
-    render(<TVModel />);
-  });
-
-  it('cycles video on click', () => {
+describe('physical TV model and isolated display', () => {
+  it('starts off without a video element, request or autoplay timer', () => {
+    const create = vi.spyOn(document, 'createElement'), interval = vi.spyOn(window, 'setInterval');
     const { container } = render(<TVModel />);
-    const group = container.firstChild;
-    if (group) {
-      fireEvent.click(group);
-    }
+    expect(container.querySelector('mesh[name="tv-display-signal"]')).not.toBeNull();
+    expect(create.mock.calls.filter(([name]) => name === 'video')).toHaveLength(0);
+    expect(interval).not.toHaveBeenCalled();
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
   });
 
-  it('sets up interval for video cycling', () => {
-    const spy = vi.spyOn(global, 'setInterval');
-    render(<TVModel />);
-    expect(spy).toHaveBeenCalledWith(expect.any(Function), 8000);
-  });
-
-  it('cycles video automatically', () => {
-    render(<TVModel />);
-    act(() => {
-      vi.advanceTimersByTime(8000);
-    });
-  });
-
-  it('cycles video multiple times', () => {
-    render(<TVModel />);
-    act(() => {
-      vi.advanceTimersByTime(8000); 
-    });
-    act(() => {
-      vi.advanceTimersByTime(8000); 
-    });
-    act(() => {
-      vi.advanceTimersByTime(8000); 
-    });
-  });
-
-  it('handles click to cycle videos', () => {
+  it('does not treat arbitrary cabinet clicks as a channel command', () => {
     const { container } = render(<TVModel />);
-    const group = container.firstChild;
-    if (group) {
-      fireEvent.click(group);
-      act(() => {
-        vi.advanceTimersByTime(100);
-      });
-    }
+    fireEvent.click(container.firstElementChild!);
+    expect(getTVState()).toMatchObject({ broadcastOn: false, channel: 0 });
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
   });
 
-  it('cleans up video textures and timers on unmount', () => {
+  it('uses one user-started video and stops its decoder for the Projects display', async () => {
+    const create = vi.spyOn(document, 'createElement');
+    render(<TVModel />);
+    await act(async () => { setTVExposure(true, 'all'); activateTV('power'); });
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
+    expect(create.mock.calls.filter(([name]) => name === 'video')).toHaveLength(1);
+    act(() => setTVProjectPhase('approaching'));
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledOnce();
+    expect(getTVState().source).toBe('projects');
+    await act(async () => setTVProjectPhase('framed'));
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls.filter(([name]) => name === 'video')).toHaveLength(1);
+  });
+
+  it('uses the zero-download test card without a second decoder', async () => {
+    const create = vi.spyOn(document, 'createElement');
+    render(<TVModel />);
+    await act(async () => { setTVExposure(true, 'all'); activateTV('power'); });
+    act(() => activateTV('next'));
+    expect(getTVState().channel).toBe(1);
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledOnce();
+    expect(create.mock.calls.filter(([name]) => name === 'video')).toHaveLength(1);
+  });
+
+  it('stops media in a hidden document and disposes its owned resources on unmount', async () => {
     const { unmount } = render(<TVModel />);
+    await act(async () => { setTVExposure(true, 'all'); activateTV('power'); });
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    fireEvent(document, new Event('visibilitychange'));
+    expect(getTVState().exposed).toBe(false);
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
     unmount();
+    expect(HTMLMediaElement.prototype.load).toHaveBeenCalledOnce();
   });
 });

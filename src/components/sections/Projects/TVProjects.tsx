@@ -8,6 +8,7 @@ import { ControlButton } from '@/components/ui/ControlButton';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { useTVScreenReady } from '@/lib/projects/projectsScene';
 import { useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
+import { registerTVReader, setTVPagingAvailable, useTVState } from '@/lib/tv/tvState';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
 import { projectsData, type Project } from '@/data/projects';
@@ -66,9 +67,11 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const fits = useProjectsFits();
   const reduced = usePrefersReducedMotion();
   const avatarPresenting = useAvatarEncounterPresenting();
+  const television = useTVState();
   const staged = available && fits;
   const { phase, visible, ready, step } = useProjectsPlayback({ host, stage, surface }, staged, reduced, onNavigate);
   const interactive = !staged || ready;
+  const hardwarePaging = staged && ready && television.layout === 'all';
   const filtered = useMemo(() => category === 'All'
     ? projectsData : projectsData.filter(project => project.categories.includes(category)), [category]);
   const project = filtered[index % Math.max(filtered.length, 1)];
@@ -82,7 +85,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     setDetails(false);
     paging.current?.reset();
   };
-  const selectProject = (direction: -1 | 1) => {
+  const selectProject = useCallback((direction: -1 | 1) => {
     if (!interactive) return;
     setSelection(previous => {
       const count = previous.category === 'All' ? projectsData.length
@@ -92,7 +95,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     });
     setDetails(false);
     paging.current?.reset();
-  };
+  }, [interactive]);
   const tabsKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!interactive || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     const next = (activeTab + (event.key === 'ArrowRight' ? 1 : -1) + PROJECT_CATEGORIES.length) %
@@ -140,6 +143,11 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     if (content.current) content.current.scrollTop = 0;
     paging.current?.reset();
   }, [project?.id, details]);
+  useEffect(() => registerTVReader({ page: selectProject, retreat: () => step(-1) }), [selectProject, step]);
+  useEffect(() => {
+    setTVPagingAvailable(staged && ready && filtered.length > 1);
+    return () => setTVPagingAvailable(false);
+  }, [staged, ready, filtered.length]);
   useEffect(() => { if (!interactive) paging.current?.reset(); }, [interactive]);
   useEffect(() => {
     if (!stage.current) return;
@@ -240,7 +248,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               {details ? 'Preview' : 'Details'}
               {details ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
             </ControlButton>
-            <div className={styles.projectNavigation}>
+            {!hardwarePaging && <div className={styles.projectNavigation}>
               <ControlButton iconOnly aria-label="Previous project"
                 disabled={!interactive || filtered.length < 2} onClick={() => selectProject(-1)}>
                 <ArrowLeft size={19} aria-hidden="true" />
@@ -249,7 +257,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                 disabled={!interactive || filtered.length < 2} onClick={() => selectProject(1)}>
                 Next <ArrowRight size={19} aria-hidden="true" />
               </ControlButton>
-            </div>
+            </div>}
           </footer>
           <div className={styles.crtShutter} data-crt-shutter="" aria-hidden="true" />
           <div className={styles.crtBeam} data-crt-beam="" aria-hidden="true" />
@@ -275,7 +283,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                     ? details ? 'Scroll to read. Preview returns to browsing.' : 'Scroll on the screen to browse. Scroll outside to continue.'
                     : 'The work is on the screen'}
         </p>}
-        <ControlButton variant="primary" onClick={event => {
+        <ControlButton variant="primary" data-tv-scene-next="" onClick={event => {
           sceneControl.current = { element: event.currentTarget, enterScreen: phase === 'framed' };
           step(1);
         }}

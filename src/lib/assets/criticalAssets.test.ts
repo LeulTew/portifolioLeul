@@ -71,7 +71,7 @@ describe('the manifest', () => {
     expect(urls).toContain('/models/me-animated-lite.glb');
     // The authored CRT housing uses owned geometry rather than the scanned model.
     expect(urls).not.toContain('/models/crt-lite.glb');
-    expect(urls).toContain('/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4');
+    expect(urls.some(url => url.endsWith('.mp4'))).toBe(false);
     // The surf cannot break on a coastline it has not been given.
     expect(urls).toContain('/images/shore-field.png');
     expect(urls).toContain('/images/waternormals.jpg');

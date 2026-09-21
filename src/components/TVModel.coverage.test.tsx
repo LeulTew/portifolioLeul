@@ -6,6 +6,7 @@ import * as THREE from 'three';
 
 vi.mock('./3d/CRTHousing', () => ({ CRTHousing: () => null }));
 vi.mock('./3d/CRTSpeakerCabinet', () => ({ CRTSpeakerCabinet: () => null }));
+vi.mock('./3d/TVHardware', () => ({ TVHardware: () => null }));
 
 // Mock three.js
 vi.mock('three', async () => {
@@ -61,6 +62,6 @@ describe('TVModel Coverage', () => {
 
     expect(mockTraverse).not.toHaveBeenCalled();
     expect(container.querySelector('planeGeometry')).toHaveAttribute('args', '0.55,0.32');
-    expect(container.querySelectorAll('meshBasicMaterial')).toHaveLength(1);
+    expect(container.querySelectorAll('mesh[name="tv-display-signal"] primitive[attach="material"]')).toHaveLength(1);
   });
 });
