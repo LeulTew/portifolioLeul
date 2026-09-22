@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { getScrollProgress, setScrollProgress, subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
@@ -134,6 +134,12 @@ export function PinnedSequence({
           const entry = entries[entries.length - 1];
           if (!entry) return;
           nearby = entry.isIntersecting;
+          if (nearby) {
+            // A settled navbar jump may publish before the clipped scrollport's
+            // observer reports entry. Wake measurement before beat consumers,
+            // without inventing another gesture or changing the settled offset.
+            setScrollProgress(getScrollProgress(), true);
+          }
           /*
            * Not while the chapter is still playing.
            *

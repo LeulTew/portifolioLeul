@@ -1,8 +1,10 @@
 import { useRef, useEffect, useMemo } from 'react';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { isFrameDrawn, isWorldOccluded } from '@/lib/render/frameGate';
+import { drawnFrameDelta, isFrameDrawn, isWorldOccluded } from '@/lib/render/frameGate';
+import { AvatarAnimation } from '@/lib/render/avatarAnimation';
+import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { resolveSceneModel } from '@/lib/assets/criticalAssets';
 import { getAvatarEncounter, setAvatarAvailability } from '@/lib/avatar/avatarEncounter';
 import { AvatarAcknowledgement } from '@/lib/avatar/avatarRig';
@@ -22,31 +24,26 @@ interface MeModelProps {
 
 export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1, 1, 1] }: MeModelProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const animationRef = useRef<AvatarAnimation | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
   
   // Load the GLB model with animations
   const { scene, animations } = useGLTF(resolveSceneModel(MODEL_PATH), NO_DRACO);
   
-  // Setup animations
-  const { actions, names } = useAnimations(animations, groupRef);
   const acknowledgement = useMemo(() => new AvatarAcknowledgement(scene), [scene]);
   const projection = useMemo(() => new AvatarProjection(scene.getObjectByName('mixamorigSpine2')), [scene]);
 
-  useEffect(() => () => {
-    acknowledgement.restore();
-    setAvatarAvailability(false);
-  }, [acknowledgement]);
-
-  // Play animations on mount
   useEffect(() => {
-    if (names.length > 0 && actions) {
-      names.forEach((name) => {
-        const action = actions[name];
-        if (action) {
-          action.reset().fadeIn(0.5).play();
-        }
-      });
-    }
-  }, [actions, names]);
+    // Drei's useAnimations owns a separate, ungated RAF mixer subscription.
+    // Owning this mixer keeps skipped/hidden frames from evaluating the rig.
+    const animation = new AvatarAnimation(scene, animations, acknowledgement);
+    animationRef.current = animation;
+    return () => {
+      animationRef.current = null;
+      animation.dispose();
+      setAvatarAvailability(false);
+    };
+  }, [scene, animations, acknowledgement]);
 
   // These resources belong to the shared GLTF cache, not to this instance.
   useEffect(() => {
@@ -68,18 +65,23 @@ export function MeModel({ position = [0, 0, 0], rotation = [0, 0, 0], scale = [1
   }, [scene]);
 
   // Fallback: subtle floating if no animations
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (!isFrameDrawn(state.clock.elapsedTime)) {
-      if (document.hidden || isWorldOccluded()) setAvatarAvailability(false);
+      if (document.hidden || isWorldOccluded()) {
+        animationRef.current?.suspend();
+        setAvatarAvailability(false);
+      }
       return;
     }
 
-    if (groupRef.current && names.length === 0) {
+    if (groupRef.current && animations.length === 0 && !reducedMotion) {
       const time = state.clock.elapsedTime;
       groupRef.current.position.y = position[1] + Math.sin(time * 0.8) * 0.15;
     }
     const encounter = getAvatarEncounter();
-    acknowledgement.apply(encounter.attention, encounter.nod);
+    animationRef.current?.update(
+      drawnFrameDelta(state.clock.elapsedTime, delta), encounter.attention, encounter.nod, reducedMotion,
+    );
     projection.paint(state.camera, state.size.width, state.size.height, acknowledgement.supported);
   });
 

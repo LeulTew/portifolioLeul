@@ -15,7 +15,8 @@ export interface GpuTierConfig {
   shadowMapSize: number;
   /**
    * Redraw ceiling for the 3D layer, in frames per second. Zero means every
-   * frame the browser offers.
+   * frame the browser offers. High/medium tiers deliberately use 60 rather
+   * than redrawing the same backdrop at a monitor's 144–240Hz native rate.
    *
    * Only the backdrop is capped. The DOM layer -- the copy the reader is
    * actually scrolling -- is never throttled, so the page still scrolls at the
@@ -70,7 +71,7 @@ export function detectGpuTier(): GpuTierConfig {
       enablePostProcessing: false,
       enableComplexShaders: true,
       shadowMapSize: 1024,
-      maxFps: 0,
+      maxFps: 60,
       waterReflectionSize: 512,
       waterReflectionFps: 0,
       enableBackdropBlur: true,
@@ -148,7 +149,7 @@ export function detectGpuTier(): GpuTierConfig {
       enablePostProcessing: true,
       enableComplexShaders: true,
       shadowMapSize: 2048,
-      maxFps: 0,
+      maxFps: 60,
       waterReflectionSize: 512,
       waterReflectionFps: 0,
       enableBackdropBlur: true,
@@ -166,7 +167,7 @@ export function detectGpuTier(): GpuTierConfig {
     enablePostProcessing: false,
     enableComplexShaders: true,
     shadowMapSize: 1024,
-    maxFps: 0,
+    maxFps: 60,
     waterReflectionSize: 512,
     waterReflectionFps: 0,
     enableBackdropBlur: true,

@@ -1,5 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PinnedSequence } from './PinnedSequence';
 import { localProgress } from './localProgress';
 import { setScrollProgress, resetScrollProgress, subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
@@ -40,6 +40,68 @@ const LAYERS = [
   { name: 'one', start: 0.1, end: 0.45 },
   { name: 'two', start: 0.55, end: 0.9 },
 ];
+
+describe('PinnedSequence observed entry after a settled navigation', () => {
+  let notify: IntersectionObserverCallback;
+  beforeEach(() => {
+    resetScrollProgress();
+    setProjectsView(false, 0, 0);
+    vi.stubGlobal('innerHeight', 900);
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback) { notify = callback; }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setProjectsView(false, 0, 0);
+  });
+  const intersect = (visible: boolean) => act(() => {
+    notify([{ isIntersecting: visible } as IntersectionObserverEntry], {} as IntersectionObserver);
+  });
+
+  it('wakes geometry and then consumers when intersection arrives after the final scroll publication', () => {
+    render(<section id="about"><PinnedSequence layers={LAYERS}><p>held</p></PinnedSequence></section>);
+    const spacer = screen.getByTestId('pinned-sequence');
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    let top = 1215;
+    spacer.getBoundingClientRect = () => DOMRect.fromRect({ y: top, width: 1440, height: 2700 });
+    act(() => setScrollProgress(0, true));
+    intersect(false);
+    // Measured in the native 1440x900 failure: the new geometry is already
+    // inside About, but IntersectionObserver's entry arrives asynchronously.
+    top = -530.734130859375;
+    act(() => setScrollProgress(1858 / 14895, true));
+    expect(overlay).toHaveAttribute('data-active', 'false');
+    expect(overlay.style.getPropertyValue('--seq')).toBe('0.000');
+    const measurements: string[] = [];
+    const unsubscribe = subscribeScrollProgress(() => measurements.push(overlay.style.getPropertyValue('--seq')));
+    try {
+      intersect(true);
+      expect(overlay).toHaveAttribute('data-active', 'true');
+      expect(overlay.style.getPropertyValue('--seq')).toBe('0.295');
+      expect(measurements).toEqual(['0.295']);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it.each(['unfinished Home', 'owned Projects'])('does not bypass %s when an intersection wakes the chapter', gate => {
+    render(<>
+      <section id="home" data-hero-handover-settled={gate === 'owned Projects' ? 'true' : undefined} />
+      <section id="about"><PinnedSequence layers={LAYERS}><p>held</p></PinnedSequence></section>
+    </>);
+    screen.getByTestId('pinned-sequence').getBoundingClientRect = () =>
+      DOMRect.fromRect({ y: -530.734130859375, width: 1440, height: 2700 });
+    intersect(false);
+    if (gate === 'owned Projects') setProjectsView(true, 1, 0.5);
+    intersect(true);
+    expect(screen.getByTestId('pinned-sequence-overlay')).toHaveAttribute('data-active', 'false');
+    expect(document.getElementById('about')).not.toHaveAttribute('data-sequence-active');
+  });
+});
 
 describe('PinnedSequence world coverage', () => {
   beforeEach(() => {

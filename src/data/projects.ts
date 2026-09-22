@@ -1,3 +1,14 @@
+export interface ProjectEvidence {
+  inspect: string;
+  access?: string;
+  sourceNote?: string;
+  decision?: {
+    summary: string;
+    sourceLabel: string;
+    sourceUrl: string;
+  };
+}
+
 export interface Project {
   id: number;
   title: string;
@@ -8,31 +19,46 @@ export interface Project {
   githubUrl: string;
   demoUrl?: string;
   categories: string[];
+  evidence?: ProjectEvidence;
 }
 
 export const projectsData: Project[] = [
   {
     id: 36,
     title: "Mizan",
-    description: "A calm, mobile-first ledger for lending and everyday spending",
-    longDescription: "A private personal-finance PWA designed around quick, low-friction money tracking.\n\n• **Clear money states**: Lending, repayments, expenses, due dates, and opportunity cost are surfaced without dashboard clutter.\n• **Mobile-first interaction**: Thumb-friendly navigation, bottom sheets, safe-area support, and an installable iPhone experience.\n• **Accessible system**: Responsive layouts, WCAG-aware contrast, keyboard focus, and reduced-motion support.\n• **Secure foundation**: Supabase authentication, row-level security, auditable transactions, and authenticated data export.",
+    description: "A personal ledger for everyday spending and lending",
+    longDescription: "Mizan brings spending and lending into one personal ledger, with a mobile-first layout for checking everyday money activity.",
     tech: "Next.js, React, TypeScript, Supabase, Tailwind CSS",
     image: "/images/projects/my-money.webp",
     githubUrl: "",
     demoUrl: "https://my-money-lac.vercel.app",
-    categories: ["Web Development", "Mobile Apps"]
+    categories: ["Web Development", "Mobile Apps"],
+    evidence: {
+      inspect: "After signing in, inspect how spending and lending are separated, and how repayment status is presented.",
+      access: "Sign-in required to explore the ledger.",
+      sourceNote: "No implementation source is linked here. This overview describes the intended interface, not verified production results.",
+    }
   },
 
   {
     id: 23,
     title: "Ignition",
-    description: "Mission-control platform for tactical goal breakdown",
-    longDescription: "**IGNITION** (aka GOAL_BREAKER.EXE) is a mission-control platform that transforms vague objectives into precise, executable tactical plans. It takes a signal like 'Launch a startup' and returns a **5-step tactical breakdown** with complexity scores, filtering out the noise.\n\n• **Precision Breakdown**: Generates 5 chronological, high-impact steps. No fluff.\n• **Deep Dive Subroutines**: Recursively breaks down any step into 3 specific tactical sub-actions.\n• **Active Guardrails**: Dedicated AI model classifies input as OK, GIBBERISH, or ABUSE, handling errors in-character.\n• **Bilingual Ops**: Native support for **English** and **Amharic**, adapting the 'Dark Technical' tone to both.\n• **Haptic Audio Layer**: Immersive feedback with mechanical key clicks, processing hums, and success chimes.\n\nBuilt with a **Dark Technical** UI for focused execution.",
-    tech: "NEXT.JS, REACT, FASTAPI, GOOGLE GEMINI, POSTGRESQL",
+    description: "Turn a goal into a five-step plan, then break down each step",
+    longDescription: "An English–Amharic planning interface that pairs a Next.js frontend with a FastAPI service and Gemini-generated steps.",
+    tech: "Next.js, React, FastAPI, Google Gemini, PostgreSQL",
     image: "/images/projects/ignition.webp",
     githubUrl: "https://github.com/LeulTew/Ignition",
     demoUrl: "https://ignition-ivory.vercel.app",
-    categories: ["AI/DataScience", "Web Development"]
+    categories: ["AI/DataScience", "Web Development"],
+    evidence: {
+      inspect: "Enter a goal, inspect the five-step result, then open a step for sub-actions. Switch between English and Amharic.",
+      access: "Plan generation depends on the live AI service.",
+      decision: {
+        summary: "Model output is not assumed to be valid: the service checks for exactly five non-empty steps and a complexity score from 1 to 10 before accepting a response.",
+        sourceLabel: "Response validation source",
+        sourceUrl: "https://github.com/LeulTew/Ignition/blob/dc5c5380ef1225ef11703da2858c03fbad269305/backend/app/services.py#L154-L171",
+      },
+    }
   },
   {
     id: 25,
@@ -70,13 +96,22 @@ export const projectsData: Project[] = [
   {
     id: 31,
     title: "ProtoChem 3D",
-    description: "Interactive 3D Molecular Visualization",
-    longDescription: "**ProtoChem 3D** (Chem Hands) is a high-fidelity 3D structural viewer for chemistry students and researchers.\n\n• **3D Mechanics**: Real-time rendering of complex molecular structures with interactive manipulation.\n• **Educational Focus**: Hierarchical visualization of atoms, bonds, and molecular geometry.\n• **Gesture Support**: Designed for spatial computing and advanced touch interactions.\n• **Performance**: WebGL-powered engine for low-latency 3D rendering in the browser.",
-    tech: "JAVASCRIPT, THREE.JS, WEBGL, VANILLA CSS",
+    description: "Explore molecules in 3D using camera-tracked hand gestures",
+    longDescription: "A browser-based experiment connecting MediaPipe hand tracking to molecular models rendered with React Three Fiber.",
+    tech: "React, TypeScript, Three.js, React Three Fiber, MediaPipe",
     image: "/projects/chem-hands.webp",
     githubUrl: "https://github.com/LeulTew/chem-hands-3d",
     demoUrl: "https://chem-hands-3d.vercel.app",
-    categories: ["Web Development", "Graphics & Algorithms"]
+    categories: ["Web Development", "Graphics & Algorithms"],
+    evidence: {
+      inspect: "Choose a molecule and open its element legend. With camera access, move both hands apart or together to change the view.",
+      access: "Camera access is needed for hand tracking.",
+      decision: {
+        summary: "Two-hand distance controls zoom. Small changes are ignored and zoom is clamped between 0.5× and 5×, keeping the camera within a defined range.",
+        sourceLabel: "Gesture handling source",
+        sourceUrl: "https://github.com/LeulTew/chem-hands-3d/blob/447802a3a0a976e9541c93a4a7b2e216b1fb6edb/src/App.tsx#L22-L35",
+      },
+    }
   },
   {
     id: 32,

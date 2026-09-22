@@ -17,6 +17,7 @@ import { PROJECT_CATEGORIES } from './projectCategories';
 import { isProjectsReadingTarget } from './projectsInput';
 import { ProjectWheelPaging } from './projectPaging';
 import { useCRTPowerOn, useProjectBroadcast } from './projectBroadcast';
+import { ProjectEvidence, ProjectVisualLink } from './ProjectEvidence';
 import styles from './TVProjects.module.css';
 
 function ProjectDescription({ project }: { project: Project }) {
@@ -220,13 +221,16 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                 <h3 data-broadcast-title="">{project.title}</h3>
                 {details ? <>
                   <ProjectDescription project={project} />
+                  {project.evidence && <ProjectEvidence evidence={project.evidence} />}
                   <dl className={styles.technology}>
                     <dt>Built with</dt><dd>{project.tech}</dd>
                     <dt>Categories</dt><dd>{project.categories.join(' / ')}</dd>
                   </dl>
                 </> : <>
                   <p className={styles.summary} data-broadcast-copy="">{project.description}</p>
-                  <p className={styles.stack} data-broadcast-copy="">{project.tech}</p>
+                  {project.evidence?.access && <p className={styles.access} data-broadcast-copy="">
+                    {project.evidence.access}
+                  </p>}
                 </>}
                 <div className={styles.links} data-broadcast-copy="">
                   {project.demoUrl && <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
@@ -236,6 +240,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                     {project.demoUrl ? 'Source' : 'See project'} <ArrowUpRight size={17} aria-hidden="true" />
                   </a>}
                 </div>
+                {!details && <p className={styles.stack} data-broadcast-copy="">{project.tech}</p>}
+                {details && <div data-broadcast-copy=""><ProjectVisualLink project={project} /></div>}
               </div>
             </div>
           ) : <p className={styles.empty}>No projects in this category. Choose All to browse the work.</p>}
@@ -248,6 +254,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               {details ? 'Preview' : 'Details'}
               {details ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
             </ControlButton>
+            {!details && project && <ProjectVisualLink project={project} shortLabel />}
             {!hardwarePaging && <div className={styles.projectNavigation}>
               <ControlButton iconOnly aria-label="Previous project"
                 disabled={!interactive || filtered.length < 2} onClick={() => selectProject(-1)}>

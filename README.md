@@ -4,9 +4,9 @@
 
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![React Three Fiber](https://img.shields.io/badge/React_Three_Fiber-8.x-049EF4?style=for-the-badge&logo=three.js&logoColor=white)](https://docs.pmnd.rs/react-three-fiber/)
-[![Test Coverage](https://img.shields.io/badge/Test_Coverage-100%25-success?style=for-the-badge&logo=vitest&logoColor=white)]()
+[![Tests](https://img.shields.io/badge/Tests-Vitest-729B1B?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Status](https://img.shields.io/badge/Status-Deployed-success?style=for-the-badge&logo=vercel&logoColor=white)](https://leul-t-agonafer.vercel.app)
 
 **[🔴 LIVE DEMO: leul-t-agonafer.vercel.app](https://leul-t-agonafer.vercel.app)**
@@ -31,27 +31,28 @@ Welcome to my **Interactive 3D Portfolio**. This project is more than just a sho
 
 ## 🏆 Key Highlights
 
-- **Immersive 3D Experience**: A fully interactive 3D world powered by **React Three Fiber**, featuring a custom-optimized avatar and dynamic environment that pushes the boundaries of web performance.
-- **Engineering Excellence**: A bulletproof codebase with **100% Test Coverage** across all metrics, ensuring rock-solid reliability and maintainability.
-- **Performance Masterclass**: Achieved a massive **97% payload reduction** (130MB → 3.3MB) through aggressive asset optimization, delivering a lightning-fast experience even on mobile.
-- **Modern & Scalable Architecture**: Built with the latest tech stack—**React 18, TypeScript, Tailwind CSS**—and designed for scalability, accessibility, and developer experience.
+- **Interactive 3D world**: React Three Fiber connects an animated avatar, a physical television and the portfolio's native reading controls.
+- **Typed interaction ownership**: TypeScript, unit tests and real-component integration tests cover camera handoffs, native input, resource lifecycles and recovery.
+- **Explicit performance budgets**: Optimized scene assets, device-aware rendering and occlusion gates limit work. Optional television media loads only after a visitor switches it on.
+- **Desktop and phone experiences**: The desktop scene retains semantic HTML and a flat WebGL fallback; the separate phone portfolio is selected before loading desktop bundles.
 
 ## ⚡ Performance Optimization
 
-I achieved a **97% reduction** in initial load payload through aggressive asset optimization.
+The scene uses optimized assets instead of loading its archived source models.
+Representative shipped file sizes are:
 
-| Asset Type   | File Name           | Original Size | Optimized Size | Reduction |
-| :----------- | :------------------ | :------------ | :------------- | :-------- |
-| **3D Model** | `me.glb`            | **18 MB**     | **1.3 MB**     | **~93%**  |
-| **3D Model** | `terrain-1k.glb`    | **83 MB**     | **19 MB**      | **~77%**  |
-| **Video**    | `Significant.mp4`   | 27 MB         | 4.4 MB         | ~84%      |
-| **Video**    | `Spy_Movie...mp4`   | 1.6 MB        | 713 KB         | ~55%      |
-| **Image**    | `Clustering.png`    | 6.1 MB        | 272 KB         | ~95%      |
-| **Image**    | `IrisDatasetML.png` | 5.7 MB        | 256 KB         | ~95%      |
-| **Image**    | `leul-profile.png`  | 1.6 MB        | 41 KB          | ~97%      |
-| **Image**    | `pharmacy.jpg`      | 527 KB        | 45 KB          | ~91%      |
+| Asset | File | Size on disk | Loading |
+| :---- | :--- | -----------: | :------ |
+| Terrain | `terrain-opt.glb` | 3.85 MB | Opening scene; smaller software-renderer variant available |
+| Animated avatar | `me-animated-lite.glb` | 847 KB | Opening scene; smaller software-renderer variant available |
+| Water normals | `waternormals.jpg` | 249 KB | Opening scene |
+| Portrait | `leul-profile.webp` | 42 KB | Hero |
+| Television video | `Spy_Movie_Live_Wallpaper_Video-opt.mp4` | 599 KB | Only after the physical TV is switched on |
 
-_> Total payload reduced by over **150MB**._\_
+These are individual file sizes, not an initial-page transfer total or an FPS
+guarantee. JavaScript, fonts and other images also contribute to startup.
+Measure the production build with normal caching, a cold HTTP cache and explicit
+CPU/network profiles; distinguish those simulations from physical low-end hardware.
 
 ### Island outline and scene edge continuation
 
@@ -152,6 +153,9 @@ A strict 561-cell footprint mask records those original gaps; every gap must
 have measured soil on opposite sides within 0.7 world units, beneath the
 continuous closed cabinet. New misses fail. The grille clears actual terrain
 hits and the measured edges of voids, with no invented ground or terrain edits.
+The test fixture uses the existing mesh-BVH implementation to accelerate those
+rays and compares representative results with Three's native raycaster. The
+full footprint, original void mask and clearance assertions remain unchanged.
 
 ## 🛠️ Tech Stack
 
@@ -160,7 +164,7 @@ hits and the measured edges of voids, with no invented ground or terrain edits.
 | **Core**           | React 18, TypeScript, Vite                    |
 | **3D & Animation** | React Three Fiber, Drei, Framer Motion, GSAP, Anime.js |
 | **Styling**        | Tailwind CSS, CSS Modules                     |
-| **Testing**        | Vitest, React Testing Library (100% Coverage) |
+| **Testing**        | Vitest, React Testing Library, native browser workflow checks |
 | **Deployment**     | Vercel                                        |
 
 ### Physical TV controls and screen modes
@@ -193,6 +197,11 @@ Separate key targets never overlap. The physical caps and native controls
 share one action; physical press/focus/hover feedback does not invent another
 navigation handler. A keyboard power-off returns focus to the existing visible
 scene-navigation control, not an invisible retired TV surface.
+
+When changing content height makes ScrollControls rebuild its native track,
+the app preserves both the visible scroll position and the previously focused
+control. Focus recovery yields to subsequent navigation, pointer actions, or
+focus in another surface; it never revives a removed, disabled or hidden control.
 
 The complete TV now submits **2,520 triangles in 11 main-view draws**:
 1,778 static housing, 476 moving controls, 264 lower cabinet and two display
@@ -302,18 +311,44 @@ imaginary target without WebGL.
 The Contact form uses the deployed `VITE_EMAILJS_SERVICE_ID`,
 `VITE_EMAILJS_TEMPLATE_ID`, and `VITE_EMAILJS_PUBLIC_KEY`. These are client-side
 EmailJS identifiers; never put an EmailJS private key in a `VITE_` variable.
-The template receives `from_name`, `from_email`, and `message`. Confirm the
-template's recipient and reply-to settings in EmailJS, and allow the production
-origin if origin restrictions are enabled.
+The small native REST transport sends `from_name`, `from_email`, `reply_to`, and
+`message`; the two email aliases contain the same visitor address. It never
+accepts a client-selected recipient or a private key.
 
-Success appears only after EmailJS accepts the request. Invalid fields are
+Configure the template in the owning EmailJS account:
+
+- Keep **To Email** fixed to the intended portfolio inbox, not a visitor-controlled variable.
+- Use the authenticated email service's address for **From Email**. Put
+  `{{reply_to}}` (or the compatible `{{from_email}}` alias) in **Reply To**.
+- Use `{{from_name}}` and `{{message}}` in the subject/body as appropriate.
+- Confirm that the service, template and public key belong together, that the
+  outbound service remains connected, and that the production origin is allowed.
+- Inspect the matching Email History entry and actual recipient inbox/spam
+  folder for an explicitly authorized diagnostic message. A successful HTTP
+  response alone cannot establish inbox delivery.
+
+The **Submitted** confirmation appears only after EmailJS accepts the request
+and explicitly distinguishes acceptance from inbox delivery. Invalid fields are
 labelled inline, duplicate submissions are prevented, and fields stay read-only
 while sending so a late response cannot erase a newer draft. Accepted content
 stays in the original native form through its fold and flight; **Send another
-message** clears it and restores the same fields without reloading. On failure the draft remains,
-with a retry and an explicit link to open it in the visitor's email app; that
-link does not pretend the message was sent. The contact email and phone are
+message** clears it and restores the same fields without reloading. Requests
+have a 20-second deadline and abort on form unmount. Late or cancelled responses
+cannot accept a newer draft or start another animation. Aborting a browser
+request does not recall a message the provider may already have accepted:
+network/timeout feedback therefore says submission is unconfirmed, never
+asserts that nothing was delivered, and never retries automatically.
+
+On failure the draft remains, with an explicit email-app fallback. Rate-limit,
+configuration and provider failures explain the available recovery. The same
+draft link remains available after acceptance for a direct follow-up; opening it
+does not send anything automatically. Contact email and phone links remain
 native `mailto:` and `tel:` links.
+
+Submission focus is parked on the stable message group, outside the moving
+sheet. Failure returns it to Send; a completed flight moves it to the new-draft
+action only while that group still owns focus. A visitor who navigates elsewhere
+is not pulled back by a late response.
 
 The Contact finale carries the existing Skills typography and chamfered control
 language into an asymmetric cloud-clearing composition: direct contact links on
@@ -325,7 +360,7 @@ animation never sends another request. Its inner sheet owns the send transforms;
 Motion still owns the outer entrance, independently of the camera presentation.
 Only visible time advances (at most 50ms per frame), with no idle animation loop.
 Reduced motion skips the flight. Navigation, resize, or a live reduced-motion
-change settles to the truthful, recoverable **Sent** confirmation; cleanup cancels
+change settles to the truthful, recoverable **Submitted** confirmation; cleanup cancels
 the score. Focus moves to the reset control only if it was still in the retiring
 form, never back from navigation. The existing camera handoff still reveals the
 same form subtree during its final easing. No new dependency or WebGL canvas is
@@ -442,7 +477,7 @@ cd portifolioLeul
 bun install --frozen-lockfile
 
 # 3. Configure Environment
-# Create .env.local and add your EmailJS credentials:
+# Create .env.local and add the public EmailJS configuration:
 # VITE_EMAILJS_SERVICE_ID=...
 # VITE_EMAILJS_TEMPLATE_ID=...
 # VITE_EMAILJS_PUBLIC_KEY=...
@@ -451,9 +486,11 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-All three EmailJS settings are required for contact-form delivery. Missing or
-incomplete configuration shows the existing send-error message and preserves
-the entered fields; the form does not simulate successful delivery.
+All three EmailJS settings are required for form submission. Missing or
+incomplete configuration explains that the form is unavailable and preserves
+the entered fields with a direct-email fallback. Do not put a private EmailJS
+key in the client configuration. Provider acceptance and actual inbox receipt
+must be verified separately.
 
 ---
 

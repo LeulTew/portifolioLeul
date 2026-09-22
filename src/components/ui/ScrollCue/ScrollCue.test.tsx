@@ -1,6 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import postcss from 'postcss';
 import { ScrollCue } from './ScrollCue';
 import { cueRunOffset, CUE_RUN_X, CUE_STROKE_WIDTH, CUE_VIEW_WIDTH, cueViewX } from './cueGeometry';
 
@@ -28,6 +31,10 @@ describe('ScrollCue', () => {
   it('is untraced while the reader has not moved', () => {
     render(<ScrollCue />);
     expect(cue()).toHaveAttribute('data-progress', '0.000');
+    expect(cue()).toHaveAttribute('aria-hidden', 'true');
+    expect(cue()).toHaveAttribute('inert');
+    expect(cue()).toHaveAttribute('tabindex', '-1');
+    expect(cue()).toBeDisabled();
     // Fully offset means none of the line is showing.
     expect(screen.getByTestId('scroll-cue-trace')).toHaveAttribute(
       'stroke-dashoffset',
@@ -194,14 +201,14 @@ describe('ScrollCue', () => {
   });
 
   it('is reachable as a control', () => {
-    render(<ScrollCue label="Scroll to about section" />);
+    render(<ScrollCue label="Scroll to about section" progress={1} />);
     expect(cue().tagName).toBe('BUTTON');
     expect(cue()).toHaveAccessibleName('Scroll to about section');
   });
 
   it('activates on click and on keyboard', async () => {
     const onActivate = vi.fn();
-    render(<ScrollCue onActivate={onActivate} />);
+    render(<ScrollCue onActivate={onActivate} progress={1} />);
 
     fireEvent.click(cue());
     cue().focus();
@@ -220,13 +227,91 @@ describe('ScrollCue', () => {
 
   it.each(['Enter', ' '])('leaves the activation key %j uncancelled', async (key) => {
     const onActivate = vi.fn();
-    render(<ScrollCue onActivate={onActivate} />);
+    render(<ScrollCue onActivate={onActivate} progress={1} />);
     const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
     fireEvent(cue(), event);
     expect(event.defaultPrevented).toBe(false);
     cue().focus();
     await userEvent.keyboard(key === 'Enter' ? '{Enter}' : ' ');
     expect(onActivate).toHaveBeenCalledOnce();
+  });
+
+  it('skips undrawn and unpresented controls in native-equivalent tab order', async () => {
+    const user = userEvent.setup();
+    const onActivate = vi.fn();
+    const content = (progress: number, presented = true) => <>
+      <button>Before cue</button>
+      <ScrollCue progress={progress} presented={presented} onActivate={onActivate} />
+      <button>After cue</button>
+    </>;
+    const { rerender } = render(content(0));
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Before cue' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'After cue' })).toHaveFocus();
+
+    rerender(content(1));
+    await user.tab({ shift: true });
+    expect(cue()).toHaveFocus();
+    expect(cue()).not.toHaveAttribute('aria-hidden');
+    expect(cue()).not.toHaveAttribute('inert');
+    await user.tab();
+    rerender(content(1, false));
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Before cue' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'After cue' })).toHaveFocus();
+    expect(cue()).toBeDisabled();
+    expect(cue()).toHaveAttribute('inert');
+    fireEvent.click(cue());
+    expect(onActivate).not.toHaveBeenCalled();
+    expect(cue()).toHaveAttribute('data-progress', '1.000');
+    expect(screen.getByTestId('scroll-cue-current')).toHaveAttribute('data-flowing', 'false');
+  });
+
+  it('recovers owned focus before concealing the portal, without stealing focus elsewhere', async () => {
+    const user = userEvent.setup();
+    const onFocusRelease = vi.fn(() => screen.getByRole('button', { name: 'Visible navigation' }).focus());
+    const content = (presented: boolean) => <>
+      <button>Visible navigation</button>
+      <ScrollCue progress={1} presented={presented} onFocusRelease={onFocusRelease} />
+    </>;
+    const { rerender } = render(content(true));
+    await user.tab();
+    await user.tab();
+    expect(cue()).toHaveFocus();
+    rerender(content(false));
+    expect(onFocusRelease).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Visible navigation' })).toHaveFocus();
+    expect(cue()).toBeDisabled();
+    expect(cue()).toHaveAttribute('aria-hidden', 'true');
+    rerender(content(true));
+    expect(screen.getByRole('button', { name: 'Visible navigation' })).toHaveFocus();
+    rerender(content(false));
+    expect(onFocusRelease).toHaveBeenCalledOnce();
+  });
+
+  it('releases focus safely when a standalone cue has no recovery target', () => {
+    const { rerender } = render(<ScrollCue progress={1} />);
+    cue().focus();
+    expect(cue()).toHaveFocus();
+    rerender(<ScrollCue progress={0} />);
+    expect(document.body).toHaveFocus();
+    expect(cue()).toBeDisabled();
+  });
+
+  it('keeps a visible unclipped keyboard outline outside the decorative SVG', () => {
+    const css = postcss.parse(readFileSync(join(__dirname, 'ScrollCue.module.css'), 'utf8'));
+    const declarations: Record<string, string> = {};
+    css.walkRules('.cue:focus-visible', rule => {
+      rule.walkDecls(declaration => { declarations[declaration.prop] = declaration.value; });
+    });
+    expect(declarations).toEqual({
+      outline: '2px solid var(--control-focus)', 'outline-offset': '3px',
+    });
+    css.walkRules('.cue', rule => {
+      expect(rule.nodes.some(node => node.type === 'decl' && node.prop === 'clip-path')).toBe(false);
+    });
   });
 
   it('does not blow up without a handler', () => {

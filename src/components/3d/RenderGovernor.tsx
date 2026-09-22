@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { isFrameDrawn, setFrameBudget } from '@/lib/render/frameGate';
+import { isFrameDrawn, resetFrameGate, setFrameBudget } from '@/lib/render/frameGate';
 
 /**
  * Takes ownership of the render call, so frames the gate has ruled out are
@@ -21,14 +21,16 @@ const RENDER_PRIORITY = 1;
 export interface RenderGovernorProps {
   /**
    * Redraw ceiling in frames per second. Zero, or anything non-finite, draws
-   * on every frame the browser offers.
+   * on every frame the browser offers. Defaults to 60 for the world only;
+   * this never changes R3F's native subscriber/DOM cadence.
    */
   maxFps?: number;
 }
 
-export function RenderGovernor({ maxFps = 0 }: RenderGovernorProps = {}) {
+export function RenderGovernor({ maxFps = 60 }: RenderGovernorProps = {}) {
   useEffect(() => {
     setFrameBudget(maxFps > 0 ? 1 / maxFps : 0);
+    return resetFrameGate;
   }, [maxFps]);
 
   const gl = useThree((state) => state.gl);

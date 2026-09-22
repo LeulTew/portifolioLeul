@@ -1,11 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, act, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import * as ReactModule from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
 import { setScrollProgress, subscribeScrollProgress } from "./lib/scroll/scrollProgress";
 import { subscribeSectionNavigation } from "./lib/scroll/sectionNavigation";
+import * as sectionTracking from "./lib/scroll/useActiveSection";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import postcss from "postcss";
+import { ABOUT_SCREENS } from "./components/sections/About/statementLayers";
+import { STATEMENT_ARRIVE, STATEMENT_CLEAR_SPAN, STATEMENT_SWAP } from "./components/sections/About/aboutBeats";
 
 /*
  * These exercise the 3D path, so they say so.
@@ -126,7 +133,10 @@ const threeState = {
 };
 
 vi.mock("@react-three/fiber", () => ({
-  Canvas: ({ children }: any) => <div data-testid="r3f-canvas">{children}</div>,
+  Canvas: ({ children, onCreated, ...props }: any) => {
+    ReactModule.useEffect(() => { onCreated?.(threeState); }, [onCreated]);
+    return <div data-testid="r3f-canvas" aria-hidden={props["aria-hidden"]}>{children}</div>;
+  },
   useFrame: (cb: (state: any, delta: number) => void) => {
     if (!frameCallbacks.includes(cb)) frameCallbacks.push(cb);
   },
@@ -247,6 +257,91 @@ describe("App Component", () => {
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.getByTestId("r3f-canvas")).toBeInTheDocument();
     expect(screen.getByTestId("background-scene")).toBeInTheDocument();
+  });
+
+  it("hides only decorative canvas pixels from assistive technology, never the HTML render host", () => {
+    threeState.gl.domElement.removeAttribute("aria-hidden");
+    render(<ThemeProvider><App /></ThemeProvider>);
+    expect(threeState.gl.domElement).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("r3f-canvas")).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByTestId("home-section").closest('[aria-hidden="true"]')).toBeNull();
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "About" })).toBeInTheDocument();
+  });
+
+  describe("footer presentation", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it("uses a footer landmark while keeping its ink mirror non-semantic", () => {
+      render(<ThemeProvider><App /></ThemeProvider>);
+      expect(screen.getByTestId("page-footer")).toHaveRole("contentinfo");
+      const mirror = document.querySelector('[data-chapter-ink-layer] [data-page-footer]');
+      expect(mirror?.closest('[aria-hidden="true"]')).not.toBeNull();
+    });
+
+    it("retires both ending invitations together, keeps copyright, and restores the invitation on return", () => {
+      const tracking = vi.spyOn(sectionTracking, "useActiveSection").mockReturnValue("home");
+      const { rerender } = render(<ThemeProvider><App /></ThemeProvider>);
+      const footer = () => screen.getByTestId("page-footer");
+      expect(footer()).toHaveTextContent("Scroll to explore");
+      tracking.mockReturnValue("contact");
+      rerender(<ThemeProvider><App /></ThemeProvider>);
+      expect(footer()).not.toHaveTextContent("Scroll to explore");
+      expect(footer()).toHaveTextContent(`© ${new Date().getFullYear()}`);
+      expect(document.querySelector('[data-ink-text="Scroll to explore"]')).toBeNull();
+      for (const paint of document.querySelectorAll('[data-page-footer]')) {
+        expect(paint).toHaveAttribute("data-footer-section", "contact");
+      }
+      tracking.mockReturnValue("home");
+      rerender(<ThemeProvider><App /></ThemeProvider>);
+      expect(footer()).toHaveTextContent("Scroll to explore");
+      expect(document.querySelector('[data-chapter-ink-layer] [data-ink-text="Scroll to explore"]')).not.toBeNull();
+    });
+
+    it("provides an in-flow document-end copyright lane instead of a compact reading overlay", () => {
+      render(<ThemeProvider><App /></ThemeProvider>);
+      const footer = screen.getByTestId("compact-page-footer");
+      expect(footer.parentElement?.tagName).toBe("MAIN");
+      expect(footer.parentElement?.lastElementChild).toBe(footer);
+      expect(footer).toHaveTextContent(`© ${new Date().getFullYear()}`);
+      expect(footer).not.toHaveTextContent("Scroll to explore");
+      const css = postcss.parse(readFileSync(join(__dirname, "App.module.css"), "utf8"));
+      const compact = css.nodes.find(node => node.type === "atrule" &&
+        node.name === "media" && node.params === "(max-width: 1100px), (max-height: 730px)");
+      expect(compact?.type).toBe("atrule");
+      if (compact?.type !== "atrule") throw new Error("Missing compact footer layout");
+      const displays: Record<string, string> = {};
+      compact.walkRules(rule => {
+        rule.walkDecls("display", declaration => { displays[rule.selector] = declaration.value; });
+      });
+      expect(displays).toEqual({ ".footer": "none", ".main > .compactFooter": "flex" });
+      css.walkRules(".main > .compactFooter", rule => {
+        rule.walkDecls("position", declaration => expect(declaration.value).not.toBe("fixed"));
+        rule.walkDecls("min-height", declaration => expect(declaration.value).toBe("0"));
+      });
+    });
+
+    it("keeps both Skills footer paints clear of the 48px controls without removing copyright", () => {
+      render(<ThemeProvider><App /></ThemeProvider>);
+      for (const paint of document.querySelectorAll('[data-page-footer]')) {
+        expect(paint.querySelector('[class*="year"]')).not.toBeNull();
+      }
+      const css = postcss.parse(readFileSync(join(__dirname, "App.module.css"), "utf8"));
+      const declarations = (selector: string) => {
+        const values: Record<string, string> = {};
+        css.walkRules(rule => {
+          if (!rule.selectors.includes(selector)) return;
+          rule.walkDecls(declaration => { values[declaration.prop] = declaration.value; });
+        });
+        return values;
+      };
+      const owner = ":global(body:has(#skills[data-skills-active='true']))";
+      expect(declarations(`${owner} .footer .scroll`)).toEqual({ display: "none" });
+      expect(declarations(`${owner} .footer`)).toEqual({
+        bottom: "max(0.75rem, env(safe-area-inset-bottom))",
+      });
+      expect(declarations(`${owner} .footer .year`).display).toBeUndefined();
+    });
   });
 
   it("marks both footer paints for the same Projects-only visibility rule", () => {
@@ -371,6 +466,31 @@ describe("App without a WebGL context", () => {
     );
 
     expect(screen.queryByText(/Something went wrong/i)).toBeNull();
+  });
+
+  it("lands native About navigation inside the readable first beat in the flat document", async () => {
+    const user = userEvent.setup();
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const announcePosition = vi.fn();
+    window.addEventListener("scroll", announcePosition);
+    try {
+      await renderSettled();
+      const target = screen.getByTestId("about-section");
+      target.id = "about";
+      target.getBoundingClientRect = () => DOMRect.fromRect({ y: 1400, height: 6000 });
+      await user.click(screen.getByRole("button", { name: "About" }));
+      const options = scrollTo.mock.lastCall?.[0] as ScrollToOptions;
+      const progress = ((options.top ?? 0) - 1400 - window.scrollY) /
+        (window.innerHeight * (ABOUT_SCREENS - 1));
+      expect(options.behavior).toBe("auto");
+      expect(progress).toBeGreaterThan(STATEMENT_ARRIVE.enter + STATEMENT_CLEAR_SPAN);
+      expect(progress).toBeLessThan(STATEMENT_SWAP.exit);
+      await user.click(screen.getByRole("button", { name: "About" }));
+      expect(announcePosition).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener("scroll", announcePosition);
+      scrollTo.mockRestore();
+    }
   });
 
 });
@@ -517,6 +637,28 @@ describe("App scroll position across a track resize", () => {
     }
   });
 
+  it("lands native About navigation inside the readable first beat on the scene scrollport", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const target = screen.getByTestId("about-section");
+    target.id = "about";
+    Object.defineProperty(target, "offsetTop", { configurable: true, value: 1400 });
+    const listener = vi.fn();
+    const unsubscribe = subscribeSectionNavigation(listener);
+    try {
+      await user.click(screen.getByRole("button", { name: "About" }));
+      const landing = mockScroll.offset * (contentHeight - track.clientHeight);
+      const progress = (landing - 1400) / (track.clientHeight * (ABOUT_SCREENS - 1));
+      expect(listener).toHaveBeenCalledExactlyOnceWith("about", { source: "navbar" });
+      expect(progress).toBeGreaterThan(STATEMENT_ARRIVE.enter + STATEMENT_CLEAR_SPAN);
+      expect(progress).toBeLessThan(STATEMENT_SWAP.exit);
+      expect(mockScroll.delta).toBe(0);
+      expect(mockScroll.el.scrollTop).toBeCloseTo(mockScroll.offset * (mockScroll.el.scrollHeight - track.clientHeight));
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("settles the Projects reverse landing at the trailing Skills edge without navbar bypass", () => {
     renderApp();
     const target = screen.getByTestId('skills-section');
@@ -556,6 +698,32 @@ describe("App scroll position across a track resize", () => {
 
     expect(pagesOf()).toBeCloseTo(11, 5);
     expect(mockScroll.el.scrollTop).toBeGreaterThan(1);
+  });
+
+  it("restores native focus when a content resize detaches and reattaches the scroll track", () => {
+    renderApp();
+    const button = document.createElement("button");
+    button.textContent = "Retained reader control";
+    mockScroll.el.append(button);
+    document.body.append(mockScroll.el);
+    const rect = DOMRect.fromRect({ width: 48, height: 48 });
+    vi.spyOn(button, "getClientRects")
+      .mockReturnValue(Object.assign([rect], { item: (index: number) => index === 0 ? rect : null }));
+    try {
+      button.focus();
+      act(() => {
+        contentHeight = 11000;
+        window.dispatchEvent(new Event("resize"));
+      });
+      mockScroll.el.remove();
+      document.body.append(mockScroll.el);
+      expect(document.activeElement).toBe(document.body);
+      act(() => runFrames(3));
+      expect(button).toHaveFocus();
+    } finally {
+      button.remove();
+      mockScroll.el.remove();
+    }
   });
 
   it("keeps the same content under the reader across the resize", () => {

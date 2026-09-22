@@ -27,6 +27,8 @@ describe('native tactile TV controls', () => {
   it('lives outside covered main content in the actual scrollport, without visible overlay labels', () => {
     setup();
     const power = screen.getByRole('button', { name: 'Turn TV on' });
+    expect(screen.getByRole('region', { name: 'Television controls' })).toBe(power.closest('[data-tv-controls]'));
+    expect(power.closest('[aria-hidden="true"]')).toBeNull();
     expect(power.closest('[inert]')).toBeNull();
     expect(power.closest('[data-tv-controls]')!.parentElement).toBe(scroller);
     expect(power.textContent).toBe('');
@@ -96,6 +98,7 @@ describe('native tactile TV controls', () => {
     const power = screen.getByRole('button', { name: 'Turn TV off and return to the scene' });
     power.focus(); fireEvent.click(power);
     expect(document.activeElement).toBe(scroller.querySelector('[data-tv-controls]'));
+    expect(document.activeElement).toHaveAccessibleName('Television controls');
     act(() => { setTVProjectPhase('framed'); setTVExposure(true, 'all'); });
     expect(next).toHaveFocus();
     expect(isProjectsReadingTarget(document.activeElement)).toBe(false);

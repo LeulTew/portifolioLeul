@@ -250,7 +250,7 @@
 }
 
 .description {
-  max-width: 480px;
+  max-width: 420px;
   font-size: clamp(1rem, 1.25vw, 1.25rem);
   line-height: 1.45;
   color: #1f2937;

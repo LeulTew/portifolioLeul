@@ -64,6 +64,13 @@ function scene(maxFps: number) {
 }
 
 describe('one render decision for every producer in a frame', () => {
+  it('draws at 60fps on a high-refresh display while native callbacks keep running', () => {
+    const result = scene(60);
+    expect(harness.draw).toHaveBeenCalledTimes(61);
+    expect(result.clock.elapsedTime).toBe(1);
+    expect(result.clock.getElapsedTime).not.toHaveBeenCalled();
+  });
+
   it('delivers the low-tier render budget instead of letting producers consume it', () => {
     const result = scene(30);
     expect(harness.draw).toHaveBeenCalledTimes(31);
@@ -77,6 +84,16 @@ describe('one render decision for every producer in a frame', () => {
     harness.frames.length = 0;
     harness.scroll.offset = 0;
     const capped = scene(30);
+    expect(capped.position.distanceTo(full.position)).toBeLessThan(0.000001);
+    expect(capped.ambient).toBeCloseTo(full.ambient, 8);
+  });
+
+  it('also preserves camera and light damping at the high-tier redraw ceiling', () => {
+    const full = scene(0);
+    full.unmount();
+    harness.frames.length = 0;
+    harness.scroll.offset = 0;
+    const capped = scene(60);
     expect(capped.position.distanceTo(full.position)).toBeLessThan(0.000001);
     expect(capped.ambient).toBeCloseTo(full.ambient, 8);
   });

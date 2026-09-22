@@ -1,0 +1,57 @@
+.notes {
+  display: grid;
+  gap: 1.15em;
+  margin: 1.25em 0;
+  max-width: 68ch;
+}
+
+.notes h4 {
+  margin: 0 0 0.35em;
+  color: var(--project-ink, inherit);
+  font-size: max(14px, 0.9em);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.notes > section > p {
+  margin: 0;
+  color: var(--project-muted, inherit);
+  font-size: inherit;
+  line-height: 1.5;
+}
+
+.notes > section > .access {
+  margin-top: 0.6em;
+  font-size: max(14px, 0.875em);
+}
+
+.notes a,
+.visualLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 48px;
+  max-width: 100%;
+  color: var(--project-accent, inherit);
+  font-size: max(14px, 0.875em);
+  line-height: 1.4;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+
+.visualLink {
+  width: fit-content;
+  color: var(--project-muted, inherit);
+}
+
+.notes a svg,
+.visualLink svg {
+  flex-shrink: 0;
+}
+
+.notes a:focus-visible,
+.visualLink:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}

@@ -61,7 +61,7 @@ function Chapter({
 
 export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
   const hostRef = useRef<HTMLElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLElement>(null);
   const controlRef = useRef<HTMLButtonElement | null>(null);
   const staged = useSkillsStaged();
   const { active, settledIndex, phase, ready, visible, step, select } = useSkillsPlayback(
@@ -82,7 +82,7 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
   }, [staged, visible]);
 
   const stage = (
-    <div
+    <section
       ref={stageRef}
       className={styles.stage}
       data-staged={staged}
@@ -95,10 +95,10 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
       aria-busy={staged && visible && phase !== 'reading'}
     >
       <div className={styles.content}>
-        <header className={styles.header} data-skill-chrome="">
+        <div className={styles.header} data-skill-chrome="">
           <h2 id="skills-heading" className={styles.sectionTitle}>Skills</h2>
           <p className={styles.intro}>The tools behind the work.</p>
-        </header>
+        </div>
         <div className={styles.chapters}>
           {SKILL_CHAPTERS.map((chapter, index) => (
             <Chapter
@@ -133,7 +133,7 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
           </div>}
         </div>
         {staged && (
-          <footer className={styles.footer} data-skill-chrome="" onWheel={forwardWheel}>
+          <div className={styles.footer} data-skill-chrome="" onWheel={forwardWheel}>
             <div className={styles.sequence}>
               <ol className={styles.progress} aria-label="Skills chapters">
                 {SKILL_CHAPTERS.map((chapter, index) => (
@@ -165,10 +165,10 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
               {visible && phase === 'reading'
                 ? `${active + 1} of ${SKILL_CHAPTERS.length}: ${SKILL_CHAPTERS[active].title}` : ''}
             </p>
-          </footer>
+          </div>
         )}
       </div>
-    </div>
+    </section>
   );
 
   return (

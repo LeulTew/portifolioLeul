@@ -48,6 +48,30 @@
   --footer-text-color: #334155;
 }
 
+.main > .compactFooter {
+  --footer-text-color: rgba(255, 255, 255, 0.82);
+  display: none;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 1rem max(2rem, 5vw) max(1rem, env(safe-area-inset-bottom));
+  justify-content: flex-end;
+}
+
+:global([data-theme='light']) .main > .compactFooter {
+  --footer-text-color: #334155;
+}
+
+@media (max-width: 1100px), (max-height: 730px) {
+  .footer {
+    display: none;
+  }
+
+  /* A real document-end lane keeps copyright without covering reading copy. */
+  .main > .compactFooter {
+    display: flex;
+  }
+}
+
 .scroll {
   display: flex;
   align-items: center;
@@ -86,6 +110,7 @@
 }
 
 .year {
+  margin-left: auto;
   color: var(--footer-text-color);
   font-size: 0.875rem;
   font-weight: 400;
@@ -98,6 +123,14 @@
 
 :global(body:has([data-avatar-presenting='true']) [data-page-footer]) {
   visibility: hidden;
+}
+
+:global(body:has(#skills[data-skills-active='true'])) .footer {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+:global(body:has(#skills[data-skills-active='true'])) .footer .scroll {
+  display: none;
 }
 
 .paintedFooter .scroll,

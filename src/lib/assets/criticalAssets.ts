@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { getGpuTier } from '@/lib/gateways/gpuTier';
 import terrainBake from '@/lib/scene/terrain-outline-bake.json';
+import { AssetBuffer } from './assetBuffer';
+import { cacheTextureBytes } from './texturePrefetch';
 
 /**
  * The assets the first view cannot open without, fetched up front with real
@@ -23,7 +25,7 @@ import terrainBake from '@/lib/scene/terrain-outline-bake.json';
 
 /**
  * `model` is parsed by GLTFLoader and handed to it through three's cache.
- * `texture` is loaded by three's TextureLoader.
+ * `texture` is decoded into ImageLoader's cache for three's TextureLoader.
  * `media` is neither: it is fetched only so the fill accounts for it and so the
  * browser has it in the HTTP cache by the time an element asks for it.
  */
@@ -53,7 +55,7 @@ export const CRITICAL_ASSETS: readonly CriticalAsset[] = [
   { url: '/models/me-animated-lite.glb', bytes: 847_188, kind: 'model' },
   { url: '/images/waternormals.jpg', bytes: 248_813, kind: 'texture' },
   { url: '/images/shore-field.png', bytes: terrainBake.shore.bytes, kind: 'texture' },
-  { url: '/images/leul-profile.webp', bytes: 41_616, kind: 'texture' },
+  { url: '/images/leul-profile.webp', bytes: 41_616, kind: 'media' },
 ];
 
 /** The models among the critical assets. */
@@ -203,13 +205,15 @@ export function loadCriticalAssets(
   }
 
   const active = shared;
-  active.subscribers.add(onProgress);
-  onProgress(active.latest);
-
-  if (signal) {
-    signal.addEventListener('abort', () => active.subscribers.delete(onProgress), {
-      once: true,
-    });
+  const unsubscribe = () => {
+    active.subscribers.delete(onProgress);
+    signal?.removeEventListener('abort', unsubscribe);
+  };
+  if (!signal?.aborted) {
+    active.subscribers.add(onProgress);
+    signal?.addEventListener('abort', unsubscribe, { once: true });
+    onProgress(active.latest);
+    void active.promise.then(unsubscribe, unsubscribe);
   }
 
   return active.promise;
@@ -254,7 +258,7 @@ async function runLoad(
     const settled = done.filter(Boolean).length;
 
     const raw = totalBytes > 0 ? loadedBytes / totalBytes : settled / assets.length;
-    highWaterRatio = Math.max(highWaterRatio, Math.min(raw, 1));
+    highWaterRatio = Math.max(highWaterRatio, Math.min(raw, 1 - Number.EPSILON));
 
     onProgress({
       loadedBytes,
@@ -274,7 +278,8 @@ async function runLoad(
         const response = await request(asset.url, { signal });
         if (!response.ok) throw new Error(`${response.status} for ${asset.url}`);
 
-        if (looksLikeHtml(response.headers?.get?.('content-type'))) {
+        const contentType = response.headers?.get?.('content-type') ?? null;
+        if (looksLikeHtml(contentType)) {
           throw new Error(`${asset.url} answered with a page, not the asset`);
         }
 
@@ -287,35 +292,31 @@ async function runLoad(
 
         if (body && typeof body.getReader === 'function') {
           const reader = body.getReader();
-          // Only the models are reassembled. A texture is re-read by three and
-          // a video by an element, both from the HTTP cache this fetch warms --
-          // so holding their bytes here would be megabytes retained to be
-          // thrown away.
-          const keepBytes = asset.kind === 'model';
-          const chunks: Uint8Array[] = [];
-
-          for (;;) {
-            const { done: finished, value } = await reader.read();
-            if (finished) break;
-            if (value) {
-              if (keepBytes) chunks.push(value);
-              received[index] += value.byteLength;
-              publish();
+          const bytes = asset.kind !== 'media' ? new AssetBuffer(expected[index]) : null;
+          try {
+            for (;;) {
+              const { done: finished, value } = await reader.read();
+              if (finished) break;
+              if (value) {
+                bytes?.append(value);
+                received[index] += value.byteLength;
+                publish();
+              }
             }
+          } finally {
+            reader.releaseLock?.();
           }
 
-          if (asset.kind === 'model') {
-            const buffer = new Uint8Array(received[index]);
-            let offset = 0;
-            for (const chunk of chunks) {
-              buffer.set(chunk, offset);
-              offset += chunk.byteLength;
-            }
-            if (!isBinaryGltf(buffer.buffer)) {
+          if (bytes && asset.kind === 'model') {
+            const buffer = bytes.finish();
+            if (!isBinaryGltf(buffer)) {
               throw new Error(`${asset.url} is not a binary glTF`);
             }
-            THREE.Cache.add(asset.url, buffer.buffer);
+            THREE.Cache.add(asset.url, buffer);
+          } else if (bytes && asset.kind === 'texture') {
+            await cacheTextureBytes(asset.url, bytes.finish(), contentType, signal);
           }
+          expected[index] = received[index];
         } else {
           // No streaming body: still correct, just one step instead of many.
           const buffer = await response.arrayBuffer();
@@ -326,6 +327,8 @@ async function runLoad(
               throw new Error(`${asset.url} is not a binary glTF`);
             }
             THREE.Cache.add(asset.url, buffer);
+          } else if (asset.kind === 'texture') {
+            await cacheTextureBytes(asset.url, buffer, contentType, signal);
           }
         }
       } catch {

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
 import { projectsData } from '../../../data/projects';
+import { ProjectEvidence, ProjectVisualLink } from './ProjectEvidence';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { KineticHeading } from '../../ui/KineticText';
@@ -96,9 +97,9 @@ export function FlatProjects({ theme }: { theme?: string }) {
       filteredProjects.map((project) => ({
     id: project.id,
     title: project.title,
-    description: project.longDescription ? (
+    description: (
       <div className="flex flex-col gap-3 text-left">
-        {project.longDescription.split('\n').map((line, i) => {
+        {(project.longDescription || project.description).split('\n').map((line, i) => {
           if (!line.trim()) return null;
           return (
             <p key={i} className="leading-relaxed text-neutral-300">
@@ -110,9 +111,9 @@ export function FlatProjects({ theme }: { theme?: string }) {
             </p>
           );
         })}
+        {project.evidence && <ProjectEvidence evidence={project.evidence} />}
+        <ProjectVisualLink project={project} />
       </div>
-    ) : (
-      project.description
     ),
     imageSrc: project.image,
     demoUrl: project.demoUrl,

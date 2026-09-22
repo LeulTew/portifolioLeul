@@ -179,6 +179,136 @@ retry and injected submit behavior are tested with mocks. Provider-side domain
 restrictions, abuse controls and actual delivery remain unverified; a public
 client cannot certify those controls.
 
+### Toolchain and response-header follow-up (2026-09-22)
+
+This follow-up does not turn the historical choreography review into a complete
+security audit. The Windows Vite development-server finding is distinct from
+the Vercel static deployment: missing production response headers do **not**
+demonstrate exploitation of the development server.
+
+- Vite is pinned to **6.4.3**, fixing
+  [GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff).
+  Vite 6.4 is the security-maintained, second-to-last major under the
+  [Vite support policy](https://vite.dev/releases); it keeps the existing
+  React plugin 4.7.0 and avoids the Vite 8 bundler migration.
+- Vitest, its UI, coverage package and mocker are aligned at **4.1.11**, fixing
+  [GHSA-5xrq-8626-4rwp](https://github.com/advisories/GHSA-5xrq-8626-4rwp)
+  and the later full-audit finding
+  [GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9).
+  Network exposure of development/test UIs is still an explicit trust decision.
+- Targeted transitive fixes are Rollup **4.63.4**
+  ([GHSA-mw96-cpmx-2vgc](https://github.com/advisories/GHSA-mw96-cpmx-2vgc)),
+  PostCSS **8.5.28**
+  ([GHSA-r28c-9q8g-f849](https://github.com/advisories/GHSA-r28c-9q8g-f849),
+  [GHSA-6g55-p6wh-862q](https://github.com/advisories/GHSA-6g55-p6wh-862q)),
+  Picomatch **2.3.2 / 4.0.7**
+  ([GHSA-c2c7-rcm5-vvqj](https://github.com/advisories/GHSA-c2c7-rcm5-vvqj)),
+  and Flatted **3.4.2**
+  ([GHSA-rf6f-7fwh-wjgh](https://github.com/advisories/GHSA-rf6f-7fwh-wjgh)).
+  Overrides pin the intended families without crossing Picomatch majors;
+  installed-resolution checks below also guard against orphaned package directories.
+- The initial high/critical-oriented GitHub advisory check covered the
+  candidates and 57 newly resolved versions, using dependency metadata only.
+  It did **not** cover every unchanged dependency or establish a clean
+  all-severity audit. The esbuild 0.25.12 match
+  [GHSA-gv7w-rqvm-qjhr](https://github.com/advisories/GHSA-gv7w-rqvm-qjhr)
+  is withdrawn and identifies the Deno distribution, not this npm build.
+  This targeted check is not a vulnerability-free certification of every
+  unchanged dependency.
+
+Development and preview default to `127.0.0.1`; development filesystem access
+is strict and limited to this checkout. Vite's default sensitive-file deny
+rules remain intact. `bun run dev --host 0.0.0.0` remains an intentional LAN
+opt-in, not the default.
+
+`vercel.json` applies CSP, anti-framing, MIME, referrer and permissions headers
+to all routes. Preview reads that same policy, while development HMR does not.
+The CSP hashes the exact inline theme and JSON-LD scripts, with HTML-normalized
+line endings. **Changing either inline script requires updating its CSP hash**
+and running `bun x vitest run src\deployment.test.ts src\deployment.security.test.ts`.
+Scripts have no broad `unsafe-inline` or `unsafe-eval` permission.
+`wasm-unsafe-eval` supports the bundled meshopt decoder; inline styles support
+React/GSAP/Motion. Browsers without `wasm-unsafe-eval` support need separate
+compatibility validation; broad JavaScript evaluation is intentionally not enabled.
+Local fonts, models, data/blob textures, blob workers and
+optional local TV media remain allowed. Only `https://api.emailjs.com` is an
+external connection origin. The contact owner replaced the SDK with abortable
+native REST requests; the unused `@emailjs/browser` dependency was removed after
+confirming no remaining imports or mocks. Project/social links, `mailto:`/`tel:` links and
+device-routing navigation do not need a fetch-origin exception. Autoplay and
+fullscreen remain same-origin permissions; camera, microphone, location,
+payment and USB are disabled. Provider-managed HSTS is unchanged.
+
+Initial focused verification: the new checks failed on the former unsafe configuration,
+then both deployment suites passed **18 tests**. Focused ESLint, the Node/Vite
+TypeScript project and `bun install --frozen-lockfile` passed. An existing preview
+process must be restarted to load the new headers. Integrated production-build
+and real-browser CSP checks, deployed-header verification and actual EmailJS
+delivery remain separate release gates; none is claimed by these config tests.
+
+#### Full-lock and installed-tree audit follow-up
+
+A subsequent `bun audit --json` of the complete lock found **33 advisory entries
+across 14 package names: 20 high, 11 moderate and two low**. Some entries describe
+different affected version ranges of the same advisory; this is not a count of
+33 distinct CVEs. The earlier changed-version check was insufficient coverage.
+The additional compatible resolutions are:
+
+| Package family | Resolved version(s) | Advisory evidence |
+| --- | --- | --- |
+| Happy DOM | 20.8.9 | [GHSA-w4gp-fjgq-3q4g](https://github.com/advisories/GHSA-w4gp-fjgq-3q4g), [GHSA-6q6h-j7hj-3r64](https://github.com/advisories/GHSA-6q6h-j7hj-3r64) |
+| Vitest / mocker / UI / coverage | 4.1.11 | [GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9) |
+| Babel core | 7.29.7 | [GHSA-4x5r-pxfx-6jf8](https://github.com/advisories/GHSA-4x5r-pxfx-6jf8) |
+| `@humanfs/node` | 0.16.8 | [GHSA-p498-v437-472g](https://github.com/advisories/GHSA-p498-v437-472g) |
+| Ajv | 6.14.0 | [GHSA-2g4f-4pwh-qvx6](https://github.com/advisories/GHSA-2g4f-4pwh-qvx6) |
+| Baseline browser mapping | 2.11.0 | [GHSA-w5vr-8v7q-w6rv](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv) |
+| Browserslist | 4.28.7 | [GHSA-c83g-rgw3-j3cx](https://github.com/advisories/GHSA-c83g-rgw3-j3cx), [GHSA-73wf-gq98-2v4g](https://github.com/advisories/GHSA-73wf-gq98-2v4g) |
+| Brace expansion | 1.1.18 / 5.0.12 | [GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg), [GHSA-rgw5-rvv9-x895](https://github.com/advisories/GHSA-rgw5-rvv9-x895), [GHSA-f886-m6hf-6m8v](https://github.com/advisories/GHSA-f886-m6hf-6m8v), [GHSA-3jxr-9vmj-r5cp](https://github.com/advisories/GHSA-3jxr-9vmj-r5cp) |
+| fflate | 0.6.11 / 0.8.3 | [GHSA-px8p-9vwx-vf98](https://github.com/advisories/GHSA-px8p-9vwx-vf98) |
+| JS-YAML | 4.3.2 | [GHSA-h67p-54hq-rp68](https://github.com/advisories/GHSA-h67p-54hq-rp68), [GHSA-52cp-r559-cp3m](https://github.com/advisories/GHSA-52cp-r559-cp3m), [GHSA-5p4m-2wfm-xmqj](https://github.com/advisories/GHSA-5p4m-2wfm-xmqj), [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh) |
+| Minimatch | 3.1.4 / 9.0.7 | [GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26), [GHSA-7r86-cg39-jmmj](https://github.com/advisories/GHSA-7r86-cg39-jmmj), [GHSA-23c5-xmqv-rm74](https://github.com/advisories/GHSA-23c5-xmqv-rm74) |
+| PostCSS selector parser | 6.1.3 | [GHSA-w9m9-85wc-3x92](https://github.com/advisories/GHSA-w9m9-85wc-3x92) |
+| ws | 8.21.0 | [GHSA-58qx-3vcg-4xpx](https://github.com/advisories/GHSA-58qx-3vcg-4xpx), [GHSA-96hv-2xvq-fx4p](https://github.com/advisories/GHSA-96hv-2xvq-fx4p) |
+
+Version-scoped overrides preserve Minimatch 3 and 9 and fflate 0.6 and 0.8.
+Upstream Minimatch 9.0.7 itself now declares `brace-expansion: ^5.0.2`, so its
+old 2.x copy disappears; its 5.x requirement is patched separately from the
+1.x callers. No global override forces all callers onto one incompatible
+major. Babel stays on 7, and React, Three.js, the React plugin and Vite remain
+unchanged in this follow-up. The Happy DOM Skills playback fixture is unchanged.
+
+**A clean lock alone was not enough.** A physical inventory found two orphaned
+PostCSS 8.5.6 directories, each carrying Nano ID 3.3.11, that Bun had left behind
+after the earlier overrides. Tailwind and `postcss-load-config` actually resolved
+those stale copies instead of the patched root. New resolution regressions
+reproduced both failures despite a clean lock audit. Only four verified,
+unlocked directories were removed: those two PostCSS subtrees, the retired
+EmailJS SDK and the unused older coverage source-map helper. Frozen installation
+did not recreate them. This did not remove any locked package or repository
+source.
+
+Final local evidence after installation and pruning:
+
+- `bun audit --json` returns **`{}`**, exit 0, for the complete current lock.
+  No severity filter, suppression or advisory exception was used.
+- The independently enumerated installed tree contains **472 package locations,
+  415 names and 446 unique name/version pairs**. Sending only those names and
+  versions to the registry advisory endpoint returns **`{}`** at all severities.
+  Every installed name/version pair belongs to the lock.
+- `bun install --frozen-lockfile` reports no changes. Parent resolution checks
+  confirm the intended separate fflate/Minimatch families, patched PostCSS,
+  Babel and WebSocket versions are the ones Node actually loads.
+- **80 tests pass across three files**: 52 real Happy DOM Skills playback tests
+  and 28 deployment/security tests. Full `bun run lint`, application TypeScript
+  and Node/configuration TypeScript checks pass. A separate two-test V8 coverage
+  smoke check passes with the aligned coverage provider.
+
+These are point-in-time dependency and focused compatibility results, not a
+claim that the whole application is vulnerability-free. No production bundle
+was rebuilt, no browser or deployment was started, and no source or credentials
+were sent to an advisory service. The parent owns the new integrated build,
+browser and full-suite verification against this final dependency graph.
+
 ## Regression risks
 
 The cross-component DOM flag protocol, late layout measurements and installed

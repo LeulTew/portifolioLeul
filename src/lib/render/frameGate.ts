@@ -31,6 +31,7 @@ import { getProjectsView } from '@/lib/projects/projectsScene';
 let decidedAt = Number.NaN;
 let decision = true;
 let lastDrawnAt = Number.NEGATIVE_INFINITY;
+let nextDrawAt = Number.NEGATIVE_INFINITY;
 let elapsedBetweenDraws = Number.NaN;
 
 /** Minimum seconds between draws. Zero means every frame. */
@@ -45,8 +46,9 @@ let minInterval = 0;
  * pushes the next draw a whole frame later, and the cadence walks: measured
  * over a second, a 30fps budget delivered 22.
  *
- * A millisecond is far below any real frame interval, so it cannot let an
- * extra frame through, but it is comfortably above the rounding.
+ * Deadlines retain their fractional remainder rather than starting a fresh
+ * interval at each draw. Otherwise a 60fps budget falls to 48fps on a 144Hz
+ * display. Slack absorbs boundary jitter without adding redraw debt.
  */
 const INTERVAL_SLACK = 0.001;
 
@@ -55,9 +57,11 @@ const INTERVAL_SLACK = 0.001;
  * GPU tier reading.
  */
 export function setFrameBudget(secondsBetweenDraws: number): void {
-  minInterval = Number.isFinite(secondsBetweenDraws) && secondsBetweenDraws > 0
+  const interval = Number.isFinite(secondsBetweenDraws) && secondsBetweenDraws > 0
     ? secondsBetweenDraws
     : 0;
+  if (interval !== minInterval) nextDrawAt = Number.NEGATIVE_INFINITY;
+  minInterval = interval;
 }
 
 /** True while an opaque section covers the world completely. */
@@ -74,28 +78,37 @@ export function isWorldOccluded(): boolean {
  * frame whose inputs were skipped, or skip one whose inputs were written.
  */
 export function isFrameDrawn(time: number): boolean {
-  if (!Number.isFinite(time)) return true;
   if (time === decidedAt) return decision;
 
   decidedAt = time;
 
-  if (isWorldOccluded()) {
+  if ((typeof document !== 'undefined' && document.hidden) || isWorldOccluded()) {
+    // Hidden time is not animation time, nor a backlog of missed draws.
+    lastDrawnAt = nextDrawAt = Number.NEGATIVE_INFINITY;
+    elapsedBetweenDraws = Number.NaN;
     decision = false;
     return decision;
   }
 
+  if (!Number.isFinite(time)) return (decision = true);
+
   // A clock that has gone backwards is a clock that restarted, not a frame
   // arriving early. Without this the gate reads the jump as "no time has
   // passed since the last draw" and refuses every frame from then on.
-  if (time < lastDrawnAt) lastDrawnAt = Number.NEGATIVE_INFINITY;
+  if (time < lastDrawnAt) lastDrawnAt = nextDrawAt = Number.NEGATIVE_INFINITY;
 
-  if (time - lastDrawnAt < minInterval - INTERVAL_SLACK) {
+  if (minInterval > 0 && time + INTERVAL_SLACK < nextDrawAt) {
     decision = false;
     return decision;
   }
 
   elapsedBetweenDraws = time - lastDrawnAt;
   lastDrawnAt = time;
+  if (minInterval > 0) {
+    if (!Number.isFinite(nextDrawAt)) nextDrawAt = time;
+    const intervals = Math.max(1, Math.floor((time + INTERVAL_SLACK - nextDrawAt) / minInterval) + 1);
+    nextDrawAt += intervals * minInterval;
+  }
   decision = true;
   return decision;
 }
@@ -113,6 +126,7 @@ export function resetFrameGate(): void {
   decidedAt = Number.NaN;
   decision = true;
   lastDrawnAt = Number.NEGATIVE_INFINITY;
+  nextDrawAt = Number.NEGATIVE_INFINITY;
   elapsedBetweenDraws = Number.NaN;
   minInterval = 0;
 }

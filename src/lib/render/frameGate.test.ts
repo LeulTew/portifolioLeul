@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { drawnFrameDelta, isFrameDrawn, isWorldOccluded, resetFrameGate, setFrameBudget } from './frameGate';
 import { setWorldOcclusion, setOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 import { setProjectsView } from '@/lib/projects/projectsScene';
@@ -13,6 +13,7 @@ describe('frameGate', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     setProjectsView(false, 0, 0);
     resetFrameGate();
     resetCameraHold();
@@ -55,6 +56,27 @@ describe('frameGate', () => {
   });
 
   describe('redraw ceiling', () => {
+    it.each([60, 75, 90, 120, 144, 165, 180, 240])(
+      'keeps a 60fps average on a %iHz display without rounding down to its grid',
+      refreshRate => {
+        setFrameBudget(1 / 60);
+        let drawn = 0;
+        for (let frame = 0; frame < refreshRate * 5; frame++) {
+          if (isFrameDrawn(frame / refreshRate)) drawn++;
+        }
+        expect(drawn).toBe(300);
+      },
+    );
+
+    it('never spends a backlog of redraws after a long task', () => {
+      setFrameBudget(1 / 60);
+      expect(isFrameDrawn(0)).toBe(true);
+      expect(isFrameDrawn(20)).toBe(true);
+      expect(isFrameDrawn(20 + 1 / 240)).toBe(false);
+      expect(isFrameDrawn(20 + 1 / 120)).toBe(false);
+      expect(isFrameDrawn(20 + 1 / 60)).toBe(true);
+    });
+
     it('shares the elapsed time across skipped frames without slowing motion', () => {
       setFrameBudget(1 / 30);
       expect(drawnFrameDelta(0, 1 / 180)).toBe(1 / 180);
@@ -98,6 +120,16 @@ describe('frameGate', () => {
   });
 
   describe('behind an opaque section', () => {
+    it('does not turn invisible time into a jump in the next animation delta', () => {
+      setFrameBudget(1 / 60);
+      expect(drawnFrameDelta(0, 0.016)).toBe(0.016);
+      setOverlayOcclusion(true, 'skills');
+      expect(drawnFrameDelta(5, 0.016)).toBe(0);
+      setOverlayOcclusion(false, 'skills');
+      expect(drawnFrameDelta(10, 0.016)).toBe(0.016);
+      expect(drawnFrameDelta(10 + 1 / 60, 0.016)).toBeCloseTo(1 / 60);
+    });
+
     it('keeps the revealed TV world drawing while spent reverse input crosses an old physical hold', () => {
       setWorldOcclusion({ start: 0.2, end: 0.5 });
       setScrollProgress(0.35);
@@ -121,6 +153,18 @@ describe('frameGate', () => {
 
       setScrollProgress(0.6);
       expect(isWorldOccluded()).toBe(false);
+    });
+
+    it('refuses hidden-tab work and resumes without hidden-time debt', () => {
+      const hidden = vi.spyOn(document, 'hidden', 'get');
+      hidden.mockReturnValue(false);
+      setFrameBudget(1 / 60);
+      expect(drawnFrameDelta(0, 0.016)).toBe(0.016);
+      hidden.mockReturnValue(true);
+      expect(isFrameDrawn(0.02)).toBe(false);
+      expect(isFrameDrawn(60)).toBe(false);
+      hidden.mockReturnValue(false);
+      expect(drawnFrameDelta(60.001, 0.016)).toBe(0.016);
     });
 
     it('skips the frame outright, whatever the budget allows', () => {

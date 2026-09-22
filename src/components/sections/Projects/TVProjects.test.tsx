@@ -38,7 +38,12 @@ describe('the semantic TV project reader', () => {
       expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
       const links = screen.getAllByRole('link');
       expect(links.map(link => link.getAttribute('href')))
-        .toEqual([project.demoUrl, project.githubUrl].filter(Boolean));
+        .toEqual([project.demoUrl, project.githubUrl, project.image].filter(Boolean));
+      const visual = screen.getByRole('link', {
+        name: `Open ${project.title} portfolio image at full size (new tab)`,
+      });
+      expect(visual.closest('footer')).not.toBeNull();
+      expect(visual.closest('[data-projects-scrollable]')).toBeNull();
       links.forEach(link => {
         expect(link).toHaveAttribute('target', '_blank');
         expect(link).toHaveAttribute('rel', 'noopener noreferrer');
@@ -52,18 +57,90 @@ describe('the semantic TV project reader', () => {
 
   it('shows complete factual descriptions and technology in its own scrollable details view', () => {
     render(<TVProjects />);
+    const toggle = screen.getByRole('button', { name: 'Details' });
+    const next = screen.getByRole('button', { name: 'Next project' });
     for (const project of projectsData) {
-      fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+      fireEvent.click(toggle);
       const details = screen.getByLabelText(`${project.title} details`);
       expect(details).toHaveAttribute('data-projects-scrollable');
       for (const line of (project.longDescription || project.description).split('\n').filter(line => line.trim())) {
         expect(details).toHaveTextContent(line.replace(/\*\*/g, ''));
       }
       expect(details).toHaveTextContent(project.tech);
-      expect(screen.getByRole('button', { name: 'Preview' })).toHaveAttribute('aria-expanded', 'true');
-      fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
-      expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle).toHaveAccessibleName('Preview');
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      fireEvent.click(next);
+      expect(toggle).toHaveAccessibleName('Details');
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
     }
+  });
+
+  it('keeps inspection guidance and source proof in Details rather than the preview', () => {
+    render(<TVProjects />);
+    const toggle = screen.getByRole('button', { name: 'Details' });
+    const next = screen.getByRole('button', { name: 'Next project' });
+    for (const project of projectsData) {
+      expect(screen.queryByRole('heading', { name: 'What to inspect' })).not.toBeInTheDocument();
+      if (project.evidence?.access) {
+        expect(screen.getByLabelText(`${project.title} summary`))
+          .toHaveTextContent(project.evidence.access);
+      }
+      fireEvent.click(toggle);
+      const details = screen.getByLabelText(`${project.title} details`);
+      if (project.evidence) {
+        expect(within(details).getByRole('heading', { name: 'What to inspect', level: 4 })).toBeVisible();
+        expect(details).toHaveTextContent(project.evidence.inspect);
+        expect(details).toHaveTextContent(project.evidence.access!);
+        if (project.evidence.sourceNote) expect(details).toHaveTextContent(project.evidence.sourceNote);
+      } else {
+        expect(details.querySelector('[data-project-evidence]')).toBeNull();
+      }
+      if (project.evidence?.decision) {
+        const decision = project.evidence.decision;
+        expect(details).toHaveTextContent(decision.summary);
+        const source = within(details).getByRole('link', { name: decision.sourceLabel });
+        expect(source).toHaveAttribute('href', decision.sourceUrl);
+        expect(source).toHaveAttribute('target', '_blank');
+        expect(source).toHaveAttribute('rel', 'noopener noreferrer');
+        fireEvent.keyDown(source, { key: 'ArrowRight' });
+        expect(document.querySelector('[data-project-id]'))
+          .toHaveAttribute('data-project-id', String(project.id));
+      } else {
+        expect(within(details).queryByRole('heading', { name: 'Implementation' })).not.toBeInTheDocument();
+      }
+      fireEvent.click(next);
+    }
+  });
+
+  it('keeps the native image action in the fixed preview footer and retains the Details alternative', () => {
+    render(<TVProjects />);
+    const project = projectsData[0];
+    const label = `Open ${project.title} portfolio image at full size (new tab)`;
+    const imageLink = screen.getByRole('link', { name: label });
+    expect(imageLink).toHaveAttribute('href', project.image);
+    expect(imageLink).toHaveTextContent('Full image');
+    expect(imageLink.closest('footer')).not.toBeNull();
+    expect(imageLink.closest('[data-projects-scrollable]')).toBeNull();
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    fireEvent(imageLink, click);
+    expect(click.defaultPrevented).toBe(false);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
+    const toggle = screen.getByRole('button', { name: 'Details' });
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Preview' })).toBe(toggle);
+    const details = screen.getByLabelText(`${project.title} details`);
+    const detailsImage = within(details).getByRole('link', { name: label });
+    expect(detailsImage).toHaveAttribute('href', project.image);
+    expect(detailsImage).toHaveTextContent('Full-size portfolio image');
+    expect(detailsImage.closest('footer')).toBeNull();
+    expect(screen.getAllByRole('link', { name: label })).toHaveLength(1);
+    const wheel = new WheelEvent('wheel', { deltaY: 600, bubbles: true, cancelable: true });
+    fireEvent(details, wheel);
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
+    fireEvent.keyDown(details, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Details' })).toBe(toggle);
+    expect(toggle).toHaveFocus();
   });
 
   it('uses roving semantic category tabs and keeps keyboard focus with the selection', () => {

@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+// Keep real DOM/GSAP playback without jsdom's costly per-glyph style cascade.
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import gsap from 'gsap';
@@ -12,11 +14,13 @@ import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 let top = 1200;
 let publication = 0;
 let frameId = 0;
+let now = 0;
 let staged = true;
 let reduced = false;
 const frames = new Map<number, FrameRequestCallback>();
 const mediaListeners = new Map<string, Set<(event: { matches: boolean }) => void>>();
 const originalRect = Element.prototype.getBoundingClientRect;
+const originalConsolidate = Object.getOwnPropertyDescriptor(SVGTransformList.prototype, 'consolidate');
 
 const stage = () => screen.getByTestId('skills-stage');
 const index = () => Number(stage().dataset.activeSkill);
@@ -31,18 +35,16 @@ function advance(ms: number, interval = 50) {
   let remaining = ms;
   while (remaining > 0) {
     if (frames.size === 0) {
-      act(() => vi.advanceTimersByTime(remaining));
-      gsap.ticker.sleep();
+      now += remaining;
       return;
     }
     const delta = Math.min(interval, remaining);
     act(() => {
-      vi.advanceTimersByTime(delta);
+      now += delta;
       const callbacks = [...frames.values()];
       frames.clear();
       callbacks.forEach(callback => callback(performance.now()));
     });
-    gsap.ticker.sleep();
     remaining -= delta;
   }
 }
@@ -50,19 +52,24 @@ function advance(ms: number, interval = 50) {
 function place(value: number) {
   top = value;
   act(() => setScrollProgress(++publication / 100));
-  gsap.ticker.sleep();
 }
 
 function wheel(deltaY: number) {
   const event = new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true });
   act(() => window.dispatchEvent(event));
   expect(event.defaultPrevented).toBe(false);
-  gsap.ticker.sleep();
 }
 
 async function navbar(target: string) {
   await act(async () => { publishSectionNavigation(target, { source: 'navbar' }); });
-  gsap.ticker.sleep();
+}
+
+async function mutateObservedDom(mutate: () => void) {
+  await act(async () => {
+    mutate();
+    // Happy DOM delivers its real MutationObserver records on the next task.
+    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+  });
 }
 
 function mount(onNavigate?: (section: string) => void) {
@@ -73,7 +80,6 @@ function mount(onNavigate?: (section: string) => void) {
       <Skills onNavigate={onNavigate} />
     </main>
   </>);
-  gsap.ticker.sleep();
 }
 
 function enter(onNavigate?: (section: string) => void) {
@@ -92,6 +98,7 @@ beforeEach(() => {
   top = 1200;
   publication = 0;
   frameId = 0;
+  now = 0;
   staged = true;
   reduced = false;
   frames.clear();
@@ -99,7 +106,27 @@ beforeEach(() => {
   resetScrollProgress();
   resetScrollGesture();
   resetCameraHold();
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+  // Happy DOM exposes SVG transform lists but does not yet consolidate them.
+  // Compose their actual matrices instead of replacing GSAP's SVG transforms.
+  if (!originalConsolidate) Object.defineProperty(SVGTransformList.prototype, 'consolidate', {
+    configurable: true,
+    value: function (this: SVGTransformList) {
+      if (this.numberOfItems === 0) return null;
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      let matrix = svg.createSVGMatrix();
+      for (let index = 0; index < this.numberOfItems; index++) {
+        matrix = matrix.multiply(this.getItem(index).matrix);
+      }
+      return this.initialize(svg.createSVGTransformFromMatrix(matrix));
+    },
+  });
+  // Skills seeks paused GSAP scores from its own visible-time rAF callback.
+  // Stop the native ticker before replacing the clock; seeking must not wake it.
+  gsap.ticker.wake();
+  gsap.ticker.sleep();
+  vi.spyOn(gsap.ticker, 'wake').mockImplementation(() => {});
+  // Playback needs only performance/rAF control; keep observer delivery native.
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
   vi.stubGlobal('innerHeight', 900);
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     frames.set(++frameId, callback);
@@ -135,9 +162,29 @@ afterEach(() => {
   resetScrollProgress();
   resetCameraHold();
   frames.clear();
-  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  if (originalConsolidate) Object.defineProperty(SVGTransformList.prototype, 'consolidate', originalConsolidate);
+  else Reflect.deleteProperty(SVGTransformList.prototype, 'consolidate');
+});
+
+describe('Skills SVG playback fixture', () => {
+  it('composes actual non-identity matrices in authored order and retains the resulting transform', () => {
+    const graphic = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    graphic.setAttribute('transform', 'translate(12 8) scale(2 3)');
+    const list = graphic.transform.baseVal;
+    const result = list.consolidate();
+    expect(result?.matrix).toMatchObject({ a: 2, b: 0, c: 0, d: 3, e: 12, f: 8 });
+    expect(list.numberOfItems).toBe(1);
+    expect(list.getItem(0)).toBe(result);
+    expect(list.consolidate()?.matrix).toMatchObject({ a: 2, b: 0, c: 0, d: 3, e: 12, f: 8 });
+  });
+
+  it('does not invent a transform for an empty list', () => {
+    const graphic = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    expect(graphic.transform.baseVal.consolidate()).toBeNull();
+    expect(graphic.transform.baseVal.numberOfItems).toBe(0);
+  });
 });
 
 describe('Skills completed-beat playback', () => {
@@ -544,7 +591,7 @@ describe('Skills completed-beat playback', () => {
     place(-10000);
     advance(5000);
     expect(stage()).not.toHaveAttribute('data-visible');
-    await act(async () => { about.removeAttribute('data-education-active'); });
+    await mutateObservedDom(() => { about.removeAttribute('data-education-active'); });
     advance(3100);
     expect(stage()).toHaveAttribute('data-visible', 'true');
     about.remove();
@@ -562,10 +609,10 @@ describe('Skills completed-beat playback', () => {
     place(-20000);
     advance(5000);
     expect(stage()).toHaveAttribute('data-phase', 'outside');
-    await act(async () => { about.dataset.titleSettled = 'true'; });
+    await mutateObservedDom(() => { about.dataset.titleSettled = 'true'; });
     advance(5000);
     expect(stage()).toHaveAttribute('data-phase', 'outside');
-    await act(async () => { about.dataset.educationReleased = 'true'; });
+    await mutateObservedDom(() => { about.dataset.educationReleased = 'true'; });
     advance(3100);
     expect(next()).toBeEnabled();
     expect(index()).toBe(0);
@@ -617,9 +664,9 @@ describe('Skills completed-beat playback', () => {
     overlay.dataset.active = 'true';
     document.body.appendChild(overlay);
     place(80);
-    await act(async () => { about.dataset.titleSettled = 'true'; });
+    await mutateObservedDom(() => { about.dataset.titleSettled = 'true'; });
     expect(stage()).not.toHaveAttribute('data-visible');
-    await act(async () => { overlay.dataset.active = 'false'; });
+    await mutateObservedDom(() => { overlay.dataset.active = 'false'; });
     advance(3100);
     expect(next()).toBeEnabled();
     overlay.remove();

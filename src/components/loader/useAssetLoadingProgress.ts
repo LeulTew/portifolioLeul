@@ -106,6 +106,7 @@ export function useAssetLoadingProgress(
   completeRef.current = onComplete;
 
   const assetRatioRef = useRef(0);
+  const pendingAssetsRef = useRef<AssetProgress | null>(null);
   const completedRef = useRef(false);
   const sceneReadyRef = useRef(isSceneReady());
   const contentSettledRef = useRef(isContentSettled());
@@ -121,7 +122,7 @@ export function useAssetLoadingProgress(
         if (progress.ratio >= 1 && bytesInAtRef.current === null) {
           bytesInAtRef.current = Date.now();
         }
-        setAssets(progress);
+        pendingAssetsRef.current = progress;
       },
       { signal: controller.signal }
     );
@@ -149,6 +150,12 @@ export function useAssetLoadingProgress(
 
     const tick = () => {
       const elapsed = Date.now() - start;
+      // Several streaming chunks may arrive between paints. They still count
+      // immediately, but React only needs their latest snapshot once per RAF.
+      if (pendingAssetsRef.current) {
+        setAssets(pendingAssetsRef.current);
+        pendingAssetsRef.current = null;
+      }
 
       // The fill is the download, paced so it always reads as a fill, and
       // held just short of full until both the world behind it and the page in
@@ -163,8 +170,9 @@ export function useAssetLoadingProgress(
 
       setDisplayedProgress((previous) => {
         const next = previous + (target - previous) * FILL_EASING;
-        const settled = target >= 100 - FILL_EPSILON && next >= 100 - FILL_EPSILON;
-        const value = settled ? 100 : Math.min(next, 100);
+        const settled = assetRatioRef.current >= 1 &&
+          target >= 100 - FILL_EPSILON && next >= 100 - FILL_EPSILON;
+        const value = settled ? 100 : Math.min(next, 100 - FILL_EPSILON);
 
         if (value >= 100 && !completedRef.current) {
           completedRef.current = true;

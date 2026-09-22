@@ -16,7 +16,7 @@ type Phase = 'outside' | 'opening' | 'reading' | 'crossing' | 'closing';
 type Ref = RefObject<HTMLDivElement | null>;
 interface PlaybackRefs {
   rail: Ref;
-  stage: Ref;
+  stage: RefObject<HTMLElement | null>;
   pinned: Ref;
   frame: Ref;
   head: Ref;

@@ -6,8 +6,8 @@
 
 .cloud {
   --cloud-density: 1;
-  --cloud-vapor-density: 0.55;
-  --cloud-light-density: 0.5;
+  --cloud-vapor-density: 0.34;
+  --cloud-light-density: 0.26;
   --cloud-shut: clamp(0, var(--shut, 0), 1);
   pointer-events: none;
   user-select: none;
@@ -17,8 +17,8 @@
 .cloud[data-cloud-theme='light'],
 :global([data-theme='light']) .cloud:not([data-cloud-theme]) {
   --cloud-density: 1;
-  --cloud-vapor-density: 0.8;
-  --cloud-light-density: 0.65;
+  --cloud-vapor-density: 0.62;
+  --cloud-light-density: 0.44;
 }
 
 .body,

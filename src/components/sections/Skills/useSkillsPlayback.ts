@@ -19,7 +19,7 @@ type Phase = 'outside' | 'entering' | 'reading' | 'crossing' | 'leaving';
 type Direction = -1 | 1;
 interface Refs {
   host: RefObject<HTMLElement>;
-  stage: RefObject<HTMLDivElement>;
+  stage: RefObject<HTMLElement>;
 }
 
 export function useSkillsStaged() {

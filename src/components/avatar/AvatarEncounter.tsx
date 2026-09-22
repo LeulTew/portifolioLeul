@@ -139,7 +139,7 @@ export function AvatarEncounter({ enabled, scrollElement }: AvatarEncounterProps
       ref={rootRef}
       className={styles.encounter}
       data-avatar-encounter={phase}
-      role="group"
+      role="region"
       aria-label="3D scene"
       tabIndex={-1}
       onBlurCapture={event => {

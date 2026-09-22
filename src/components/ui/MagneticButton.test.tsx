@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -27,6 +28,56 @@ describe('MagneticButton', () => {
     expect(link.getAttribute('href')).toBe('https://example.com');
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it.each(['light', 'dark'])('keeps native tab/activation and explicit focus-theme semantics in %s', async theme => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(<>
+      <MagneticButton theme={theme} onClick={onClick}>Explore My Work</MagneticButton>
+      <MagneticButton theme={theme} variant="secondary" icon={false}>Get In Touch</MagneticButton>
+      <MagneticButton theme={theme} href="#work">Project link</MagneticButton>
+    </>);
+    const primary = screen.getByRole('button', { name: 'Explore My Work' });
+    const secondary = screen.getByRole('button', { name: 'Get In Touch' });
+    const link = screen.getByRole('link', { name: 'Project link' });
+    await user.tab();
+    expect(primary).toHaveFocus();
+    await user.keyboard('{Enter} ');
+    expect(onClick).toHaveBeenCalledTimes(2);
+    await user.tab();
+    expect(secondary).toHaveFocus();
+    await user.tab();
+    expect(link).toHaveFocus();
+    for (const control of [primary, secondary, link]) {
+      expect(control).toHaveAttribute('data-theme', theme);
+      expect(control.tabIndex).toBe(0);
+    }
+  });
+
+  it('paints focus on the unclipped 48px wrapper using the existing control tokens', () => {
+    const css = postcss.parse(readFileSync(join(__dirname, 'MagneticButton.module.css'), 'utf8'));
+    const declarations = (selector: string) => {
+      const values: Record<string, string> = {};
+      css.walkRules(rule => {
+        if (!rule.selectors.includes(selector)) return;
+        rule.walkDecls(declaration => { values[declaration.prop] = declaration.value; });
+      });
+      return values;
+    };
+    const wrapper = declarations('.magneticWrapper');
+    expect(wrapper).toMatchObject({
+      'min-width': '48px', 'min-height': '48px', '--control-focus': 'brandMint',
+    });
+    expect(wrapper['clip-path']).toBeUndefined();
+    expect(wrapper.overflow).toBeUndefined();
+    expect(wrapper.outline).toBeUndefined();
+    expect(declarations('.magneticWrapper:focus-visible')).toEqual({
+      outline: '2px solid var(--control-focus)', 'outline-offset': '3px',
+    });
+    expect(declarations(".magneticWrapper:global([data-theme='light'])")['--control-focus']).toBe('brandEmerald');
+    expect(declarations(':global([data-theme=\'light\']) .magneticWrapper')['--control-focus']).toBe('brandEmerald');
+    expect(declarations('.cutoutFrame')['clip-path']).toBe('chamferPath');
   });
 
   it('calculates magnetic spring offset on mouseMove and resets on mouseLeave', () => {

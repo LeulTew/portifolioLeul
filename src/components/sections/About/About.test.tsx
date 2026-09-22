@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { About } from "./About";
 import { STATEMENT_LAYERS, ABOUT_SCREENS } from "./statementLayers";
 import { windowPresence, layerOpacity } from "@/lib/motion/sequenceWindow";
 import { cvData } from "../../../data/cv";
+import { projectsData } from "@/data/projects";
 
 // Keep scroll-driven copy deterministic without replacing artwork motion values.
 vi.mock("framer-motion", async (importOriginal) => {
@@ -29,8 +30,11 @@ describe("About Section", () => {
     expect(screen.getByRole("heading", { level: 2, name: /About Me/i })).toBeInTheDocument();
     expect(screen.getByText(/KEEP IT SIMPLE/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: /SCALABLE SYSTEMS/i })).toBeInTheDocument();
-    expect(screen.getByText(/3\+/i)).toBeInTheDocument();
-    expect(screen.getByText(/30\+/i)).toBeInTheDocument();
+    const summary = within(screen.getByTestId("about-right-column"));
+    expect(summary.getByText(String(projectsData.length))).toBeInTheDocument();
+    expect(summary.getByText(String(cvData.skills.reduce((total, category) => total + category.items.length, 0))))
+      .toBeInTheDocument();
+    expect(summary.getByText("Projects to Explore Across Web, Mobile, AI & Graphics")).toBeInTheDocument();
 
     cvData.about.highlights.forEach((highlight) => {
       expect(screen.getByText(highlight)).toBeInTheDocument();

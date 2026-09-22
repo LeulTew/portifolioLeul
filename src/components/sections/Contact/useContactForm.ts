@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { ContactFormData, FormErrors } from './types';
-import emailjs from '@emailjs/browser';
+import {
+  ContactDeliveryError,
+  getContactDeliveryConfig,
+  sendContactMessage,
+  type ContactDeliveryFailure,
+} from './contactDelivery';
 
-export function useContactForm(submitFn?: () => Promise<void>) {
+export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>) {
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
@@ -11,16 +16,23 @@ export function useContactForm(submitFn?: () => Promise<void>) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitError, setSubmitError] = useState<ContactDeliveryFailure | null>(null);
   const pending = useRef(false);
   const accepted = useRef(false);
   const mounted = useRef(true);
+  const activeRequest = useRef<AbortController | null>(null);
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+      pending.current = false;
+    };
   }, []);
 
-  const validateForm = (): boolean => {
+  const validateForm = (): keyof ContactFormData | null => {
     const newErrors: FormErrors = {};
 
     if (!formData.name.trim()) {
@@ -38,51 +50,48 @@ export function useContactForm(submitFn?: () => Promise<void>) {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors.name ? 'name' : newErrors.email ? 'email' : newErrors.message ? 'message' : null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (pending.current || accepted.current) return;
     setSubmitStatus('idle');
-    if (!validateForm()) return;
+    setSubmitError(null);
+    const invalidField = validateForm();
+    if (invalidField) {
+      e.currentTarget.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${invalidField}"]`)?.focus();
+      return;
+    }
 
+    const request = new AbortController();
+    activeRequest.current = request;
     pending.current = true;
     setIsSubmitting(true);
 
     try {
       if (submitFn) {
-        await submitFn();
+        await submitFn(request.signal);
       } else {
-        const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim() || '';
-        const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID?.trim() || '';
-        const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY?.trim() || '';
-
-        if (SERVICE_ID && TEMPLATE_ID && PUBLIC_KEY) {
-          await emailjs.send(
-            SERVICE_ID,
-            TEMPLATE_ID,
-            {
-              from_name: formData.name.trim(),
-              from_email: formData.email.trim(),
-              message: formData.message,
-            },
-            PUBLIC_KEY
-          );
-        } else {
-          throw new Error('EmailJS configuration is incomplete.');
-        }
+        await sendContactMessage(formData, getContactDeliveryConfig(), request.signal);
       }
-      if (mounted.current) {
+      if (mounted.current && activeRequest.current === request && !request.signal.aborted) {
         accepted.current = true;
         setSubmitStatus('success');
       }
     } catch (error) {
-      console.error('EmailJS Error:', error);
-      if (mounted.current) setSubmitStatus('error');
+      if (mounted.current && activeRequest.current === request && !request.signal.aborted) {
+        const failure = error instanceof ContactDeliveryError ? error : new ContactDeliveryError('network');
+        console.error('Contact submission failed:', failure);
+        setSubmitError(failure.kind);
+        setSubmitStatus('error');
+      }
     } finally {
-      pending.current = false;
-      if (mounted.current) setIsSubmitting(false);
+      if (activeRequest.current === request) {
+        activeRequest.current = null;
+        pending.current = false;
+        if (mounted.current) setIsSubmitting(false);
+      }
     }
   };
 
@@ -91,6 +100,7 @@ export function useContactForm(submitFn?: () => Promise<void>) {
     const { name, value } = e.target;
     accepted.current = false;
     setSubmitStatus('idle');
+    setSubmitError(null);
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
@@ -103,6 +113,7 @@ export function useContactForm(submitFn?: () => Promise<void>) {
     setFormData({ name: '', email: '', message: '' });
     setErrors({});
     setSubmitStatus('idle');
+    setSubmitError(null);
   };
 
   return {
@@ -110,6 +121,7 @@ export function useContactForm(submitFn?: () => Promise<void>) {
     errors,
     isSubmitting,
     submitStatus,
+    submitError,
     handleSubmit,
     handleChange,
     resetForm,

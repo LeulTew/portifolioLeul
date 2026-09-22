@@ -34,6 +34,8 @@ describe('GPU Tier Detection Gateway', () => {
     expect(tier.dpr).toEqual([1, 2]);
     expect(tier.particleCount).toBe(1500);
     expect(tier.enableComplexShaders).toBe(true);
+    expect(tier.maxFps).toBe(60);
+    expect(tier.waterReflectionSize).toBe(512);
   });
 
   it('detects low-tier configuration for mobile or low-memory devices', () => {
@@ -53,6 +55,20 @@ describe('GPU Tier Detection Gateway', () => {
     expect(tier.dpr).toEqual([1, 1]);
     expect(tier.particleCount).toBe(350);
     expect(tier.enableComplexShaders).toBe(false);
+    expect(tier.maxFps).toBe(30);
+  });
+
+  it('caps medium-tier backdrop work without reducing its existing scene fidelity', () => {
+    Object.defineProperty(window, 'navigator', {
+      value: { userAgent: 'Desktop', hardwareConcurrency: 6, deviceMemory: 8 },
+      configurable: true,
+      writable: true,
+    });
+    const tier = detectGpuTier();
+    expect(tier.tier).toBe('medium');
+    expect(tier.maxFps).toBe(60);
+    expect(tier.dpr).toEqual([1, 1.5]);
+    expect(tier.waterReflectionSize).toBe(512);
   });
 
   it('useGpuTier React hook returns detected tier config', () => {

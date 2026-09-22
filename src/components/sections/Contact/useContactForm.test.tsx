@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import emailjs from '@emailjs/browser';
+import { ContactDeliveryError, sendContactMessage } from './contactDelivery';
 import { useContactForm } from './useContactForm';
 
 const TestComponent = ({ submitFn }: { submitFn?: () => Promise<void> } = {}) => {
@@ -56,7 +56,7 @@ describe('useContactForm', () => {
     vi.stubEnv('VITE_EMAILJS_SERVICE_ID', undefined);
     vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', undefined);
     vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', undefined);
-    vi.mocked(emailjs.send).mockReset().mockResolvedValue({ status: 200, text: 'OK' });
+    vi.mocked(sendContactMessage).mockReset().mockResolvedValue(undefined);
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -99,6 +99,7 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('name-error')).toHaveTextContent('Name is required');
     expect(screen.getByTestId('email-error')).toHaveTextContent('Email is required');
     expect(screen.getByTestId('message-error')).toHaveTextContent('Message is required');
+    expect(screen.getByTestId('name-input')).toHaveFocus();
   });
 
   it('validates email format', async () => {
@@ -145,7 +146,7 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('email-input')).toHaveValue('john@example.com');
     expect(screen.getByTestId('message-input')).toHaveValue('Message');
     expect(screen.getByTestId('submit-button')).toBeEnabled();
-    expect(emailjs.send).not.toHaveBeenCalled();
+    expect(sendContactMessage).not.toHaveBeenCalled();
   });
 
   it('handles successful submission with custom submit function', async () => {
@@ -170,7 +171,7 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('message-input')).toHaveValue('');
     expect(screen.getByTestId('submit-button')).toBeEnabled();
     expect(screen.queryByTestId('success-message')).not.toBeInTheDocument();
-    expect(emailjs.send).not.toHaveBeenCalled();
+    expect(sendContactMessage).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -200,16 +201,16 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('email-input')).toHaveValue('john@example.com');
     expect(screen.getByTestId('message-input')).toHaveValue('Message');
     expect(screen.getByTestId('submit-button')).toBeEnabled();
-    expect(emailjs.send).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith('EmailJS Error:', expect.any(Error));
+    expect(sendContactMessage).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith('Contact submission failed:', expect.any(ContactDeliveryError));
   });
 
-  it('waits for configured EmailJS delivery and retains accepted input until an explicit reset', async () => {
+  it('waits for configured provider acceptance and retains input until an explicit reset', async () => {
     vi.stubEnv('VITE_EMAILJS_SERVICE_ID', 'service_test');
     vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', 'template_test');
     vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', 'public_test');
-    let resolveSend!: (response: { status: number; text: string }) => void;
-    vi.mocked(emailjs.send).mockReturnValueOnce(new Promise(resolve => {
+    let resolveSend!: () => void;
+    vi.mocked(sendContactMessage).mockReturnValueOnce(new Promise(resolve => {
       resolveSend = resolve;
     }));
     const user = userEvent.setup({ delay: null });
@@ -226,14 +227,13 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('name-input')).toHaveValue('John');
     await user.click(screen.getByRole('button', { name: 'New draft' }));
     expect(screen.getByTestId('name-input')).toHaveValue('John');
-    expect(emailjs.send).toHaveBeenCalledExactlyOnceWith(
-      'service_test',
-      'template_test',
-      { from_name: 'John', from_email: 'john@example.com', message: 'Message' },
-      'public_test'
+    expect(sendContactMessage).toHaveBeenCalledExactlyOnceWith(
+      { name: 'John', email: 'john@example.com', message: 'Message' },
+      { serviceId: 'service_test', templateId: 'template_test', publicKey: 'public_test' },
+      expect.any(AbortSignal),
     );
 
-    await act(async () => resolveSend({ status: 200, text: 'OK' }));
+    await act(async () => resolveSend());
     await waitFor(() => {
       expect(screen.getByTestId('success-message')).toBeInTheDocument();
     });
@@ -272,7 +272,7 @@ describe('useContactForm', () => {
     expect(name).toHaveValue('A new draft');
   });
 
-  it('normalizes surrounding email/config whitespace without altering the message body', async () => {
+  it('normalizes configuration while passing the intact draft to its transport', async () => {
     vi.stubEnv('VITE_EMAILJS_SERVICE_ID', ' service_test\n');
     vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', ' template_test ');
     vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', ' public_test ');
@@ -283,10 +283,31 @@ describe('useContactForm', () => {
     fireEvent.change(screen.getByTestId('message-input'), { target: { name: 'message', value: '  A message\nwith spacing' } });
     fireEvent.submit(name.closest('form')!);
     await waitFor(() => expect(screen.getByTestId('success-message')).toBeInTheDocument());
-    expect(emailjs.send).toHaveBeenCalledExactlyOnceWith(
-      'service_test', 'template_test',
-      { from_name: 'Leul', from_email: 'leul@example.com', message: '  A message\nwith spacing' },
-      'public_test',
+    expect(sendContactMessage).toHaveBeenCalledExactlyOnceWith(
+      { name: ' Leul ', email: ' leul@example.com ', message: '  A message\nwith spacing' },
+      { serviceId: 'service_test', templateId: 'template_test', publicKey: 'public_test' },
+      expect.any(AbortSignal),
     );
+  });
+
+  it('aborts an unmounted request and ignores a transport that settles after cancellation', async () => {
+    vi.stubEnv('VITE_EMAILJS_SERVICE_ID', 'service_test');
+    vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', 'template_test');
+    vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', 'public_test');
+    let resolveSend!: () => void;
+    vi.mocked(sendContactMessage).mockReturnValueOnce(new Promise(resolve => { resolveSend = resolve; }));
+    const { unmount } = render(<TestComponent />);
+    const name = screen.getByTestId('name-input');
+    fireEvent.change(name, { target: { name: 'name', value: 'Leul' } });
+    fireEvent.change(screen.getByTestId('email-input'), { target: { name: 'email', value: 'leul@example.com' } });
+    fireEvent.change(screen.getByTestId('message-input'), { target: { name: 'message', value: 'One draft' } });
+    fireEvent.submit(name.closest('form')!);
+    const signal = vi.mocked(sendContactMessage).mock.calls[0][2];
+    expect(signal.aborted).toBe(false);
+    unmount();
+    expect(signal.aborted).toBe(true);
+    await act(async () => resolveSend());
+    expect(console.error).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('success-message')).not.toBeInTheDocument();
   });
 });

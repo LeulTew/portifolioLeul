@@ -5,6 +5,7 @@ import {
   loadCriticalAssets,
   releaseCriticalAssets,
   resetCriticalAssets,
+  type AssetProgress,
   type CriticalAsset,
 } from './criticalAssets';
 
@@ -79,6 +80,41 @@ describe('the manifest', () => {
 });
 
 describe('loadCriticalAssets', () => {
+  it('does not publish completion from underestimated headers before every stream settles', async () => {
+    const seen: AssetProgress[] = [];
+    const fetchImpl = vi.fn(async () => streamed([400, 400], 1)) as unknown as typeof fetch;
+    const result = await loadCriticalAssets(progress => seen.push(progress), { assets, fetchImpl });
+    expect(seen.filter(progress => progress.settled < progress.total).every(progress => progress.ratio < 1)).toBe(true);
+    expect(result.loadedBytes).toBe(1600);
+    expect(result.totalBytes).toBe(1600);
+    expect(result.ratio).toBe(1);
+  });
+
+  it('releases streamed-reader locks after success and failure', async () => {
+    const released = [vi.fn(), vi.fn()];
+    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+      const model = String(url).endsWith('.glb');
+      let read = false;
+      return {
+        ok: true,
+        headers: { get: () => null },
+        body: { getReader: () => ({
+          read: async () => {
+            if (!model) throw new Error('interrupted transfer');
+            if (read) return { done: true };
+            read = true;
+            return { done: false, value: glbChunk(800) };
+          },
+          releaseLock: released[model ? 0 : 1],
+        }) },
+      };
+    }) as unknown as typeof fetch;
+    const result = await loadCriticalAssets(() => {}, { assets, fetchImpl });
+    expect(result.failed).toBe(1);
+    expect(released[0]).toHaveBeenCalledOnce();
+    expect(released[1]).toHaveBeenCalledOnce();
+  });
+
   it('reports progress by bytes arrived, not by files finished', async () => {
     // The whole reason for this module: one 800-byte model and one 200-byte
     // image are not half the load each.
@@ -221,6 +257,29 @@ describe('releaseCriticalAssets', () => {
 });
 
 describe('the shared run', () => {
+  it('does not subscribe already-aborted callers or retain completed subscription listeners', async () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => streamed([64])) as unknown as typeof fetch;
+    try {
+      const aborted = new AbortController();
+      aborted.abort();
+      const abandoned = vi.fn();
+      const active = new AbortController();
+      const remove = vi.spyOn(active.signal, 'removeEventListener');
+      const callback = vi.fn();
+      await Promise.all([
+        loadCriticalAssets(abandoned, { signal: aborted.signal }),
+        loadCriticalAssets(callback, { signal: active.signal }),
+      ]);
+      expect(abandoned).not.toHaveBeenCalled();
+      expect(callback).toHaveBeenLastCalledWith(expect.objectContaining({ ratio: 1 }));
+      expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+    } finally {
+      globalThis.fetch = realFetch;
+      releaseCriticalAssets();
+    }
+  });
+
   it('downloads the manifest once however many callers ask for it', async () => {
     /*
      * Measured in the browser before this existed: strict mode mounts effects

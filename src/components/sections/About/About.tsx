@@ -7,6 +7,7 @@ import { EducationRail } from './EducationRail/EducationRail';
 import { findScrollContainer, scrollContainerBy } from './EducationRail/scrollContainer';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
+import { projectsData } from '@/data/projects';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { BackgroundPixelTransition } from './BackgroundPixelTransition';
 import { TitlePixelTransition } from './TitlePixelTransition';
@@ -673,15 +674,17 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
 
                 <div className={styles.metricsList}>
                   <div className={styles.metricItem}>
-                    <span className={styles.metricValue}>3+</span>
+                    <span className={styles.metricValue}>{projectsData.length}</span>
                     <span className={styles.metricLabel}>
-                      Years Engineering Production Web &amp; Mobile Systems
+                      Projects to Explore Across Web, Mobile, AI &amp; Graphics
                     </span>
                   </div>
                   <div className={styles.metricItem}>
-                    <span className={styles.metricValue}>30+</span>
+                    <span className={styles.metricValue}>
+                      {cvData.skills.reduce((total, category) => total + category.items.length, 0)}
+                    </span>
                     <span className={styles.metricLabel}>
-                      Applications Delivered Across AI/ML, 3D &amp; Cloud
+                      Skills Across {cvData.skills.length} Engineering &amp; Design Categories
                     </span>
                   </div>
                   <div className={styles.metricItem}>

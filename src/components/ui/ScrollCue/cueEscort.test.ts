@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
+import postcss from 'postcss';
 import { CUE_FADE_SCREENS, CUE_REST_SCREENS, CUE_TIP_GAP, cueRail } from '@/lib/motion/heroPin';
 import { centeredHeading } from '@/components/sections/About/headingGeometry';
 
@@ -62,7 +63,9 @@ describe('centered About title and its arrow escort', () => {
   it('preserves the original mint color rather than recoloring it in light mode', () => {
     const css = readFileSync(join(__dirname, 'ScrollCue.module.css'), 'utf-8');
     expect(/\.cue \{([^}]+)\}/.exec(css)?.[1]).toContain('color: #00ffc2');
-    expect(css).not.toContain("[data-theme='light']");
+    const ink: string[] = [];
+    postcss.parse(css).walkDecls('color', declaration => { ink.push(declaration.value); });
+    expect(ink).toEqual(['#00ffc2']);
     expect(css).not.toContain('color: #ffffff');
     expect(/\.current \{([^}]+)\}/.exec(css)?.[1]).toContain('stroke: currentColor');
   });

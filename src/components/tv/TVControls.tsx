@@ -61,8 +61,9 @@ export function TVControls({ enabled, scrollElement }: { enabled: boolean; scrol
 
   if (!scrollElement) return null;
   return createPortal(
-    <div ref={root} className={styles.anchor} tabIndex={-1} data-tv-controls="" data-tv-layout={layout}>
-      <div className={styles.viewport} role="group" aria-label="Television controls">
+    <div ref={root} className={styles.anchor} role="region" aria-label="Television controls"
+      tabIndex={-1} data-tv-controls="" data-tv-layout={layout}>
+      <div className={styles.viewport}>
         {TV_CONTROL_IDS.map(id => {
           const shown = visible && (id === 'power' || layout === 'all');
           const usable = enabled && isTVActionEnabled(id);

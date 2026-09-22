@@ -2,6 +2,10 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { animationClock } from '@/test/animationClock';
 import { About } from './About';
+import { aboutNavigationInset } from './aboutNavigation';
+import { ABOUT_SCREENS } from './statementLayers';
+import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
+import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import {
   BACKGROUND_RISE, BEAT_COOLDOWN_MS, BEAT_REST_MS, HEAD_SETTLE, STATEMENT_ARRIVE,
   STATEMENT_CLEAR, STATEMENT_SWAP, TITLE_WRITE,
@@ -22,6 +26,7 @@ describe('the mounted About chapter plays every movement in order', () => {
   });
 
   beforeEach(() => {
+    resetScrollProgress();
     vi.stubEnv('NODE_ENV', 'development');
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   });
@@ -44,9 +49,9 @@ describe('the mounted About chapter plays every movement in order', () => {
       top: -seq * 1800, bottom: 2700 - seq * 1800, height: 2700,
     }) as DOMRect;
     vi.stubGlobal('innerHeight', 900);
-    const position = async (value: number) => {
+    const position = async (value: number, publish = true) => {
       seq = value;
-      await act(async () => { window.dispatchEvent(new Event('scroll')); });
+      if (publish) await act(async () => { window.dispatchEvent(new Event('scroll')); });
     };
     const wheel = async (deltaY = 3) => {
       const event = new WheelEvent('wheel', { deltaY, cancelable: true });
@@ -71,6 +76,68 @@ describe('the mounted About chapter plays every movement in order', () => {
       else home.removeAttribute('data-hero-handover-settled');
     });
   };
+
+  it.each([560, 900, 2160])('retains natural About handoffs at the authored heading inset at %ipx', height => {
+    expect(aboutNavigationInset(height)).toBe(Math.round(height * 0.08));
+  });
+
+  it.each(['home', 'skills'])('completes navbar About entry from %s without another gesture, but does not advance later beats', async source => {
+    const chapter = mount(true);
+    await handover(true);
+    await act(async () => { publishSectionNavigation(source, { source: 'navbar' }); });
+    await chapter.position(source === 'home' ? -1 : 2);
+    await act(async () => { publishSectionNavigation('about', { source: 'navbar' }); });
+    await chapter.position(aboutNavigationInset(900, 'navbar') / (900 * (ABOUT_SCREENS - 1)));
+    await chapter.run(8000);
+    expect(chapter.overlay).toHaveAttribute('data-active', 'true');
+    expect(chapter.headReady()).toBe(true);
+    expect(chapter.value('one-on')).toBe(1);
+    expect(chapter.value('two-on')).toBe(0);
+    expect(chapter.statements.style.getPropertyValue('--one-copy-events')).toBe('auto');
+    expect(chapter.about).not.toHaveAttribute('data-statements-cleared');
+    expect(chapter.about).not.toHaveAttribute('data-title-settled');
+    expect(chapter.clock.pending).toBe(0);
+
+    await chapter.position(0.95);
+    await chapter.run(3000);
+    expect(chapter.value('one-on')).toBe(1);
+    expect(chapter.value('two-on')).toBe(0);
+    await chapter.wheel();
+    await chapter.run(STATEMENT_SWAP.durationMs + 20);
+    expect(chapter.value('two-on')).toBe(1);
+  });
+
+  it('reveals navbar About after a delayed native intersection, without another wheel or scroll publication', async () => {
+    let notify: IntersectionObserverCallback;
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback) { notify = callback; }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+    const chapter = mount(true);
+    await chapter.position(-1215 / 1800);
+    await act(async () => {
+      notify([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver);
+      publishSectionNavigation('about', { source: 'navbar' });
+    });
+    await handover(true);
+    await chapter.position(530.734130859375 / 1800, false);
+    await act(async () => { setScrollProgress(1858 / 14895, true); });
+    expect(chapter.overlay.style.getPropertyValue('--seq')).toBe('0.000');
+    expect(chapter.overlay).toHaveAttribute('data-active', 'false');
+    await act(async () => {
+      notify([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    });
+    await chapter.run(8000);
+    expect(chapter.overlay).toHaveAttribute('data-active', 'true');
+    expect(chapter.headReady()).toBe(true);
+    expect(chapter.value('one-on')).toBe(1);
+    expect(chapter.value('two-on')).toBe(0);
+    expect(chapter.statements.style.getPropertyValue('--one-copy-events')).toBe('auto');
+    expect(chapter.about).not.toHaveAttribute('data-statements-cleared');
+    expect(chapter.clock.pending).toBe(0);
+  });
 
   it('holds the centered title before docking, without requiring another gesture', async () => {
     const chapter = mount(true);

@@ -23,6 +23,7 @@ vi.mock('@/lib/gateways/animationGateway', async (importOriginal) => ({
   // the scroll helpers -- is used for real by the tree under test.
   ...(await importOriginal<typeof import('@/lib/gateways/animationGateway')>()),
   getPrefersReducedMotion: () => reducedMotion(),
+  usePrefersReducedMotion: () => reducedMotion(),
 }));
 
 /**
@@ -111,13 +112,19 @@ vi.mock('framer-motion', async (importOriginal) => {
 describe('Home Section', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    resetHeroCue();
+    resetScrollProgress();
+    reducedMotion.mockReturnValue(false);
+    document.getElementById('about')?.remove();
   });
+
+  afterEach(() => document.getElementById('about')?.remove());
 
   it('renders name, titles, and bio text', () => {
     render(<Home />);
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.getByText('ARCHITECTING')).toBeInTheDocument();
-    expect(screen.getByText(/Full-Stack Developer/i)).toBeInTheDocument();
+    expect(screen.getByText('Software engineer building web and mobile tools, interactive 3D and applied AI.')).toBeInTheDocument();
   });
 
   it('renders magnetic CTA buttons and handles navigation callbacks', () => {
@@ -139,7 +146,8 @@ describe('Home Section', () => {
 
   it('handles scroll arrow click and keyboard activation', async () => {
     const onNavigate = vi.fn();
-    render(<Home onNavigate={onNavigate} />);
+    render(<Home onNavigate={onNavigate} flat />);
+    layOutRail({ aboutTop: window.innerHeight, plateBottom: window.innerHeight - 180 });
 
     const scrollArrow = screen.getByRole('button', { name: /scroll to about section/i });
     expect(scrollArrow).toBeInTheDocument();
@@ -162,7 +170,8 @@ describe('Home Section', () => {
     mockEl.scrollIntoView = scrollIntoViewMock;
     document.body.appendChild(mockEl);
 
-    render(<Home />);
+    render(<Home flat />);
+    layOutRail({ aboutTop: window.innerHeight, plateBottom: window.innerHeight - 180 });
 
     const scrollArrow = screen.getByRole('button', { name: /scroll to about section/i });
     fireEvent.click(scrollArrow);
@@ -693,7 +702,8 @@ describe('Home choreography', () => {
 
   it('scrolls to about when the cue is activated', async () => {
     const onNavigate = vi.fn();
-    const { getByTestId } = render(<Home onNavigate={onNavigate} />);
+    const { getByTestId } = render(<Home onNavigate={onNavigate} flat />);
+    layOutRail({ aboutTop: window.innerHeight, plateBottom: window.innerHeight - 180 });
 
     fireEvent.click(getByTestId('scroll-cue'));
     expect(onNavigate).toHaveBeenCalledWith('about');

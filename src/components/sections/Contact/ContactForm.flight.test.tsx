@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import emailjs from '@emailjs/browser';
+import { sendContactMessage } from './contactDelivery';
 import gsap from 'gsap';
 import { animationClock } from '@/test/animationClock';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.stubEnv('VITE_EMAILJS_SERVICE_ID', 'service_test');
   vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', 'template_test');
   vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', 'public_test');
-  vi.mocked(emailjs.send).mockReset().mockResolvedValue({ status: 200, text: 'OK' });
+  vi.mocked(sendContactMessage).mockReset().mockResolvedValue(undefined);
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden);
   vi.stubGlobal('innerWidth', 1440);
@@ -73,26 +73,29 @@ function mount(enabled = true) {
 }
 
 it('folds the filled native panel continuously into the authored plane, then flies and restores that same form', async () => {
-  let accept!: (value: { status: number; text: string }) => void;
-  vi.mocked(emailjs.send).mockReturnValueOnce(new Promise(resolve => { accept = resolve; }));
+  let accept!: () => void;
+  vi.mocked(sendContactMessage).mockReturnValueOnce(new Promise(resolve => { accept = resolve; }));
   const { form, stage, sheet, name, message, submit, container } = mount();
   name.focus();
   await submit();
   expect(form).toHaveAttribute('aria-busy', 'true');
+  expect(stage).toHaveFocus();
+  expect(sheet.contains(document.activeElement)).toBe(false);
   expect(stage).toHaveAttribute('data-send-phase', 'ready');
   expect(clock.pending).toBe(0);
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  await act(async () => { accept({ status: 200, text: 'OK' }); });
+  await act(async () => { accept(); });
   expect(stage).toHaveAttribute('data-send-phase', 'folding');
   expect(form).toHaveAttribute('aria-busy', 'false');
   expect(name).toHaveValue('Ada & Leul');
   expect(message).toHaveValue('Clouds & folds?\n<Keep this draft>');
-  expect(screen.getByRole('status')).toHaveTextContent('Message sent successfully!');
+  expect(screen.getByRole('status')).toHaveTextContent('The email service accepted your message.');
   fireEvent.submit(form);
-  expect(emailjs.send).toHaveBeenCalledOnce();
+  expect(sendContactMessage).toHaveBeenCalledOnce();
 
   const wing = sheet.querySelector('[data-send-wing]')!;
   await clock.run(250);
+  expect(stage).toHaveFocus();
   expect(wing.getAttribute('d')).not.toBe('M0 0L0 80L0 160Z');
   expect(wing.getAttribute('d')).not.toBe(CONTACT_PAPER_PLANE.wing);
   expect(Number(gsap.getProperty(sheet, 'scaleX'))).toBeLessThan(1);
@@ -133,22 +136,22 @@ it('folds the filled native panel continuously into the authored plane, then fli
   expect(form).not.toHaveAttribute('aria-hidden');
   expect(form.style.clipPath).toBe('');
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  expect(emailjs.send).toHaveBeenCalledOnce();
+  expect(sendContactMessage).toHaveBeenCalledOnce();
 });
 
 it('never animates invalid or rejected sends and keeps an escaped fallback draft ready for retry', async () => {
-  vi.mocked(emailjs.send).mockRejectedValueOnce(new Error('Offline'));
+  vi.mocked(sendContactMessage).mockRejectedValueOnce(new Error('Offline'));
   const { form, stage, name, message, submit } = mount();
   fireEvent.change(name, { target: { value: ' ' } });
   await submit();
   expect(screen.getByRole('alert')).toHaveTextContent('Name is required');
-  expect(emailjs.send).not.toHaveBeenCalled();
+  expect(sendContactMessage).not.toHaveBeenCalled();
   expect(clock.pending).toBe(0);
   fireEvent.change(name, { target: { value: 'Ada & Leul' } });
   await submit();
   expect(stage).toHaveAttribute('data-send-phase', 'ready');
   expect(clock.pending).toBe(0);
-  expect(screen.getByRole('alert')).toHaveTextContent('Failed to send message');
+  expect(screen.getByRole('alert')).toHaveTextContent("We couldn't confirm submission.");
   expect(name).toHaveValue('Ada & Leul');
   expect(message).toHaveValue('Clouds & folds?\n<Keep this draft>');
   expect(form).not.toHaveAttribute('inert');
@@ -157,7 +160,7 @@ it('never animates invalid or rejected sends and keeps an escaped fallback draft
   expect(fallback.searchParams.get('subject')).toBe('Portfolio message from Ada & Leul');
   await submit();
   expect(stage).toHaveAttribute('data-send-phase', 'folding');
-  expect(emailjs.send).toHaveBeenCalledTimes(2);
+  expect(sendContactMessage).toHaveBeenCalledTimes(2);
 });
 
 it('pauses hidden-tab time and caps the first stalled frame without completing the remaining flight', async () => {
@@ -226,7 +229,7 @@ it.each(['navigation', 'offscreen', 'resize', 'live reduced', 'camera return'] a
     refresh(true);
     expect(stage).toHaveAttribute('data-send-phase', 'sent');
     expect(clock.pending).toBe(0);
-    expect(emailjs.send).toHaveBeenCalledOnce();
+    expect(sendContactMessage).toHaveBeenCalledOnce();
   },
 );
 
@@ -247,23 +250,23 @@ it('allows an explicit new draft to cancel the optional flight without cancellin
   expect(name).toHaveValue('');
   expect(form).not.toHaveAttribute('inert');
   expect(clock.pending).toBe(0);
-  expect(emailjs.send).toHaveBeenCalledOnce();
+  expect(sendContactMessage).toHaveBeenCalledOnce();
 });
 
 it.each(['pending', 'folding'] as const)('cleans up an unmount while %s and never starts a late flight', async when => {
-  let accept!: (value: { status: number; text: string }) => void;
-  vi.mocked(emailjs.send).mockReturnValueOnce(new Promise(resolve => { accept = resolve; }));
+  let accept!: () => void;
+  vi.mocked(sendContactMessage).mockReturnValueOnce(new Promise(resolve => { accept = resolve; }));
   const { sheet, submit, unmount } = mount();
   await submit();
   if (when === 'folding') {
-    await act(async () => { accept({ status: 200, text: 'OK' }); });
+    await act(async () => { accept(); });
     await clock.run(300);
   }
   unmount();
-  if (when === 'pending') await act(async () => { accept({ status: 200, text: 'OK' }); });
+  if (when === 'pending') await act(async () => { accept(); });
   await clock.frame(10000);
   expect(clock.pending).toBe(0);
   expect(sheet.style.transform).toBe('');
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  expect(emailjs.send).toHaveBeenCalledOnce();
+  expect(sendContactMessage).toHaveBeenCalledOnce();
 });

@@ -68,7 +68,9 @@ afterEach(() => {
 
 describe('the original-avatar encounter overlay', () => {
   it('uses a wordless decorative cue while retaining the accessible action name', () => {
-    const { target } = setup();
+    const { target, root } = setup();
+    expect(screen.getByRole('region', { name: '3D scene' })).toBe(root);
+    expect(target.closest('[aria-hidden="true"]')).toBeNull();
     expect(target).toHaveAccessibleName('Meet Leul in 3D');
     expect(target.textContent).toBe('');
     expect(target.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
