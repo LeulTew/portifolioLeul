@@ -3,13 +3,15 @@ import { useFrame, useLoader } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { registerScene, setSceneReady } from '@/lib/render/sceneReady';
+import { PrefetchedModel } from './PrefetchedModel';
 
 /**
  * Reports when the world is genuinely up.
  *
  * It asks for every resource the opening shot needs, so it suspends until the
- * last of them has been decoded -- not merely downloaded. drei memoises loads
- * by URL, so asking again costs a map lookup, not a second fetch.
+ * last of them has been decoded -- not merely downloaded. Each probe uses the
+ * scene's individual URL cache key. An array key is a different R3F resource:
+ * it parses every model again even when FileLoader already has its bytes.
  *
  * Then it waits one drawn frame. Materials compile the first time they are
  * rendered, and `<Preload all />` does that compiling up front, so a frame
@@ -29,10 +31,6 @@ export function SceneReady({ models, textures }: SceneReadyProps) {
   // waits for it rather than opening on an empty sea.
   registerScene();
 
-  // Suspends here until each one has been parsed.
-  useGLTF(models as string[], false);
-  useLoader(THREE.TextureLoader, textures as string[]);
-
   const announced = useRef(false);
 
   useEffect(() => {
@@ -45,5 +43,18 @@ export function SceneReady({ models, textures }: SceneReadyProps) {
     setSceneReady();
   });
 
+  return <>
+    {models.map(url => <PrefetchedModel key={url} url={url}><ModelReady url={url} /></PrefetchedModel>)}
+    {textures.map(url => <TextureReady key={url} url={url} />)}
+  </>;
+}
+
+function ModelReady({ url }: { url: string }) {
+  useGLTF(url, false);
+  return null;
+}
+
+function TextureReady({ url }: { url: string }) {
+  useLoader(THREE.TextureLoader, url);
   return null;
 }

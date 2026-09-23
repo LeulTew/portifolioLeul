@@ -8,7 +8,7 @@ const css = postcss.parse(readFileSync(resolve(
 ), 'utf8'));
 const compact = css.nodes.find(node => node.type === 'atrule' &&
   node.name === 'container' && node.params === '(max-height: 320px)') as Container;
-const reader = ".stage[data-staged='true'] .display[data-details='true']";
+const reader = ".stage[data-staged='true'] .display[data-compact-toolbar='true']";
 
 function rule(selector: string, container: Container = css): Rule {
   const node = container.nodes?.find(item => item.type === 'rule' && item.selector === selector);
@@ -23,7 +23,7 @@ function value(selector: string, property: string, container: Container = compac
   return declaration.value;
 }
 
-describe('compact TV Details reading budget', () => {
+describe('compact TV reading budget', () => {
   it('responds to aperture height and consolidates the same header and escape control into one row', () => {
     expect(compact).toBeDefined();
     expect(value(reader, 'grid-template-rows')).toBe('48px minmax(0, 1fr)');

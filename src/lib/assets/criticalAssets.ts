@@ -19,12 +19,15 @@ import { cacheTextureBytes } from './texturePrefetch';
  *
  * Fetching the manifest here instead gives a percentage that is true: bytes
  * arrived over bytes expected, monotonic, and complete only when every file is
- * actually in hand. The scene's own loaders then find the models already in
- * three's cache and resolve without touching the network again.
+ * actually in hand. Completed model buffers are handed to Three's cache.
+ * Requests still use an awaited native stream: r161's FileLoader does not
+ * forward midstream reader failures or release its stalled in-flight entry.
+ * Only the model consumers wait for their own prefetch to settle. Cameras,
+ * layout, textures and unrelated models do not wait for the whole manifest.
  */
 
 /**
- * `model` is parsed by GLTFLoader and handed to it through three's cache.
+ * `model` hands its complete, validated buffer to GLTFLoader through Three's cache.
  * `texture` is decoded into ImageLoader's cache for three's TextureLoader.
  * `media` is neither: it is fetched only so the fill accounts for it and so the
  * browser has it in the HTTP cache by the time an element asks for it.
@@ -116,8 +119,8 @@ export interface LoadCriticalAssetsOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
-/** 'glTF', the four bytes every binary glTF file starts with. */
-const GLB_MAGIC = 0x46546c67;
+/** Cancel the optional transfer before App's independent 45-second failsafe. */
+export const MODEL_PREFETCH_TIMEOUT_MS = 30_000;
 
 /**
  * Rejects a response that is not the asset it was asked for.
@@ -133,10 +136,9 @@ function looksLikeHtml(contentType: string | null | undefined): boolean {
   return typeof contentType === 'string' && contentType.includes('text/html');
 }
 
-/** True when `buffer` opens with the binary glTF magic number. */
+/** Reject the HTML fallback some static hosts return with a successful status. */
 export function isBinaryGltf(buffer: ArrayBuffer): boolean {
-  if (buffer.byteLength < 4) return false;
-  return new DataView(buffer).getUint32(0, true) === GLB_MAGIC;
+  return buffer.byteLength >= 4 && new DataView(buffer).getUint32(0, true) === 0x46546c67;
 }
 
 function emptyProgress(assets: readonly CriticalAsset[]): AssetProgress {
@@ -154,6 +156,80 @@ interface SharedRun {
   promise: Promise<AssetProgress>;
   readonly subscribers: Set<(progress: AssetProgress) => void>;
   latest: AssetProgress;
+  readModel(url: string): void;
+  modelReady(url: string): void;
+  releaseModels(assets: readonly CriticalAsset[]): void;
+}
+
+interface ModelTransfer {
+  promise: Promise<void>;
+  settle(): void;
+  settled: boolean;
+  decoded: boolean;
+  releaseRequested: boolean;
+}
+
+/**
+ * One isolated native run and its model handoffs. The app shares a single
+ * instance; an explicit manifest can exercise the same lifecycle independently.
+ */
+export function createCriticalAssetRun(options: LoadCriticalAssetsOptions = {}): SharedRun {
+  const assets = options.assets ?? getCriticalAssets();
+  const models = new Map<string, ModelTransfer>();
+  let runError: unknown;
+  for (const asset of assets) {
+    if (asset.kind !== 'model') continue;
+    let resolve!: () => void;
+    const promise = new Promise<void>(done => { resolve = done; });
+    const transfer: ModelTransfer = {
+      promise,
+      settle() {
+        transfer.settled = true;
+        resolve();
+      },
+      settled: false,
+      decoded: false,
+      releaseRequested: false,
+    };
+    models.set(asset.url, transfer);
+  }
+  const run: SharedRun = {
+    subscribers: new Set(),
+    latest: emptyProgress(assets),
+    promise: Promise.resolve(emptyProgress(assets)),
+    readModel(url) {
+      if (runError) throw runError;
+      const transfer = models.get(url);
+      if (transfer && !transfer.settled) throw transfer.promise;
+    },
+    modelReady(url) {
+      const transfer = models.get(url);
+      if (!transfer) return;
+      transfer.decoded = true;
+      if (transfer.releaseRequested) THREE.Cache.remove(url);
+    },
+    releaseModels(requested) {
+      for (const asset of requested) {
+        if (asset.kind !== 'model') continue;
+        const transfer = models.get(asset.url);
+        if (transfer && !transfer.decoded) transfer.releaseRequested = true;
+        else THREE.Cache.remove(asset.url);
+      }
+    },
+  };
+  run.promise = runLoad(progress => {
+    run.latest = progress;
+    for (const subscriber of run.subscribers) subscriber(progress);
+  }, { ...options, assets }, asset => models.get(asset.url)?.settle());
+  // No transport or an empty manifest takes the early-return path in runLoad.
+  const settleRemaining = () => {
+    for (const transfer of models.values()) transfer.settle();
+  };
+  void run.promise.then(settleRemaining, error => {
+    runError = error;
+    settleRemaining();
+  });
+  return run;
 }
 
 /**
@@ -174,6 +250,18 @@ export function resetCriticalAssets(): void {
   shared = null;
 }
 
+/** Suspend only a known model consumer, never its camera or HTML ancestors. */
+export function readCriticalModel(url: string): void {
+  if (!getCriticalModels().includes(url)) return;
+  shared ??= createCriticalAssetRun();
+  shared.readModel(url);
+}
+
+/** A committed child has resolved useGLTF's per-URL parsed cache entry. */
+export function markCriticalModelReady(url: string): void {
+  shared?.modelReady(url);
+}
+
 export function loadCriticalAssets(
   onProgress: (progress: AssetProgress) => void,
   options: LoadCriticalAssetsOptions = {}
@@ -183,26 +271,7 @@ export function loadCriticalAssets(
   // A caller supplying its own manifest or transport wants its own run.
   if (assets || fetchImpl) return runLoad(onProgress, options);
 
-  if (!shared) {
-    const manifest = getCriticalAssets();
-    /*
-     * Built before the load starts, and deliberately so: runLoad publishes its
-     * opening state synchronously, before it has returned anything to assign.
-     * Referring to the record from inside that callback reaches it before it
-     * exists.
-     */
-    const run: SharedRun = {
-      subscribers: new Set(),
-      latest: emptyProgress(manifest),
-      promise: Promise.resolve(emptyProgress(manifest)),
-    };
-    shared = run;
-
-    run.promise = runLoad((progress) => {
-      run.latest = progress;
-      for (const subscriber of run.subscribers) subscriber(progress);
-    }, { assets: manifest });
-  }
+  shared ??= createCriticalAssetRun();
 
   const active = shared;
   const unsubscribe = () => {
@@ -228,20 +297,26 @@ export function loadCriticalAssets(
  */
 async function runLoad(
   onProgress: (progress: AssetProgress) => void,
-  { assets = getCriticalAssets(), signal, fetchImpl }: LoadCriticalAssetsOptions = {}
+  { assets = getCriticalAssets(), signal, fetchImpl }: LoadCriticalAssetsOptions = {},
+  onAssetSettled?: (asset: CriticalAsset) => void,
 ): Promise<AssetProgress> {
   const request = fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined);
 
-  if (!request || assets.length === 0) {
+  if (assets.length === 0) {
     const nothing = { ...emptyProgress(assets), ratio: 1, settled: assets.length };
     onProgress(nothing);
     return nothing;
   }
 
-  // Seeded so the models are handed straight to GLTFLoader rather than being
-  // asked for a second time. Without this the prefetch only warms the HTTP
-  // cache, and a static host that answers with a revalidation instead of a
-  // stored response makes the visitor wait for a round trip per model.
+  if (!request) {
+    console.warn('Critical asset prefetch is unavailable: fetch is not supported. The scene loaders may retry.');
+    const unavailable = { ...emptyProgress(assets), ratio: 1, settled: assets.length, failed: assets.length };
+    onProgress(unavailable);
+    return unavailable;
+  }
+
+  // A model that finishes prefetching before GLTFLoader asks for it can be
+  // reused without another HTTP-cache revalidation.
   THREE.Cache.enabled = true;
 
   const expected = assets.map((asset) => asset.bytes);
@@ -274,8 +349,16 @@ async function runLoad(
 
   await Promise.all(
     assets.map(async (asset, index) => {
+      const controller = asset.kind === 'model' ? new AbortController() : null;
+      const abort = () => controller?.abort(signal?.reason);
+      if (signal?.aborted) abort();
+      else if (controller) signal?.addEventListener('abort', abort, { once: true });
+      const timeout = controller ? setTimeout(() => {
+        controller.abort(new DOMException(`Model prefetch timed out: ${asset.url}`, 'TimeoutError'));
+      }, MODEL_PREFETCH_TIMEOUT_MS) : undefined;
+      const requestSignal = controller?.signal ?? signal;
       try {
-        const response = await request(asset.url, { signal });
+        const response = await request(asset.url, { signal: requestSignal });
         if (!response.ok) throw new Error(`${response.status} for ${asset.url}`);
 
         const contentType = response.headers?.get?.('content-type') ?? null;
@@ -307,6 +390,7 @@ async function runLoad(
             reader.releaseLock?.();
           }
 
+          if (requestSignal?.aborted) throw requestSignal.reason;
           if (bytes && asset.kind === 'model') {
             const buffer = bytes.finish();
             if (!isBinaryGltf(buffer)) {
@@ -320,6 +404,7 @@ async function runLoad(
         } else {
           // No streaming body: still correct, just one step instead of many.
           const buffer = await response.arrayBuffer();
+          if (requestSignal?.aborted) throw requestSignal.reason;
           received[index] = buffer.byteLength;
           expected[index] = buffer.byteLength;
           if (asset.kind === 'model') {
@@ -331,13 +416,17 @@ async function runLoad(
             await cacheTextureBytes(asset.url, buffer, contentType, signal);
           }
         }
-      } catch {
+      } catch (error) {
         // Counted as arrived so the fill completes; the scene's own loader
         // will try again and surface any real failure through Suspense.
+        if (!signal?.aborted) console.warn(`Critical asset prefetch failed: ${asset.url}. The scene loader may retry.`, error);
         failed += 1;
         received[index] = expected[index];
       } finally {
+        if (timeout !== undefined) clearTimeout(timeout);
+        if (controller) signal?.removeEventListener('abort', abort);
         done[index] = true;
+        onAssetSettled?.(asset);
         publish();
       }
     })
@@ -360,13 +449,19 @@ async function runLoad(
 /**
  * Drops the prefetched model buffers.
  *
- * Call once the scene is up: by then GLTFLoader has parsed each one into
- * geometry and textures, and holding the source bytes as well is several
- * megabytes retained for nothing -- on exactly the machines this work is for.
+ * An early request is remembered, not applied until the model's gated subtree
+ * commits with a parsed GLTF. This also covers a fast prefetch completing before
+ * Canvas registers; App's "no scene yet" readiness must not discard those bytes.
  */
 export function releaseCriticalAssets(
   assets: readonly CriticalAsset[] = getCriticalAssets()
 ): void {
+  if (shared) {
+    // App can request release before Canvas registers or during a suspended
+    // commit. Keep each raw buffer until its own parsed consumer is committed.
+    shared.releaseModels(assets);
+    return;
+  }
   for (const asset of assets) {
     if (asset.kind === 'model') THREE.Cache.remove(asset.url);
   }

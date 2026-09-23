@@ -90,3 +90,19 @@
   height: 100%;
   display: block;
 }
+
+.staticFill {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  transform-origin: bottom;
+}
+
+.overlayLight .staticFill,
+:global([data-theme='light']) .staticFill {
+  background: #0f172a;
+}
+
+.overlay[data-reduced-motion] .logoMask {
+  will-change: auto;
+}

@@ -4,6 +4,7 @@ import { motion, AnimatePresence, PanInfo, LayoutGroup } from "framer-motion";
 import { ChevronLeft, ChevronRight, Github, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MagneticButton } from "./MagneticButton";
+import { IndexPicker } from "./IndexPicker";
 
 export type FocusRailItem = {
   id: string | number;
@@ -24,6 +25,7 @@ interface FocusRailProps {
   className?: string;
   isFocused?: boolean;
   theme?: string;
+  itemPickerLabel?: string;
 }
 
 /**
@@ -88,6 +90,7 @@ export function FocusRail({
   className,
   isFocused = true,
   theme,
+  itemPickerLabel,
 }: FocusRailProps) {
   const [active, setActive] = React.useState(initialIndex);
   const [isHovering, setIsHovering] = React.useState(false);
@@ -120,6 +123,9 @@ export function FocusRail({
   // --- MOUSE WHEEL / TRACKPAD LOGIC ---
   const onWheel = React.useCallback(
     (e: React.WheelEvent) => {
+      const focused = e.currentTarget.ownerDocument.activeElement;
+      if (e.target instanceof HTMLSelectElement ||
+          (focused instanceof HTMLSelectElement && e.currentTarget.contains(focused))) return;
       const now = Date.now();
       // Debounce: prevent rapid firing from inertia scrolling (400ms lockout)
       if (now - lastWheelTime.current < 400) return;
@@ -150,6 +156,7 @@ export function FocusRail({
 
   // Keyboard navigation
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.target instanceof HTMLSelectElement) return;
     if (e.key === "ArrowLeft") handlePrev();
     if (e.key === "ArrowRight") handleNext();
   };
@@ -403,14 +410,15 @@ export function FocusRail({
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <div className="min-w-[70px] flex flex-col items-center justify-center leading-none">
+              {itemPickerLabel ? <IndexPicker items={items} index={activeIndex}
+                label={itemPickerLabel} onSelect={setActive} /> : <div className="min-w-[70px] flex flex-col items-center justify-center leading-none">
                 <span className="text-xl font-bold text-emerald-400 font-mono">
                   {String(activeIndex + 1).padStart(2, '0')}
                 </span>
                 <span className={cn("text-[11px] font-medium", isLight ? "text-neutral-800" : "text-neutral-600")}>
                   /{String(count).padStart(2, '0')}
                 </span>
-              </div>
+              </div>}
               <button
                 onClick={handleNext}
                 aria-label="Next project"

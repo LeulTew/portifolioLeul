@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as THREE from 'three';
+import { StrictMode, useEffect } from 'react';
+import { act, renderHook } from '@testing-library/react';
 import {
   CRITICAL_ASSETS,
+  createCriticalAssetRun,
   loadCriticalAssets,
+  markCriticalModelReady,
+  readCriticalModel,
   releaseCriticalAssets,
   resetCriticalAssets,
   type AssetProgress,
@@ -27,6 +32,7 @@ function streamed(chunks: number[], contentLength?: number, contentType = 'model
   let index = 0;
   return {
     ok: true,
+    status: 200,
     headers: {
       get: (name: string) => {
         const key = name.toLowerCase();
@@ -54,8 +60,10 @@ function streamed(chunks: number[], contentLength?: number, contentType = 'model
 afterEach(() => {
   resetCriticalAssets();
   releaseCriticalAssets(assets);
+  releaseCriticalAssets(CRITICAL_ASSETS);
   THREE.Cache.remove('/models/big.glb');
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('the manifest', () => {
@@ -240,6 +248,14 @@ describe('loadCriticalAssets', () => {
     const result = await loadCriticalAssets(() => {}, { assets: [] });
     expect(result.ratio).toBe(1);
   });
+
+  it('settles an unavailable transport explicitly as failed, not downloaded', async () => {
+    vi.stubGlobal('fetch', undefined);
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await loadCriticalAssets(() => {}, { assets });
+    expect(result).toMatchObject({ ratio: 1, settled: assets.length, failed: assets.length, loadedBytes: 0 });
+    expect(warning).toHaveBeenCalledOnce();
+  });
 });
 
 describe('releaseCriticalAssets', () => {
@@ -257,6 +273,58 @@ describe('releaseCriticalAssets', () => {
 });
 
 describe('the shared run', () => {
+  it('shares the gate-started manifest with the loader and honours an early cache-release request', async () => {
+    const fetch = vi.fn(async () => streamed([64]));
+    vi.stubGlobal('fetch', fetch);
+    const url = CRITICAL_ASSETS.find(asset => asset.kind === 'model')!.url;
+    let pending: unknown;
+    try { readCriticalModel(url); } catch (value) { pending = value; }
+    expect(pending).toBeInstanceOf(Promise);
+    releaseCriticalAssets();
+    const controller = new AbortController();
+    const progress = vi.fn();
+    const loaded = loadCriticalAssets(progress, { signal: controller.signal });
+    controller.abort();
+    await loaded;
+    await pending;
+    expect(fetch).toHaveBeenCalledTimes(CRITICAL_ASSETS.length);
+    expect(() => readCriticalModel(url)).not.toThrow();
+    expect(THREE.Cache.get(url)).toBeInstanceOf(ArrayBuffer);
+    markCriticalModelReady(url);
+    expect(THREE.Cache.get(url)).toBeUndefined();
+    expect(progress).not.toHaveBeenLastCalledWith(expect.objectContaining({ ratio: 1 }));
+  });
+
+  it('releases model gates after an unavailable transport reports its explicit failures', async () => {
+    vi.stubGlobal('fetch', undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const run = createCriticalAssetRun({ assets });
+    expect((await run.promise).failed).toBe(assets.length);
+    expect(() => run.readModel('/models/big.glb')).not.toThrow();
+    expect(THREE.Cache.get('/models/big.glb')).toBeUndefined();
+  });
+
+  it('shares native prefetch across StrictMode without entering FileLoader in-flight state', async () => {
+    const fetch = vi.fn(async () => streamed([64]));
+    vi.stubGlobal('fetch', fetch);
+    const fileLoad = vi.spyOn(THREE.FileLoader.prototype, 'load');
+    let loaded!: Promise<AssetProgress>;
+    const activeProgress = vi.fn();
+    const view = renderHook(() => {
+      useEffect(() => {
+        const controller = new AbortController();
+        loaded = loadCriticalAssets(activeProgress, { signal: controller.signal });
+        return () => controller.abort();
+      }, []);
+    }, { wrapper: StrictMode });
+    await act(async () => { await loaded; });
+    expect(fetch).toHaveBeenCalledTimes(CRITICAL_ASSETS.length);
+    expect(fileLoad).not.toHaveBeenCalled();
+    expect(activeProgress).toHaveBeenLastCalledWith(expect.objectContaining({ ratio: 1, failed: 0 }));
+    view.unmount();
+    releaseCriticalAssets();
+  });
+
   it('does not subscribe already-aborted callers or retain completed subscription listeners', async () => {
     const realFetch = globalThis.fetch;
     globalThis.fetch = (async () => streamed([64])) as unknown as typeof fetch;

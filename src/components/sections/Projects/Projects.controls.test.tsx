@@ -48,7 +48,11 @@ describe('responsive project content selection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     const display = screen.getByRole('tabpanel');
     const initial = current();
-    for (const target of [display, display.querySelector('header')!, display.querySelector('footer')!]) {
+    for (const target of [
+      display,
+      display.querySelector('[data-projects-header]')!,
+      display.querySelector('[data-projects-footer]')!,
+    ]) {
       const event = new WheelEvent('wheel', { deltaY: 800, bubbles: true, cancelable: true });
       fireEvent(target, event);
       expect(event.defaultPrevented).toBe(false);

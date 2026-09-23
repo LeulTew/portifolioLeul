@@ -86,5 +86,8 @@
     "rollup": "4.63.4",
     "vite": "$vite",
     "ws@8": "8.21.0"
+  },
+  "patchedDependencies": {
+    "three@0.161.0": "patches/three@0.161.0.patch"
   }
 }

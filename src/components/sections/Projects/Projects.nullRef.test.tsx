@@ -65,6 +65,7 @@ vi.mock('lucide-react', () => ({
   Grid3x3: () => <svg />,
   ChevronLeft: () => <svg />,
   ChevronRight: () => <svg />,
+  ChevronDown: () => <svg />,
   ArrowUpRight: () => <svg />,
   Github: () => <svg />,
 }));

@@ -1,0 +1,39 @@
+diff --git a/build/three.cjs b/build/three.cjs
+index 36633728b335f9b934386cefde0ced69b3087ad1..b19f68d44cc41d700e34e31821d3c430a1d9290c 100644
+--- a/build/three.cjs
++++ b/build/three.cjs
+@@ -43836,7 +43836,7 @@ class FileLoader extends Loader {
+ 
+ 									}
+ 
+-								} );
++								} ).catch( error => controller.error( error ) );
+ 
+ 							}
+ 
+diff --git a/build/three.module.js b/build/three.module.js
+index d1ca4e03a9828b6210bdbb12d4725985746d4bb7..4b40c64f0d0db84c6958da43bf3e71c589e07f79 100644
+--- a/build/three.module.js
++++ b/build/three.module.js
+@@ -43834,7 +43834,7 @@ class FileLoader extends Loader {
+ 
+ 									}
+ 
+-								} );
++								} ).catch( error => controller.error( error ) );
+ 
+ 							}
+ 
+diff --git a/src/loaders/FileLoader.js b/src/loaders/FileLoader.js
+index 1e528eb11fb19bf26cd6b522e3aa476009acf25a..225e4cc3cf72b96751c68cbda84893e1e8f837ae 100644
+--- a/src/loaders/FileLoader.js
++++ b/src/loaders/FileLoader.js
+@@ -148,7 +148,7 @@ class FileLoader extends Loader {
+ 
+ 									}
+ 
+-								} );
++								} ).catch( error => controller.error( error ) );
+ 
+ 							}
+ 

@@ -138,9 +138,10 @@
 .displayHeader {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
-  padding-bottom: 2.1%;
+  min-height: 48px;
+  padding-bottom: 0;
   border-bottom: 1px solid var(--project-rule);
 }
 
@@ -152,12 +153,10 @@
 }
 
 .position {
+  --index-accent: var(--project-accent);
+  --index-muted: var(--project-muted);
   font-size: clamp(12px, 2.3cqw, 24px);
   font-variant-numeric: tabular-nums;
-}
-
-.position span {
-  color: var(--project-muted);
 }
 
 .work {
@@ -454,21 +453,21 @@
 }
 
 @container (max-height: 320px) {
-  .stage[data-staged='true'] .display[data-details='true'] {
+  .stage[data-staged='true'] .display[data-compact-toolbar='true'] {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 48px minmax(0, 1fr);
     gap: 6px 8px;
     padding: 4px 12px 6px;
   }
 
-  .stage[data-staged='true'] .display[data-details='true'] .displayHeader {
+  .stage[data-staged='true'] .display[data-compact-toolbar='true'] .displayHeader {
     grid-area: 1 / 1;
     align-items: center;
     padding: 0;
     border: 0;
   }
 
-  .stage[data-staged='true'] .display[data-details='true'] .displayHeader h2 {
+  .stage[data-staged='true'] .display[data-compact-toolbar='true'] .displayHeader h2 {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -477,25 +476,25 @@
     white-space: nowrap;
   }
 
-  .stage[data-staged='true'] .display[data-details='true'] .displayFooter {
+  .stage[data-staged='true'] .display[data-compact-toolbar='true'] .displayFooter {
     grid-area: 1 / 2;
     padding: 0;
     border: 0;
   }
 
-  .stage[data-staged='true'] .display[data-details='true'] .work {
+  .stage[data-staged='true'] .display[data-compact-toolbar='true'] .work {
     grid-area: 2 / 1 / 3 / -1;
     padding: 0;
     border-top: 1px solid var(--project-rule);
   }
 
-  .stage[data-staged='true'] .display[data-details='true'] .copy {
+  .stage[data-staged='true'] .display[data-compact-toolbar='true'] .copy {
     padding-top: 4px;
     padding-right: 8px;
     scrollbar-gutter: stable;
   }
 
-  .stage[data-staged='true'] .display[data-details='true'] .technology {
+  .stage[data-staged='true'] .display[data-compact-toolbar='true'] .technology {
     font-size: 14px;
   }
 }

@@ -54,6 +54,32 @@ guarantee. JavaScript, fonts and other images also contribute to startup.
 Measure the production build with normal caching, a cold HTTP cache and explicit
 CPU/network profiles; distinguish those simulations from physical low-end hardware.
 
+Scene readiness reads the same per-model parsed cache entries used by the
+visible objects instead of parsing a second batch of models. HTML and scroll
+controllers remain independent of that readiness check. Model consumers wait
+for their shared native prefetch to settle before entering the parsed-resource
+cache; the rest of the scene and the page are not held behind a download gate.
+Cached bytes remain available until the parsed consumer commits. A failed or
+timed-out prefetch releases that model into the ordinary loader retry.
+Byte-progress prefetch keeps its awaited native stream reader. Failed
+optional prefetches settle visibly and remain recoverable through the ordinary
+scene loader; they are not treated as successful scene readiness.
+
+`patches/three@0.161.0.patch` also fixes the pinned upstream FileLoader's missing
+body-read rejection forwarding. Without it, an interrupted HTTP-200 response
+could leave every subscriber and subsequent retry waiting on the same failed
+URL. Bun applies the three-line source/ES-module/CommonJS patch during frozen
+installation. Real-HTTP tests check both published module formats, shared
+subscribers and successful same-URL retry. Reassess this patch when upgrading
+Three; it changes transport error propagation, not rendering or model data.
+
+The loading mask reuses an integer-sized canvas buffer rather than resetting
+its width and height on each paint. Its wave is capped at 60 paints per second,
+uses elapsed time, and pauses when the document is hidden. Reduced motion keeps
+the same byte-progress signal as a static fill, with a short opacity exit instead
+of a wave or zoom. Completion stops the drawing loop even when the loader is
+used without a parent unmount callback.
+
 ### Island outline and scene edge continuation
 
 The source terrain is a tilted 60-unit heightfield tile. `bun run bake:island`
@@ -182,6 +208,12 @@ next keys invoke the reader's original filtered selection callbacks; Details,
 categories, keyboard browsing and project selection stay intact. Conventional
 project paging remains the fallback when physical 48px targets cannot fit or
 the flat reader is used.
+
+The project counter is also a native 48px selection control. It jumps directly
+to any title in the current category, supports the browser's keyboard type-ahead,
+and keeps the selected value synchronized with physical paging. The flat reader
+offers the same control. Its native arrow keys and wheel input do not also page
+the surrounding reader, and choosing a title returns expanded Details to Preview.
 
 Power-off in Projects uses its existing back-to-scene retreat, then leaves
 dark glass. Entering Projects always makes the reader available, even when

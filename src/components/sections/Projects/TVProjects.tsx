@@ -5,6 +5,7 @@ import {
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight, ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { ControlButton } from '@/components/ui/ControlButton';
+import { IndexPicker } from '@/components/ui/IndexPicker';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { useTVScreenReady } from '@/lib/projects/projectsScene';
 import { useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
@@ -105,6 +106,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     event.currentTarget.querySelector<HTMLButtonElement>(`#project-category-${next}`)?.focus({ preventScroll: true });
   };
   const readerKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLSelectElement) return;
     if (event.key === 'Escape' && details) {
       setDetails(false);
       detailsButton.current?.focus({ preventScroll: true });
@@ -123,7 +125,9 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     scrollContainerBy(scroller, event.deltaY * unit);
   }, [staged, visible]);
   const browseWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (!interactive || details) return;
+    const focused = event.currentTarget.ownerDocument.activeElement;
+    if (!interactive || details || event.target instanceof HTMLSelectElement ||
+        (focused instanceof HTMLSelectElement && event.currentTarget.contains(focused))) return;
     const direction = paging.current?.take(event, window.innerHeight);
     if (direction) selectProject(direction);
   };
@@ -173,6 +177,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     <div
       ref={stage} className={styles.stage} data-staged={staged} data-phase={phase}
       data-testid="projects-stage" data-visible={staged && visible ? 'true' : undefined}
+      role={staged ? 'region' : undefined} aria-label={staged ? 'Project reader' : undefined}
       aria-hidden={staged && !visible ? true : undefined} onWheel={forwardWheel}
     >
       <div ref={surface} className={styles.surface} data-projects-surface="">
@@ -196,14 +201,22 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
           ref={display} id="project-display" className={styles.display} role="tabpanel"
           aria-labelledby={`project-category-${activeTab}`} tabIndex={interactive ? 0 : -1}
           aria-hidden={!interactive ? true : undefined} onKeyDown={readerKeyboard}
-          data-details={details} data-projects-display="" onWheel={browseWheel}
+          onFocusCapture={event => {
+            if (event.target instanceof HTMLSelectElement) paging.current?.reset();
+          }}
+          data-details={details} data-compact-toolbar={details || hardwarePaging}
+          data-projects-display="" onWheel={browseWheel}
         >
-          <header className={styles.displayHeader}>
+          <div className={styles.displayHeader} data-projects-header="">
             <h2 id="projects-heading">Projects</h2>
-            <span className={styles.position} aria-label={`${index + 1} of ${filtered.length} projects`}>
-              {String(index + 1).padStart(2, '0')} <span>/ {String(filtered.length).padStart(2, '0')}</span>
-            </span>
-          </header>
+            <IndexPicker items={filtered} index={index} label="Choose a project"
+              disabled={!interactive} className={styles.position}
+              onSelect={selected => {
+                setSelection(previous => ({ ...previous, index: selected }));
+                setDetails(false);
+                paging.current?.reset();
+              }} />
+          </div>
           {project ? (
             <div ref={broadcast} className={styles.work} data-project-id={project.id}>
               <div className={styles.broadcastSignal} data-broadcast-signal="" aria-hidden="true" />
@@ -245,7 +258,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               </div>
             </div>
           ) : <p className={styles.empty}>No projects in this category. Choose All to browse the work.</p>}
-          <footer className={styles.displayFooter}>
+          <div className={styles.displayFooter} data-projects-footer="">
             <ControlButton
               ref={detailsButton} disabled={!interactive || !project}
               aria-expanded={details} aria-controls="project-display"
@@ -265,7 +278,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                 Next <ArrowRight size={19} aria-hidden="true" />
               </ControlButton>
             </div>}
-          </footer>
+          </div>
           <div className={styles.crtShutter} data-crt-shutter="" aria-hidden="true" />
           <div className={styles.crtBeam} data-crt-beam="" aria-hidden="true" />
           <div className={styles.crtRaster} data-crt-raster="" aria-hidden="true" />

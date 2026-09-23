@@ -207,6 +207,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
             theme={theme}
             isFocused={!isContactInView}
             autoPlay={false}
+            itemPickerLabel="Choose a project"
             loop={true} 
             className="bg-transparent"
           />

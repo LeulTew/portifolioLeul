@@ -68,7 +68,8 @@ export function TVModel({ clips = 2, ...props }: TVModelProps) {
           <TVHardware powered={state.source !== 'off'} />
           <mesh name="tv-display-signal">
             <planeGeometry args={[TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT]} />
-            <primitive object={screen} attach="material" dispose={null} />
+            {/* Primitives are not auto-disposed; null would overwrite our owned disposer. */}
+            <primitive object={screen} attach="material" />
           </mesh>
         </group>
       </group>

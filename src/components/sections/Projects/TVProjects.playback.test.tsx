@@ -119,6 +119,8 @@ describe('the completed-beat TV chapter', () => {
     await clock.run(CRT_POWER_ON_MS);
     act(() => setTVExposure(true, 'all'));
     expect(phase()).toBe('reading');
+    expect(stage()).toHaveRole('region');
+    expect(stage()).toHaveAccessibleName('Project reader');
     const first = document.querySelector('[data-project-id]')?.getAttribute('data-project-id');
     expect(screen.queryByRole('button', { name: 'Next project' })).not.toBeInTheDocument();
     act(() => { expect(activateTV('next')).toBe(true); });
@@ -459,8 +461,8 @@ describe('the completed-beat TV chapter', () => {
       const display = screen.getByRole('tabpanel');
       const target = () => region === 'display' ? display
         : region === 'artwork' ? display.querySelector('img')!
-          : region === 'header' ? display.querySelector('header')!
-            : region === 'footer' ? display.querySelector('footer')!
+          : region === 'header' ? display.querySelector('[data-projects-header]')!
+            : region === 'footer' ? display.querySelector('[data-projects-footer]')!
               : region === 'link' ? screen.getByRole('link', { name: 'See project' })
                 : screen.getByRole('button', { name: 'Next project' });
       for (const delta of [200, -200]) {

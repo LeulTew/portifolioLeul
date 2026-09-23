@@ -16,6 +16,7 @@ import { ChapterGrading } from './3d/ChapterGrading';
 import { ContactSky } from './3d/ContactSky';
 import { LocalEnvironment } from './3d/LocalEnvironment';
 import { SceneReady } from './3d/SceneReady';
+import { PrefetchedModel } from './3d/PrefetchedModel';
 import { SceneEdgeContinuity } from './3d/SceneEdgeContinuity';
 import { GreenPrism } from './3d/GreenPrism';
 import {
@@ -289,7 +290,9 @@ export function BackgroundScene({
         </Suspense>
 
         <Suspense fallback={null}>
-          <Terrain surfaceColor={palette.terrain} theme={theme} />
+          <PrefetchedModel url={resolveSceneModel(TERRAIN_URL)}>
+            <Terrain surfaceColor={palette.terrain} theme={theme} />
+          </PrefetchedModel>
         </Suspense>
 
         <GreenPrism isLight={isLight} />
@@ -309,11 +312,13 @@ export function BackgroundScene({
         <Suspense fallback={null}>
           {/* Placed next to the prism [12, 2, -15] */}
           {/* Adjusted Y to be on ground (-4) */}
-          <MeModel 
-            position={[...AVATAR_POSITION]}
-            scale={[...AVATAR_SCALE]}
-            rotation={[...AVATAR_ROTATION]}
-          />
+          <PrefetchedModel url={resolveSceneModel('/models/me-animated-lite.glb')}>
+            <MeModel
+              position={[...AVATAR_POSITION]}
+              scale={[...AVATAR_SCALE]}
+              rotation={[...AVATAR_ROTATION]}
+            />
+          </PrefetchedModel>
           
           {/* TV Model with Video */}
           <SafeTV clips={videoClips} />

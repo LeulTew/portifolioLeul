@@ -52,6 +52,24 @@ describe("FocusRail Component", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Project Alpha" })).toBeInTheDocument();
   });
 
+  it("offers the same direct native selection in the flat reader without duplicate arrow or wheel paging", () => {
+    render(<FocusRail items={mockItems} itemPickerLabel="Choose a project" />);
+    const picker = screen.getByRole("combobox", { name: "Choose a project" });
+    picker.focus();
+    fireEvent.change(picker, { target: { value: "2" } });
+    expect(screen.getByRole("heading", { name: "Project Beta" })).toBeInTheDocument();
+    expect(picker).toHaveFocus();
+    fireEvent.keyDown(picker, { key: "ArrowLeft" });
+    fireEvent.wheel(picker, { deltaY: -400 });
+    const retargeted = new WheelEvent("wheel", { deltaY: 120, bubbles: true, cancelable: true });
+    fireEvent(screen.getByTestId("carousel"), retargeted);
+    expect(retargeted.defaultPrevented).toBe(false);
+    expect(screen.getByRole("heading", { name: "Project Beta" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /next project/i }));
+    expect(screen.getByRole("heading", { name: "Project Alpha" })).toBeInTheDocument();
+    expect(picker).toHaveValue("1");
+  });
+
   it("keeps the description's normal-flow space throughout contact exit and reverse", async () => {
     const { rerender } = render(<FocusRail items={mockItems} isFocused />);
     const description = screen.getByText("Alpha description text");
