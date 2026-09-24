@@ -1,0 +1,18 @@
+/* Served only to readers without JavaScript; the CSP forbids inline styles. */
+.noscript {
+  max-width: 44rem;
+  margin: 8vh auto;
+  padding: 2rem;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+  color: #153b32;
+  background: #f6f5ee;
+}
+
+.noscript a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  margin-right: 1.5rem;
+  color: inherit;
+}

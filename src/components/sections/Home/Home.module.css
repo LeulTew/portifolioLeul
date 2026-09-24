@@ -211,6 +211,21 @@
   color: #111827;
 }
 
+/*
+ * The white cloud is a light surface in both themes, but in dark its edges fade
+ * into night, and the copy that runs past its core was dark text on mid-grey.
+ * The same last-name weight as light, and a cloud-coloured halo on the plain
+ * lines, keep every glyph on light without dimming the cloud or the scene.
+ */
+:global([data-theme='dark']) .lastname {
+  opacity: 0.82;
+}
+
+:global([data-theme='dark']) .info,
+:global([data-theme='dark']) .description {
+  text-shadow: 0 0 0.55em rgb(244 247 241 / 0.9), 0 0 0.2em rgb(244 247 241 / 0.9);
+}
+
 .info {
   display: flex;
   gap: 0.75rem;

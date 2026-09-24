@@ -62,8 +62,12 @@ describe('deployment response security', () => {
     expect(policy.get('script-src')).not.toContain(injectedHash);
   });
 
-  it('allows animation styles, local fonts, embedded model textures and deliberate local TV media', () => {
-    expect(policy.get('style-src')).toEqual(["'self'", "'unsafe-inline'"]);
+  it('allows only same-origin stylesheets, local fonts, embedded model textures and deliberate local TV media', () => {
+    // Animation writes go through the CSSOM, which CSP does not govern; markup may not carry inline styles.
+    expect(policy.get('style-src')).toEqual(["'self'"]);
+    const html = readFileSync(path.resolve('index.html'), 'utf8');
+    expect(html).not.toMatch(/\sstyle=["']/);
+    expect(html).not.toMatch(/<style[\s>]/);
     expect(policy.get('font-src')).toEqual(["'self'"]);
     expect(policy.get('img-src')).toEqual(["'self'", 'data:', 'blob:']);
     expect(policy.get('media-src')).toEqual(["'self'", 'blob:']);

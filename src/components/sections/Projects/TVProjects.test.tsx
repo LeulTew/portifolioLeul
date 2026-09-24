@@ -22,6 +22,12 @@ afterEach(() => {
 });
 
 describe('the semantic TV project reader', () => {
+  it('keeps the screen panel out of the tab sequence, since it holds its own controls', () => {
+    // A composite stop drew one ring around the whole screen and said nothing about what had focus.
+    render(<TVProjects />);
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('combobox', { name: 'Choose a project' })).not.toHaveAttribute('tabindex', '-1');
+  });
   it('inspects a loaded capture in place under a resting mouse, but never under touch', () => {
     render(<TVProjects />);
     const image = screen.getAllByRole('img').find(node => node.tagName === 'IMG')!;
