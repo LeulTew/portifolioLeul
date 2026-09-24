@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { soundFx } from '@/lib/gateways/soundFx';
-import { TV_CONTROL_IDS, dispatchTVHardware, type TVControlId } from '@/lib/tv/tvHardware';
+import { TV_CONTROL_IDS, TV_READER_SURFACE, dispatchTVHardware, type TVControlId } from '@/lib/tv/tvHardware';
 import { registerTVTargets } from '@/lib/tv/tvControlProjection';
 import { activateTV, getTVState, isTVActionEnabled, setTVExposure, useTVState } from '@/lib/tv/tvState';
 import styles from './TVControls.module.css';
@@ -62,7 +62,7 @@ export function TVControls({ enabled, scrollElement }: { enabled: boolean; scrol
   if (!scrollElement) return null;
   return createPortal(
     <div ref={root} className={styles.anchor} role="region" aria-label="Television controls"
-      tabIndex={-1} data-tv-controls="" data-tv-layout={layout}>
+      tabIndex={-1} data-tv-controls="" data-tv-layout={layout} data-focus-after={TV_READER_SURFACE}>
       <div className={styles.viewport}>
         {TV_CONTROL_IDS.map(id => {
           const shown = visible && (id === 'power' || layout === 'all');

@@ -2,6 +2,9 @@ export const TV_CONTROL_IDS = ['previous', 'next', 'power'] as const;
 export type TVControlId = typeof TV_CONTROL_IDS[number];
 export type TVHardwareEventKind = 'press' | 'hover' | 'focus';
 
+/** The reader's interactive surface; the hardware keys follow its controls in focus order. */
+export const TV_READER_SURFACE = '[data-projects-surface]';
+
 export interface TVControl {
   /** Screen-local coordinates, in the display's existing screen-pitch group. */
   readonly center: readonly [number, number, number];

@@ -4,7 +4,7 @@ import { TVControls } from './TVControls';
 import {
   getTVState, registerTVReader, resetTVState, setTVExposure, setTVPagingAvailable, setTVProjectPhase,
 } from '@/lib/tv/tvState';
-import { registerTVHardware } from '@/lib/tv/tvHardware';
+import { TV_READER_SURFACE, registerTVHardware } from '@/lib/tv/tvHardware';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { isProjectsReadingTarget } from '@/components/sections/Projects/projectsInput';
 
@@ -34,6 +34,12 @@ describe('native tactile TV controls', () => {
     expect(power.textContent).toBe('');
     expect(power).not.toHaveAttribute('title');
     expect(screen.getByRole('button', { name: 'Next channel' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('declares the keys as following the reader surface in focus order', () => {
+    setup();
+    expect(screen.getByRole('region', { name: 'Television controls' }))
+      .toHaveAttribute('data-focus-after', TV_READER_SURFACE);
   });
 
   it('only shows power when full-size channel targets would overlap', () => {

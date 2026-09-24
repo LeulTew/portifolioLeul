@@ -5,6 +5,7 @@ import { TVProjects } from './TVProjects';
 import { PROJECT_CATEGORIES } from './projectCategories';
 import { projectsData } from '@/data/projects';
 import { setProjectsView, setTVScreenReady } from '@/lib/projects/projectsScene';
+import { TV_READER_SURFACE } from '@/lib/tv/tvHardware';
 
 // Animation clocks and retargeting are exercised in projectBroadcast and playback tests.
 vi.mock('./projectBroadcast', () => ({
@@ -27,6 +28,12 @@ describe('the semantic TV project reader', () => {
     render(<TVProjects />);
     expect(screen.getByRole('tabpanel')).toHaveAttribute('tabindex', '-1');
     expect(screen.getByRole('combobox', { name: 'Choose a project' })).not.toHaveAttribute('tabindex', '-1');
+  });
+  it('renders the surface the hardware keys follow in focus order, around its tabs and screen', () => {
+    render(<TVProjects />);
+    const surface = document.querySelector(TV_READER_SURFACE);
+    expect(surface).toContainElement(screen.getByRole('tablist', { name: 'Project categories' }));
+    expect(surface).toContainElement(screen.getByRole('tabpanel'));
   });
   it('inspects a loaded capture in place under a resting mouse, but never under touch', () => {
     render(<TVProjects />);

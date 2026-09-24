@@ -34,6 +34,7 @@ import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
+import { installLayerFocus } from './lib/scroll/layerFocus';
 import { useResizeAnchor } from './lib/scroll/resizeAnchor';
 import { AvatarEncounter } from './components/avatar/AvatarEncounter';
 import { TVControls } from './components/tv/TVControls';
@@ -485,6 +486,21 @@ function App() {
 
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [scrollElement, trackFocus]);
+
+  // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
+  useEffect(() => {
+    if (!show3D || !scrollElement) return;
+    return installLayerFocus({
+      track: scrollElement,
+      main: () => mainRef.current,
+      navigate: section => scrollToSection(section, { source: 'navbar' }),
+      renderedScrollTop: () => {
+        const state = scrollStateRef.current;
+        const range = Math.max(scrollElement.scrollHeight - scrollElement.clientHeight, 0);
+        return state ? state.offset * range : scrollElement.scrollTop;
+      },
+    });
+  }, [show3D, scrollElement, scrollToSection]);
 
   /*
    * One definition, rendered either inside the canvas's scroll layer or

@@ -6,6 +6,7 @@ import { setScrollProgress, resetScrollProgress, subscribeScrollProgress } from 
 import { resetCameraHold } from '@/lib/camera/cameraHold';
 import { isWorldOccluded, isFrameDrawn, resetFrameGate } from '@/lib/render/frameGate';
 import { setProjectsView } from '@/lib/projects/projectsScene';
+import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 
 describe('localProgress', () => {
   it('is nothing before the stretch reaches the top of the screen', () => {
@@ -100,6 +101,34 @@ describe('PinnedSequence observed entry after a settled navigation', () => {
     intersect(true);
     expect(screen.getByTestId('pinned-sequence-overlay')).toHaveAttribute('data-active', 'false');
     expect(document.getElementById('about')).not.toHaveAttribute('data-sequence-active');
+  });
+
+  it('publishes a navbar landing past Projects to its settled stages while staying hidden', () => {
+    render(<section id="about"><PinnedSequence layers={LAYERS}><p>held</p></PinnedSequence></section>);
+    const spacer = screen.getByTestId('pinned-sequence');
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    let top = 1215, reads = 0;
+    spacer.getBoundingClientRect = () => { reads += 1; return DOMRect.fromRect({ y: top, width: 1440, height: 2700 }); };
+    act(() => setScrollProgress(0, true));
+    intersect(false);
+    expect(overlay.style.getPropertyValue('--seq')).toBe('0.000');
+    // Measured natively: Home to Contact leaves the spacer 12,000px overhead while Projects owes its return.
+    setProjectsView(true, 1, 0.5);
+    act(() => publishSectionNavigation('contact', { source: 'navbar' }));
+    top = -12000;
+    const seen: string[] = [];
+    const unsubscribe = subscribeScrollProgress(() => seen.push(overlay.style.getPropertyValue('--seq')));
+    try {
+      act(() => setScrollProgress(0.99, true));
+      expect(seen).toEqual(['1.000']);
+      expect(overlay).toHaveAttribute('data-active', 'false');
+      // Only the landing is owed: an owned TV view still measures nothing per frame.
+      reads = 0;
+      act(() => setScrollProgress(0.98, true));
+      expect(reads).toBe(0);
+    } finally {
+      unsubscribe();
+    }
   });
 });
 
