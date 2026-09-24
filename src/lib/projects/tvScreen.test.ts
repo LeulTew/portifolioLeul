@@ -5,11 +5,13 @@ import {
   CrtHousingGeometry, CRT_HOUSING_PARTS, CRT_SPEAKER_RIB_POSITIONS,
 } from './crtHousingGeometry';
 import {
-  fitTVScreen, ProjectsCameraPose, TVScreenProjector, TV_SCREEN_ASPECT,
+  fitTVScreen, ProjectsCameraPose, TVScreenProjector, TV_CORNER_CLEARANCE, TV_SCREEN_ASPECT,
   TV_SCREEN_WIDTH, TV_SCREEN_HEIGHT, TV_SCREEN_WORLD,
 } from './tvScreen';
 
-const viewports = [[900, 560], [1024, 768], [1440, 900], [1920, 1080], [2560, 1440], [3840, 2160]];
+const viewports = [
+  [900, 560], [1024, 640], [1366, 650], [1440, 789], [1024, 768], [1440, 900], [1920, 1080], [2560, 1440], [3840, 2160],
+];
 
 describe('the real TV display framing', () => {
   it('begins with the original establishing shot, not a replacement camera path', () => {
@@ -49,6 +51,9 @@ describe('the real TV display framing', () => {
   });
 
   it.each(viewports)('keeps the actual cabinet, controls and feet in frame at %i x %i', (width, height) => {
+    // A tight frame spends the corner band, so it must clear the corner controls sideways instead.
+    const { tight } = fitTVScreen(width, height);
+    const side = tight ? TV_CORNER_CLEARANCE : 24;
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
     new ProjectsCameraPose().sample(1, 1, width, height, 50, camera.position, camera.quaternion);
     camera.updateMatrixWorld();
@@ -76,15 +81,25 @@ describe('the real TV display framing', () => {
             top = Math.min(top, y);
             bottom = Math.max(bottom, y);
           }
-          expect(left).toBeGreaterThan(24);
-          expect(right).toBeLessThan(width - 24);
+          expect(left).toBeGreaterThan(side);
+          expect(right).toBeLessThan(width - side);
           expect(top).toBeGreaterThan(72);
-          expect(bottom).toBeLessThan(height - 56);
+          expect(bottom).toBeLessThan(height - (tight ? 16 : 56));
         }
       } finally {
         geometry.dispose();
       }
     }
+  });
+
+  it.each([
+    [900, 560, true, 450], [1024, 640, true, 540], [1366, 650, true, 550], [1440, 789, true, 700],
+    [900, 800, false, 0], [1440, 900, false, 0], [1920, 1080, false, 0],
+  ] as const)('gives a short %i x %i window the corner band only when the cabinet clears it', (width, height, tight, floor) => {
+    const fit = fitTVScreen(width, height);
+    expect(fit.tight).toBe(tight);
+    // The reading surface these windows used to get: 392, 482, 494 and 651px wide.
+    if (tight) expect(fit.width).toBeGreaterThan(floor);
   });
 
   it.each([0, 0.1, 0.35, 0.6, 0.85, 1])('pins all four DOM corners at approach %f', approach => {

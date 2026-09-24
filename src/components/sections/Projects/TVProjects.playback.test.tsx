@@ -543,6 +543,18 @@ describe('the completed-beat TV chapter', () => {
     expect(screen.getByRole('button', { name: 'Back to the scene' })).toHaveFocus();
   });
 
+  it('keeps the full scene-back name when a tight frame shows only its short label', async () => {
+    mount();
+    handoff();
+    await clock.run(PROJECTS_TURN_MS);
+    fireEvent.click(screen.getByRole('button', { name: 'Open the screen' }));
+    await clock.run(PROJECTS_APPROACH_MS);
+    const back = screen.getByRole('button', { name: 'Back to the scene' });
+    expect(back).toHaveTextContent('Back to the scene');
+    const short = [...back.querySelectorAll('[aria-hidden="true"]')].find(node => node.textContent === 'Back');
+    expect(short).toBeDefined();
+  });
+
   it.each(['withdrawing', 'turning', 'approaching', 'reading', 'retreating'])(
     'repeated navbar navigation cancels %s and opens the chosen useful destination', async starting => {
       mount();

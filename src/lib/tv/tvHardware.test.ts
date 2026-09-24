@@ -10,7 +10,8 @@ describe('TV hardware contract', () => {
   it('retains ordered fixed anchors with disjoint 48px targets at the compact floor', () => {
     expect(TV_CONTROL_IDS).toEqual(['previous', 'next', 'power']);
     const pixelsPerUnit = fitTVScreen(900, 560).width / 0.55;
-    expect(pixelsPerUnit).toBeCloseTo(712.14, 1);
+    // The compact floor now frames tight, spending the corner band on a larger screen.
+    expect(pixelsPerUnit).toBeCloseTo(827.42, 1);
     TV_CONTROL_IDS.forEach((id, index) => {
       const control = TV_CONTROLS[id];
       expect(control.position).toBe(control.center);

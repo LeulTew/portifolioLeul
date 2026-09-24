@@ -91,7 +91,8 @@
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
-  max-width: min(150%, 1280px);
+  /* Sized to the window rather than the screen, so short windows keep one line of labels. */
+  max-width: min(calc(100vw - 48px), 1280px);
   margin: 0;
 }
 
@@ -404,6 +405,7 @@
 
 .sceneBack { grid-column: 1; }
 .sceneNext { grid-column: 3; }
+.sceneLabelShort { display: none; }
 .sceneControls[data-avatar-active] { visibility: hidden; pointer-events: none; }
 
 .stage[data-phase='reading'] .sceneControls {
@@ -488,7 +490,8 @@
   background: repeating-linear-gradient(0deg, transparent 0 3px, var(--project-accent) 3px 4px);
 }
 
-@container (max-height: 320px) {
+/* Below this screen height the preview copy cannot keep its links above its own fold. */
+@container (max-height: 380px) {
   .stage[data-staged='true'] .display[data-compact-toolbar='true'] {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 48px minmax(0, 1fr);
@@ -570,4 +573,42 @@
   .image {
     max-height: 240px;
   }
+}
+
+/*
+ * A tight frame (fitTVScreen) gives the cabinet the corner band on short windows.
+ * The corner controls stay compact beside it (TV_CORNER_CLEARANCE), step aside
+ * while the camera moves through that band, and the status is announced rather
+ * than drawn over the fascia.
+ */
+.stage:has(> .surface[data-frame='tight'])[data-phase='reading'] .sceneControls {
+  inset: auto 20px 20px;
+  gap: 12px;
+}
+.stage:has(> .surface[data-frame='tight'])[data-phase='reading'] :is(.sceneBack, .sceneNext) {
+  max-width: 154px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.stage:has(> .surface[data-frame='tight'])[data-phase='reading'] .sceneLabel { display: none; }
+.stage:has(> .surface[data-frame='tight'])[data-phase='reading'] .sceneLabelShort { display: inline; }
+.stage:has(> .surface[data-frame='tight']):is([data-phase='reading'], [data-phase='approaching'],
+  [data-phase='retreating'], [data-phase='departing']) .cue {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.stage:has(> .surface[data-frame='tight']) :is(.sceneBack, .sceneNext) {
+  transition: opacity 160ms ease, visibility 0s linear;
+}
+.stage:has(> .surface[data-frame='tight']):is([data-phase='approaching'], [data-phase='retreating'],
+  [data-phase='departing']) :is(.sceneBack, .sceneNext) {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms ease, visibility 0s linear 160ms;
 }

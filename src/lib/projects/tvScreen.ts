@@ -16,6 +16,18 @@ export const PROJECTS_TURN_MS = 2200;
 export const PROJECTS_APPROACH_MS = 1400;
 export const PROJECTS_STAGE_QUERY = '(min-width: 900px) and (min-height: 560px)';
 
+/** Nav and category tabs above the cabinet, and the corner scene controls' band below it. */
+const CHROME_TOP = 134;
+const CHROME_BOTTOM = 80;
+/**
+ * On viewports this short, a cabinet that clears the corner controls sideways
+ * may use their band, keeping only this much air under its keys.
+ */
+export const TV_TIGHT_FRAME_MAX_HEIGHT = 800;
+const TIGHT_BOTTOM = 24;
+/** The widest compact corner control in the close-up, with its 20px inset and air. */
+export const TV_CORNER_CLEARANCE = 140;
+
 function transform(
   position: readonly [number, number, number],
   rotation: readonly [number, number, number],
@@ -46,16 +58,20 @@ export function fitTVScreen(width: number, height: number) {
   const below = -CRT_HOUSING_BOUNDS.min[1] / TV_SCREEN_HEIGHT * 1.025;
   const cabinetWidth = CRT_HOUSING_BOUNDS.size[0] / TV_SCREEN_WIDTH * 1.025;
   // Fit the complete physical receiver, not just its luminous rectangle.
-  const screenHeight = Math.max(160, Math.min(
+  const fit = (bottom: number) => Math.max(160, Math.min(
     (width - 96) / cabinetWidth / TV_SCREEN_ASPECT,
-    (height - 214) / (above + below),
+    (height - CHROME_TOP - bottom) / (above + below),
   ));
-  const screenWidth = screenHeight * TV_SCREEN_ASPECT;
+  const tightHeight = fit(TIGHT_BOTTOM);
+  const tight = height <= TV_TIGHT_FRAME_MAX_HEIGHT &&
+    (width - tightHeight * TV_SCREEN_ASPECT * cabinetWidth) / 2 >= TV_CORNER_CLEARANCE;
+  const screenHeight = tight ? tightHeight : fit(CHROME_BOTTOM);
   return {
-    width: screenWidth,
+    width: screenHeight * TV_SCREEN_ASPECT,
     height: screenHeight,
     centerX: width / 2,
-    centerY: 134 + above * screenHeight,
+    centerY: CHROME_TOP + above * screenHeight,
+    tight,
   };
 }
 

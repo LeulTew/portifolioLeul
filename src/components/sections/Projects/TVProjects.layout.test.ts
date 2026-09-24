@@ -2,12 +2,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postcss, { type Container, type Rule } from 'postcss';
 import { describe, expect, it } from 'vitest';
+import { fitTVScreen } from '@/lib/projects/tvScreen';
 
 const css = postcss.parse(readFileSync(resolve(
   'src', 'components', 'sections', 'Projects', 'TVProjects.module.css',
 ), 'utf8'));
+const COMPACT_MAX_HEIGHT = 380;
 const compact = css.nodes.find(node => node.type === 'atrule' &&
-  node.name === 'container' && node.params === '(max-height: 320px)') as Container;
+  node.name === 'container' && node.params === `(max-height: ${COMPACT_MAX_HEIGHT}px)`) as Container;
 const reader = ".stage[data-staged='true'] .display[data-compact-toolbar='true']";
 
 function rule(selector: string, container: Container = css): Rule {
@@ -35,9 +37,10 @@ describe('compact TV reading budget', () => {
     expect(value(`${reader} .work`, 'padding')).toBe('0');
   });
 
-  it('budgets at least 150px for text inside the measured 900×560 aperture without shrinking body type', () => {
-    // The review measured a 228.334px aperture and only 97px for the old reader.
-    const apertureHeight = 228.334;
+  it('budgets at least 150px for text inside the 900×560 aperture without shrinking body type', () => {
+    // The review measured 97px of text in the original 228px aperture; the tight frame now gives 265px.
+    const apertureHeight = fitTVScreen(900, 560).height;
+    expect(apertureHeight).toBeGreaterThan(228.334);
     const padding = value(reader, 'padding').split(' ');
     expect(padding).toEqual(['4px', '12px', '6px']);
     const headerHeight = Number.parseFloat(value(reader, 'grid-template-rows'));
@@ -49,6 +52,14 @@ describe('compact TV reading budget', () => {
     expect(textHeight).toBeGreaterThanOrEqual(150);
     expect(value('.copy', 'font-size', css)).toMatch(/^clamp\(14px,/);
     expect(value(`${reader} .technology`, 'font-size')).toBe('14px');
+  });
+
+  it('consolidates wherever the full footer would push the preview links below the copy fold', () => {
+    // Measured natively: a 324px screen left 187px of copy under the footer, hiding "See project";
+    // a 416px screen kept them in view with the footer.
+    expect(fitTVScreen(1366, 650).height).toBeLessThanOrEqual(COMPACT_MAX_HEIGHT);
+    expect(fitTVScreen(1280, 720).height).toBeLessThanOrEqual(COMPACT_MAX_HEIGHT);
+    expect(fitTVScreen(1440, 789).height).toBeGreaterThan(COMPACT_MAX_HEIGHT);
   });
 
   it('keeps native scrolling, the original aperture, and the existing controls', () => {

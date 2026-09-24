@@ -96,6 +96,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     ? projectsData : projectsData.filter(project => project.categories.includes(category)), [category]);
   const project = filtered[index % Math.max(filtered.length, 1)];
   const activeTab = PROJECT_CATEGORIES.findIndex(value => value === category);
+  const backLabel = phase === 'revealed' ? 'Back to Skills' : 'Back to the scene';
   useCRTPowerOn(display, staged && ready, reduced);
   useProjectBroadcast(broadcast, project?.id ?? 0, interactive, reduced, details);
 
@@ -307,13 +308,14 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
       </div>
       {staged && <div className={styles.sceneControls} data-avatar-active={avatarPresenting || undefined}
         aria-hidden={!visible || avatarPresenting ? true : undefined}>
-        <ControlButton onClick={event => {
+        <ControlButton aria-label={backLabel} onClick={event => {
           sceneControl.current = { element: event.currentTarget, enterScreen: false };
           step(-1);
         }}
           disabled={avatarPresenting || !['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneBack}>
           <ArrowLeft size={17} aria-hidden="true" />
-          {phase === 'revealed' ? 'Back to Skills' : 'Back to the scene'}
+          <span className={styles.sceneLabel}>{backLabel}</span>
+          <span className={styles.sceneLabelShort} aria-hidden="true">Back</span>
         </ControlButton>
         {phase !== 'revealed' && <p className={styles.cue} role="status">
           {phase === 'withdrawing' || phase === 'turning' ? 'Turning toward the work'
