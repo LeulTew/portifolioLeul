@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { renderHook, act } from '@testing-library/react';
 import {
   getPrefersReducedMotion,
@@ -116,5 +118,15 @@ describe('animationGateway', () => {
 
     unmount();
     expect(removeListenerMock).toHaveBeenCalled();
+  });
+
+  it('keeps ScrollTrigger out of production code, whose importers would all start its frame loop', () => {
+    // Round 7 (TECH-010): this module registered it for a rail helper nothing called.
+    const walk = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
+      entry.isDirectory() ? walk(join(directory, entry.name)) : [join(directory, entry.name)]);
+    const importers = walk(resolve('src'))
+      .filter(path => /\.(tsx?|jsx?)$/.test(path) && !/\.test\./.test(path))
+      .filter(path => readFileSync(path, 'utf8').includes('gsap/ScrollTrigger'));
+    expect(importers).toEqual([]);
   });
 });
