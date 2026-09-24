@@ -226,6 +226,13 @@
   margin: 0;
 }
 
+/* Appears near the limit only, so typing never stops without a reason. */
+.count {
+  align-self: flex-end;
+  color: var(--contact-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .success {
   color: var(--contact-success, #086443);
 }

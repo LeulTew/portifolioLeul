@@ -325,6 +325,22 @@ export function useEducationPlayback(
       }
     };
     const observer = new MutationObserver(apply);
+    /*
+     * Started where the reader actually is. The stage mounts again whenever the
+     * window crosses the compact size, and a fresh "before, handoff pending"
+     * state claimed Education over Projects the moment About's title had ever
+     * settled. Past the rail nothing is owed; returning up still opens its last
+     * record through the ordinary upward entry.
+     */
+    const placed = host.getBoundingClientRect();
+    // An unmeasured, zero-height rail says nothing about where the reader is.
+    if (placed.height > 0 && placed.bottom <= 0) {
+      side = 'after';
+      handoffPending = false;
+      current = total - 1;
+      setActive(current);
+      positionTrack(trackOffset(current, total));
+    }
     if (about) {
       observer.observe(about, {
         attributes: true,

@@ -34,6 +34,24 @@ beforeEach(setupEducationClock);
 afterEach(cleanupEducationClock);
 
 describe('Education completed-beat navigation', () => {
+  it('does not claim Education when its stage mounts after the reader has passed it', () => {
+    // Regression: crossing the compact window size remounts the staged rail.
+    // A fresh "before, handoff pending" state claimed Education over Projects
+    // because About's title had settled earlier in the visit.
+    place(-3200);
+    mount();
+    const last = screen.getByTestId('education-progress').children.length - 1;
+    expect(screen.getByTestId('education-stage')).not.toHaveAttribute('data-visible', 'true');
+    expect(document.getElementById('about')).not.toHaveAttribute('data-education-owned');
+    expect(selected()).toBe(last);
+
+    place(-2400);
+    advance(SCROLL_WAVE_IDLE_MS + 1);
+    wheel(-120);
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-visible', 'true');
+    expect(selected()).toBe(last);
+  });
+
   it('opens directly on title completion before the rail reaches the viewport', async () => {
     mount(false);
     expect(screen.getByTestId('education-rail').getBoundingClientRect().top).toBeGreaterThan(0);

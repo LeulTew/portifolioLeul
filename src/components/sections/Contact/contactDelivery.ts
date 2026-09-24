@@ -1,4 +1,5 @@
 import type { ContactFormData } from './types';
+import { exceedsContactLimits } from './contactLimits';
 
 export const CONTACT_SEND_TIMEOUT_MS = 20_000;
 export const CONTACT_SEND_ENDPOINT = 'https://api.emailjs.com/api/v1.0/email/send';
@@ -50,6 +51,8 @@ export async function sendContactMessage(
   signal: AbortSignal,
 ): Promise<void> {
   if (signal.aborted) throw new ContactDeliveryError('cancelled');
+  // Validation normally stops this first; nothing oversized leaves the page regardless.
+  if (exceedsContactLimits(draft)) throw new ContactDeliveryError('rejected');
   const request = new AbortController();
   const cancel = () => request.abort();
   signal.addEventListener('abort', cancel, { once: true });

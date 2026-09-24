@@ -26,20 +26,22 @@ export interface SectionCue {
  */
 export const HERO_SEQUENCE: readonly SectionCue[] = [
   // The plate wipes in under everything, and finishes before any copy lands.
-  { id: 'backdrop', at: 0, duration: 0.7, engine: 'css' },
-  { id: 'portrait', at: 0.6, duration: 0.55, engine: 'css' },
+  { id: 'backdrop', at: 0, duration: 0.6, engine: 'css' },
+  { id: 'portrait', at: 0.25, duration: 0.5, engine: 'css' },
   /*
    * By far the longest beat, and it deliberately runs on underneath the rest.
    * The name accumulates rather than arriving, and accumulation needs time to
    * be legible as such -- at under a second it registers as a flash, not as
-   * snow gathering. The cues below start while it is still filling.
+   * snow gathering. The cues below start while it is still filling. It starts
+   * half a second in: the loader has just lifted, and a hero that sat as an
+   * empty plate for a second read as a page that had not finished loading.
    */
-  { id: 'title', at: 1.0, duration: 2.4, engine: 'css' },
-  { id: 'role', at: 2.1, duration: 0.5, engine: 'css' },
-  { id: 'description', at: 2.4, duration: 0.55, engine: 'css' },
-  { id: 'actions', at: 2.8, duration: 0.45, engine: 'css' },
+  { id: 'title', at: 0.5, duration: 2.2, engine: 'css' },
+  { id: 'role', at: 1.35, duration: 0.5, engine: 'css' },
+  { id: 'description', at: 1.6, duration: 0.55, engine: 'css' },
+  { id: 'actions', at: 1.9, duration: 0.45, engine: 'css' },
   // Slowest of all, and last: the line takes its time drawing itself.
-  { id: 'affordance', at: 3.05, duration: 1.4, engine: 'css' },
+  { id: 'affordance', at: 2.15, duration: 1.4, engine: 'css' },
 ] as const;
 
 /**

@@ -39,6 +39,9 @@ Welcome to my **Interactive 3D Portfolio**. This project is more than just a sho
 ## ⚡ Performance Optimization
 
 The scene uses optimized assets instead of loading its archived source models.
+Those archival originals live in `assets/originals/`, outside `public/`, so Vite
+never copies them into `dist/`; `src/deployment.assets.test.ts` keeps the
+published tree free of `original` folders and within its size budget.
 Representative shipped file sizes are:
 
 | Asset | File | Size on disk | Loading |

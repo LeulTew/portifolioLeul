@@ -30,8 +30,13 @@ export function useActiveSection(sectionIds: readonly string[]): string {
     let ownership: MutationObserver | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
 
-    /** Remembered per section: a callback only reports what changed. */
-    const visible = new Map<string, number>();
+    /*
+     * Remembered per section: a callback only reports what changed. The
+     * height is only a tie-break -- with a zero threshold it is sampled once, as
+     * the section enters, and a section that enters exactly at the band's edge
+     * reports zero however much of the band it later fills.
+     */
+    const visible = new Map<string, { intersecting: boolean; height: number }>();
 
     const attach = () => {
       const sections = ids
@@ -52,14 +57,27 @@ export function useActiveSection(sectionIds: readonly string[]): string {
           const bottom = window.innerHeight * 0.55;
           for (const section of sections) {
             const rect = section.getBoundingClientRect();
-            visible.set(section.id, Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top)));
+            visible.set(section.id, {
+              intersecting: rect.bottom >= top && rect.top <= bottom,
+              height: Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top)),
+            });
+          }
+          /*
+           * The observer reports changes against what it last sampled. A section
+           * it never saw enter -- crossed during a fast navbar scroll -- is never
+           * reported leaving, so its measured height would win for good. A fresh
+           * observation makes the next sample report every section again.
+           */
+          for (const section of sections) {
+            observer?.unobserve(section);
+            observer?.observe(section);
           }
         }
         let bestId = reading?.id ?? '';
-        let bestHeight = 0;
+        let bestHeight = -1;
         if (!reading) {
-          for (const [id, height] of visible) {
-            if (height > bestHeight) {
+          for (const [id, { intersecting, height }] of visible) {
+            if (intersecting && height > bestHeight) {
               bestHeight = height;
               bestId = id;
             }
@@ -72,7 +90,10 @@ export function useActiveSection(sectionIds: readonly string[]): string {
         (entries) => {
           for (const entry of entries) {
             const id = (entry.target as HTMLElement).id;
-            visible.set(id, entry.isIntersecting ? (entry.intersectionRect?.height ?? 0) : 0);
+            visible.set(id, {
+              intersecting: entry.isIntersecting,
+              height: entry.isIntersecting ? (entry.intersectionRect?.height ?? 0) : 0,
+            });
           }
 
           update();

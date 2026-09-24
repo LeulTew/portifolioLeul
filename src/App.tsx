@@ -34,6 +34,7 @@ import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
+import { useResizeAnchor } from './lib/scroll/resizeAnchor';
 import { AvatarEncounter } from './components/avatar/AvatarEncounter';
 import { TVControls } from './components/tv/TVControls';
 import { setAvatarLayoutReady } from './lib/avatar/avatarEncounter';
@@ -122,6 +123,8 @@ function App() {
   const canRender3D = useMemo(() => isWebGLAvailable(), []);
   const [webglRuntimeError, setWebglRuntimeError] = useState(false);
   const show3D = canRender3D && !webglRuntimeError;
+  // The flat page scrolls the document itself; the 3D track preserves its own offset.
+  useResizeAnchor(!show3D);
   useEffect(() => {
     if (!show3D) trackFocus.cancel();
   }, [show3D, trackFocus]);

@@ -6,6 +6,7 @@ import {
   sendContactMessage,
   type ContactDeliveryFailure,
 } from './contactDelivery';
+import { CONTACT_LIMITS } from './contactLimits';
 
 export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>) {
   const [formData, setFormData] = useState<ContactFormData>({
@@ -37,16 +38,21 @@ export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>
 
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+    } else if (formData.name.length > CONTACT_LIMITS.name) {
+      newErrors.name = `Please keep your name under ${CONTACT_LIMITS.name} characters`;
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    } else if (formData.email.length > CONTACT_LIMITS.email ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Please enter a valid email address';
     }
 
     if (!formData.message.trim()) {
       newErrors.message = 'Message is required';
+    } else if (formData.message.length > CONTACT_LIMITS.message) {
+      newErrors.message = `Please keep the message under ${CONTACT_LIMITS.message.toLocaleString('en-US')} characters`;
     }
 
     setErrors(newErrors);

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ContactDeliveryError, sendContactMessage } from './contactDelivery';
+import { CONTACT_LIMITS } from './contactLimits';
 import { useContactForm } from './useContactForm';
 
 const TestComponent = ({ submitFn }: { submitFn?: () => Promise<void> } = {}) => {
@@ -71,6 +72,16 @@ describe('useContactForm', () => {
     expect(screen.getByTestId('name-input')).toHaveValue('');
     expect(screen.getByTestId('email-input')).toHaveValue('');
     expect(screen.getByTestId('message-input')).toHaveValue('');
+  });
+
+  it('rejects an oversized draft that bypassed the field limits, without sending it', async () => {
+    render(<TestComponent />);
+    fireEvent.change(screen.getByTestId('name-input'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByTestId('email-input'), { target: { value: 'ada@example.com' } });
+    fireEvent.change(screen.getByTestId('message-input'), { target: { value: 'x'.repeat(CONTACT_LIMITS.message + 1) } });
+    fireEvent.submit(screen.getByTestId('submit-button'));
+    expect(await screen.findByTestId('message-error')).toHaveTextContent('Please keep the message under 5,000 characters');
+    expect(sendContactMessage).not.toHaveBeenCalled();
   });
 
   it('updates form data on change', async () => {

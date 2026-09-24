@@ -7,6 +7,7 @@ import { cvData } from '@/data/cv';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { CONTACT_PAPER_PLANE, useContactSendFlight } from './contactSendFlight';
 import { CONTACT_DELIVERY_MESSAGES } from './contactDelivery';
+import { CONTACT_COUNT_FROM, CONTACT_LIMITS, contactEmailDraft } from './contactLimits';
 
 export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean }) {
   const {
@@ -31,7 +32,10 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
   const phase = useContactSendFlight(stage, accepted, reduced, flightEnabled);
   const retired = accepted && phase === 'sent';
   const readOnly = isSubmitting || accepted;
-  const emailDraft = `mailto:${cvData.contact.email}?subject=${encodeURIComponent(`Portfolio message from ${formData.name.trim() || 'a visitor'}`)}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`;
+  const emailDraft = contactEmailDraft(cvData.contact.email, formData);
+  const counting = formData.message.length >= CONTACT_COUNT_FROM;
+  const messageDescription = [errors.message && 'contact-message-error', counting && 'contact-message-count']
+    .filter(Boolean).join(' ') || undefined;
 
   useLayoutEffect(() => {
     const node = form.current;
@@ -86,6 +90,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
                 name="name"
                 autoComplete="name"
                 required
+                maxLength={CONTACT_LIMITS.name}
                 readOnly={readOnly}
                 tabIndex={accepted ? -1 : undefined}
                 aria-invalid={!!errors.name}
@@ -106,6 +111,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
                 name="email"
                 autoComplete="email"
                 required
+                maxLength={CONTACT_LIMITS.email}
                 readOnly={readOnly}
                 tabIndex={accepted ? -1 : undefined}
                 aria-invalid={!!errors.email}
@@ -125,15 +131,19 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
               id="message"
               name="message"
               required
+              maxLength={CONTACT_LIMITS.message}
               readOnly={readOnly}
               tabIndex={accepted ? -1 : undefined}
               aria-invalid={!!errors.message}
-              aria-describedby={errors.message ? 'contact-message-error' : undefined}
+              aria-describedby={messageDescription}
               className={styles.textarea}
               value={formData.message}
               onChange={handleChange}
               placeholder="What would you like to build?"
             />
+            {counting && <p id="contact-message-count" className={`${styles.message} ${styles.count}`}>
+              {formData.message.length.toLocaleString('en-US')} / {CONTACT_LIMITS.message.toLocaleString('en-US')} characters
+            </p>}
             {errors.message && <p id="contact-message-error" className={`${styles.message} ${styles.error}`} role="alert">{errors.message}</p>}
           </div>
 

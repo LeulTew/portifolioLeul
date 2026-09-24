@@ -108,6 +108,29 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('theme')).toHaveTextContent('dark');
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
   });
+
+  it('still themes and toggles when site storage is denied', async () => {
+    const user = userEvent.setup({ delay: null });
+    const denied = () => { throw new DOMException('The operation is insecure.', 'SecurityError'); };
+    const read = localStorageMock.getItem.getMockImplementation()!;
+    const write = localStorageMock.setItem.getMockImplementation()!;
+    localStorageMock.getItem.mockImplementation(denied);
+    localStorageMock.setItem.mockImplementation(denied);
+    try {
+      render(
+        <ThemeProvider>
+          <TestToggleComponent />
+        </ThemeProvider>
+      );
+      expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+      await user.click(screen.getByRole('button', { name: 'Toggle Theme' }));
+      expect(screen.getByTestId('theme')).toHaveTextContent('dark');
+      expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    } finally {
+      localStorageMock.getItem.mockImplementation(read);
+      localStorageMock.setItem.mockImplementation(write);
+    }
+  });
 });
 
 describe('useTheme', () => {

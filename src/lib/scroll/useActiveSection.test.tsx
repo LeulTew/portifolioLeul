@@ -137,6 +137,21 @@ describe('useActiveSection', () => {
     expect(getByTestId('active').textContent).toBe('contact');
   });
 
+  it('hands over to a section that entered at the band edge once the previous one leaves', () => {
+    // Regression from a real navbar glide: Projects touched the band exactly at
+    // its edge, so the observer reported it intersecting with zero height -- and
+    // never again as it filled the band. Skills then left, and nothing won.
+    addSections();
+    const { getByTestId } = render(<Probe />);
+
+    act(() => capturedCallback?.(band({ skills: 90 })));
+    act(() => capturedCallback?.([{ target: { id: 'projects' }, isIntersecting: true, intersectionRect: { height: 0 } }]));
+    expect(getByTestId('active').textContent).toBe('skills');
+
+    act(() => capturedCallback?.(band({ skills: 0 })));
+    expect(getByTestId('active').textContent).toBe('projects');
+  });
+
   it('keeps Projects selected while its TV chapter holds a spent Contact position', async () => {
     addSections();
     const { getByTestId } = render(<Probe />);
@@ -225,5 +240,77 @@ describe('useActiveSection', () => {
   it('stays inert with no sections named', () => {
     const { getByTestId } = render(<Probe ids={[]} />);
     expect(getByTestId('active').textContent).toBe('');
+  });
+});
+
+/**
+ * IntersectionObserver as a browser runs it: sampled once per frame, reporting
+ * only what changed since its last sample, with a fresh baseline per observe().
+ */
+class FrameObserver {
+  static current: FrameObserver | null = null;
+  private readonly seen = new Map<Element, boolean | null>();
+  constructor(private readonly callback: ObserverCallback) {
+    FrameObserver.current = this;
+  }
+  observe(el: Element) {
+    this.seen.set(el, null);
+  }
+  unobserve(el: Element) {
+    this.seen.delete(el);
+  }
+  disconnect() {
+    this.seen.clear();
+  }
+  takeRecords() {
+    return [];
+  }
+  frame(bands: Record<string, number>) {
+    const entries: unknown[] = [];
+    for (const [el, was] of this.seen) {
+      const height = bands[(el as HTMLElement).id] ?? 0;
+      if (was === height > 0) continue;
+      this.seen.set(el, height > 0);
+      entries.push({ target: el, isIntersecting: height > 0, intersectionRect: { height } });
+    }
+    if (entries.length) act(() => this.callback(entries));
+  }
+}
+
+describe('useActiveSection across a fast navbar scroll', () => {
+  beforeEach(() => {
+    FrameObserver.current = null;
+    (globalThis as unknown as Record<string, unknown>).IntersectionObserver = FrameObserver;
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    (globalThis as unknown as Record<string, unknown>).IntersectionObserver = originalObserver;
+    document.body.innerHTML = '';
+  });
+
+  it('does not keep a section the observer never saw enter after the reader passes it', async () => {
+    // Regression: Home -> Projects in the flat page. About released its pin
+    // while Skills crossed the band between two observer samples; the measured
+    // Skills height was never reported leaving and outranked Projects.
+    const sections = addSections();
+    const about = sections[1];
+    const { getByTestId } = render(<Probe />);
+    FrameObserver.current!.frame({ about: 76 });
+    expect(getByTestId('active').textContent).toBe('about');
+
+    const band = window.innerHeight * 0.5;
+    for (const section of sections) {
+      const over = section.id === 'skills';
+      section.getBoundingClientRect = () => DOMRect.fromRect({
+        x: 0, y: over ? band - 400 : band + 2000, width: 1440, height: 800,
+      });
+    }
+    await act(async () => { about.dataset.sequenceActive = 'true'; });
+    await act(async () => { delete about.dataset.sequenceActive; });
+    expect(getByTestId('active').textContent).toBe('skills');
+
+    FrameObserver.current!.frame({ projects: 76 });
+    expect(getByTestId('active').textContent).toBe('projects');
   });
 });

@@ -258,8 +258,8 @@ describe('Home choreography', () => {
     for (const word of words) {
       expect(word).toHaveAttribute('data-filling', 'true');
       expect(word).toHaveAttribute('data-settled', 'false');
-      expect(word.style.getPropertyValue('--snow-duration')).toBe('2400ms');
-      expect(word.style.getPropertyValue('--word-delay')).toBe('1000ms');
+      expect(word.style.getPropertyValue('--snow-duration')).toBe('2200ms');
+      expect(word.style.getPropertyValue('--word-delay')).toBe('500ms');
     }
     act(() => vi.advanceTimersByTime(sequenceDuration(HERO_SEQUENCE) * 1000 * 0.8));
     expect(content.className).not.toMatch(/settled/);
@@ -284,8 +284,8 @@ describe('Home choreography', () => {
     ]);
 
     // Delays come from the sequence, never hard-coded in the markup.
-    expect(layers.find((l) => l.id === 'role')?.at).toBe('2.1s');
-    expect(layers.find((l) => l.id === 'actions')?.at).toBe('2.8s');
+    expect(layers.find((l) => l.id === 'role')?.at).toBe('1.35s');
+    expect(layers.find((l) => l.id === 'actions')?.at).toBe('1.9s');
   });
 
   it('never hides a layer behind a JS-driven start state', () => {
@@ -677,8 +677,8 @@ describe('Home choreography', () => {
     const titleElements = getAllByTestId('liquid-fill-text');
     expect(titleElements[0]).toHaveAttribute('data-filling', 'true');
     expect(titleElements[0]).toHaveAttribute('data-settled', 'false');
-    expect(titleElements[0].style.getPropertyValue('--snow-duration')).toBe('2400ms');
-    expect(titleElements[0].style.getPropertyValue('--word-delay')).toBe('1000ms');
+    expect(titleElements[0].style.getPropertyValue('--snow-duration')).toBe('2200ms');
+    expect(titleElements[0].style.getPropertyValue('--word-delay')).toBe('500ms');
 
     // Settle first load
     act(() => {

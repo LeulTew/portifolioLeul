@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { ContactDeliveryError, sendContactMessage } from './contactDelivery';
 import { ContactForm } from './ContactForm';
+import { CONTACT_COUNT_FROM, CONTACT_LIMITS } from './contactLimits';
 
 const configureEmailJs = () => {
   vi.stubEnv('VITE_EMAILJS_SERVICE_ID', 'service_test');
@@ -30,6 +31,24 @@ describe('ContactForm', () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send message/i })).toBeInTheDocument();
+  });
+
+  it('bounds every field and counts characters only near the message limit', () => {
+    render(<ContactForm />);
+    expect(screen.getByLabelText(/name/i)).toHaveAttribute('maxlength', String(CONTACT_LIMITS.name));
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute('maxlength', String(CONTACT_LIMITS.email));
+    const message = screen.getByRole('textbox', { name: 'Message' });
+    expect(message).toHaveAttribute('maxlength', String(CONTACT_LIMITS.message));
+
+    fireEvent.change(message, { target: { value: 'x'.repeat(CONTACT_COUNT_FROM - 1) } });
+    expect(screen.queryByText(/ characters$/)).not.toBeInTheDocument();
+    expect(message).not.toHaveAttribute('aria-describedby');
+
+    fireEvent.change(message, { target: { value: 'x'.repeat(CONTACT_COUNT_FROM) } });
+    expect(screen.getByText(
+      `${CONTACT_COUNT_FROM.toLocaleString('en-US')} / ${CONTACT_LIMITS.message.toLocaleString('en-US')} characters`,
+    )).toHaveAttribute('id', 'contact-message-count');
+    expect(message).toHaveAttribute('aria-describedby', 'contact-message-count');
   });
 
   it('updates form data on input change', async () => {

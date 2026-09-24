@@ -5,6 +5,7 @@ import {
   getContactDeliveryConfig,
   sendContactMessage,
 } from './contactDelivery';
+import { CONTACT_LIMITS } from './contactLimits';
 
 vi.unmock('@/components/sections/Contact/contactDelivery');
 
@@ -49,6 +50,13 @@ it('sends the documented public-key request with both reply-to aliases and no cl
     },
   });
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it('refuses an oversized draft before any request leaves the page', async () => {
+  const oversized = { ...draft, message: 'x'.repeat(CONTACT_LIMITS.message + 1) };
+  await expect(sendContactMessage(oversized, config, new AbortController().signal))
+    .rejects.toMatchObject({ kind: 'rejected' });
+  expect(fetchMock).not.toHaveBeenCalled();
 });
 
 it('normalizes complete public configuration and fails explicitly before a request for missing settings', () => {
