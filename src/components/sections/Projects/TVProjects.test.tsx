@@ -22,6 +22,23 @@ afterEach(() => {
 });
 
 describe('the semantic TV project reader', () => {
+  it('inspects a loaded capture in place under a resting mouse, but never under touch', () => {
+    render(<TVProjects />);
+    const image = screen.getAllByRole('img').find(node => node.tagName === 'IMG')!;
+    const frame = image.closest<HTMLElement>('[data-project-inspect]')!;
+    frame.getBoundingClientRect = () => DOMRect.fromRect({ x: 100, y: 50, width: 400, height: 200 });
+    fireEvent.pointerMove(frame, { pointerType: 'mouse', clientX: 300, clientY: 100 });
+    expect(frame).not.toHaveAttribute('data-inspecting');
+    fireEvent.load(image);
+    fireEvent.pointerMove(frame, { pointerType: 'touch', clientX: 300, clientY: 100 });
+    expect(frame).not.toHaveAttribute('data-inspecting');
+    fireEvent.pointerMove(frame, { pointerType: 'mouse', clientX: 300, clientY: 100 });
+    expect(frame).toHaveAttribute('data-inspecting', 'true');
+    expect(frame.style.getPropertyValue('--inspect-x')).toBe('50.00%');
+    expect(frame.style.getPropertyValue('--inspect-y')).toBe('25.00%');
+    fireEvent.pointerLeave(frame);
+    expect(frame).not.toHaveAttribute('data-inspecting');
+  });
   it.each(['Luna', 'Portfolio Leul'])('keeps the %s visual provenance adjacent to the image and available in Details', title => {
     render(<TVProjects />);
     const project = projectsData.find(item => item.title === title)!;
@@ -30,7 +47,7 @@ describe('the semantic TV project reader', () => {
     });
     const image = screen.getByRole('img', { name: project.imageAlt });
     expect(image).toHaveAttribute('src', project.image);
-    expect(image.parentElement).toContainElement(screen.getByText(project.imageNote!));
+    expect(image.closest('[data-broadcast-image]')).toContainElement(screen.getByText(project.imageNote!));
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     expect(screen.getByLabelText(`${title} details`)).toContainElement(screen.getByText(project.imageNote!));
     expect(screen.getAllByText(project.imageNote!)).toHaveLength(1);

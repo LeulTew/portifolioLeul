@@ -36,18 +36,35 @@ function ProjectDescription({ project }: { project: Project }) {
 function ProjectImage({ project }: { project: Project }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const frame = useRef<HTMLSpanElement>(null);
+  // A resting mouse inspects the capture in place; touch and pen keep their swipe.
+  const inspect = (event: PointerEvent<HTMLSpanElement>) => {
+    const node = frame.current;
+    if (!node || !loaded || event.pointerType === 'touch' || event.pointerType === 'pen' || event.buttons !== 0) return;
+    const box = node.getBoundingClientRect();
+    if (box.width <= 0 || box.height <= 0) return;
+    node.style.setProperty('--inspect-x', `${(((event.clientX - box.left) / box.width) * 100).toFixed(2)}%`);
+    node.style.setProperty('--inspect-y', `${(((event.clientY - box.top) / box.height) * 100).toFixed(2)}%`);
+    node.dataset.inspecting = 'true';
+  };
+  const release = () => {
+    if (frame.current) delete frame.current.dataset.inspecting;
+  };
   return failed
     ? <div className={styles.imageFallback} role="img" aria-label={`${project.title}: preview unavailable`}>
         <span>{project.title}</span>
         <p>Preview unavailable. Project details and links are still available.</p>
       </div>
     : <>
-        {!loaded && <span className={styles.imageLoading} aria-hidden="true">Loading preview</span>}
-        <img
-          src={project.image} alt={project.imageAlt ?? `${project.title} preview`} width={960} height={720}
-          aria-busy={!loaded} decoding="async" draggable={false}
-          onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
-        />
+        <span ref={frame} className={styles.frame} data-project-inspect=""
+          onPointerMove={inspect} onPointerLeave={release} onPointerDown={release}>
+          {!loaded && <span className={styles.imageLoading} aria-hidden="true">Loading preview</span>}
+          <img
+            src={project.image} alt={project.imageAlt ?? `${project.title} preview`} width={960} height={720}
+            aria-busy={!loaded} decoding="async" draggable={false}
+            onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
+          />
+        </span>
         <ProjectVisualNote project={project} />
       </>;
 }

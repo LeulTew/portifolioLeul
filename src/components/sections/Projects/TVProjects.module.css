@@ -162,7 +162,8 @@
 .work {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  /* Media leads: wide captures fill their height instead of sitting in matte bands. */
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 4%;
   min-height: 0;
   padding: 3% 0;
@@ -196,6 +197,28 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transform-origin: var(--inspect-x, 50%) var(--inspect-y, 50%);
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Clips the in-place inspection; the provenance note stays outside it. */
+.frame {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.frame[data-inspecting='true'] img {
+  transform: scale(2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image img {
+    transition: none;
+  }
 }
 
 .image:has([data-project-visual-note]) {
