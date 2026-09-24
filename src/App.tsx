@@ -534,7 +534,7 @@ function App() {
   return (
     <div className={styles.container}>
       <AnimatePresence>
-        {isLoading && <Loader key="loader" theme={theme} onLoaded={handleLoaded} />}
+        {isLoading && <Loader key="loader" theme={theme} onLoaded={handleLoaded} scene={show3D} />}
       </AnimatePresence>
 
       {!isLoading && (

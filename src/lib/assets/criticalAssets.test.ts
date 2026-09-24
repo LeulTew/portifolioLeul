@@ -6,6 +6,7 @@ import { StrictMode, useEffect } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import {
   CRITICAL_ASSETS,
+  DOM_CRITICAL_ASSETS,
   createCriticalAssetRun,
   loadCriticalAssets,
   markCriticalModelReady,
@@ -78,6 +79,8 @@ describe('the manifest', () => {
   });
 
   it('covers the models the opening shot cannot be drawn without', () => {
+    // A page without WebGL waits for none of them: only what the DOM paints.
+    expect(DOM_CRITICAL_ASSETS.map((asset) => asset.url)).toEqual(['/images/leul-portrait.webp']);
     const urls = CRITICAL_ASSETS.map((asset) => asset.url);
     expect(urls).toContain('/models/terrain-opt.glb');
     expect(urls).toContain('/models/me-animated-lite.glb');

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { loadCriticalAssets, type AssetProgress } from '@/lib/assets/criticalAssets';
+import { DOM_CRITICAL_ASSETS, loadCriticalAssets, type AssetProgress } from '@/lib/assets/criticalAssets';
 import { isSceneReady, subscribeSceneReady } from '@/lib/render/sceneReady';
 import { isContentSettled, subscribeContentSettled } from '@/lib/render/contentSettled';
 
@@ -45,6 +45,11 @@ interface UseAssetLoadingProgressOptions {
    */
   minDurationMs?: number;
   onComplete?: () => void;
+  /**
+   * Whether a 3D scene will consume the critical models and textures. Without
+   * WebGL nothing would, so only the DOM's own critical assets are fetched.
+   */
+  scene?: boolean;
 }
 
 /** How quickly the drawn fill chases the real one. Per frame, at 60fps. */
@@ -89,7 +94,7 @@ const SCENE_GRACE_MS = 10_000;
 export function useAssetLoadingProgress(
   options: UseAssetLoadingProgressOptions = {}
 ): AssetLoadingState {
-  const { minDurationMs = 1400, onComplete } = options;
+  const { minDurationMs = 1400, onComplete, scene = true } = options;
 
   const [displayedProgress, setDisplayedProgress] = useState(0);
   const [isReady, setIsReady] = useState(false);
@@ -124,11 +129,11 @@ export function useAssetLoadingProgress(
         }
         pendingAssetsRef.current = progress;
       },
-      { signal: controller.signal }
+      scene ? { signal: controller.signal } : { signal: controller.signal, assets: DOM_CRITICAL_ASSETS }
     );
 
     return () => controller.abort();
-  }, []);
+  }, [scene]);
 
   useEffect(() => {
     sceneReadyRef.current = isSceneReady();

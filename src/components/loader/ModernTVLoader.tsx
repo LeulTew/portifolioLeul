@@ -10,6 +10,8 @@ export interface ModernTVLoaderProps {
   onLoaded?: () => void;
   minDurationMs?: number;
   theme?: string;
+  /** False when the page will open without a 3D scene; only DOM assets are then worth waiting for. */
+  scene?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function ModernTVLoader({
   onLoaded,
   minDurationMs = 1800,
   theme: propTheme,
+  scene = true,
 }: ModernTVLoaderProps) {
   const context = useContext(ThemeContext);
   const resolvedTheme =
@@ -59,6 +62,7 @@ export function ModernTVLoader({
 
   const { progress } = useAssetLoadingProgress({
     minDurationMs,
+    scene,
     onComplete: () => {
       // Let the wave land, and let it be seen landing, before pulling away.
       holdTimerRef.current = setTimeout(() => setIsExiting(true), reducedMotion ? 0 : FULL_HOLD_MS);
