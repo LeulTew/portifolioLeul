@@ -7,11 +7,20 @@ describe('the deployed portfolio contract', () => {
     const config = JSON.parse(readFileSync('vercel.json', 'utf8'));
     expect(config).toMatchObject({
       framework: 'vite',
-      installCommand: 'bunx bun@1.4.0 install --frozen-lockfile',
-      buildCommand: 'bunx bun@1.4.0 run build',
+      // Vercel provisions the Bun the lockfile names. A `bunx bun@1.4.0` wrapper
+      // exits before Bun starts in that environment, failing every build.
+      installCommand: 'bun install --frozen-lockfile',
+      buildCommand: 'bun run build',
       outputDirectory: 'dist',
     });
     expect(config.rewrites).toContainEqual({ source: '/(.*)', destination: '/index.html' });
+  });
+
+  it('pins the Bun that produced the lockfile Vercel reads', () => {
+    const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
+    const lock = readFileSync('bun.lock', 'utf8');
+    expect(manifest.packageManager).toMatch(/^bun@1\.4\./);
+    expect(lock).toMatch(/"lockfileVersion":\s*3/);
   });
 
   it('routes before importing the desktop app and consistently publishes the canonical alias', () => {
