@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
@@ -47,6 +47,7 @@ import {
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { HeroCloud } from './HeroCloud';
 import { cloudBounds, measureHeroContent } from './heroContentBounds';
 import { setAvatarHeroReady, useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
@@ -1044,6 +1045,16 @@ function HeroScrollCue({ onActivate, run, presented, onFocusRelease, onDrawCompl
     if (progress === 1) onDrawComplete();
   }, [onDrawComplete, progress]);
 
+  // At body level the cue is outside the scroll layer, so wheel over it would
+  // reach only the unscrollable document. The flat page scrolls natively.
+  const forwardWheel = useCallback((event: WheelEvent<HTMLButtonElement>) => {
+    if (event.ctrlKey) return;
+    const scroller = findScrollContainer(document.getElementById('home'));
+    if (!scroller) return;
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+    scrollContainerBy(scroller, event.deltaY * unit);
+  }, []);
+
   const cue = (
     <ScrollCue
       className={styles.scrollCue}
@@ -1052,6 +1063,7 @@ function HeroScrollCue({ onActivate, run, presented, onFocusRelease, onDrawCompl
       presented={presented}
       onActivate={onActivate}
       onFocusRelease={onFocusRelease}
+      onWheel={forwardWheel}
       label="Scroll to about section"
     />
   );

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, type WheelEvent } from 'react';
 import { writeAttribute } from '@/lib/dom/cachedElement';
 import styles from './ScrollCue.module.css';
 import { CUE_BASE_HEIGHT, CUE_VIEW_WIDTH, CUE_VIEW_Y, CUE_RUN_X, CUE_START_X, cueViewX } from './cueGeometry';
@@ -58,6 +58,8 @@ export interface ScrollCueProps {
   presented?: boolean;
   onActivate?: () => void;
   onFocusRelease?: () => void;
+  /** For a cue rendered outside the scroll layer, so wheel over it still moves the page. */
+  onWheel?: (event: WheelEvent<HTMLButtonElement>) => void;
   className?: string;
   label?: string;
 }
@@ -69,6 +71,7 @@ export function ScrollCue({
   presented = true,
   onActivate,
   onFocusRelease,
+  onWheel,
   className,
   label = 'Scroll to the next section',
 }: ScrollCueProps) {
@@ -110,6 +113,7 @@ export function ScrollCue({
       data-presented={available}
       tabIndex={available ? 0 : -1}
       onClick={available ? onActivate : undefined}
+      onWheel={onWheel}
     >
       <svg
         className={styles.drawing}

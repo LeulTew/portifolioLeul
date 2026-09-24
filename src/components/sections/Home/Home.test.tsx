@@ -730,6 +730,37 @@ describe('Home choreography', () => {
     expect(onNavigate).toHaveBeenCalledTimes(2);
   });
 
+  it('moves the page when the wheel turns over the body-level cue, as it does anywhere else', () => {
+    // Measured natively: 244 notches with the pointer over the drawing cue moved the page 960px.
+    const scroller = document.createElement('div');
+    scroller.style.overflowY = 'auto';
+    Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 9000 });
+    Object.defineProperty(scroller, 'clientHeight', { configurable: true, value: 900 });
+    const scrollBy = vi.fn();
+    scroller.scrollBy = scrollBy as unknown as HTMLElement['scrollBy'];
+    document.body.append(scroller);
+    try {
+      render(<Home />, { container: scroller });
+      const cue = screen.getByTestId('scroll-cue');
+      expect(scroller.contains(cue)).toBe(false);
+      fireEvent.wheel(cue, { deltaY: 120 });
+      expect(scrollBy).toHaveBeenLastCalledWith({ top: 120, behavior: 'auto' });
+      fireEvent.wheel(cue, { deltaY: 3, deltaMode: 1 });
+      expect(scrollBy).toHaveBeenLastCalledWith({ top: 48, behavior: 'auto' });
+      fireEvent.wheel(cue, { deltaY: 120, ctrlKey: true });
+      expect(scrollBy).toHaveBeenCalledTimes(2);
+    } finally {
+      scroller.remove();
+    }
+  });
+
+  it('leaves wheel over the cue to native scrolling on the flat page', () => {
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    render(<Home flat />);
+    fireEvent.wheel(screen.getByTestId('scroll-cue'), { deltaY: 120 });
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
   const exitOf = (content: HTMLElement) =>
     Number(content.style.getPropertyValue('--exit'));
 
