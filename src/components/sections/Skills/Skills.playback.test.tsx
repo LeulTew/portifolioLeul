@@ -818,3 +818,26 @@ describe('Skills completed-beat playback', () => {
     expect(frames.size).toBe(0);
   });
 });
+
+describe('Skills per-frame cost', () => {
+  it('follows the scroll layer without reading layout on every publication, and still claims', () => {
+    const layer = document.createElement('div');
+    layer.style.transform = 'translate3d(0px, 0px, 0px)';
+    document.body.append(layer);
+    render(<main data-testid="underlay"><Skills /></main>, { container: layer });
+    const rail = document.getElementById('skills')!;
+    const railReads = () => vi.mocked(Element.prototype.getBoundingClientRect).mock.contexts
+      .filter(context => context === rail).length;
+    place(1200);
+    const before = railReads();
+    for (let step = 1; step <= 30; step++) {
+      layer.style.transform = `translate3d(0px, ${-step * 30}px, 0px)`;
+      place(1200 - step * 30);
+    }
+    expect(railReads() - before).toBe(0);
+    layer.style.transform = 'translate3d(0px, -1120px, 0px)';
+    place(80);
+    advance(entranceMs);
+    expect(next()).toBeEnabled();
+  });
+});

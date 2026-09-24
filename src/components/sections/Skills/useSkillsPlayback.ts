@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import gsap from 'gsap';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { phaseFrameDelta } from '@/lib/motion/triggeredPhase';
-import { writeAttribute } from '@/lib/dom/cachedElement';
+import { writeAttribute, cachedElement } from '@/lib/dom/cachedElement';
+import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
@@ -61,6 +62,12 @@ export function useSkillsPlayback(
     const initialRect = rail.getBoundingClientRect();
     const main = rail.closest('main');
     const previouslyInert = main?.hasAttribute('inert') ?? false;
+    // As in Education: apply runs on every scroll publication, so the rail's
+    // place comes from the layer's transform and sizes only from layout changes.
+    const position = createTranslatedPositionReader(rail, cachedElement(() => translatedLayerOf(rail)));
+    const layout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => position.refresh());
+    layout?.observe(main ?? rail);
+    const findAboutOverlay = cachedElement(() => document.querySelector<HTMLElement>('[data-pinned-sequence]'));
     let current = 0;
     let state: Phase = 'outside';
     let shown = false;
@@ -244,8 +251,7 @@ export function useSkillsPlayback(
         if (educationRail?.dataset.staged === 'true' && about.dataset.educationReleased !== 'true') return true;
       }
       if (about.dataset.educationActive === 'true' || about.dataset.educationReturning === 'true') return true;
-      const aboutOverlay = document.querySelector<HTMLElement>('[data-pinned-sequence]');
-      return aboutOverlay?.dataset.active === 'true';
+      return findAboutOverlay()?.dataset.active === 'true';
     };
 
     function apply() {
@@ -264,11 +270,16 @@ export function useSkillsPlayback(
         return;
       }
       if (state !== 'outside' || bypass || otherChapterOwnsStage()) return;
-      const rect = rail!.getBoundingClientRect();
+      let rect = position.readRect();
+      // Drei briefly detaches its layer while rebuilding the track; measure again until it has a size.
+      if (rect.height <= 0) {
+        position.refresh();
+        rect = position.readRect();
+      }
       if (rect.height <= 0) return;
       const entering = side === 'before'
         ? (directlyRequested || wave !== 'up') && rect.top <= 96
-        : directlyRequested || (wave === 'up' && rect.bottom >= window.innerHeight - 96);
+        : directlyRequested || (wave === 'up' && rect.top + rect.height >= window.innerHeight - 96);
       if (entering) claim();
     }
 
@@ -397,8 +408,12 @@ export function useSkillsPlayback(
       attributeFilter: ['data-staged'],
     });
     const unsubscribeScroll = subscribeScrollProgress(apply);
+    const resize = () => {
+      position.refresh();
+      apply();
+    };
     window.addEventListener('scroll', apply, { passive: true });
-    window.addEventListener('resize', apply);
+    window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', visibility);
     apply();
 
@@ -412,8 +427,9 @@ export function useSkillsPlayback(
       unsubscribeNavigation();
       unsubscribeScroll();
       observer.disconnect();
+      layout?.disconnect();
       window.removeEventListener('scroll', apply);
-      window.removeEventListener('resize', apply);
+      window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', visibility);
       writeAttribute(rail, 'data-skills-active', null);
       writeAttribute(rail, 'data-skills-released', null);

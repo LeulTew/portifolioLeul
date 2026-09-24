@@ -861,10 +861,13 @@ describe("App content settling", () => {
   let notify: (() => void) | null = null;
   let scrollHeightSpy: ReturnType<typeof vi.spyOn> | null = null;
   let contentHeight = 9000;
+  let observers: Array<() => void> = [];
 
+  // Like the browser, a resize notifies every observer, not only the last one constructed.
   class BurstResizeObserver {
     constructor(callback: () => void) {
-      notify = callback;
+      observers.push(callback);
+      notify = () => { for (const observer of observers) observer(); };
     }
     observe() {}
     unobserve() {}
@@ -875,6 +878,7 @@ describe("App content settling", () => {
     vi.useFakeTimers();
     frameCallbacks.length = 0;
     notify = null;
+    observers = [];
     contentHeight = 9000;
     track.clientHeight = 1000;
     track.rebuilds = 0;

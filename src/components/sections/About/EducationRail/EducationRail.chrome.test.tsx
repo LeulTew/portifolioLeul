@@ -68,7 +68,10 @@ describe('chrome over the held Education reader', () => {
     });
     expect(screen.getByRole('button', { name: 'About' })).toHaveAttribute('aria-current', 'page');
     expect(document.documentElement).toHaveAttribute('data-chapter-ink', 'solid');
-    expect(document.documentElement.style.getPropertyValue('--chapter-ink-clip')).toBe('inset(0px 0px 0px 0px)');
+    // The ink is painted on the chrome's own layer, never the root every element inherits from.
+    const ink = document.querySelector<HTMLElement>('[data-chapter-ink-layer]')!;
+    expect(ink.style.getPropertyValue('--chapter-ink-clip')).toBe('inset(0px 0px 0px 0px)');
+    expect(document.documentElement.style.getPropertyValue('--chapter-ink-clip')).toBe('');
     expect(screen.getByRole('banner')).not.toHaveAttribute('data-contrary');
     await act(async () => {
       screen.getByTestId('education-stage').removeAttribute('data-visible');
