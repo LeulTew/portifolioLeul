@@ -3,7 +3,8 @@ import gsap from 'gsap';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
 import { subscribeSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
-import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty, cachedElement } from '@/lib/dom/cachedElement';
+import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { openingTimeline, recordTimeline } from './educationMotion';
 import { createEducationReveal, EDUCATION_REVEAL_MS } from './educationReveal';
@@ -55,6 +56,22 @@ export function useEducationPlayback(
     const about = host.closest<HTMLElement>('#about') ?? document.getElementById('about');
     const skills = host.closest('main')?.querySelector<HTMLElement>('#skills') ??
       document.getElementById('skills');
+    /*
+     * `apply` runs on every scroll publication, after other consumers have
+     * written that frame, so reading layout there forced a synchronous layout
+     * per frame (74% of the journey's forced-read time). Scrolling moves only
+     * the layer's transform: the rail's place is read from it, and sizes are
+     * re-measured only when layout can have changed.
+     */
+    const position = createTranslatedPositionReader(host, cachedElement(() => translatedLayerOf(host)));
+    let viewportHeight = viewport.offsetHeight;
+    const remeasure = () => {
+      position.refresh();
+      viewportHeight = viewport.offsetHeight;
+    };
+    const layout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(remeasure);
+    layout?.observe(host.closest('main') ?? host);
+    layout?.observe(viewport);
     writeAttribute(outline, 'data-open', null);
     writeAttribute(heading, 'data-settled', null);
     let current = 0;
@@ -233,10 +250,15 @@ export function useEducationPlayback(
     const apply = () => {
       if (!alive || document.hidden) return;
       if (state === 'opening' || state === 'crossing' || state === 'closing') return;
-      const rect = host.getBoundingClientRect();
-      const height = viewport.offsetHeight;
+      let rect = position.readRect();
       // Drei briefly detaches its HTML layer when the scroll track is rebuilt.
-      // A zero rect is not a return to the beginning of the Education rail.
+      // An unmeasured rail re-reads layout until it has one; a zero rect is
+      // still not a return to the beginning of the Education rail.
+      if (rect.height <= 0 || viewportHeight <= 0) {
+        remeasure();
+        rect = position.readRect();
+      }
+      const height = viewportHeight;
       if (!host.isConnected || rect.height <= 0 || height <= 0) return;
       const canEnter = !about || (about.dataset.titleSettled === 'true' &&
         about.dataset.titleActive !== 'true' && about.dataset.reverseTransitionActive !== 'true');
@@ -352,8 +374,12 @@ export function useEducationPlayback(
       attributeFilter: ['data-skills-active'],
     });
     const unsubscribeScroll = subscribeScrollProgress(apply);
+    const resize = () => {
+      remeasure();
+      apply();
+    };
     window.addEventListener('scroll', apply, { passive: true });
-    window.addEventListener('resize', apply);
+    window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', visibility);
     apply();
 
@@ -364,8 +390,9 @@ export function useEducationPlayback(
       unsubscribeNavigation();
       unsubscribeScroll();
       observer.disconnect();
+      layout?.disconnect();
       window.removeEventListener('scroll', apply);
-      window.removeEventListener('resize', apply);
+      window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', visibility);
       show(false);
       flag('data-education-owned', false);

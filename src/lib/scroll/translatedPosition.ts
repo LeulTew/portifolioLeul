@@ -9,9 +9,18 @@ export function translatedY(transform: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
+/** The nearest ancestor carrying an inline transform: drei's scrolling html layer. */
+export function translatedLayerOf(element: HTMLElement | null): HTMLElement | null {
+  for (let node = element?.parentElement; node && node !== document.body; node = node.parentElement) {
+    if (node.style.transform && node.style.transform !== 'none') return node;
+  }
+  return null;
+}
+
 export function createTranslatedPositionReader(element: HTMLElement, getLayer: () => HTMLElement | null) {
   let layer: HTMLElement | null = null;
   let layoutTop: number | null = null;
+  let height = 0;
   let transform = '';
   let y: number | null = null;
 
@@ -32,19 +41,27 @@ export function createTranslatedPositionReader(element: HTMLElement, getLayer: (
 
   const refresh = () => {
     const offset = readTranslation(getLayer());
-    const top = element.getBoundingClientRect().top;
-    layoutTop = offset === null ? null : top - offset;
-    return top;
+    const rect = element.getBoundingClientRect();
+    layoutTop = offset === null ? null : rect.top - offset;
+    height = rect.height;
+    return rect.top;
+  };
+
+  const read = () => {
+    const offset = readTranslation(getLayer());
+    // Other transforms and the ordinary document-scroll fallback still use
+    // real geometry; never infer a translation from a scale or perspective.
+    if (offset === null || layoutTop === null) return refresh();
+    return layoutTop + offset;
   };
 
   return {
     refresh,
-    read: () => {
-      const offset = readTranslation(getLayer());
-      // Other transforms and the ordinary document-scroll fallback still use
-      // real geometry; never infer a translation from a scale or perspective.
-      if (offset === null || layoutTop === null) return refresh();
-      return layoutTop + offset;
+    read,
+    /** Top as `read`, with the height measured at the last layout refresh. */
+    readRect: () => {
+      const top = read();
+      return { top, height };
     },
   };
 }

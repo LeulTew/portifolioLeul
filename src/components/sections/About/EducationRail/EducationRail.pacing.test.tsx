@@ -632,3 +632,32 @@ describe('Education completed-beat navigation', () => {
     }
   });
 });
+
+describe('Education per-frame cost', () => {
+  it('follows the scroll layer without reading layout on every publication, and still claims', async () => {
+    // Measured natively: this read forced a synchronous layout on 537 frames of one journey.
+    const layer = document.createElement('div');
+    layer.style.transform = 'translate3d(0px, 0px, 0px)';
+    document.body.append(layer);
+    try {
+      render(<section id="about"><EducationRail /></section>, { container: layer });
+      gsap.ticker.sleep();
+      const rail = screen.getByTestId('education-rail');
+      const railReads = () => vi.mocked(Element.prototype.getBoundingClientRect).mock.contexts
+        .filter(context => context === rail).length;
+      place(400);
+      const before = railReads();
+      for (let step = 1; step <= 40; step++) {
+        layer.style.transform = `translate3d(0px, ${-step * 10}px, 0px)`;
+        place(400 - step * 10);
+      }
+      expect(railReads() - before).toBe(0);
+      await act(async () => {
+        document.getElementById('about')!.setAttribute('data-title-settled', 'true');
+      });
+      expect(screen.getByTestId('education-stage')).toHaveAttribute('data-phase', 'opening');
+    } finally {
+      layer.remove();
+    }
+  });
+});
