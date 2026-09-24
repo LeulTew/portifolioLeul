@@ -117,6 +117,14 @@
   transition: color 0.4s ease;
 }
 
+/* Matches the navigation's 4K chrome step. */
+@media (min-width: 2880px) and (min-height: 1600px) {
+  .scroll,
+  .year {
+    font-size: 1.0625rem;
+  }
+}
+
 .footerInk {
   z-index: 1001;
 }
