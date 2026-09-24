@@ -83,6 +83,13 @@ html {
   color: rgb(var(--text-color));
 }
 
+/* Navbar jumps, focus reveals and find-in-page arrive instantly for anyone who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 /*
  * A 4K canvas at 100% scaling. The scene scales with the viewport but the
  * rem-sized interface did not, so navigation, copy and actions read as a 1440
