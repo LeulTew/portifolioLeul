@@ -231,9 +231,9 @@ export function FocusRail({
       </div>
 
       {/* Main Stage (Fixed Height) */}
-      <div className="relative z-10 flex h-[420px] flex-col justify-center px-4 md:px-8 mt-4 shrink-0 overflow-visible">
+      <div className={cn("relative z-10 flex h-[420px] flex-col justify-center px-4 md:px-8 mt-4 shrink-0 overflow-visible", styles.stage)}>
         <motion.div
-          className="relative mx-auto flex h-[400px] w-full max-w-7xl items-center justify-center perspective-[1200px] cursor-grab active:cursor-grabbing"
+          className={cn("relative mx-auto flex h-[400px] w-full max-w-7xl items-center justify-center perspective-[1200px] cursor-grab active:cursor-grabbing", styles.track)}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.2}
@@ -262,7 +262,7 @@ export function FocusRail({
               <motion.div
                 key={absIndex}
                 className={cn(
-                  "absolute aspect-video w-[300px] md:w-[580px] border border-white/20 bg-neutral-900 shadow-2xl transition-shadow duration-300 overflow-hidden",
+                  "absolute aspect-video w-[300px] md:w-[580px] border border-white/20 bg-neutral-900 shadow-2xl transition-shadow duration-300 overflow-hidden", styles.card,
                   isCenter ? "z-20 border-emerald-400/50 shadow-[0_0_35px_rgba(0,255,157,0.25)]" : "z-10"
                 )}
                 initial={false}

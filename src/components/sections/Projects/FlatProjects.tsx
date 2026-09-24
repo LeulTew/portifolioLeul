@@ -177,7 +177,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
 
         {/* Focus Rail Component. Changing category swaps the whole rail, so the
             swap sweeps across as a bending sheet rather than cutting hard. */}
-        <StripReveal revealKey={activeCategory} className="w-full mt-8">
+        <StripReveal revealKey={activeCategory} className={`w-full ${styles.railWrap}`}>
           <FocusRail 
             items={railItems} 
             theme={theme}

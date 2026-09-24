@@ -46,3 +46,36 @@
   outline: 2px solid var(--rail-accent);
   outline-offset: 2px;
 }
+
+/*
+ * At the desktop floor the reader's own title sat below the fold, under a
+ * carousel sized for a tall window. Shorter windows get a shorter stage, so
+ * the project name and its copy arrive with the images.
+ */
+@media (max-height: 960px) {
+  .rail .stage {
+    height: 360px;
+  }
+
+  .rail .track {
+    height: 340px;
+  }
+
+  .rail .card {
+    width: min(520px, 60vw);
+  }
+}
+@media (max-height: 640px) {
+  .rail .stage {
+    height: 200px;
+    margin-top: 0.25rem;
+  }
+
+  .rail .track {
+    height: 184px;
+  }
+
+  .rail .card {
+    width: min(320px, 70vw);
+  }
+}
