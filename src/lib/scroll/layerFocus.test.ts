@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installLayerFocus, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { observeChromeInset } from './chromeInset';
+import { installDocumentFocus, installLayerFocus, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
 
 type Box = { top: number; bottom: number };
 const boxes = new Map<Element, Box>();
@@ -155,6 +156,22 @@ describe('keyboard focus in the scroll layer', () => {
     expect(byId('track').scrollTop).toBe(0);
   });
 
+  it('brings a control out from under the navbar', () => {
+    // 4K: a 96px reveal margin sat inside the 102px navbar pill.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 132 });
+    onTestFinished(observeChromeInset(header));
+    place('contact', 0, 1000); place('email', 200); place('message', 110, 40);
+    rendered = 1000;
+    byId('email').focus();
+    tab();
+    expect(document.activeElement).toBe(byId('message'));
+    expect(navigate).not.toHaveBeenCalled();
+    // 110 - 132 = -22px, in track pixels.
+    expect(byId('track').scrollTop).toBeCloseTo(1000 - (22 * 7200) / 6200, 5);
+  });
+
   it('holds the html layer at zero when the browser reveals focus by scrolling it', () => {
     byId('email').focus();
     byId('layer').scrollTop = 13995;
@@ -231,5 +248,93 @@ describe('keyboard focus in the scroll layer', () => {
     byId('layer').scrollTop = 500;
     byId('layer').dispatchEvent(new Event('scroll'));
     expect(byId('layer').scrollTop).toBe(500);
+  });
+});
+
+describe('keyboard focus in the no-WebGL document', () => {
+  let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
+  let revealed: Element[];
+  let release: () => void;
+
+  /** What the browser does for Tab here: the key, then focus lands on the next stop. */
+  const tabTo = (id: string, shift = false) => {
+    tab(shift);
+    byId(id).focus();
+  };
+
+  beforeEach(() => {
+    navigate = vi.fn<(section: string) => void>();
+    revealed = [];
+    // The test DOM has no layout, so no reveal of its own.
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(this: HTMLElement) { revealed.push(this); },
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    place('home', 0, 900); place('about', 900, 3900); place('contact', 4800, 1000);
+    release = installDocumentFocus({ main: () => byId('main'), navigate });
+  });
+  afterEach(() => {
+    release();
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+  });
+
+  it('settles the chapter Tab carries focus into, then keeps the control in view', () => {
+    // Round 7 (D-FLAT-001): About's pinned overlay stayed painted over the stops after it.
+    byId('cta').focus();
+    tabTo('email');
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('contact');
+    expect(revealed).toEqual([]);
+    flushFrames();
+    expect(revealed).toEqual([byId('email')]);
+  });
+
+  it('settles the chapter Shift+Tab carries focus back into', () => {
+    byId('email').focus();
+    tabTo('cta', true);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('home');
+  });
+
+  it('leaves focus moving within a chapter to the browser', () => {
+    byId('email').focus();
+    tabTo('message');
+    flushFrames();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(revealed).toEqual([]);
+  });
+
+  it('measures from the chapter in view when Tab starts outside the content', () => {
+    place('home', -4800, 900); place('about', -3900, 3900); place('contact', 0, 1000);
+    byId('logo').focus();
+    tabTo('email');
+    expect(navigate).not.toHaveBeenCalled();
+    byId('logo').focus();
+    tabTo('cta');
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('home');
+  });
+
+  it('leaves pointer focus and focus it did not see a key for alone', () => {
+    byId('cta').focus();
+    tab();
+    byId('email').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    byId('email').focus();
+    byId('cta').focus();
+    byId('email').focus();
+    flushFrames();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(revealed).toEqual([]);
+  });
+
+  it('ignores Tab that leaves the content', () => {
+    byId('cta').focus();
+    tabTo('logo', true);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('stops listening once released', () => {
+    release();
+    byId('cta').focus();
+    tabTo('email');
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

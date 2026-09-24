@@ -34,7 +34,7 @@ import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
-import { installLayerFocus } from './lib/scroll/layerFocus';
+import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
 import { useResizeAnchor } from './lib/scroll/resizeAnchor';
 import { AvatarEncounter } from './components/avatar/AvatarEncounter';
 import { TVControls } from './components/tv/TVControls';
@@ -486,12 +486,19 @@ function App() {
       }
     }
 
-    target.scrollIntoView({ behavior: glide, block: 'start' });
+    // The document's scroll padding clears the navbar for focus reveals; this landing keeps the section's own edge.
+    window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide });
   }, [scrollElement, trackFocus]);
 
   // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
   useEffect(() => {
-    if (!show3D || !scrollElement) return;
+    if (!show3D) {
+      return installDocumentFocus({
+        main: () => mainRef.current,
+        navigate: section => scrollToSection(section, { source: 'navbar' }),
+      });
+    }
+    if (!scrollElement) return;
     return installLayerFocus({
       track: scrollElement,
       main: () => mainRef.current,

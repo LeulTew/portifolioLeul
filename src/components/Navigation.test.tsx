@@ -58,6 +58,19 @@ describe('Navigation', () => {
     expect(mockScrollToSection).toHaveBeenCalledWith('about', { source: 'navbar' });
   });
 
+  it('keeps keyboard reveals below itself while it is mounted', () => {
+    // Round 8: a Tab into the flat contact form parked the name field under the pill.
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const height = this.tagName === 'HEADER' ? 70 : 0;
+      return { top: 0, bottom: height, height, left: 0, right: 0, width: 0, x: 0, y: 0, toJSON() {} } as DOMRect;
+    });
+    const { unmount } = render(<Navigation scrollToSection={mockScrollToSection} />);
+    expect(document.documentElement.style.scrollPaddingTop).toBe('70px');
+    unmount();
+    expect(document.documentElement.style.scrollPaddingTop).toBe('');
+    rect.mockRestore();
+  });
+
   it('toggles theme', () => {
     render(
       <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: mockToggleTheme }}>
