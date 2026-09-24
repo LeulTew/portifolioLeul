@@ -18,7 +18,7 @@ import { PROJECT_CATEGORIES } from './projectCategories';
 import { isProjectsReadingTarget } from './projectsInput';
 import { ProjectWheelPaging } from './projectPaging';
 import { useCRTPowerOn, useProjectBroadcast } from './projectBroadcast';
-import { ProjectEvidence, ProjectVisualLink } from './ProjectEvidence';
+import { ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
 import styles from './TVProjects.module.css';
 
 function ProjectDescription({ project }: { project: Project }) {
@@ -44,10 +44,11 @@ function ProjectImage({ project }: { project: Project }) {
     : <>
         {!loaded && <span className={styles.imageLoading} aria-hidden="true">Loading preview</span>}
         <img
-          src={project.image} alt={`${project.title} preview`} width={960} height={720}
+          src={project.image} alt={project.imageAlt ?? `${project.title} preview`} width={960} height={720}
           aria-busy={!loaded} decoding="async" draggable={false}
           onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
         />
+        <ProjectVisualNote project={project} />
       </>;
 }
 
@@ -254,7 +255,10 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                   </a>}
                 </div>
                 {!details && <p className={styles.stack} data-broadcast-copy="">{project.tech}</p>}
-                {details && <div data-broadcast-copy=""><ProjectVisualLink project={project} /></div>}
+                {details && <div data-broadcast-copy="">
+                  <ProjectVisualLink project={project} />
+                  <ProjectVisualNote project={project} />
+                </div>}
               </div>
             </div>
           ) : <p className={styles.empty}>No projects in this category. Choose All to browse the work.</p>}

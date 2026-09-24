@@ -520,7 +520,9 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       chapterObserver.disconnect();
       scrollLayerObserver.disconnect();
       for (const cue of styledCues) {
-        for (const property of ['--cue-x', '--cue-y', '--cue-drawn', '--cue-height',
+        // Only what this driver writes. `--cue-height` belongs to the rail
+        // measurement, which does not rerun when the intro becomes ready.
+        for (const property of ['--cue-x', '--cue-y', '--cue-drawn',
           '--cue-presence', '--cue-chapter-opacity', '--cue-animation-state', '--cue-heading-progress']) {
           cue.style.removeProperty(property);
         }

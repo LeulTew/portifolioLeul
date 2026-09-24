@@ -22,6 +22,23 @@ afterEach(() => {
 });
 
 describe('the semantic TV project reader', () => {
+  it.each(['Luna', 'Portfolio Leul'])('keeps the %s visual provenance adjacent to the image and available in Details', title => {
+    render(<TVProjects />);
+    const project = projectsData.find(item => item.title === title)!;
+    fireEvent.change(screen.getByRole('combobox', { name: 'Choose a project' }), {
+      target: { value: String(project.id) },
+    });
+    const image = screen.getByRole('img', { name: project.imageAlt });
+    expect(image).toHaveAttribute('src', project.image);
+    expect(image.parentElement).toContainElement(screen.getByText(project.imageNote!));
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    expect(screen.getByLabelText(`${title} details`)).toContainElement(screen.getByText(project.imageNote!));
+    expect(screen.getAllByText(project.imageNote!)).toHaveLength(1);
+    // Adjacency is what applies the focus-ring clearance in ProjectEvidence.module.css.
+    expect(screen.getByRole('link', { name: `Open ${title} portfolio image at full size (new tab)` })
+      .nextElementSibling).toBe(screen.getByText(project.imageNote!));
+  });
+
   it('jumps straight to any current-category project and keeps native picker input isolated', () => {
     render(<TVProjects />);
     const picker = screen.getByRole('combobox', { name: 'Choose a project' });

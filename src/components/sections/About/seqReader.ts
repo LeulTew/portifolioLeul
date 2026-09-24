@@ -18,8 +18,11 @@
 
 import { cachedElement } from '@/lib/dom/cachedElement';
 
-/** Reads `--seq` for a node inside a `PinnedSequence`. */
-export function createSeqReader(getContainer: () => HTMLElement | null): () => number {
+/** Reads `--seq`, or another published value, for a node inside a `PinnedSequence`. */
+export function createSeqReader(
+  getContainer: () => HTMLElement | null,
+  property = '--seq'
+): () => number {
   let resolvedFor: HTMLElement | null = null;
   let overlay: HTMLElement | null = null;
 
@@ -28,7 +31,7 @@ export function createSeqReader(getContainer: () => HTMLElement | null): () => n
     if (!container) return 0;
 
     // Set directly on the node in a couple of tests, and cheapest to check.
-    const own = container.style.getPropertyValue('--seq').trim();
+    const own = container.style.getPropertyValue(property).trim();
     if (own) return Number.parseFloat(own) || 0;
 
     // Keyed on the container too, not just on the overlay still being
@@ -39,7 +42,7 @@ export function createSeqReader(getContainer: () => HTMLElement | null): () => n
       resolvedFor = container;
     }
 
-    const raw = overlay?.style.getPropertyValue('--seq').trim();
+    const raw = overlay?.style.getPropertyValue(property).trim();
     return raw ? Number.parseFloat(raw) || 0 : 0;
   };
 }

@@ -345,6 +345,23 @@ describe('Home choreography', () => {
     expect(cloud).toHaveAttribute('data-cloud-active', 'true');
   });
 
+  it('keeps the measured rail height on the portaled cue through the loader handover', () => {
+    // Regression: the handover driver re-runs once the intro is ready, and its
+    // cleanup also stripped the height owned by the rail measurement. The long
+    // viewBox then fitted the stylesheet's 300px fallback, shrinking the whole
+    // line short of About until something happened to measure again.
+    const { rerender } = render(<Home introReady={false} />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    const measured = document.getElementById('home')!.style.getPropertyValue('--cue-height');
+    expect(Number.parseFloat(measured)).toBeGreaterThan(0);
+    expect(cueStyle().getPropertyValue('--cue-height')).toBe(measured);
+
+    rerender(<Home introReady />);
+
+    expect(cueStyle().getPropertyValue('--cue-height')).toBe(measured);
+  });
+
   it('draws nothing at all until the rail has been measured', () => {
     // About's offset is a measurement, and it is zero before the first one
     // lands. That has to read as "not known yet", not as a finished line.

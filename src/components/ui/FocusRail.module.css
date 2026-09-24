@@ -1,0 +1,48 @@
+.rail {
+  --rail-paper: #101e18;
+  --rail-ink: #edf4ea;
+  --rail-muted: #b2c7b9;
+  --rail-accent: #80e1b4;
+  color: var(--rail-ink);
+}
+
+.light {
+  --rail-paper: #f4f7f1;
+  --rail-ink: #192d25;
+  --rail-muted: #4d6357;
+  --rail-accent: #126844;
+}
+
+.reading {
+  background: var(--rail-paper);
+  color: var(--rail-ink);
+}
+
+.title {
+  color: var(--rail-ink);
+}
+
+.description {
+  color: var(--rail-muted);
+}
+
+.category,
+.current {
+  color: var(--rail-accent);
+}
+
+.navigationButton {
+  min-width: 48px;
+  min-height: 48px;
+  color: var(--rail-muted);
+}
+
+.navigationButton:hover,
+.navigationButton:focus-visible {
+  color: var(--rail-ink);
+}
+
+.navigationButton:focus-visible {
+  outline: 2px solid var(--rail-accent);
+  outline-offset: 2px;
+}

@@ -215,6 +215,14 @@ and keeps the selected value synchronized with physical paging. The flat reader
 offers the same control. Its native arrow keys and wheel input do not also page
 the surrounding reader, and choosing a title returns expanded Details to Preview.
 
+Project implementation notes link to immutable public source revisions rather
+than claiming unmeasured results. Amharic IR is identified as collaborative work;
+the published author list does not establish individual implementation roles.
+Preview assets must exist locally as valid WebP files. Portfolio Leul uses a
+genuine local desktop capture; Luna uses original project artwork, explicitly
+identified as artwork rather than an application screenshot. Optional image
+notes and alternative text are carried through both TV and flat readers.
+
 Power-off in Projects uses its existing back-to-scene retreat, then leaves
 dark glass. Entering Projects always makes the reader available, even when
 broadcast was off. A normal exit restores the previous broadcast preference

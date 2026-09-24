@@ -7,7 +7,7 @@ import { ABOUT_SCREENS } from './statementLayers';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import {
-  BACKGROUND_RISE, BEAT_COOLDOWN_MS, BEAT_REST_MS, HEAD_SETTLE, STATEMENT_ARRIVE,
+  BACKGROUND_RISE, BEAT_COOLDOWN_MS, BEAT_REST_MS, HEAD_REVEAL, HEAD_SETTLE, STATEMENT_ARRIVE,
   STATEMENT_CLEAR, STATEMENT_SWAP, TITLE_WRITE,
 } from './aboutBeats';
 
@@ -17,7 +17,8 @@ vi.mock('@/lib/gateways/animationGateway', () => ({
 vi.mock('./EducationRail/EducationRail', () => ({ EducationRail: () => null }));
 vi.mock('../../ui/FocusScrim', () => ({ FocusScrim: () => null }));
 
-const HEAD_INTRO_MS = BEAT_REST_MS + HEAD_SETTLE.durationMs;
+// Set, rest centered, then dock: each waits for the one before it.
+const HEAD_INTRO_MS = HEAD_REVEAL.durationMs + BEAT_REST_MS + HEAD_SETTLE.durationMs;
 
 describe('the mounted About chapter plays every movement in order', () => {
   it('limits the remaining reading pauses to 250ms', () => {
@@ -153,7 +154,8 @@ describe('the mounted About chapter plays every movement in order', () => {
     expect(chapter.overlay).toHaveAttribute('data-active', 'true');
     expect(chapter.headReady()).toBe(false);
     expect(screen.getByTestId('about-held-header').style.getPropertyValue('--head-travel')).toBe('0.0000');
-    await chapter.run(BEAT_REST_MS - 20);
+    await chapter.run(HEAD_REVEAL.durationMs + BEAT_REST_MS - 20);
+    expect(screen.getByTestId('about-held-header').style.getPropertyValue('--head-reveal')).toBe('1.0000');
     expect(screen.getByTestId('about-held-header').style.getPropertyValue('--head-travel')).toBe('0.0000');
     await chapter.run(HEAD_SETTLE.durationMs + 40);
     expect(chapter.headReady()).toBe(true);

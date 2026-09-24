@@ -5,12 +5,14 @@ import { ChevronLeft, ChevronRight, Github, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MagneticButton } from "./MagneticButton";
 import { IndexPicker } from "./IndexPicker";
+import styles from "./FocusRail.module.css";
 
 export type FocusRailItem = {
   id: string | number;
   title: string;
   description?: React.ReactNode | string;
   imageSrc: string;
+  imageAlt?: string;
   demoUrl?: string;
   repoUrl?: string;
   meta?: string;
@@ -121,6 +123,9 @@ export function FocusRail({
   }, [loop, active, count]);
 
   // --- MOUSE WHEEL / TRACKPAD LOGIC ---
+  // Lateral input browses; a plain vertical wheel stays the page's. Paging on
+  // it as well turned one ordinary scroll past the rail into two actions: the
+  // page moved and the project being read changed underneath it.
   const onWheel = React.useCallback(
     (e: React.WheelEvent) => {
       const focused = e.currentTarget.ownerDocument.activeElement;
@@ -130,9 +135,8 @@ export function FocusRail({
       // Debounce: prevent rapid firing from inertia scrolling (400ms lockout)
       if (now - lastWheelTime.current < 400) return;
 
-      // Detect horizontal scroll primarily, but also fallback to vertical if shift is held
-      const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-      const delta = isHorizontal ? e.deltaX : e.deltaY;
+      // Shift makes a vertical wheel lateral where the browser has not already.
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
 
       // Threshold to avoid accidental micro-scrolls
       if (Math.abs(delta) > 20) {
@@ -190,7 +194,8 @@ export function FocusRail({
       }}
       className={cn(
         "group relative flex h-auto min-h-[500px] w-full flex-col outline-none select-none overflow-hidden",
-        isLight ? "bg-white/65 text-neutral-900" : "bg-neutral-950 text-white",
+        styles.rail,
+        isLight ? styles.light : "bg-neutral-950",
         className
       )}
       data-testid="carousel"
@@ -219,7 +224,8 @@ export function FocusRail({
               onError={handleImageError}
               className="h-full w-full object-cover blur-3xl saturate-200"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/50 to-transparent" />
+            <div className={cn("absolute inset-0 bg-gradient-to-t",
+              isLight ? "from-white via-white/85 to-white/60" : "from-neutral-950 via-neutral-950/50 to-transparent")} />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -281,7 +287,7 @@ export function FocusRail({
               >
                 <img
                   src={item.imageSrc}
-                  alt={item.title}
+                  alt={item.imageAlt ?? item.title}
                   loading="lazy"
                   decoding="async"
                   onError={handleImageError}
@@ -305,7 +311,8 @@ export function FocusRail({
       </div>
 
       {/* Info & Controls (Dynamic Height) */}
-      <div className="relative z-10 w-full px-4 md:px-12 flex flex-col items-center justify-start pb-12">
+      <div className={cn("relative z-10 w-full px-4 md:px-12 flex flex-col items-center justify-start pb-12", styles.reading)}
+        data-focus-rail-reading="">
         <motion.div 
           layout
           className="w-full max-w-7xl flex flex-col md:flex-row items-start justify-between gap-12"
@@ -327,11 +334,11 @@ export function FocusRail({
                 >
                   <div className="space-y-4">
                     {activeItem.meta && (
-                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block">
+                      <span className={cn("text-xs font-bold uppercase tracking-wider block", styles.category)}>
                         {activeItem.meta}
                       </span>
                     )}
-                    <h2 className="text-3xl font-bold tracking-tight md:text-5xl text-white">
+                    <h2 className={cn("text-3xl font-bold tracking-tight md:text-5xl", styles.title)}>
                       {activeItem.title}
                     </h2>
                     
@@ -355,7 +362,7 @@ export function FocusRail({
                       className="overflow-hidden space-y-6 px-6 pb-6 -mx-6 -mb-6"
                     >
                       {activeItem.description && (
-                        <div className="text-neutral-300 text-sm md:text-base leading-relaxed max-w-4xl">
+                        <div className={cn("text-sm md:text-base leading-relaxed max-w-4xl", styles.description)}>
                           {activeItem.description}
                         </div>
                       )}
@@ -406,23 +413,23 @@ export function FocusRail({
               <button
                 onClick={handlePrev}
                 aria-label="Previous project"
-                className="rounded-full p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
+                className={cn("rounded-full p-3 transition hover:bg-white/10 active:scale-95", styles.navigationButton)}
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               {itemPickerLabel ? <IndexPicker items={items} index={activeIndex}
                 label={itemPickerLabel} onSelect={setActive} /> : <div className="min-w-[70px] flex flex-col items-center justify-center leading-none">
-                <span className="text-xl font-bold text-emerald-400 font-mono">
+                <span className={cn("text-xl font-bold font-mono", styles.current)}>
                   {String(activeIndex + 1).padStart(2, '0')}
                 </span>
-                <span className={cn("text-[11px] font-medium", isLight ? "text-neutral-800" : "text-neutral-600")}>
+                <span className={cn("text-[11px] font-medium", styles.description)}>
                   /{String(count).padStart(2, '0')}
                 </span>
               </div>}
               <button
                 onClick={handleNext}
                 aria-label="Next project"
-                className="rounded-full p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
+                className={cn("rounded-full p-3 transition hover:bg-white/10 active:scale-95", styles.navigationButton)}
               >
                 <ChevronRight className="h-5 w-5" />
               </button>

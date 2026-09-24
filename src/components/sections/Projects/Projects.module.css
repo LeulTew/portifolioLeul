@@ -1,4 +1,8 @@
 .projects {
+  --project-paper: #101e18;
+  --project-ink: #edf4ea;
+  --project-muted: #b2c7b9;
+  --project-accent: #80e1b4;
   position: relative;
   min-height: 100vh;
   display: flex;
@@ -6,9 +10,25 @@
   justify-content: center;
   padding: 0 max(2rem, 5vw) 8rem;
   overflow: hidden;
-  mix-blend-mode: difference;
+  mix-blend-mode: normal;
   pointer-events: none;
   background: transparent;
+}
+
+:global([data-theme="light"]) .projects {
+  --project-paper: #f4f7f1;
+  --project-ink: #192d25;
+  --project-muted: #4d6357;
+  --project-accent: #126844;
+}
+
+.description {
+  color: var(--project-muted);
+}
+
+.description strong {
+  color: var(--project-accent);
+  font-weight: 600;
 }
 
 .content {

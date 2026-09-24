@@ -40,9 +40,21 @@
   text-underline-offset: 0.25em;
 }
 
+.visualNote {
+  margin: 0;
+  color: var(--project-muted, inherit);
+  font-size: max(14px, 0.875em);
+  line-height: 1.45;
+}
+
 .visualLink {
   width: fit-content;
   color: var(--project-muted, inherit);
+}
+
+/* Clears the 2px ring and its 3px offset without separating link and note. */
+.visualLink + .visualNote {
+  margin-top: 8px;
 }
 
 .notes a svg,

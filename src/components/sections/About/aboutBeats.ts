@@ -146,6 +146,21 @@ export const HEAD_SETTLE: StatementBeat = {
 };
 
 /**
+ * The centered heading being set, on its own clock.
+ *
+ * Triggered by the head layer's presence leaving zero -- the stretch has begun
+ * -- and then timed. That presence used to drive the masks directly across the
+ * first four hundredths of the stretch, about one wheel notch, so a reader who
+ * stopped where the arrow lands left "About Me" and its subtitle sliced
+ * mid-glyph. The centered rest before `HEAD_SETTLE` starts once it is set.
+ */
+export const HEAD_REVEAL: StatementBeat = {
+  enter: 0.02,
+  exit: 0.005,
+  durationMs: 600,
+};
+
+/**
  * Statement one arriving, once the heading has finished getting out of its way.
  *
  * Serialised on the heading rather than on a position of its own, for the

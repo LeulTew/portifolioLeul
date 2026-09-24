@@ -198,6 +198,19 @@
   object-fit: contain;
 }
 
+.image:has([data-project-visual-note]) {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 6px;
+  overflow: visible;
+  background: transparent;
+}
+
+.image [data-project-visual-note] {
+  font-size: clamp(14px, 1.7cqw, 20px);
+  line-height: 1.35;
+}
+
 .copy {
   min-height: 0;
   font-size: clamp(14px, 2.3cqw, 28px);

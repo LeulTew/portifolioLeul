@@ -29,6 +29,7 @@ describe('flat project evidence parity', () => {
     for (const [index, project] of projectsData.entries()) {
       const article = articles[index];
       expect(article).toHaveAccessibleName(project.title);
+      if (project.imageNote) expect(article).toHaveTextContent(project.imageNote);
       for (const line of (project.longDescription || project.description).split('\n').filter(line => line.trim())) {
         expect(article).toHaveTextContent(line.replace(/\*\*/g, ''));
       }

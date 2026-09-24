@@ -67,9 +67,16 @@ not a different travel speed or an arbitrary shortening cap. A spent flick pins
 the unfinished stroke at its landing instead of carrying its drawing offscreen.
 Its three wider S turns span the measured rail instead of collecting at the top
 above a long straight tail. Both axes use the same composited translation, not
-per-frame layout through `left`. Once pinned, its
-tip shares the title's two-axis displacement. The centered composition holds for
-250ms of visible time, then docks on one 1100ms beat without an extra gesture latch.
+per-frame layout through `left`. The rail measurement alone owns the portaled
+mark's `--cue-height`; the per-frame driver re-runs when the intro becomes ready
+and must never clear it, or the long viewBox fits the 300px fallback and the
+line stops short of About on loads where nothing re-measures. Once pinned, its
+tip shares the title's two-axis displacement. The centered heading is then set
+on its own 600ms `HEAD_REVEAL` clock, triggered by the stretch beginning; its
+masks never read the scroll-mapped head presence directly, so stopping one
+notch in cannot leave the title or subtitle sliced. The centered composition
+holds for 250ms of visible time after it is fully set, then docks on one 1100ms
+beat without an extra gesture latch.
 Statements wait for actual docking and a 250ms visible reading pause.
 Reverse waits for statements, retraces the same pose, then fades before releasing
 the pin. Reduced motion keeps the normal inset without a travel animation.

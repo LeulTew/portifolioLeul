@@ -16,6 +16,8 @@ export interface Project {
   longDescription?: string;
   tech: string;
   image: string;
+  imageAlt?: string;
+  imageNote?: string;
   githubUrl: string;
   demoUrl?: string;
   categories: string[];
@@ -212,22 +214,44 @@ export const projectsData: Project[] = [
   {
     id: 3,
     title: "Amharic IR Improved",
-    description: "NLP/IR system for Amharic language",
-    longDescription: "Enhanced Information Retrieval pipeline specifically for the Amharic language:\n\n• **NLP Optimization**: Hybrid stemming, optimized indexing, and TF-IDF ranking\n• **AI Integration**: AI-powered summarization and query expansion\n• **Architecture**: Web scrapers for corpus generation and a bilingual UI\n\nShowcases advanced **NLP** techniques and **AI** application for low-resource languages.",
-    tech: "Flask, PyTorch, Google Gemini",
+    description: "Collaborative Amharic search with ranked results and article snippets",
+    longDescription: "An Amharic information-retrieval project combining text preprocessing, a document index, and a Flask search interface, with Gemini-assisted summaries.",
+    tech: "Python, Flask, Google Gemini",
     image: "/images/projects/amharic-ir.webp",
     githubUrl: "https://github.com/LeulTew/Amharic-IR-Improved",
-    categories: ["AI/DataScience", "Web Development"]
+    categories: ["AI/DataScience", "Web Development"],
+    evidence: {
+      inspect: "In a local setup, try an Amharic query, compare result snippets, and open an article. Review the ranking formula alongside the results.",
+      access: "Source and local setup are linked; summarization requires a Gemini API key.",
+      sourceNote: "The README credits Leul Tewodros Agonafer and five co-authors; it does not specify individual implementation roles.",
+      decision: {
+        summary: "The ranker returns separate TF-IDF, position and proximity component scores alongside its combined score, keeping the scoring formula inspectable rather than returning only a total.",
+        sourceLabel: "Ranking formula source",
+        sourceUrl: "https://github.com/LeulTew/amharic-ir-improved/blob/4096030543826b66370f9cc9ff35b6762b8e832c/core/ranker.py#L133-L150",
+      },
+    }
   },
   {
     id: 4,
     title: "Portfolio Leul",
-    description: "Frontend personal portfolio site",
-    longDescription: "Modern personal portfolio featuring immersive **3D elements** and interactive design:\n\n• **Tech Stack**: Built with **React**, **TypeScript**, and **React-Three-Fiber**\n• **Design**: Glassmorphism aesthetics with smooth Framer Motion animations\n• **Performance**: Optimized for all devices with responsive layouts\n\nA showcase of frontend engineering and creative design skills.",
+    description: "A 3D island portfolio with an HTML project reader",
+    longDescription: "React and TypeScript connect a Three.js island, camera transitions, and a TV-style project reader. Project descriptions and links remain HTML rather than being painted into the scene.",
     tech: "React, TypeScript, React-Three-Fiber",
     image: "/images/projects/portfolio.webp",
+    imageAlt: "Leul portfolio desktop interface with its interactive island",
+    imageNote: "Local desktop interface capture.",
     githubUrl: "https://github.com/LeulTew/PortifolioLeul",
-    categories: ["Web Development", "Graphics & Algorithms"]
+    categories: ["Web Development", "Graphics & Algorithms"],
+    evidence: {
+      inspect: "Move from Skills to Projects, open Details, and compare reading with browsing. Use reduced-motion mode to inspect the alternate camera behavior.",
+      access: "The TV view appears only when the 3D screen is ready and the viewport is large enough.",
+      sourceNote: "This describes the published source revision, not unpublished optimizations or measured performance of the live deployment.",
+      decision: {
+        summary: "One shared gate decides whether a frame is drawn. The renderer and camera skip the same hidden frames, and camera damping uses elapsed time between draws.",
+        sourceLabel: "Shared frame-gate source",
+        sourceUrl: "https://github.com/LeulTew/portifolioLeul/blob/8c921db0f9c946e8aace8b209f4216d8c509841b/src/lib/render/frameGate.ts#L63-L108",
+      },
+    }
   },
   {
     id: 5,
@@ -278,6 +302,8 @@ export const projectsData: Project[] = [
     longDescription: "Site with backend for trailers, reviews, and responsive design to engage users in movie discovery.",
     tech: "HTML, CSS, JS, PHP",
     image: "/images/projects/luna.webp",
+    imageAlt: "Original Luna project artwork, not an interface screenshot",
+    imageNote: "Project artwork, not an interface screenshot.",
     githubUrl: "https://github.com/LeulTew/Luna",
     categories: ["Web Development"]
   },

@@ -172,10 +172,11 @@
    * Two beats out of one number, so the name and the line under it are not one
    * movement. The first uncovers over the opening two thirds; the second
    * starts a third of the way in and runs to the end, so they overlap the way
-   * the hero's own layers do.
+   * the hero's own layers do. `--head-reveal` is that number on its own clock;
+   * the scroll-mapped layer presence is only the fallback before it is written.
    */
-  --title-in: clamp(0, calc(var(--head-in, 0) / 0.66), 1);
-  --sub-in: clamp(0, calc((var(--head-in, 0) - 0.34) / 0.66), 1);
+  --title-in: clamp(0, calc(var(--head-reveal, var(--head-in, 0)) / 0.66), 1);
+  --sub-in: clamp(0, calc((var(--head-reveal, var(--head-in, 0)) - 0.34) / 0.66), 1);
 }
 
 .heldHeader [data-heading-title] {

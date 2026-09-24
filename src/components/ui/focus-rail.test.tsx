@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { FocusRail, type FocusRailItem } from "./focus-rail";
 
 const mockItems: FocusRailItem[] = [
@@ -23,6 +23,19 @@ const mockItems: FocusRailItem[] = [
 ];
 
 describe("FocusRail Component", () => {
+  it("uses the same opaque, theme-aware reading surface without changing content or controls", () => {
+    const { container, rerender } = render(<FocusRail items={mockItems} theme="light" />);
+    const reader = container.querySelector('[data-focus-rail-reading]');
+    expect(reader).toContainElement(screen.getByRole("heading", { name: "Project Alpha" }));
+    expect(reader).toContainElement(screen.getByText("Alpha description text"));
+    expect(screen.getByTestId("carousel").className).toContain("light");
+    expect(screen.getByRole("heading", { name: "Project Alpha" })).not.toHaveClass("text-white");
+    rerender(<FocusRail items={mockItems} theme="dark" />);
+    expect(container.querySelector('[data-focus-rail-reading]')).toBe(reader);
+    expect(reader).toContainElement(screen.getByRole("button", { name: "Next project" }));
+    expect(screen.getByTestId("carousel").className).not.toContain("light");
+  });
+
   it("renders active project title, meta, and navigation buttons", () => {
     render(<FocusRail items={mockItems} />);
 
@@ -50,6 +63,28 @@ describe("FocusRail Component", () => {
 
     fireEvent.keyDown(carousel, { key: "ArrowLeft" });
     expect(screen.getByRole("heading", { level: 2, name: "Project Alpha" })).toBeInTheDocument();
+  });
+
+  it("leaves a vertical wheel to the page and browses only on lateral input", () => {
+    // Regression: one ordinary scroll past the flat rail moved the page and
+    // changed the project being read at the same time.
+    const now = vi.spyOn(Date, "now").mockReturnValue(10_000);
+    render(<FocusRail items={mockItems} />);
+    const carousel = screen.getByTestId("carousel");
+    // The counter is not animated, unlike the exiting heading kept for its exit.
+    const position = () => screen.getByText(/^0\d$/).textContent;
+    const vertical = new WheelEvent("wheel", { deltaY: 120, bubbles: true, cancelable: true });
+    fireEvent(carousel, vertical);
+    expect(vertical.defaultPrevented).toBe(false);
+    expect(position()).toBe("01");
+
+    fireEvent.wheel(carousel, { deltaX: 120, deltaY: 8 });
+    expect(position()).toBe("02");
+
+    now.mockReturnValue(10_500);
+    fireEvent.wheel(carousel, { deltaY: -120, shiftKey: true });
+    expect(position()).toBe("01");
+    now.mockRestore();
   });
 
   it("offers the same direct native selection in the flat reader without duplicate arrow or wheel paging", () => {
