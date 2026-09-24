@@ -83,6 +83,18 @@ html {
   color: rgb(var(--text-color));
 }
 
+/*
+ * A 4K canvas at 100% scaling. The scene scales with the viewport but the
+ * rem-sized interface did not, so navigation, copy and actions read as a 1440
+ * layout floating in a much larger world. Pixel and container-sized readers
+ * (the TV screen, Skills) keep their own measurement.
+ */
+@media (min-width: 2880px) and (min-height: 1600px) {
+  html {
+    font-size: 125%;
+  }
+}
+
 body {
   margin: 0;
   font-family:

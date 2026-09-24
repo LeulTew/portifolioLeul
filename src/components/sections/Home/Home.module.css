@@ -127,7 +127,7 @@
 .content {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  max-width: 75rem;
   margin: 0;
   width: 100%;
   pointer-events: auto;
@@ -161,8 +161,8 @@
 }
 
 .imagePlaceholder {
-  width: 120px;
-  height: 120px;
+  width: 7.5rem;
+  height: 7.5rem;
   border-radius: 50%;
   background: rgba(var(--text-color), 0.05);
   border: 1px solid rgba(var(--text-color), 0.15);
@@ -279,7 +279,7 @@
 }
 
 .description {
-  max-width: 420px;
+  max-width: 26.25rem;
   font-size: clamp(1rem, 1.25vw, 1.25rem);
   line-height: 1.45;
   color: #1f2937;
