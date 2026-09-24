@@ -91,6 +91,20 @@
   animation: cloudCondense 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/*
+ * In dark theme the mist's own luminance varies behind the copy, from bright
+ * vapour to the night it fades into. A steady feathered light under the
+ * measured copy keeps dark text on a known surface; the mist still draws over it.
+ */
+:global([data-theme='dark']) .plate::before {
+  content: '';
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(244 247 241 / 0.94), rgb(244 247 241 / 0.86) 64%, rgb(244 247 241 / 0));
+  filter: blur(10px);
+}
+
 @keyframes cloudCondense {
   from {
     opacity: 0;
