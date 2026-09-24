@@ -66,13 +66,17 @@ export function sequentialNeighbour(active: HTMLElement, backward: boolean, root
 
 /**
  * Whether this module reproduces the browser's order exactly. Positive
- * tabindex, radio groups (one stop per group) and shadow roots follow rules it
- * does not model, so Tab is left native there; `hold` still keeps the layer aligned.
+ * tabindex, radio groups (one stop per group) and shadow trees -- focus inside
+ * one, or a Tab that would enter one -- follow rules it does not model, so Tab
+ * is left native there; `hold` still keeps the layer aligned. Closed shadow
+ * roots are invisible to the page and cannot be detected.
  */
 export function reproducesNativeOrder(active: HTMLElement, stops: HTMLElement[]): boolean {
   // Focus inside a shadow tree is retargeted to its host at the document level.
   if (active.shadowRoot?.activeElement || active.getRootNode() !== active.ownerDocument) return false;
-  return !stops.some(stop => stop.tabIndex > 0 || (stop instanceof HTMLInputElement && stop.type === 'radio'));
+  if (stops.some(stop => stop.tabIndex > 0 || (stop instanceof HTMLInputElement && stop.type === 'radio'))) return false;
+  for (const element of active.ownerDocument.querySelectorAll('*')) if (element.shadowRoot) return false;
+  return true;
 }
 
 export interface LayerFocusOptions {

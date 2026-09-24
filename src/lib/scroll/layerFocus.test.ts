@@ -214,6 +214,16 @@ describe('keyboard focus in the scroll layer', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('leaves Tab native when it could enter a shadow tree the document query cannot see', () => {
+    // Round 7 (TECH-005): button, host with a shadow button, button -- the shadow control was skipped.
+    const host = document.createElement('div');
+    byId('home').insertBefore(host, null);
+    host.attachShadow({ mode: 'open' }).appendChild(document.createElement('button'));
+    byId('cta').focus();
+    expect(tab().defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(byId('cta'));
+  });
+
   it('stops listening once released', () => {
     release();
     byId('cta').focus();
