@@ -77,17 +77,14 @@
   --about-chapter-bg: #0a5c40;
 }
 
+/*
+ * No document-wide smooth scrolling: keyboard focus reveals inherit it, and a
+ * Tab could glide up to 10,000px over 1.5s with focus offscreen the whole way.
+ * Scripted section scrolls ask for smoothness explicitly, and honour reduced motion.
+ */
 html {
-  scroll-behavior: smooth;
   background-color: rgb(var(--bg-color));
   color: rgb(var(--text-color));
-}
-
-/* Navbar jumps, focus reveals and find-in-page arrive instantly for anyone who asked for less motion. */
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
 }
 
 /*
