@@ -19,11 +19,10 @@ function readModel(url: string): ModelDocument {
 }
 
 describe('software graphics assets', () => {
-  const originals = ['/models/terrain-opt.glb', '/models/me-animated-lite.glb', '/models/crt-lite.glb'];
+  const originals = ['/models/terrain-opt.glb', '/models/me-animated-lite.glb'];
 
   it('uses one matching model set for prefetch and scene readiness', () => {
-    const selected = originals.filter(url => url !== '/models/crt-lite.glb')
-      .map(url => resolveSceneModel(url, true));
+    const selected = originals.map(url => resolveSceneModel(url, true));
     expect(getCriticalModels(true)).toEqual(selected);
     expect(getCriticalAssets(true).filter(asset => asset.kind === 'model').map(asset => asset.url)).toEqual(selected);
     expect(originals.map(url => resolveSceneModel(url, false))).toEqual(originals);

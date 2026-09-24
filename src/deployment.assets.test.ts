@@ -38,7 +38,9 @@ describe('deployed static assets', () => {
       .map(path => readFileSync(path, 'utf8')).join('\n');
     const heavy = entries.filter(entry => !entry.directory && /[\\/](models|videos)[\\/]/.test(entry.path));
     expect(heavy.length).toBeGreaterThan(0);
-    const unreferenced = heavy.map(entry => entry.path.split(/[\\/]/).pop()!).filter(name => !sources.includes(name));
+    // The published path, not just a basename a comment could mention.
+    const unreferenced = heavy.map(entry => '/' + entry.path.slice(PUBLIC.length + 1).split(/[\\/]/).join('/'))
+      .filter(url => !sources.includes(url));
     expect(unreferenced).toEqual([]);
   });
 });

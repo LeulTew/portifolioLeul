@@ -58,6 +58,7 @@ function handleImageError(event: React.SyntheticEvent<HTMLImageElement>) {
  */
 function wrap(min: number, max: number, v: number) {
   const rangeSize = max - min;
+  if (rangeSize <= 0) return min;
   return ((((v - min) % rangeSize) + rangeSize) % rangeSize) + min;
 }
 

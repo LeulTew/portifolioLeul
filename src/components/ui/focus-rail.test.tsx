@@ -65,6 +65,11 @@ describe("FocusRail Component", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Project Alpha" })).toBeInTheDocument();
   });
 
+  it("renders nothing for an empty list without computing an invalid index", () => {
+    const { container } = render(<FocusRail items={[]} itemPickerLabel="Choose a project" />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("leaves a vertical wheel to the page and browses only on lateral input", () => {
     // Regression: one ordinary scroll past the flat rail moved the page and
     // changed the project being read at the same time.

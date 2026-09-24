@@ -9,7 +9,6 @@ const directory = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 
 const models = [
   ['terrain-opt.glb', 'terrain-software.glb', true],
   ['me-animated-lite.glb', 'me-animated-software.glb', false],
-  ['crt-lite.glb', 'crt-software.glb', false],
 ];
 await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({

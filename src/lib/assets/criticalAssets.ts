@@ -69,7 +69,6 @@ export const CRITICAL_MODELS: readonly string[] = CRITICAL_ASSETS.filter(
 const SOFTWARE_MODELS: Readonly<Record<string, CriticalAsset>> = {
   '/models/terrain-opt.glb': { url: '/models/terrain-software.glb', bytes: terrainBake.variants[1].bytes, kind: 'model' },
   '/models/me-animated-lite.glb': { url: '/models/me-animated-software.glb', bytes: 336_260, kind: 'model' },
-  '/models/crt-lite.glb': { url: '/models/crt-software.glb', bytes: 142_812, kind: 'model' },
 };
 const SOFTWARE_ASSETS = CRITICAL_ASSETS.map(asset => SOFTWARE_MODELS[asset.url] ?? asset);
 const SOFTWARE_CRITICAL_MODELS = SOFTWARE_ASSETS.filter(asset => asset.kind === 'model').map(asset => asset.url);
