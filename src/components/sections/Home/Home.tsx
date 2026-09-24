@@ -900,8 +900,8 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
             <div className={styles.imagePlaceholder}>
               <span className={styles.circleText}>L</span>
               <img 
-                src="/images/leul-profile.webp" 
-                alt="Leul" 
+                src="/images/leul-portrait.webp" 
+                alt="Portrait of Leul Tewodros" 
                 className={styles.circleImage}
               />
             </div>
@@ -982,7 +982,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           delay: 0.2
         }}
       >
-        <img src="/images/leul-profile.webp" alt="Leul" />
+        <img src="/images/leul-portrait.webp" alt="" />
       </motion.div>
 
       {/* Last cue: the affordance invites the next move, so it must not compete

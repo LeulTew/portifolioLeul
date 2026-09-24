@@ -58,7 +58,7 @@ export const CRITICAL_ASSETS: readonly CriticalAsset[] = [
   { url: '/models/me-animated-lite.glb', bytes: 847_188, kind: 'model' },
   { url: '/images/waternormals.jpg', bytes: 248_813, kind: 'texture' },
   { url: '/images/shore-field.png', bytes: terrainBake.shore.bytes, kind: 'texture' },
-  { url: '/images/leul-profile.webp', bytes: 41_616, kind: 'media' },
+  { url: '/images/leul-portrait.webp', bytes: 19_544, kind: 'media' },
 ];
 
 /** The models among the critical assets. */

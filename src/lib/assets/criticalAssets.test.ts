@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { statSync } from 'node:fs';
+import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { StrictMode, useEffect } from 'react';
 import { act, renderHook } from '@testing-library/react';
@@ -67,10 +69,11 @@ afterEach(() => {
 });
 
 describe('the manifest', () => {
-  it('names only files that exist under public/', () => {
+  it('names only files that exist under public/, at their real size', () => {
+    // Progress is weighted by these byte counts, so a stale one skews the loader.
     for (const asset of CRITICAL_ASSETS) {
       expect(asset.url.startsWith('/')).toBe(true);
-      expect(asset.bytes).toBeGreaterThan(0);
+      expect(statSync(resolve('public', asset.url.slice(1))).size).toBe(asset.bytes);
     }
   });
 
