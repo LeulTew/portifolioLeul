@@ -11,7 +11,7 @@ import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cac
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
-import { createTranslatedPositionReader } from '@/lib/scroll/translatedPosition';
+import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import {
   HERO_SCREENS,
   CUE_START_GAP,
@@ -209,12 +209,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
     const styledCues = new Set<HTMLElement>();
     const chapterObserver = new MutationObserver(() => apply());
     let observedScrollLayer: HTMLElement | null = null;
-    const findScrollLayer = cachedElement(() => {
-      for (let node = sectionElement?.parentElement; node && node !== document.body; node = node.parentElement) {
-        if (node.style.transform && node.style.transform !== 'none') return node;
-      }
-      return null;
-    });
+    const findScrollLayer = cachedElement(() => translatedLayerOf(sectionElement));
     const positionReader = sectionElement ? createTranslatedPositionReader(sectionElement, findScrollLayer) : null;
     positionReaderRef.current = positionReader;
     const scrollLayerObserver = new MutationObserver(() => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTranslatedPositionReader, translatedY } from './translatedPosition';
+import { createTranslatedPositionReader, translatedLayerOf, translatedY } from './translatedPosition';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -56,5 +56,38 @@ describe('translated scroll position', () => {
     measure.mockReturnValue(new DOMRect(0, -30, 100, 100));
     expect(reader.read()).toBe(-30);
     expect(createTranslatedPositionReader(element, () => null).read()).toBe(-30);
+  });
+
+  it('keeps the measured height with the translated top until layout is refreshed', () => {
+    const element = document.createElement('section');
+    const layer = document.createElement('div');
+    layer.style.transform = 'translate3d(0px, -100px, 0px)';
+    const measure = vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 20, 100, 640));
+    const reader = createTranslatedPositionReader(element, () => layer);
+    expect(reader.readRect()).toEqual({ top: 20, height: 640 });
+    layer.style.transform = 'translate3d(0px, -300px, 0px)';
+    for (let i = 0; i < 50; i++) expect(reader.readRect()).toEqual({ top: -180, height: 640 });
+    measure.mockReturnValue(new DOMRect(0, -180, 100, 720));
+    reader.refresh();
+    expect(reader.readRect()).toEqual({ top: -180, height: 720 });
+    expect(measure).toHaveBeenCalledTimes(2);
+  });
+
+  it('finds the nearest ancestor that carries an inline transform', () => {
+    const layer = document.createElement('div');
+    const plain = document.createElement('div');
+    const element = document.createElement('section');
+    layer.style.transform = 'translate3d(0px, -10px, 0px)';
+    layer.append(plain);
+    plain.append(element);
+    document.body.append(layer);
+    try {
+      expect(translatedLayerOf(element)).toBe(layer);
+      layer.style.transform = 'none';
+      expect(translatedLayerOf(element)).toBeNull();
+      expect(translatedLayerOf(null)).toBeNull();
+    } finally {
+      layer.remove();
+    }
   });
 });

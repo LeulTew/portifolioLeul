@@ -1,26 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import postcss, { type AtRule } from 'postcss';
+import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
 
 const css = postcss.parse(readFileSync(resolve('src', 'index.css'), 'utf8'));
 
-function declarations(selector: string, within?: AtRule): Record<string, string> {
-  const values: Record<string, string> = {};
-  (within ?? css).each(node => {
-    if (node.type !== 'rule' || node.selector !== selector) return;
-    node.walkDecls(declaration => { values[declaration.prop] = declaration.value; });
-  });
-  return values;
-}
-
 describe('global document styles', () => {
-  it('scrolls the document smoothly only for readers who have not asked for less motion', () => {
-    expect(declarations('html')['scroll-behavior']).toBe('smooth');
-    const reduced = css.nodes.find((node): node is AtRule => node.type === 'atrule' &&
-      node.name === 'media' && node.params === '(prefers-reduced-motion: reduce)');
-    // Measured natively: Flat Tab focus still glided 9,300px under reduced motion without this.
-    expect(reduced).toBeDefined();
-    expect(declarations('html', reduced)['scroll-behavior']).toBe('auto');
+  it('reveals keyboard focus instantly instead of gliding the document to it', () => {
+    // Measured natively in the no-WebGL page: with a document-wide smooth scroll,
+    // each Tab glided up to 10,000px and left focus offscreen for about 1.5s.
+    const behaviours: string[] = [];
+    css.walkRules(rule => {
+      if (!rule.selectors.some(selector => /^(html|:root|body)$/.test(selector.trim()))) return;
+      rule.walkDecls('scroll-behavior', declaration => { behaviours.push(declaration.value); });
+    });
+    expect(behaviours.filter(value => value !== 'auto')).toEqual([]);
   });
 });

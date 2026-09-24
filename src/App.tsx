@@ -475,16 +475,18 @@ function App() {
       return;
     }
 
+    const glide: ScrollBehavior = typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     if (id === 'about') {
       const aboutEl = document.getElementById('about');
       if (aboutEl && typeof window !== 'undefined') {
         const top = aboutEl.offsetTop + aboutNavigationInset(window.innerHeight);
-        window.scrollTo({ top, behavior: 'smooth' });
+        window.scrollTo({ top, behavior: glide });
         return;
       }
     }
 
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.scrollIntoView({ behavior: glide, block: 'start' });
   }, [scrollElement, trackFocus]);
 
   // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
