@@ -52,8 +52,9 @@ export function sequentialOrder(stops: HTMLElement[], root: Document = document)
 }
 
 /** The stop Tab (or Shift+Tab) moves to from `active`, or null at either end. */
-export function sequentialNeighbour(active: HTMLElement, backward: boolean, root: Document = document): HTMLElement | null {
-  const stops = tabbableElements(root);
+export function sequentialNeighbour(active: HTMLElement, backward: boolean, root: Document = document,
+  stops: HTMLElement[] = tabbableElements(root)): HTMLElement | null {
+  stops = [...stops];
   if (!stops.includes(active)) {
     // A focused non-stop, such as a tabpanel, keeps its place in document order.
     const after = stops.findIndex(stop => Boolean(active.compareDocumentPosition(stop) & Node.DOCUMENT_POSITION_FOLLOWING));
@@ -61,6 +62,17 @@ export function sequentialNeighbour(active: HTMLElement, backward: boolean, root
   }
   const order = sequentialOrder(stops, root);
   return order[order.indexOf(active) + (backward ? -1 : 1)] ?? null;
+}
+
+/**
+ * Whether this module reproduces the browser's order exactly. Positive
+ * tabindex, radio groups (one stop per group) and shadow roots follow rules it
+ * does not model, so Tab is left native there; `hold` still keeps the layer aligned.
+ */
+export function reproducesNativeOrder(active: HTMLElement, stops: HTMLElement[]): boolean {
+  // Focus inside a shadow tree is retargeted to its host at the document level.
+  if (active.shadowRoot?.activeElement || active.getRootNode() !== active.ownerDocument) return false;
+  return !stops.some(stop => stop.tabIndex > 0 || (stop instanceof HTMLInputElement && stop.type === 'radio'));
 }
 
 export interface LayerFocusOptions {
@@ -126,7 +138,9 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const active = root.activeElement;
     // Without a focused element the browser's starting point is unknowable; leave it the move.
     if (!(active instanceof HTMLElement) || active === root.body) return;
-    const next = sequentialNeighbour(active, event.shiftKey, root);
+    const stops = tabbableElements(root);
+    if (!reproducesNativeOrder(active, stops)) return;
+    const next = sequentialNeighbour(active, event.shiftKey, root, stops);
     if (!next) return;
     event.preventDefault();
     next.focus({ preventScroll: true });

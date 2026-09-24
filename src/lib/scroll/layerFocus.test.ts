@@ -189,6 +189,31 @@ describe('keyboard focus in the scroll layer', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['a positive tabindex', () => byId('send').setAttribute('tabindex', '2')],
+    ['a radio group', () => {
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'choice';
+      byId('contact').append(radio);
+    }],
+  ])('leaves Tab native when the page uses %s, whose order it does not model', (_label, arrange) => {
+    arrange();
+    byId('cta').focus();
+    expect(tab().defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(byId('cta'));
+  });
+
+  it('leaves Tab native inside a shadow root', () => {
+    const host = document.createElement('div');
+    byId('home').append(host);
+    const inner = host.attachShadow({ mode: 'open' }).appendChild(document.createElement('button'));
+    inner.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true, composed: true });
+    inner.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it('stops listening once released', () => {
     release();
     byId('cta').focus();
