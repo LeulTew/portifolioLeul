@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useId, useLayoutEffect, useRef, type FormEvent } from 'react';
 import { ArrowUpRight, Loader2 } from 'lucide-react';
 import { ControlButton } from '../../ui/ControlButton';
 import styles from './ContactForm.module.css';
@@ -6,6 +6,8 @@ import { useContactForm } from './useContactForm';
 import { cvData } from '@/data/cv';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { CONTACT_PAPER_PLANE, useContactSendFlight } from './contactSendFlight';
+import { CONTACT_DELIVERY_MESSAGES } from './contactDelivery';
+import { CONTACT_COUNT_FROM, CONTACT_LIMITS, contactEmailDraft } from './contactLimits';
 
 export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean }) {
   const {
@@ -15,23 +17,34 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
     handleSubmit,
     isSubmitting,
     submitStatus,
+    submitError,
     resetForm,
   } = useContactForm();
   const stage = useRef<HTMLDivElement>(null);
   const form = useRef<HTMLFormElement>(null);
   const nameField = useRef<HTMLInputElement>(null);
+  const submitButton = useRef<HTMLButtonElement>(null);
   const anotherButton = useRef<HTMLButtonElement>(null);
+  const headingId = useId();
   const focusNewDraft = useRef(false);
   const accepted = submitStatus === 'success';
   const reduced = usePrefersReducedMotion();
   const phase = useContactSendFlight(stage, accepted, reduced, flightEnabled);
   const retired = accepted && phase === 'sent';
   const readOnly = isSubmitting || accepted;
+  const emailDraft = contactEmailDraft(cvData.contact.email, formData);
+  const counting = formData.message.length >= CONTACT_COUNT_FROM;
+  const messageDescription = [errors.message && 'contact-message-error', counting && 'contact-message-count']
+    .filter(Boolean).join(' ') || undefined;
 
   useLayoutEffect(() => {
     const node = form.current;
     if (!node) return;
-    if (retired && node.contains(document.activeElement) && !stage.current?.closest('[inert]')) {
+    const ownsFocus = document.activeElement === stage.current || node.contains(document.activeElement);
+    if (accepted && !retired && node.contains(document.activeElement) && !stage.current?.closest('[inert]')) {
+      stage.current?.focus({ preventScroll: true });
+    }
+    if (retired && ownsFocus && !stage.current?.closest('[inert]')) {
       anotherButton.current?.focus({ preventScroll: true });
     }
     node.toggleAttribute('inert', retired);
@@ -40,8 +53,17 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
     if (!accepted && focusNewDraft.current) {
       focusNewDraft.current = false;
       nameField.current?.focus({ preventScroll: true });
+    } else if (submitStatus === 'error' && !isSubmitting &&
+        document.activeElement === stage.current && !node.closest('[inert]')) {
+      submitButton.current?.focus({ preventScroll: true });
     }
-  }, [accepted, retired]);
+  }, [accepted, retired, submitStatus, isSubmitting]);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    // The stable stage outlives both the disabled button and the departing sheet.
+    if (form.current?.contains(document.activeElement)) stage.current?.focus({ preventScroll: true });
+    void handleSubmit(event);
+  };
 
   const startAnotherMessage = () => {
     focusNewDraft.current = true;
@@ -49,11 +71,13 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
   };
 
   return (
-    <div ref={stage} className={styles.stage} data-send-phase={accepted ? phase : 'ready'}>
+    <div ref={stage} className={styles.stage} tabIndex={-1} role="group" aria-label="Message submission"
+      aria-busy={isSubmitting} data-send-phase={accepted ? phase : 'ready'}>
       <div className={styles.sheet} data-send-sheet>
-        <form ref={form} className={styles.form} onSubmit={handleSubmit} aria-busy={isSubmitting} data-status={submitStatus}>
+        <form ref={form} className={styles.form} onSubmit={submit} aria-labelledby={headingId}
+          aria-busy={isSubmitting} data-status={submitStatus}>
           <header className={styles.heading}>
-            <h3>Send a message</h3>
+            <h3 id={headingId}>Send a message</h3>
             <p>A project, an opportunity, or just hello.</p>
           </header>
           <div className={styles.identity}>
@@ -66,6 +90,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
                 name="name"
                 autoComplete="name"
                 required
+                maxLength={CONTACT_LIMITS.name}
                 readOnly={readOnly}
                 tabIndex={accepted ? -1 : undefined}
                 aria-invalid={!!errors.name}
@@ -86,6 +111,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
                 name="email"
                 autoComplete="email"
                 required
+                maxLength={CONTACT_LIMITS.email}
                 readOnly={readOnly}
                 tabIndex={accepted ? -1 : undefined}
                 aria-invalid={!!errors.email}
@@ -105,20 +131,25 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
               id="message"
               name="message"
               required
+              maxLength={CONTACT_LIMITS.message}
               readOnly={readOnly}
               tabIndex={accepted ? -1 : undefined}
               aria-invalid={!!errors.message}
-              aria-describedby={errors.message ? 'contact-message-error' : undefined}
+              aria-describedby={messageDescription}
               className={styles.textarea}
               value={formData.message}
               onChange={handleChange}
               placeholder="What would you like to build?"
             />
+            {counting && <p id="contact-message-count" className={`${styles.message} ${styles.count}`}>
+              {formData.message.length.toLocaleString('en-US')} / {CONTACT_LIMITS.message.toLocaleString('en-US')} characters
+            </p>}
             {errors.message && <p id="contact-message-error" className={`${styles.message} ${styles.error}`} role="alert">{errors.message}</p>}
           </div>
 
           <div className={styles.submitRow}>
             <ControlButton
+              ref={submitButton}
               type="submit"
               disabled={readOnly}
               variant="primary"
@@ -133,10 +164,10 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
 
           {submitStatus === 'error' && (
             <p role="alert" className={`${styles.message} ${styles.error}`}>
-              <span>Failed to send message. Please try again.</span>{' '}
+              <span>{CONTACT_DELIVERY_MESSAGES[submitError ?? 'network']}</span>{' '}
               <a
                 className={styles.fallbackLink}
-                href={`mailto:${cvData.contact.email}?subject=${encodeURIComponent(`Portfolio message from ${formData.name.trim() || 'a visitor'}`)}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`}
+                href={emailDraft}
               >
                 Open this draft in your email app
               </a>
@@ -153,8 +184,10 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
       </div>
       <div className={styles.confirmation} hidden={!accepted}>
         {accepted && <>
-          <h3>Sent.</h3>
-          <p role="status" className={`${styles.message} ${styles.success}`}>Message sent successfully!</p>
+          <h3>Submitted.</h3>
+          <p role="status" className={`${styles.message} ${styles.success}`}>The email service accepted your message.</p>
+          <p className={`${styles.message} ${styles.deliveryNote}`}>Inbox delivery isn't confirmed here. For a direct follow-up:</p>
+          <a className={styles.fallbackLink} href={emailDraft}>Open this draft in your email app</a>
           <ControlButton ref={anotherButton} className={styles.anotherButton} onClick={startAnotherMessage}>
             Send another message
           </ControlButton>

@@ -1,102 +1,48 @@
 /**
- * The hero holds still while the reader scrolls, and the scroll drives what
- * happens instead of moving the page.
+ * The hero holds while scroll advances its handover to About.
  *
- * The hero used to be one screen tall and simply leave with the scroll, so
- * everything it did on the way out was a side effect of it being carried off
- * the top of the window. That is the wrong model: a hero should hand over
- * deliberately, and handing over takes time the reader has to be given.
+ * The section is `HERO_SCREENS` tall and its contents are held at the first
+ * screen. `position: sticky` has no scrollport inside the transformed scroll
+ * container, so the held block is instead pushed down by exactly what has been
+ * scrolled: one composited transform, no reflow.
  *
- * So the section is several screens tall and its contents are held at the
- * first of them. Scrolling advances a progress value rather than the copy's
- * position. Copy and cloud clear together while the cue draws the connection
- * to About, following the incoming section's actual movement.
- *
- * `position: sticky` cannot do this here. The page scrolls inside a
- * transformed element, which leaves sticky with no scrollport to stick to --
- * the same reason the About stretch is pinned with a portal. This pins with a
- * transform instead: the held block is pushed down by exactly as much as the
- * page has scrolled, which cancels out and reads as fixed, and costs one
- * composited transform rather than a reflow.
+ * Scroll names the moment each beat starts; the beat's own duration paces it
+ * (see `triggeredPhase`). The scrub functions below remain the reduced-motion
+ * path and the shape the tests pin, independent of timing.
  */
 
+import { advancePhase, type PhaseState } from './triggeredPhase';
+
 /**
- * Screens of scroll the hero holds for, beyond the one it occupies.
- *
- * A third of a screen, down from 1.35.
- *
- * This one number decides three things at once, which is why it kept being
- * the answer. The hero is `1 + hold` screens tall, so the section underneath
- * cannot start climbing until the hold is spent: the hold IS how long the
- * reader waits for it. The mark begins partway through the hold and ends above
- * About's heading, so the hold is also most of the mark's length. Holding for
- * 1.35 screens meant waiting most of a page for the panel and drawing the mark
- * down an empty hero while waiting.
- *
- * Short enough that the panel is on its way up almost as soon as the mark
- * starts, and still long enough for the copy to leave and the plate to close
- * as two separate beats.
+ * Screens of scroll held beyond the one the hero occupies. It is both how long
+ * the reader waits for About to climb and most of the cue's length, so it stays
+ * short while leaving room for the copy exit and plate close as separate beats.
  */
 export const HERO_HOLD_SCREENS = 0.35;
 
 /** Total height of the hero, in screens, including the one it occupies. */
 export const HERO_SCREENS = 1 + HERO_HOLD_SCREENS;
 
-/**
- * Share of the hold by which the copy has finished leaving.
- *
- * Retained for the original scroll profile and the cue's rail origin.
- * Normal-motion copy and fog now share INNER_EXIT_MS rather than these offsets.
- */
+/** Share of the hold by which the copy has left; also fixes the cue's rail origin. */
 export const INNER_END = 0.42;
 
-/**
- * Share of the hold by which the plate has finished shutting.
- *
- * Leaves the rest to the cue, which is drawn across the close and carries on
- * after it.
- */
+/** Share of the hold by which the plate has closed; the rest belongs to the cue. */
 export const HOLD_CLOSE_END = 0.72;
 
-/* ---------------------------------------------------------------------------
-   The handover's two beats, as triggers and durations rather than as a scrub.
-
-   `INNER_END` and `HOLD_CLOSE_END` above still describe the *shape* of the
-   hold -- how much of it belongs to each beat, and where the cue has room to
-   draw -- and the scrub functions below are still the reduced-motion path and
-   the thing the tests pin the shape against. What changed is who reads the
-   clock. Scroll now names the moment a beat should start; the beat's own
-   duration decides how it gets there.
-
-   Copy and fog share one 900ms exit. The requested stroke overlaps that exit
-   on the same frame loop; About waits for both completed endpoints.
-   ------------------------------------------------------------------------- */
-
-/** How long the copy takes to leave, once scroll has started it. */
+/** Copy and fog share one exit; the stroke overlaps it and About waits for both. */
 export const INNER_EXIT_MS = 900;
-
-/** Cloud duration; normal motion uses the same phase as the copy, not a second beat. */
 export const PLATE_CLOSE_MS = 900;
 export const CUE_DRAW_MS = 950;
 
-/**
- * Hold progress that starts the copy leaving, and the lower point that lets it
- * come back. Barely off zero: the copy should commit the moment the reader
- * moves, exactly as it did when it was scrubbed.
- */
+/** Commit the copy exit the moment the reader moves; the lower point lets it return. */
 export const INNER_ENTER = 0.02;
 export const INNER_RELEASE = 0.005;
 export const CUE_ENTER = INNER_ENTER;
 
 /**
- * Hold progress that commits the plate to shutting, and the lower point that
- * reopens it.
- *
- * `INNER_ENTER`'s twin sits at `INNER_END`, so the reader reaches the close at
- * the same place in the scroll as before. The copy being gone is enforced
- * separately, by requiring its beat to have actually finished -- a scroll
- * threshold alone would shut the plate under copy that a slow frame had left
- * still standing on it.
+ * Hold progress that commits the plate close, and the point that reopens it.
+ * The close also requires the copy beat to have finished, so a slow frame
+ * cannot shut the plate under copy that is still standing.
  */
 export const PLATE_ENTER = INNER_END;
 export const PLATE_RELEASE = 0.36;
@@ -106,25 +52,14 @@ function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 
-/**
- * How far the reader has scrolled into the hold, in pixels.
- *
- * `sectionTop` is the section's own `top` from a bounding rect: zero when its
- * top edge meets the top of the window, and negative once past it.
- */
+/** Pixels scrolled into the hold; `sectionTop` is the section's bounding-rect top. */
 export function scrolledIntoHold(sectionTop: number, holdLength: number): number {
   if (!Number.isFinite(sectionTop) || !Number.isFinite(holdLength)) return 0;
   if (holdLength <= 0) return 0;
   return Math.min(Math.max(-sectionTop, 0), holdLength);
 }
 
-/**
- * How far to push the held block down so it appears to stand still.
- *
- * Exactly what has been scrolled, for as long as the hold lasts, and then no
- * more -- so the block is released and carried away by the page like anything
- * else once its turn is over.
- */
+/** Cancels the scroll during the hold, then releases the block to the page. */
 export function pinOffset(sectionTop: number, holdLength: number): number {
   return scrolledIntoHold(sectionTop, holdLength);
 }
@@ -135,45 +70,21 @@ export function holdProgress(sectionTop: number, holdLength: number): number {
   return clamp01(scrolledIntoHold(sectionTop, holdLength) / holdLength);
 }
 
-/**
- * The exit the hero's layers and plate read, from hold progress.
- *
- * Reaches one before the hold does, leaving the last stretch to the cue. The
- * copy and the plate are finished with well before the reader is handed on.
- */
+/** Layer and plate exit; completes at `HOLD_CLOSE_END`, before the hold does. */
 export function holdExit(progress: number): number {
   if (HOLD_CLOSE_END <= 0) return 1;
   return clamp01(clamp01(progress) / HOLD_CLOSE_END);
 }
 
-/**
- * How far through leaving the copy is, from hold progress.
- *
- * Reaches one at `INNER_END`, so every layer inside the plate is gone before
- * the plate itself is touched.
- *
- * No longer what drives the exit for most readers. Scroll triggers the beat
- * and a clock positions it -- see `INNER_EXIT_MS` above and `triggeredPhase`.
- * This is the reduced-motion path, where a self-running movement is the thing
- * being opted out of and tracking the scroll is correct; and it is what the
- * tests pin the hold's *shape* against, independently of its timing.
- */
+/** Reduced-motion copy exit; completes at `INNER_END`, before the plate moves. */
 export function innerExit(progress: number): number {
   if (INNER_END <= 0) return 1;
   return clamp01(clamp01(progress) / INNER_END);
 }
 
 /**
- * How far shut the plate is, from hold progress.
- *
- * Nothing until the copy has gone, then closed across the stretch that
- * follows. This is the beat that reads as the hero being put away.
- *
- * Same split as `innerExit`: the reduced-motion path and the shape the tests
- * check, not the timing most readers get. And "shut" is now a name from the
- * past -- the plate disperses rather than closing, because a feathered ellipse
- * has no edge to draw together. The number is unchanged; only what the
- * stylesheet does with it is.
+ * Reduced-motion plate close across `INNER_END`..`HOLD_CLOSE_END`. Named for
+ * the original close; the stylesheet now disperses the feathered plate instead.
  */
 export function plateShut(progress: number): number {
   const room = HOLD_CLOSE_END - INNER_END;
@@ -181,40 +92,20 @@ export function plateShut(progress: number): number {
   return clamp01((clamp01(progress) - INNER_END) / room);
 }
 
-/**
- * Air between the cue's head and the heading it points at.
- */
+/** Air between the cue's head and the heading it points at. */
 export const CUE_TIP_GAP = 36;
 
-/**
- * Fallback for where About's heading sits, as a share of the viewport.
- *
- * Used only before the heading has been measured. It is pinned near the top of
- * the window while About is held, so its position is a real number to be read
- * off layout rather than guessed -- this is just somewhere sane to start.
- */
+/** Heading position, as a viewport share, until the pinned heading is measured. */
 export const CUE_TIP_SCREEN_SHARE = 0.16;
 
-/**
- * Gap between the bottom of the hero's plate and the top of the cue.
- *
- * The mark begins where the plate that held the copy ended, with just enough
- * air that it reads as starting below it rather than growing out of it.
- */
+/** Gap below the plate, so the mark starts beneath it rather than growing out of it. */
 export const CUE_START_GAP = 12;
 
 /**
- * The cue's span down the page, measured from the top of the hero section.
- *
- * Both ends are measurements rather than constants: it starts under the plate,
- * wherever the plate happens to end at this window size, and finishes just
- * above About's heading, wherever that happens to be pinned. That is what
- * makes it long -- it is as long as the gap it spans, which at a laptop window
- * is most of two thousand pixels, and it is travelled along rather than looked
- * at.
- *
- * Deliberately not pinned. A held mark can only ever be as long as the window;
- * a mark anchored to the page can be as long as the distance it bridges.
+ * The cue's span from the top of the hero section. Both ends are measured --
+ * under the plate, and just above About's pinned heading -- and the rail is
+ * anchored to the page, not pinned, so it can be as long as the gap it bridges
+ * rather than one window.
  */
 export function cueRail(
   plateBottom: number,
@@ -233,32 +124,15 @@ export function cueRail(
       ? headingTop
       : viewportHeight * CUE_TIP_SCREEN_SHARE;
 
-  // Keep the authored rail and landing; requesting its ink earlier must not
-  // lengthen the bridge or pull its origin up into the departing foreground.
+  // Requesting the ink earlier must not lengthen the rail or lift its origin.
   const top = holdLength * INNER_END + plateBottom + CUE_START_GAP;
-
-  /*
-   * The head lands `CUE_TIP_GAP` above the heading at the moment the held
-   * stretch takes over the window, which is the earliest the heading can be
-   * shown at all.
-   */
+  // The head lands when the held stretch takes the window, the heading's earliest.
   const bottom = heldTop + Math.max(heading - CUE_TIP_GAP, 0);
 
   return bottom > top ? { top, height: bottom - top } : blank;
 }
 
-/**
- * How far through its drawing the cue is.
- *
- * The stroke starts during the foreground's departure, once scroll requests
- * the bridge. It draws from the start of the rail through to the moment the held
- * stretch takes over the window, where its head comes to rest just above the
- * heading.
- *
- * One even span, not three phases. It was timed against the plate's close and
- * then made to track the bottom edge of the window, which drew the whole line
- * before the section it points at existed on screen.
- */
+/** One even span from `CUE_ENTER` to the held stretch taking the window. */
 export function cueDraw(
   sectionTop: number,
   holdLength: number,
@@ -287,28 +161,13 @@ export function cueTravel(railTop: number, heldTop: number, holdLength: number, 
   return railTop - start - (heldTop - start) * clamp01(drawn);
 }
 
-/**
- * Screens of scroll the finished mark keeps its place before it goes.
- *
- * Once the head is at rest above the heading, that composition is the point of
- * the whole handover -- so it is held rather than scrolled away. The mark used
- * to be carried off the top the moment About settled, which meant the one
- * frame everything had been built for was the frame it disappeared on.
- *
- * Restored from f46b247 together with the fixed About-title arrival.
- */
+/** Screens the finished mark holds above the heading: the handover's resting frame. */
 export const CUE_REST_SCREENS = 0.14;
 
 /** Screens of scroll the mark takes to leave, once the copy has its turn. */
 export const CUE_FADE_SCREENS = 0.09;
 
-/**
- * How far to push the finished mark down so it keeps its place on screen.
- *
- * Zero until the head is at rest, then exactly what has been scrolled since --
- * which cancels out and reads as held -- and then no more, so it is released
- * and carried away with the page as the copy takes over.
- */
+/** Zero until the head rests, then cancels the scroll until the mark is released. */
 export function cueRest(
   sectionTop: number,
   heldTop: number,
@@ -324,13 +183,7 @@ export function cueRest(
   return Math.min(past, limit);
 }
 
-/**
- * How present the mark is, 1 down to 0.
- *
- * Full while it is being drawn and while it rests, then eased away over the
- * stretch where About's own copy arrives -- so the two exchange places instead
- * of the mark simply vanishing.
- */
+/** Full while drawn and resting, then eased out as About's copy arrives. */
 export function cuePresence(
   sectionTop: number,
   heldTop: number,
@@ -345,7 +198,5 @@ export function cuePresence(
   if (past <= rest || fade <= 0) return 1;
 
   const through = clamp01((past - rest) / fade);
-  // Smoothstep: it eases out of rest rather than starting to go abruptly.
   return 1 - through * through * (3 - 2 * through);
 }
-import { advancePhase, type PhaseState } from './triggeredPhase';

@@ -107,8 +107,8 @@ describe('hero ordering', () => {
 
 describe('cue lookup', () => {
   it('reports a layer’s delay and duration', () => {
-    expect(cueDelay(HERO_SEQUENCE, 'title')).toBe(1.0);
-    expect(cueDuration(HERO_SEQUENCE, 'title')).toBe(2.4);
+    expect(cueDelay(HERO_SEQUENCE, 'title')).toBe(0.5);
+    expect(cueDuration(HERO_SEQUENCE, 'title')).toBe(2.2);
   });
 
   it('degrades safely for an unknown layer', () => {

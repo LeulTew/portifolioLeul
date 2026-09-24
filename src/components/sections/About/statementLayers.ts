@@ -1,75 +1,32 @@
 import type { SequenceLayer } from '../../ui/PinnedSequence';
 
 /**
- * When each statement holds the stage.
+ * When each layer of the held About stretch is present, as sequence progress.
  *
- * Spatial gates request the beats; the shared statement clock unfolds each
- * square into its copy. The second square waits for that first arrival even
- * when a flick has already spent the spatial windows.
- *
- * Its own module rather than a constant beside the component, so the component
- * file exports only components and fast refresh keeps working.
+ * Positions request the beats; their own clocks play them (see aboutBeats.ts).
+ * Its own module so the component file exports only components (fast refresh).
  */
 export const STATEMENT_LAYERS: readonly SequenceLayer[] = [
-  /*
-   * The ground. Covers the whole stretch and ramps in at the start.
-   * End is set to 2 so ground-in stays at full 1.0 strength through the end of the
-   * sequence and seamlessly hands over to the Education section without disappearing.
-   */
+  // Ground: in from the start and held past the end (end 2) into Education.
   { name: 'ground', start: 0, end: 2, feather: 0.09 },
   /*
-   * The heading, and it arrives while the arrow is still pointing at it.
-   *
-   * The hero hands over by drawing a line down the page, and the head of that
-   * line comes to rest just above this heading at the moment the panel reaches
-   * the top of the window. That is the composition the whole handover is for,
-   * and it only exists if the heading is up while the mark is still there --
-   * so it starts the instant the stretch does, on a short ramp.
-   *
-   * It used to start a twentieth of the way in on a long ramp, which put it at
-   * full strength some four hundred pixels of scroll later: by then the mark
-   * had been carried off the top and the heading arrived into an empty screen,
-   * pointed at by nothing.
-   */
-  /*
-   * The heading, and it arrives while the arrow is still pointing at it.
-   * End is set to 2 so head-in stays at full 1.0 strength through the title
-   * pixel transition and seamlessly hands over to Education without clipping.
+   * Heading: present from the instant the stretch begins, while the hero's arrow
+   * still points at it. This presence only triggers the timed HEAD_REVEAL; it
+   * never draws the heading's masks itself.
    */
   { name: 'head', start: 0, end: 1, feather: 0.04 },
   /*
-   * The statements follow the mark out rather than competing with it.
-   *
-   * The arrow leaves the top of the window a little under a tenth of the way
-   * in; the copy arrives as it goes, so the reader is handed from one to the
-   * other. Starting at 0.03 -- which is what this was -- had the statements
-   * animating in underneath a heading that had not arrived yet and a mark that
-   * was still pointing at it.
-   */
-  /*
-   * Seamless zero-gap handover between statements:
-   * Statement One is fully settled across 0.15 - 0.38, then ramps down from 0.38 to 0.46.
-   * Statement Two ramps in concurrently from 0.38 to 0.46, reaching full settled strength
-   * and holding until the background pixel transition takes over at 0.78.
-   * At the 0.42 midpoint, both are at 0.5 presence so the screen is never empty or bland.
+   * Statements follow the arrow out. They cross over across 0.38-0.46, both at
+   * half presence at 0.42, so the stage is never empty between them.
    */
   { name: 'one', start: 0.07, end: 0.46, feather: 0.08 },
   { name: 'two', start: 0.38, end: 0.78, feather: 0.08 },
-  /*
-   * Background pixel transition (runrobrun stepped bottom-up pixel growth).
-   * Takes over AFTER statement two has completely disappeared (progress > 0.78),
-   * climbing from the bottom up in castellated columns to transition the background
-   * into dark greenish (#001a1a) or emerald green (#0a5c40).
-   */
+  // Stepped, bottom-up pixel background, once statement two has gone.
   { name: 'bgTransition', start: 0.78, end: 1.0, feather: 0.04 },
 ] as const;
 
 /**
- * Screens of scroll the held stretch spends.
- *
- * Three, not four. Every screen here is scroll the reader spends without
- * arriving anywhere new, so the stretch has to be long enough for two
- * statements to take their turn and no longer: past that it stops reading as
- * being held and starts reading as being stuck.
+ * Screens of scroll the held stretch spends: long enough for two statements to
+ * take their turn and no longer -- past that, being held starts to read as stuck.
  */
 export const ABOUT_SCREENS = 3;

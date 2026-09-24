@@ -14,7 +14,10 @@
         document.documentElement.setAttribute('data-theme', 'light');
       }
     </script>
-    <link rel="icon" type="image/webp" href="/images/leul-profile.webp" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <noscript><link rel="stylesheet" href="/noscript.css" /></noscript>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Primary SEO Meta Tags -->
@@ -31,14 +34,18 @@
     <meta property="og:url" content="https://leul-t-agonafer.vercel.app/" />
     <meta property="og:title" content="Leul Tewodros Agonafer | 3D Portfolio & Full Stack Developer" />
     <meta property="og:description" content="Interactive 3D Portfolio specializing in Three.js, React, and AI/ML. Experience immersive web development." />
-    <meta property="og:image" content="https://leul-t-agonafer.vercel.app/images/leul-profile.webp" />
+    <meta property="og:image" content="https://leul-t-agonafer.vercel.app/images/og-card.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Leul Tewodros's portfolio hero: portrait, name and a 3D island with his waving avatar" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://leul-t-agonafer.vercel.app/" />
     <meta property="twitter:title" content="Leul Tewodros Agonafer | 3D Portfolio" />
     <meta property="twitter:description" content="Interactive 3D Portfolio specializing in Three.js, React, and AI/ML." />
-    <meta property="twitter:image" content="https://leul-t-agonafer.vercel.app/images/leul-profile.webp" />
+    <meta property="twitter:image" content="https://leul-t-agonafer.vercel.app/images/og-card.jpg" />
+    <meta property="twitter:image:alt" content="Leul Tewodros's portfolio hero: portrait, name and a 3D island with his waving avatar" />
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -79,6 +86,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <main class="noscript">
+        <h1>Leul Tewodros Agonafer</h1>
+        <p>Software engineer working across web applications, 3D interfaces and data.</p>
+        <p>The interactive portfolio needs JavaScript. You can still explore my code or contact me directly.</p>
+        <p>
+          <a href="https://github.com/LeulTew">View my code on GitHub</a>
+          <a href="mailto:leulman2@gmail.com">Email Leul</a>
+        </p>
+      </main>
+    </noscript>
     <script type="module" src="/src/bootstrap.ts"></script>
   </body>
 </html>

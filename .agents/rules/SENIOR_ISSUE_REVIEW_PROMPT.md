@@ -20,7 +20,7 @@ The primary question is: **"Does this implementation completely and correctly so
 
 ## HARD RULES
 
-- Do not approve if local verification (`bun test`, `bun run build`, `bun run lint`, `bun x tsc --noEmit`) is failing. (Do not wait for or check remote GitHub Actions CI as quota is over limit).
+- Do not approve if local verification (`bun x vitest run`, `bun run build`, `bun run lint`, `bun run typecheck`) is failing. (Do not wait for or check remote GitHub Actions CI as quota is over limit).
 - Do not approve unless all requirements are verified and everything is truly 10/10.
 - Do not assume correctness because tests pass.
 - Do not review only changed files or only the obvious code path. Use full project context.

@@ -6,6 +6,7 @@ import { Loader } from './components/Loader';
 import { Navigation } from './components/Navigation';
 import { Home } from './components/sections/Home/Home';
 import { About } from './components/sections/About/About';
+import { aboutNavigationInset } from './components/sections/About/aboutNavigation';
 import { Projects } from './components/sections/Projects/Projects';
 import { Skills } from './components/sections/Skills/Skills';
 import { BackgroundScene } from './components/BackgroundScene';
@@ -17,6 +18,7 @@ import { useTheme } from './components/sections/theme/useTheme';
 import { useGpuTier } from './lib/gateways/gpuTier';
 import { setScrollProgress } from './lib/scroll/scrollProgress';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
+import { createTrackFocusRecovery } from './lib/scroll/preserveTrackFocus';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraFreezes, setWorldOcclusion } from './lib/camera/cameraHold';
 import { RenderGovernor } from './components/3d/RenderGovernor';
@@ -26,11 +28,17 @@ import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
 import { watchContentSettled, type ContentSettleWatcher } from './lib/render/contentSettled';
 import { useChapterInk } from './lib/scroll/chapterInk';
+import { useActiveSection } from './lib/scroll/useActiveSection';
 import { ChapterInkLayer, InkLabel } from './components/ui/ChapterInkLayer/ChapterInkLayer';
 import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
+import { installLayerFocus } from './lib/scroll/layerFocus';
+import { useResizeAnchor } from './lib/scroll/resizeAnchor';
+import { AvatarEncounter } from './components/avatar/AvatarEncounter';
+import { TVControls } from './components/tv/TVControls';
+import { setAvatarLayoutReady } from './lib/avatar/avatarEncounter';
 
 import './index.css';
 import styles from './App.module.css';
@@ -85,6 +93,7 @@ function App() {
   const scrollStateRef = useRef<ReturnType<typeof useScroll> | null>(null);
   /** Reader position captured just before the track is resized. */
   const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
+  const trackFocus = useMemo(createTrackFocusRecovery, []);
 
   const handleLoaded = useCallback(() => setIsLoading(false), []);
   /** Frames left to re-announce a restored position to ScrollControls. */
@@ -115,6 +124,11 @@ function App() {
   const canRender3D = useMemo(() => isWebGLAvailable(), []);
   const [webglRuntimeError, setWebglRuntimeError] = useState(false);
   const show3D = canRender3D && !webglRuntimeError;
+  // The flat page scrolls the document itself; the 3D track preserves its own offset.
+  useResizeAnchor(!show3D);
+  useEffect(() => {
+    if (!show3D) trackFocus.cancel();
+  }, [show3D, trackFocus]);
 
   /*
    * The context went away and did not come back. Take the 3D layer down and
@@ -258,7 +272,11 @@ function App() {
 
     const previousPages = scrollPagesRef.current;
 
-    if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) return;
+    if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) {
+      setAvatarLayoutReady(!pendingRestoreRef.current && restoreSyncFramesRef.current === 0 &&
+        !settleTimerRef.current);
+      return;
+    }
 
     // ScrollControls rebuilds its track whenever `pages` changes, and that
     // rebuild resets scrollTop to 1. Capture where the reader is *now*, while
@@ -267,6 +285,8 @@ function App() {
     // state updater, which React may defer or re-run.
     const track = scrollElementRef.current;
     if (track) {
+      trackFocus.capture(track);
+      setAvatarLayoutReady(false);
       pendingRestoreRef.current = {
         offset: readScrollOffset(track),
         fromPages: previousPages,
@@ -275,7 +295,7 @@ function App() {
 
     scrollPagesRef.current = calculatedPages;
     setScrollPages(calculatedPages);
-  }, []);
+  }, [trackFocus]);
 
   // Measuring from an effect is unreliable here: `Scroll html` portals its host
   // node from an effect of its own, so <main> is often still detached when a
@@ -303,10 +323,20 @@ function App() {
       // ScrollControls ignores scroll events for one frame after a rebuild, so
       // re-announce the position once that guard has lifted.
       track.dispatchEvent(new Event('scroll'));
+      if (restoreSyncFramesRef.current === 0 && !settleTimerRef.current) {
+        trackFocus.restore();
+        setAvatarLayoutReady(true);
+      }
       return restoredOffsetRef.current;
     }
 
-    if (!pending) return null;
+    if (!pending) {
+      if (!settleTimerRef.current) {
+        trackFocus.restore();
+        setAvatarLayoutReady(true);
+      }
+      return null;
+    }
 
     const scrollable = track.scrollHeight - track.clientHeight;
     if (scrollable <= 0) return expectedOffset;
@@ -322,7 +352,7 @@ function App() {
     restoredOffsetRef.current = offset;
     restoreSyncFramesRef.current = 2;
     return offset;
-  }, []);
+  }, [trackFocus]);
 
   const attachMain = useCallback((node: HTMLElement | null) => {
     contentObserverRef.current?.disconnect();
@@ -344,8 +374,12 @@ function App() {
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => {
         watcher.poke();
+        setAvatarLayoutReady(false);
         if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-        settleTimerRef.current = setTimeout(updateScrollPages, CONTENT_SETTLE_MS);
+        settleTimerRef.current = setTimeout(() => {
+          settleTimerRef.current = null;
+          updateScrollPages();
+        }, CONTENT_SETTLE_MS);
       });
       observer.observe(node);
       contentObserverRef.current = observer;
@@ -367,12 +401,14 @@ function App() {
     settleWatcherRef.current = null;
     glideRef.current?.cancel();
     glideRef.current = null;
+    trackFocus.cancel();
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-  }, []);
+  }, [trackFocus]);
 
   const scrollToSection = useCallback((id: string, options?: SectionNavigationOptions) => {
     const target = document.getElementById(id);
     if (!target) return;
+    trackFocus.cancel();
     const immediate = options?.immediate || options?.source === 'navbar';
     if (options?.source === 'navbar') {
       pendingRestoreRef.current = null;
@@ -391,12 +427,10 @@ function App() {
       if (id === 'home') {
         adjustedOffset = 0;
       } else if (id === 'about') {
-        // About uses PinnedSequence (screens = 3, travel = 2 * clientHeight).
-        // At 0.08 * clientHeight (progress = 0.04), the "About Me" heading reaches full
-        // unclipped presence (--head-in = 1, --title-in = 1) while the scroll cue arrow
-        // is at full rest directly pointing at the heading before statements arrive.
+        // Only navbar intent lands inside the first readable beat. Natural
+        // handoffs retain the authored heading entry and completion gates.
         const clientHeight = container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
-        adjustedOffset = rawOffset + Math.round(clientHeight * 0.08);
+        adjustedOffset = rawOffset + aboutNavigationInset(clientHeight, options?.source);
       } else if (options?.edge === 'end') {
         adjustedOffset = Math.max(rawOffset + target.offsetHeight - container.clientHeight + 80, 0);
       } else {
@@ -433,23 +467,40 @@ function App() {
     if (immediate) {
       const inset = options?.edge === 'end'
         ? target.offsetHeight - window.innerHeight + 80
-        : id === 'about' ? Math.round(window.innerHeight * 0.08) : -80;
+        : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source) : -80;
       const top = id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
       window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      // An unchanged native position emits no scroll event on a repeated visit.
+      window.dispatchEvent(new Event('scroll'));
       return;
     }
 
     if (id === 'about') {
       const aboutEl = document.getElementById('about');
       if (aboutEl && typeof window !== 'undefined') {
-        const top = aboutEl.offsetTop + Math.round(window.innerHeight * 0.08);
+        const top = aboutEl.offsetTop + aboutNavigationInset(window.innerHeight);
         window.scrollTo({ top, behavior: 'smooth' });
         return;
       }
     }
 
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [scrollElement]);
+  }, [scrollElement, trackFocus]);
+
+  // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
+  useEffect(() => {
+    if (!show3D || !scrollElement) return;
+    return installLayerFocus({
+      track: scrollElement,
+      main: () => mainRef.current,
+      navigate: section => scrollToSection(section, { source: 'navbar' }),
+      renderedScrollTop: () => {
+        const state = scrollStateRef.current;
+        const range = Math.max(scrollElement.scrollHeight - scrollElement.clientHeight, 0);
+        return state ? state.offset * range : scrollElement.scrollTop;
+      },
+    });
+  }, [show3D, scrollElement, scrollToSection]);
 
   /*
    * One definition, rendered either inside the canvas's scroll layer or
@@ -472,6 +523,9 @@ function App() {
       <Projects theme={theme} spatial={show3D} onNavigate={scrollToSection} />
       <div className={styles.spacer} />
       <Contact spatial={show3D} />
+      <footer className={styles.compactFooter} data-testid="compact-page-footer">
+        <div className={styles.year}><InkLabel text={`© ${new Date().getFullYear()}`} painted={false} /></div>
+      </footer>
     </main>
   );
 
@@ -497,6 +551,7 @@ function App() {
       >
           <Canvas
             dpr={gpuConfig.dpr}
+            onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); }}
             camera={{
               position: [0, 0, 10],
               fov: 50,
@@ -549,33 +604,39 @@ function App() {
       </ErrorBoundary>
       )}
 
-      {!isLoading && <>
-        <PageFooter />
-        <ChapterInkLayer className={styles.footerInk}><PageFooter painted /></ChapterInkLayer>
-      </>}
+      <AvatarEncounter enabled={!isLoading && show3D} scrollElement={scrollElement} />
+      <TVControls enabled={!isLoading && show3D} scrollElement={scrollElement} />
+
+      {!isLoading && <PageFooter />}
     </div>
   );
 }
 
 export default App;
 
-function PageFooter({ painted = false }: { painted?: boolean }) {
-  return (
-    <motion.div
+function PageFooter() {
+  const section = useActiveSection(['home', 'about', 'skills', 'projects', 'contact']);
+  const paint = (painted: boolean) => (
+    <motion.footer
       className={`${styles.footer} ${painted ? styles.paintedFooter : ''}`}
       data-testid={painted ? undefined : 'page-footer'}
       data-page-footer=""
+      data-footer-section={section}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1, ease: [0.76, 0, 0.24, 1], delay: 0.4 }}
     >
-      <div className={styles.scroll}>
+      {section !== 'contact' && <div className={styles.scroll}>
         <div className={styles.scrollText}><InkLabel text="Scroll to explore" painted={painted} /></div>
         <div className={styles.scrollLine} />
-      </div>
+      </div>}
       <div className={styles.year}><InkLabel text={`© ${new Date().getFullYear()}`} painted={painted} /></div>
-    </motion.div>
+    </motion.footer>
   );
+  return <>
+    {paint(false)}
+    <ChapterInkLayer className={styles.footerInk}>{paint(true)}</ChapterInkLayer>
+  </>;
 }
 
 function ScrollManager({

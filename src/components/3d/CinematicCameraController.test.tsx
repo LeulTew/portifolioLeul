@@ -10,6 +10,10 @@ import { CONTACT_SKY_ORIENTATION, CONTACT_SKY_POSITION } from '@/lib/camera/cont
 import {
   beginContactFlight, isContactPoseCommitted, parkContactSky, releaseContactSky, setContactProgress,
 } from '@/lib/contact/contactScene';
+import {
+  getAvatarEncounter, requestAvatarEncounter, resetAvatarEncounter,
+  returnFromAvatarEncounter, setAvatarAvailability, setAvatarEncounterEnabled,
+} from '@/lib/avatar/avatarEncounter';
 
 const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
 
@@ -60,6 +64,7 @@ const chapterVec = (index: number) =>
 
 describe('CinematicCameraController', () => {
   beforeEach(() => {
+    resetAvatarEncounter();
     setProjectsView(false, 0, 0);
     releaseContactSky();
     scrollState.offset = 0;
@@ -71,6 +76,7 @@ describe('CinematicCameraController', () => {
   });
 
   afterEach(() => {
+    resetAvatarEncounter();
     setProjectsView(false, 0, 0);
     releaseContactSky();
     vi.clearAllMocks();
@@ -87,6 +93,62 @@ describe('CinematicCameraController', () => {
     advance(1);
 
     expect(camera.position.distanceTo(chapterVec(0))).toBeCloseTo(0, 5);
+  });
+
+  const meet = () => {
+    setAvatarEncounterEnabled(true);
+    setAvatarAvailability(true);
+    expect(requestAvatarEncounter()).toBe(true);
+  };
+
+  it('composes a real portrait through this owner and returns to the live chapter pose', () => {
+    mount({ mouseSway: 0 });
+    advance();
+    const origin = camera.position.clone(), orientation = camera.quaternion.clone(), layers = camera.layers.mask;
+    meet();
+    advance(130);
+    expect(getAvatarEncounter().phase).toBe('meeting');
+    expect(camera.position.distanceTo(origin)).toBeGreaterThan(30);
+    returnFromAvatarEncounter();
+    advance(100);
+    expect(getAvatarEncounter().phase).toBe('idle');
+    expect(camera.position.distanceTo(origin)).toBeLessThan(1e-8);
+    expect(camera.quaternion.angleTo(orientation)).toBeLessThan(1e-7);
+    expect(camera.fov).toBe(50);
+    expect(camera.layers.mask).toBe(layers);
+  });
+
+  it('lets a mandatory TV turn advance while continuously yielding the optional portrait', () => {
+    mount({ mouseSway: 0 });
+    setProjectsView(true, 0, 0, 'skills');
+    advance();
+    meet(); advance(55);
+    const displayed = camera.position.clone();
+    setProjectsView(true, 0.2, 0);
+    advance();
+    expect(getAvatarEncounter().phase).toBe('yielding');
+    expect(camera.position.distanceTo(displayed)).toBeLessThan(1e-8);
+    for (let i = 1; i <= 40; i++) {
+      setProjectsView(true, 0.2 + i / 100, 0);
+      advance();
+    }
+    expect(getAvatarEncounter().phase).toBe('idle');
+    const expected = new THREE.Vector3(), orientation = new THREE.Quaternion();
+    new ProjectsCameraPose().sample(0.6, 0, 1920, 1080, 50, expected, orientation);
+    expect(camera.position.distanceTo(expected)).toBeLessThan(1e-8);
+    expect(camera.quaternion.angleTo(orientation)).toBeLessThan(1e-7);
+  });
+
+  it('cannot reclaim the camera after Contact takes priority over an encounter', () => {
+    mount({ mouseSway: 0 }); advance();
+    meet(); advance(110);
+    parkContactSky();
+    advance();
+    expect(getAvatarEncounter().phase).toBe('idle');
+    expect(camera.position.equals(CONTACT_SKY_POSITION)).toBe(true);
+    advance(200);
+    expect(camera.position.equals(CONTACT_SKY_POSITION)).toBe(true);
+    expect(camera.quaternion.angleTo(CONTACT_SKY_ORIENTATION)).toBeLessThan(1e-7);
   });
 
   it('travels toward the closing shot as the arc completes', () => {

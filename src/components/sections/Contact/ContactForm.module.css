@@ -5,6 +5,11 @@
   isolation: isolate;
 }
 
+.stage:focus-visible {
+  outline: 2px solid var(--contact-accent);
+  outline-offset: 4px;
+}
+
 .sheet {
   position: relative;
   z-index: 1;
@@ -108,6 +113,16 @@
   min-height: 52px;
 }
 
+.confirmation .deliveryNote {
+  margin-top: 0.75rem;
+  color: var(--contact-muted);
+}
+
+.confirmation .fallbackLink {
+  color: var(--contact-ink);
+  font-size: 0.875rem;
+}
+
 .heading h3 {
   margin: 0;
   font-size: clamp(1.4rem, 2vw, 1.9rem);
@@ -150,7 +165,7 @@
   min-height: 52px;
   padding: 0.8rem 0.25rem;
   border: 0;
-  border-bottom: 1px solid var(--contact-border);
+  border-bottom: 1px solid var(--contact-field-border);
   border-radius: 0;
   background: transparent;
   color: var(--contact-ink);
@@ -209,6 +224,13 @@
   font-size: 0.875rem;
   line-height: 1.6;
   margin: 0;
+}
+
+/* Appears near the limit only, so typing never stops without a reason. */
+.count {
+  align-self: flex-end;
+  color: var(--contact-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .success {

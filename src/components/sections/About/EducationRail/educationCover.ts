@@ -1,4 +1,4 @@
-import { findScrollContainer } from './scrollContainer';
+import { findScrollContainer } from '@/lib/scroll/scrollContainer';
 
 /** Stop painting covered DOM without changing geometry or hiding the native scrollport. */
 export function coverChapterBackground(

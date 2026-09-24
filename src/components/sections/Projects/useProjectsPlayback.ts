@@ -15,7 +15,7 @@ import {
 } from '@/lib/projects/projectsScene';
 import { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
-import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
 import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
@@ -24,6 +24,7 @@ import {
   parkContactSky, releaseContactSky, setContactProgress, subscribeContactPose,
 } from '@/lib/contact/contactScene';
 import { clearContactPresentation } from '@/lib/contact/contactPresentation';
+import { setTVProjectPhase } from '@/lib/tv/tvState';
 
 interface Refs {
   host: RefObject<HTMLElement>;
@@ -98,6 +99,7 @@ export function useProjectsPlayback(
     const changePhase = (next: ProjectsPhase) => {
       state = next;
       setProjectsReading(next === 'reading');
+      setTVProjectPhase(next);
       writeAttribute(panel, 'data-phase', next);
       setPhase(next);
     };

@@ -33,10 +33,10 @@ Detailed rule modules are located in `.agent/rules/`:
 ## ⚡ Local Verification Mandate (ZERO CI WAITING)
 - **GitHub Actions is OVER LIMIT**: Do NOT wait for or check remote GitHub Actions CI.
 - **Always verify locally via Bun**:
-  - `bun test` (Unit & branch tests)
+  - `bun x vitest run` (Unit & branch tests; `bun test` is Bun's own runner and cannot load this suite)
   - `bun run build` (Vite build)
   - `bun run lint` (ESLint)
-  - `bun x tsc --noEmit` (TypeScript typechecking)
+  - `bun run typecheck` (app and tooling configs; bare `tsc --noEmit` reads the empty solution tsconfig and checks nothing)
 
 ---
 

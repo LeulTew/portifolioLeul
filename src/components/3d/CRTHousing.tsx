@@ -1,10 +1,5 @@
-import { useLayoutEffect, useRef } from 'react';
 import { extend, type BufferGeometryNode } from '@react-three/fiber';
-import * as THREE from 'three';
-import {
-  CrtHousingGeometry,
-  CRT_SPEAKER_RIB_POSITIONS,
-} from '@/lib/projects/crtHousingGeometry';
+import { CrtHousingGeometry } from '@/lib/projects/crtHousingGeometry';
 
 extend({ CrtHousingGeometry });
 
@@ -21,24 +16,9 @@ export interface CRTHousingProps {
 /**
  * Mount beside the display plane, inside its position/rotation AND pitch groups.
  * No screen surface, lights, textures, frame loop or interaction handlers live here.
- * Each declared geometry/material belongs to R3F, including the single rib buffer.
+ * Each declared geometry/material belongs to R3F.
  */
 export function CRTHousing({ active = false }: CRTHousingProps) {
-  const ribs = useRef<THREE.InstancedMesh>(null);
-
-  useLayoutEffect(() => {
-    const mesh = ribs.current;
-    if (!mesh) return;
-    const matrix = new THREE.Matrix4();
-    CRT_SPEAKER_RIB_POSITIONS.forEach(([x, y, z], index) => {
-      matrix.makeTranslation(x, y, z);
-      mesh.setMatrixAt(index, matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingBox();
-    mesh.computeBoundingSphere();
-  }, []);
-
   return (
     <group name="authored-crt-housing">
       <mesh name="crt-cabinet">
@@ -53,7 +33,7 @@ export function CRTHousing({ active = false }: CRTHousingProps) {
         <crtHousingGeometry args={['recess']} />
         <meshStandardMaterial color="#111613" roughness={0.68} metalness={0.05} />
       </mesh>
-      <mesh name="crt-satin-trim-and-controls">
+      <mesh name="crt-satin-trim-and-control-bezels">
         <crtHousingGeometry args={['metal']} />
         <meshStandardMaterial color="#8c8e82" roughness={0.3} metalness={0.8} />
       </mesh>
@@ -66,14 +46,6 @@ export function CRTHousing({ active = false }: CRTHousingProps) {
           envMapIntensity={0.8}
         />
       </mesh>
-      <instancedMesh
-        ref={ribs}
-        name="crt-recessed-speaker-ribs"
-        args={[undefined, undefined, CRT_SPEAKER_RIB_POSITIONS.length]}
-      >
-        <crtHousingGeometry args={['speakerRib']} />
-        <meshStandardMaterial color="#45443f" roughness={0.58} metalness={0.14} />
-      </instancedMesh>
       <mesh name="crt-power-indicator">
         <crtHousingGeometry args={['indicator']} />
         <meshStandardMaterial

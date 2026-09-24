@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 vi.mock('./3d/CRTHousing', () => ({ CRTHousing: () => null }));
 vi.mock('./3d/CRTSpeakerCabinet', () => ({ CRTSpeakerCabinet: () => null }));
+vi.mock('./3d/TVHardware', () => ({ TVHardware: () => null }));
 
 // Mock three.js
 vi.mock('three', async () => {

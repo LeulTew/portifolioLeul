@@ -6,14 +6,14 @@ import { advancePhase, easeInOutCubic, isPhaseAtTarget, phaseFrameDelta, phaseGa
   PHASE_AT_REST, type PhaseState } from '@/lib/motion/triggeredPhase';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
-import { BEAT_REST_MS, HEAD_SETTLE } from './aboutBeats';
+import { BEAT_REST_MS, HEAD_REVEAL, HEAD_SETTLE } from './aboutBeats';
 import { createAboutReader, createSeqReader } from './seqReader';
 import { centeredHeading } from './headingGeometry';
 import styles from './About.module.css';
 
 const RETURN_FADE_MS = 280;
 const properties = [
-  '--head-travel', '--heading-presence', '--heading-enter-x', '--heading-enter-y',
+  '--head-travel', '--head-reveal', '--heading-presence', '--heading-enter-x', '--heading-enter-y',
   '--heading-enter-scale', '--heading-subtitle-x', '--heading-subtitle-y',
   '--heading-origin-x', '--heading-origin-y', '--heading-rest-x', '--heading-rest-y',
 ] as const;
@@ -34,8 +34,15 @@ export function AboutHeading({ children }: { children: ReactNode }) {
     const home = document.getElementById('home');
     const readAbout = createAboutReader();
     const readSeq = createSeqReader(() => ref.current);
+    const readHeadIn = createSeqReader(() => ref.current, '--head-in');
+    // The layer value is left as it was once the stage unpins, so it is only read while shown.
+    const findStage = cachedElement(() => heading.closest<HTMLElement>('[data-active]'));
+    const stageShown = () => findStage()?.getAttribute('data-active') === 'true';
     let phase = PHASE_AT_REST;
     let presence: PhaseState = { t: 1, heading: 1 };
+    let reveal = PHASE_AT_REST;
+    let revealTarget = false;
+    let eligibleNow = false;
     let target = false;
     let moved = false;
     let wasEligible = false;
@@ -54,6 +61,7 @@ export function AboutHeading({ children }: { children: ReactNode }) {
       const travel = easeInOutCubic(phase.t).toFixed(4);
       const opacity = presence.t.toFixed(4);
       paint(heading, '--head-travel', travel);
+      paint(heading, '--head-reveal', easeInOutCubic(reveal.t).toFixed(4));
       paint(heading, '--heading-presence', opacity);
       const mirror = findMirror();
       if (mirror) {
@@ -69,20 +77,38 @@ export function AboutHeading({ children }: { children: ReactNode }) {
 
     const running = () => (target && hold < BEAT_REST_MS) ||
       !isPhaseAtTarget(phase, target) ||
+      !isPhaseAtTarget(reveal, revealTarget) ||
       !isPhaseAtTarget(presence, target || !moved || phase.t > 0);
+
+    // A heading nobody can see has nothing to retract on screen.
+    const settleHiddenReveal = () => {
+      if (!revealTarget && presence.t <= 0) reveal = PHASE_AT_REST;
+    };
+
+    /*
+     * Scroll only says whether the heading is being set; `step` says how far.
+     * Once it has docked it leaves by retracing and fading, never by unsetting.
+     */
+    const wantsReveal = () => target || phase.t > 0 || (moved && presence.t > 0) ||
+      (eligibleNow && stageShown() &&
+        phaseGate(readHeadIn(), revealTarget, HEAD_REVEAL.enter, HEAD_REVEAL.exit));
 
     const step = (now: number) => {
       frame = 0;
       const dt = phaseFrameDelta(last ? now - last : 16.7);
       last = now;
       if (target && phase.t <= 0 && hold < BEAT_REST_MS) {
-        hold = Math.min(BEAT_REST_MS, hold + dt);
+        // The centered pose rests only once it has been fully set.
+        if (reveal.t >= 1) hold = Math.min(BEAT_REST_MS, hold + dt);
       } else {
         phase = advancePhase(phase, target, dt, HEAD_SETTLE.durationMs);
       }
       if (phase.t > 0) moved = true;
       presence = advancePhase(presence, target || !moved || phase.t > 0, dt, RETURN_FADE_MS);
+      revealTarget = wantsReveal();
+      reveal = advancePhase(reveal, revealTarget, dt, HEAD_REVEAL.durationMs);
       if (!target && phase.t <= 0 && presence.t <= 0) hold = 0;
+      settleHiddenReveal();
       render();
       if (running()) frame = requestAnimationFrame(step);
       else last = 0;
@@ -98,14 +124,18 @@ export function AboutHeading({ children }: { children: ReactNode }) {
       wasEligible = eligible;
       target = (eligible && phaseGate(readSeq(), target, HEAD_SETTLE.enter, HEAD_SETTLE.exit)) ||
         about?.getAttribute('data-statements-present') === 'true';
+      eligibleNow = eligible;
+      revealTarget = wantsReveal();
       if (!target && phase.t <= 0) hold = 0;
       if (staticMotion()) {
         phase = { t: target ? 1 : 0, heading: target ? 1 : -1 };
         presence = { t: 1, heading: 1 };
+        reveal = { t: revealTarget ? 1 : 0, heading: revealTarget ? 1 : -1 };
         if (frame) cancelAnimationFrame(frame);
         frame = 0;
         last = 0;
       }
+      settleHiddenReveal();
       render();
       if (!running() && frame) {
         cancelAnimationFrame(frame);
@@ -179,6 +209,9 @@ export function AboutHeading({ children }: { children: ReactNode }) {
       target = destination !== 'home' && destination !== 'about';
       phase = { t: target ? 1 : 0, heading: target ? 1 : -1 };
       presence = { t: 1, heading: 1 };
+      // Explicit navigation arrives settled: the heading is already set.
+      revealTarget = destination !== 'home';
+      reveal = { t: revealTarget ? 1 : 0, heading: revealTarget ? 1 : -1 };
       moved = target;
       hold = target ? BEAT_REST_MS : 0;
       cancelAnimationFrame(frame);

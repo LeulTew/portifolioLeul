@@ -26,8 +26,9 @@ export function findScrollContainer(element: Element | null): HTMLElement | null
 /**
  * Moves the given scroller by `delta` pixels.
  *
- * Only forwards wheel input from the body-level portal. Native smooth scrolling
- * is incompatible with Drei; the record controls never move this scrollport.
+ * For wheel input over body-level surfaces (the TV reader, Skills, the rail,
+ * the hero cue) that sit outside the scroll layer and would otherwise swallow
+ * it. Instant: native smooth scrolling fights drei's own damping.
  */
 export function scrollContainerBy(
   container: HTMLElement | null,

@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { createHash } from 'node:crypto';
+import { TV_CONTROLS, TV_CONTROL_IDS } from '../tv/tvHardware';
+import { TvHardwareGeometry, TV_CONTROL_WELL } from '../tv/tvHardwareGeometry';
 import {
   CrtHousingGeometry,
   CRT_HOUSING_APERTURE,
@@ -165,6 +168,16 @@ describe('the authored CRT housing geometry', () => {
         for (let index = 0; index < position.count; index += 1) {
           bounds.expandByPoint(new THREE.Vector3().fromBufferAttribute(position, index).add(translation));
         }
+        const caps = new TvHardwareGeometry();
+        const capPositions = caps.getAttribute('position');
+        for (let index = 0; index < capPositions.count; index++) {
+          bounds.expandByPoint(new THREE.Vector3().fromBufferAttribute(capPositions, index));
+        }
+        caps.dispose();
+        expect(CRT_HOUSING_BOUNDS).toEqual({
+          min: [-0.36, -0.274, -0.38], max: [0.36, 0.2, 0.046],
+          center: [0, -0.037, -0.167], size: [0.72, 0.474, 0.426],
+        });
       }
     }
     const actual = [
@@ -183,25 +196,58 @@ describe('the authored CRT housing geometry', () => {
     });
   });
 
-  it('raises the feet and complete speaker/control assembly, not the display', () => {
+  it('keeps the approved feet and aligns the indicator with the revised control row', () => {
     expect(geometryFor('cabinet').boundingBox!.min.y).toBeCloseTo(-0.26, 6);
     expect(geometryFor('rear').boundingBox!.min.y).toBeCloseTo(-0.274, 6);
     const indicator = geometryFor('indicator').boundingBox!;
-    expect(indicator.getCenter(new THREE.Vector3()).y).toBeCloseTo(-0.218, 6);
-    CRT_SPEAKER_RIB_POSITIONS.forEach((position, index) => {
-      expect(position[1]).toBeCloseTo(-0.218 + (index - 3) * 0.0058, 6);
-    });
+    expect(indicator.getCenter(new THREE.Vector3()).y).toBeCloseTo(-0.215, 6);
+    expect(CRT_SPEAKER_RIB_POSITIONS).toHaveLength(0);
 
     const metal = geometryFor('metal').getAttribute('position');
-    for (const x of [0.138, 0.183, 0.27]) {
+    for (const id of TV_CONTROL_IDS) {
+      const { center: [x, y], width } = TV_CONTROLS[id];
       const face = new THREE.Box3();
       for (let index = 0; index < metal.count; index += 1) {
         const point = new THREE.Vector3().fromBufferAttribute(metal, index);
-        if (Math.abs(point.x - x) < 0.018 && point.y < -0.19) face.expandByPoint(point);
+        if (Math.abs(point.x - x) < width / 2 + 0.0041 && point.y < -0.185) face.expandByPoint(point);
       }
       expect(face.isEmpty()).toBe(false);
-      expect(face.getCenter(new THREE.Vector3()).y).toBeCloseTo(-0.218, 6);
+      expect(face.getCenter(new THREE.Vector3()).y).toBeCloseTo(y, 6);
     }
+  });
+
+  it('cuts through both fascia skins into real wells and closes the redundant upper grille', () => {
+    const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    const cabinet = new THREE.Mesh(geometryFor('cabinet'), material);
+    const recess = new THREE.Mesh(geometryFor('recess'), material);
+    try {
+      for (const id of TV_CONTROL_IDS) {
+        const [x, y] = TV_CONTROLS[id].center;
+        const ray = new THREE.Raycaster(new THREE.Vector3(x, y, 0.1), new THREE.Vector3(0, 0, -1));
+        expect(ray.intersectObject(cabinet)).toHaveLength(0);
+        expect(ray.intersectObject(recess)[0].point.z).toBeCloseTo(TV_CONTROL_WELL.floorZ, 7);
+      }
+      const formerSpeaker = new THREE.Raycaster(
+        new THREE.Vector3(-0.118, -0.215, 0.1), new THREE.Vector3(0, 0, -1),
+      );
+      expect(formerSpeaker.intersectObject(cabinet)[0].point.z).toBeCloseTo(0.035, 7);
+      expect(CRT_HOUSING_PARTS).not.toContain('speakerRib');
+    } finally {
+      material.dispose();
+    }
+  });
+
+  it.each([
+    ['rear', 'bac8beb5e5036a79b9647d717747dfca099b0270b23e22ab974ad745fd92b294'],
+    ['glassEdge', '3ef9c98de93008907d4605bfc376b47cd574085536d0c0141e3c7474297a19f0'],
+  ] as const)('preserves every %s position, normal and index from the approved baseline', (part, digest) => {
+    const geometry = geometryFor(part);
+    const hash = createHash('sha256');
+    for (const name of ['position', 'normal']) {
+      hash.update(new Uint8Array(geometry.getAttribute(name).array.buffer));
+    }
+    hash.update(new Uint8Array(geometry.getIndex()!.array.buffer));
+    expect(hash.digest('hex')).toBe(digest);
   });
 
   it('tapers the deep cabinet and points the closed rear cap away from the screen', () => {
@@ -232,12 +278,12 @@ describe('the authored CRT housing geometry', () => {
       submittedTriangles += geometry.getIndex()!.count / 3 * offsetsFor(part).length;
       expect(geometry.groups).toHaveLength(0);
     }
-    expect(vertices).toBe(1738);
-    expect(submittedTriangles).toBe(2616);
+    expect(vertices).toBe(1349);
+    expect(submittedTriangles).toBe(1778);
     expect(vertices).toBeLessThanOrEqual(CRT_HOUSING_BUDGET.maxStoredVertices);
     expect(submittedTriangles).toBeLessThanOrEqual(CRT_HOUSING_BUDGET.maxSubmittedTriangles);
     expect(CRT_HOUSING_PARTS).toHaveLength(CRT_HOUSING_BUDGET.drawCalls);
-    expect(CRT_SPEAKER_RIB_POSITIONS).toHaveLength(7);
+    expect(CRT_SPEAKER_RIB_POSITIONS).toHaveLength(0);
   });
 
   it('allocates independent owned buffers rather than borrowing a shared asset', () => {

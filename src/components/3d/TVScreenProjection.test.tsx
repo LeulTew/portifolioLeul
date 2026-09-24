@@ -49,6 +49,16 @@ it('projects after the camera and before the existing single render', () => {
   expect(surface.style.transform).toMatch(/^matrix3d\(/);
   expect(Number.parseFloat(surface.style.width)).toBeCloseTo(fitTVScreen(1920, 1080).width);
   expect(surface.style.opacity).toBe('1');
+  expect(surface).toHaveAttribute('data-frame', 'full');
+});
+
+it('publishes a tight frame so the reader chrome yields the corner band with the cabinet', () => {
+  render(<TVScreenProjection />);
+  const short = new THREE.PerspectiveCamera(50, 1366 / 650, 0.1, 1000);
+  new ProjectsCameraPose().sample(1, 1, 1366, 650, 50, short.position, short.quaternion);
+  callback?.({ camera: short, size: { width: 1366, height: 650 }, clock: { elapsedTime: 1 } });
+  expect(surface).toHaveAttribute('data-frame', 'tight');
+  expect(Number.parseFloat(surface.style.width)).toBeCloseTo(fitTVScreen(1366, 650).width);
 });
 
 it('writes nothing while the reader and camera are idle', () => {

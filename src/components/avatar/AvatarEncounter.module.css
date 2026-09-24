@@ -1,0 +1,141 @@
+@value brandMint, brandEmerald, navSurfaceLight, navSurfaceDark from '../ui/controlFoundation.module.css';
+
+.encounter {
+  --avatar-ink: #f0fff8;
+  --avatar-muted: #c0d7cb;
+  --avatar-surface: navSurfaceDark;
+  --avatar-focus: brandMint;
+  --avatar-glint: rgba(0, 255, 157, 0.24);
+  --avatar-gutter: clamp(1.5rem, 4vw, 7rem);
+  --avatar-bottom: clamp(4.5rem, 9vh, 7rem);
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0;
+  z-index: 90;
+  pointer-events: none;
+  color: var(--avatar-ink);
+  font-family: 'Skills Grotesk', 'Inter', sans-serif;
+}
+
+.viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  pointer-events: none;
+}
+
+:global([data-theme='light']) .encounter {
+  --avatar-ink: #0a251e;
+  --avatar-muted: #354f42;
+  --avatar-surface: navSurfaceLight;
+  --avatar-focus: brandEmerald;
+  --avatar-glint: rgba(5, 150, 105, 0.2);
+}
+
+.encounter:focus {
+  outline: none;
+}
+
+.target {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.target[hidden],
+.caption[hidden],
+.returnControl[hidden] {
+  display: none;
+}
+
+.target:disabled {
+  pointer-events: none;
+}
+
+.target:focus-visible {
+  outline: none;
+}
+
+.cue {
+  position: absolute;
+  left: var(--avatar-cue-x, 50%);
+  bottom: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--avatar-focus);
+  box-shadow: 0 0 9px 2px var(--avatar-glint);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 140ms ease;
+}
+
+.target:focus-visible .cue {
+  opacity: 1;
+  visibility: visible;
+  outline: 2px solid var(--avatar-focus);
+  outline-offset: 3px;
+}
+
+.caption {
+  position: absolute;
+  left: max(var(--avatar-gutter), env(safe-area-inset-left));
+  bottom: max(var(--avatar-bottom), env(safe-area-inset-bottom));
+  font-size: clamp(0.9375rem, 0.875rem + 0.25vw, 1.125rem);
+  line-height: 1.5;
+  opacity: var(--avatar-reveal, 0);
+}
+
+.caption p {
+  width: fit-content;
+  margin: 0;
+  padding: 0.125rem 0.5rem;
+  background: var(--avatar-surface);
+}
+
+.name {
+  font-weight: 600;
+}
+
+.role {
+  color: var(--avatar-muted);
+  font-size: 0.875em;
+}
+
+.returnControl {
+  position: absolute;
+  right: max(var(--avatar-gutter), env(safe-area-inset-right));
+  bottom: max(var(--avatar-bottom), env(safe-area-inset-bottom));
+  font-size: clamp(0.875rem, 0.8rem + 0.2vw, 1rem);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .target:not(:disabled):hover .cue {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cue {
+    transition: none;
+  }
+}

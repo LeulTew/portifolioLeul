@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { getProjectsSurface, getProjectsView, setTVScreenReady } from '@/lib/projects/projectsScene';
 import { fitTVScreen, TVScreenProjector } from '@/lib/projects/tvScreen';
-import { writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { isFrameDrawn } from '@/lib/render/frameGate';
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
 import { Matrix4 } from 'three';
@@ -42,6 +42,8 @@ export function TVScreenProjection() {
       const fit = fitTVScreen(width, height);
       writeStyleProperty(surface, 'width', `${fit.width}px`);
       writeStyleProperty(surface, 'height', `${fit.height}px`);
+      // The reader's chrome yields the corner band only when the cabinet takes it.
+      writeAttribute(surface, 'data-frame', fit.tight ? 'tight' : 'full');
     }
     if (matrix) writeStyleProperty(surface, 'transform', matrix);
     writeStyleProperty(surface, 'opacity', matrix

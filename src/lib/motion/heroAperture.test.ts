@@ -43,7 +43,7 @@ describe('the beat it shares with the name', () => {
     expect(SNOW_LEAD).toBeGreaterThan(0);
     expect(SNOW_LEAD).toBeLessThan(titleBeat);
     // What is left of the title's cue once the snow has had time to fall.
-    expect(titleBeat - SNOW_LEAD).toBeCloseTo(1.85, 6);
+    expect(titleBeat - SNOW_LEAD).toBeCloseTo(1.65, 6);
   });
 });
 

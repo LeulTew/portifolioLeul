@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { getInitialTheme } from "./themeUtils";
+import { getInitialTheme, persistTheme } from "./themeUtils";
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -44,5 +44,21 @@ describe("themeUtils - getInitialTheme", () => {
 
   it("defaults to light when localStorage contains no saved theme", () => {
     expect(getInitialTheme()).toBe("light");
+  });
+
+  it("falls back to light when reading storage is denied", () => {
+    localStorageMock.getItem.mockImplementationOnce(() => {
+      throw new DOMException("The operation is insecure.", "SecurityError");
+    });
+    expect(getInitialTheme()).toBe("light");
+  });
+});
+
+describe("themeUtils - persistTheme", () => {
+  it("does not throw when writing storage is denied", () => {
+    localStorageMock.setItem.mockImplementationOnce(() => {
+      throw new DOMException("The operation is insecure.", "SecurityError");
+    });
+    expect(() => persistTheme("dark")).not.toThrow();
   });
 });

@@ -1,10 +1,18 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { statSync } from 'node:fs';
+import { resolve } from 'node:path';
 import * as THREE from 'three';
+import { StrictMode, useEffect } from 'react';
+import { act, renderHook } from '@testing-library/react';
 import {
   CRITICAL_ASSETS,
+  createCriticalAssetRun,
   loadCriticalAssets,
+  markCriticalModelReady,
+  readCriticalModel,
   releaseCriticalAssets,
   resetCriticalAssets,
+  type AssetProgress,
   type CriticalAsset,
 } from './criticalAssets';
 
@@ -26,6 +34,7 @@ function streamed(chunks: number[], contentLength?: number, contentType = 'model
   let index = 0;
   return {
     ok: true,
+    status: 200,
     headers: {
       get: (name: string) => {
         const key = name.toLowerCase();
@@ -53,15 +62,18 @@ function streamed(chunks: number[], contentLength?: number, contentType = 'model
 afterEach(() => {
   resetCriticalAssets();
   releaseCriticalAssets(assets);
+  releaseCriticalAssets(CRITICAL_ASSETS);
   THREE.Cache.remove('/models/big.glb');
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('the manifest', () => {
-  it('names only files that exist under public/', () => {
+  it('names only files that exist under public/, at their real size', () => {
+    // Progress is weighted by these byte counts, so a stale one skews the loader.
     for (const asset of CRITICAL_ASSETS) {
       expect(asset.url.startsWith('/')).toBe(true);
-      expect(asset.bytes).toBeGreaterThan(0);
+      expect(statSync(resolve('public', asset.url.slice(1))).size).toBe(asset.bytes);
     }
   });
 
@@ -71,7 +83,7 @@ describe('the manifest', () => {
     expect(urls).toContain('/models/me-animated-lite.glb');
     // The authored CRT housing uses owned geometry rather than the scanned model.
     expect(urls).not.toContain('/models/crt-lite.glb');
-    expect(urls).toContain('/videos/Spy_Movie_Live_Wallpaper_Video-opt.mp4');
+    expect(urls.some(url => url.endsWith('.mp4'))).toBe(false);
     // The surf cannot break on a coastline it has not been given.
     expect(urls).toContain('/images/shore-field.png');
     expect(urls).toContain('/images/waternormals.jpg');
@@ -79,6 +91,41 @@ describe('the manifest', () => {
 });
 
 describe('loadCriticalAssets', () => {
+  it('does not publish completion from underestimated headers before every stream settles', async () => {
+    const seen: AssetProgress[] = [];
+    const fetchImpl = vi.fn(async () => streamed([400, 400], 1)) as unknown as typeof fetch;
+    const result = await loadCriticalAssets(progress => seen.push(progress), { assets, fetchImpl });
+    expect(seen.filter(progress => progress.settled < progress.total).every(progress => progress.ratio < 1)).toBe(true);
+    expect(result.loadedBytes).toBe(1600);
+    expect(result.totalBytes).toBe(1600);
+    expect(result.ratio).toBe(1);
+  });
+
+  it('releases streamed-reader locks after success and failure', async () => {
+    const released = [vi.fn(), vi.fn()];
+    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+      const model = String(url).endsWith('.glb');
+      let read = false;
+      return {
+        ok: true,
+        headers: { get: () => null },
+        body: { getReader: () => ({
+          read: async () => {
+            if (!model) throw new Error('interrupted transfer');
+            if (read) return { done: true };
+            read = true;
+            return { done: false, value: glbChunk(800) };
+          },
+          releaseLock: released[model ? 0 : 1],
+        }) },
+      };
+    }) as unknown as typeof fetch;
+    const result = await loadCriticalAssets(() => {}, { assets, fetchImpl });
+    expect(result.failed).toBe(1);
+    expect(released[0]).toHaveBeenCalledOnce();
+    expect(released[1]).toHaveBeenCalledOnce();
+  });
+
   it('reports progress by bytes arrived, not by files finished', async () => {
     // The whole reason for this module: one 800-byte model and one 200-byte
     // image are not half the load each.
@@ -204,6 +251,14 @@ describe('loadCriticalAssets', () => {
     const result = await loadCriticalAssets(() => {}, { assets: [] });
     expect(result.ratio).toBe(1);
   });
+
+  it('settles an unavailable transport explicitly as failed, not downloaded', async () => {
+    vi.stubGlobal('fetch', undefined);
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await loadCriticalAssets(() => {}, { assets });
+    expect(result).toMatchObject({ ratio: 1, settled: assets.length, failed: assets.length, loadedBytes: 0 });
+    expect(warning).toHaveBeenCalledOnce();
+  });
 });
 
 describe('releaseCriticalAssets', () => {
@@ -221,6 +276,81 @@ describe('releaseCriticalAssets', () => {
 });
 
 describe('the shared run', () => {
+  it('shares the gate-started manifest with the loader and honours an early cache-release request', async () => {
+    const fetch = vi.fn(async () => streamed([64]));
+    vi.stubGlobal('fetch', fetch);
+    const url = CRITICAL_ASSETS.find(asset => asset.kind === 'model')!.url;
+    let pending: unknown;
+    try { readCriticalModel(url); } catch (value) { pending = value; }
+    expect(pending).toBeInstanceOf(Promise);
+    releaseCriticalAssets();
+    const controller = new AbortController();
+    const progress = vi.fn();
+    const loaded = loadCriticalAssets(progress, { signal: controller.signal });
+    controller.abort();
+    await loaded;
+    await pending;
+    expect(fetch).toHaveBeenCalledTimes(CRITICAL_ASSETS.length);
+    expect(() => readCriticalModel(url)).not.toThrow();
+    expect(THREE.Cache.get(url)).toBeInstanceOf(ArrayBuffer);
+    markCriticalModelReady(url);
+    expect(THREE.Cache.get(url)).toBeUndefined();
+    expect(progress).not.toHaveBeenLastCalledWith(expect.objectContaining({ ratio: 1 }));
+  });
+
+  it('releases model gates after an unavailable transport reports its explicit failures', async () => {
+    vi.stubGlobal('fetch', undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const run = createCriticalAssetRun({ assets });
+    expect((await run.promise).failed).toBe(assets.length);
+    expect(() => run.readModel('/models/big.glb')).not.toThrow();
+    expect(THREE.Cache.get('/models/big.glb')).toBeUndefined();
+  });
+
+  it('shares native prefetch across StrictMode without entering FileLoader in-flight state', async () => {
+    const fetch = vi.fn(async () => streamed([64]));
+    vi.stubGlobal('fetch', fetch);
+    const fileLoad = vi.spyOn(THREE.FileLoader.prototype, 'load');
+    let loaded!: Promise<AssetProgress>;
+    const activeProgress = vi.fn();
+    const view = renderHook(() => {
+      useEffect(() => {
+        const controller = new AbortController();
+        loaded = loadCriticalAssets(activeProgress, { signal: controller.signal });
+        return () => controller.abort();
+      }, []);
+    }, { wrapper: StrictMode });
+    await act(async () => { await loaded; });
+    expect(fetch).toHaveBeenCalledTimes(CRITICAL_ASSETS.length);
+    expect(fileLoad).not.toHaveBeenCalled();
+    expect(activeProgress).toHaveBeenLastCalledWith(expect.objectContaining({ ratio: 1, failed: 0 }));
+    view.unmount();
+    releaseCriticalAssets();
+  });
+
+  it('does not subscribe already-aborted callers or retain completed subscription listeners', async () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => streamed([64])) as unknown as typeof fetch;
+    try {
+      const aborted = new AbortController();
+      aborted.abort();
+      const abandoned = vi.fn();
+      const active = new AbortController();
+      const remove = vi.spyOn(active.signal, 'removeEventListener');
+      const callback = vi.fn();
+      await Promise.all([
+        loadCriticalAssets(abandoned, { signal: aborted.signal }),
+        loadCriticalAssets(callback, { signal: active.signal }),
+      ]);
+      expect(abandoned).not.toHaveBeenCalled();
+      expect(callback).toHaveBeenLastCalledWith(expect.objectContaining({ ratio: 1 }));
+      expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+    } finally {
+      globalThis.fetch = realFetch;
+      releaseCriticalAssets();
+    }
+  });
+
   it('downloads the manifest once however many callers ask for it', async () => {
     /*
      * Measured in the browser before this existed: strict mode mounts effects

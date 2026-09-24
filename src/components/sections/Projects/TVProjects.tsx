@@ -5,16 +5,20 @@ import {
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight, ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { ControlButton } from '@/components/ui/ControlButton';
+import { IndexPicker } from '@/components/ui/IndexPicker';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { useTVScreenReady } from '@/lib/projects/projectsScene';
+import { useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
+import { registerTVReader, setTVPagingAvailable, useTVState } from '@/lib/tv/tvState';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
-import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { projectsData, type Project } from '@/data/projects';
 import { useProjectsFits, useProjectsPlayback } from './useProjectsPlayback';
 import { PROJECT_CATEGORIES } from './projectCategories';
 import { isProjectsReadingTarget } from './projectsInput';
 import { ProjectWheelPaging } from './projectPaging';
 import { useCRTPowerOn, useProjectBroadcast } from './projectBroadcast';
+import { ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
 import styles from './TVProjects.module.css';
 
 function ProjectDescription({ project }: { project: Project }) {
@@ -32,18 +36,36 @@ function ProjectDescription({ project }: { project: Project }) {
 function ProjectImage({ project }: { project: Project }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const frame = useRef<HTMLSpanElement>(null);
+  // A resting mouse inspects the capture in place; touch and pen keep their swipe.
+  const inspect = (event: PointerEvent<HTMLSpanElement>) => {
+    const node = frame.current;
+    if (!node || !loaded || event.pointerType === 'touch' || event.pointerType === 'pen' || event.buttons !== 0) return;
+    const box = node.getBoundingClientRect();
+    if (box.width <= 0 || box.height <= 0) return;
+    node.style.setProperty('--inspect-x', `${(((event.clientX - box.left) / box.width) * 100).toFixed(2)}%`);
+    node.style.setProperty('--inspect-y', `${(((event.clientY - box.top) / box.height) * 100).toFixed(2)}%`);
+    node.dataset.inspecting = 'true';
+  };
+  const release = () => {
+    if (frame.current) delete frame.current.dataset.inspecting;
+  };
   return failed
     ? <div className={styles.imageFallback} role="img" aria-label={`${project.title}: preview unavailable`}>
         <span>{project.title}</span>
         <p>Preview unavailable. Project details and links are still available.</p>
       </div>
     : <>
-        {!loaded && <span className={styles.imageLoading} aria-hidden="true">Loading preview</span>}
-        <img
-          src={project.image} alt={`${project.title} preview`} width={960} height={720}
-          aria-busy={!loaded} decoding="async" draggable={false}
-          onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
-        />
+        <span ref={frame} className={styles.frame} data-project-inspect=""
+          onPointerMove={inspect} onPointerLeave={release} onPointerDown={release}>
+          {!loaded && <span className={styles.imageLoading} aria-hidden="true">Loading preview</span>}
+          <img
+            src={project.image} alt={project.imageAlt ?? `${project.title} preview`} width={960} height={720}
+            aria-busy={!loaded} decoding="async" draggable={false}
+            onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
+          />
+        </span>
+        <ProjectVisualNote project={project} />
       </>;
 }
 
@@ -64,13 +86,17 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const available = useTVScreenReady();
   const fits = useProjectsFits();
   const reduced = usePrefersReducedMotion();
+  const avatarPresenting = useAvatarEncounterPresenting();
+  const television = useTVState();
   const staged = available && fits;
   const { phase, visible, ready, step } = useProjectsPlayback({ host, stage, surface }, staged, reduced, onNavigate);
   const interactive = !staged || ready;
+  const hardwarePaging = staged && ready && television.layout === 'all';
   const filtered = useMemo(() => category === 'All'
     ? projectsData : projectsData.filter(project => project.categories.includes(category)), [category]);
   const project = filtered[index % Math.max(filtered.length, 1)];
   const activeTab = PROJECT_CATEGORIES.findIndex(value => value === category);
+  const backLabel = phase === 'revealed' ? 'Back to Skills' : 'Back to the scene';
   useCRTPowerOn(display, staged && ready, reduced);
   useProjectBroadcast(broadcast, project?.id ?? 0, interactive, reduced, details);
 
@@ -80,7 +106,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     setDetails(false);
     paging.current?.reset();
   };
-  const selectProject = (direction: -1 | 1) => {
+  const selectProject = useCallback((direction: -1 | 1) => {
     if (!interactive) return;
     setSelection(previous => {
       const count = previous.category === 'All' ? projectsData.length
@@ -90,7 +116,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     });
     setDetails(false);
     paging.current?.reset();
-  };
+  }, [interactive]);
   const tabsKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!interactive || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     const next = (activeTab + (event.key === 'ArrowRight' ? 1 : -1) + PROJECT_CATEGORIES.length) %
@@ -99,6 +125,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     event.currentTarget.querySelector<HTMLButtonElement>(`#project-category-${next}`)?.focus({ preventScroll: true });
   };
   const readerKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLSelectElement) return;
     if (event.key === 'Escape' && details) {
       setDetails(false);
       detailsButton.current?.focus({ preventScroll: true });
@@ -117,7 +144,9 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     scrollContainerBy(scroller, event.deltaY * unit);
   }, [staged, visible]);
   const browseWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (!interactive || details) return;
+    const focused = event.currentTarget.ownerDocument.activeElement;
+    if (!interactive || details || event.target instanceof HTMLSelectElement ||
+        (focused instanceof HTMLSelectElement && event.currentTarget.contains(focused))) return;
     const direction = paging.current?.take(event, window.innerHeight);
     if (direction) selectProject(direction);
   };
@@ -138,6 +167,11 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     if (content.current) content.current.scrollTop = 0;
     paging.current?.reset();
   }, [project?.id, details]);
+  useEffect(() => registerTVReader({ page: selectProject, retreat: () => step(-1) }), [selectProject, step]);
+  useEffect(() => {
+    setTVPagingAvailable(staged && ready && filtered.length > 1);
+    return () => setTVPagingAvailable(false);
+  }, [staged, ready, filtered.length]);
   useEffect(() => { if (!interactive) paging.current?.reset(); }, [interactive]);
   useEffect(() => {
     if (!stage.current) return;
@@ -162,6 +196,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     <div
       ref={stage} className={styles.stage} data-staged={staged} data-phase={phase}
       data-testid="projects-stage" data-visible={staged && visible ? 'true' : undefined}
+      role={staged ? 'region' : undefined} aria-label={staged ? 'Project reader' : undefined}
       aria-hidden={staged && !visible ? true : undefined} onWheel={forwardWheel}
     >
       <div ref={surface} className={styles.surface} data-projects-surface="">
@@ -183,16 +218,24 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
         </div>
         <div
           ref={display} id="project-display" className={styles.display} role="tabpanel"
-          aria-labelledby={`project-category-${activeTab}`} tabIndex={interactive ? 0 : -1}
+          aria-labelledby={`project-category-${activeTab}`} tabIndex={-1}
           aria-hidden={!interactive ? true : undefined} onKeyDown={readerKeyboard}
-          data-details={details} data-projects-display="" onWheel={browseWheel}
+          onFocusCapture={event => {
+            if (event.target instanceof HTMLSelectElement) paging.current?.reset();
+          }}
+          data-details={details} data-compact-toolbar={details || hardwarePaging}
+          data-projects-display="" onWheel={browseWheel}
         >
-          <header className={styles.displayHeader}>
+          <div className={styles.displayHeader} data-projects-header="">
             <h2 id="projects-heading">Projects</h2>
-            <span className={styles.position} aria-label={`${index + 1} of ${filtered.length} projects`}>
-              {String(index + 1).padStart(2, '0')} <span>/ {String(filtered.length).padStart(2, '0')}</span>
-            </span>
-          </header>
+            <IndexPicker items={filtered} index={index} label="Choose a project"
+              disabled={!interactive} className={styles.position}
+              onSelect={selected => {
+                setSelection(previous => ({ ...previous, index: selected }));
+                setDetails(false);
+                paging.current?.reset();
+              }} />
+          </div>
           {project ? (
             <div ref={broadcast} className={styles.work} data-project-id={project.id}>
               <div className={styles.broadcastSignal} data-broadcast-signal="" aria-hidden="true" />
@@ -210,13 +253,16 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                 <h3 data-broadcast-title="">{project.title}</h3>
                 {details ? <>
                   <ProjectDescription project={project} />
+                  {project.evidence && <ProjectEvidence evidence={project.evidence} />}
                   <dl className={styles.technology}>
                     <dt>Built with</dt><dd>{project.tech}</dd>
                     <dt>Categories</dt><dd>{project.categories.join(' / ')}</dd>
                   </dl>
                 </> : <>
                   <p className={styles.summary} data-broadcast-copy="">{project.description}</p>
-                  <p className={styles.stack} data-broadcast-copy="">{project.tech}</p>
+                  {project.evidence?.access && <p className={styles.access} data-broadcast-copy="">
+                    {project.evidence.access}
+                  </p>}
                 </>}
                 <div className={styles.links} data-broadcast-copy="">
                   {project.demoUrl && <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
@@ -226,10 +272,15 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                     {project.demoUrl ? 'Source' : 'See project'} <ArrowUpRight size={17} aria-hidden="true" />
                   </a>}
                 </div>
+                {!details && <p className={styles.stack} data-broadcast-copy="">{project.tech}</p>}
+                {details && <div data-broadcast-copy="">
+                  <ProjectVisualLink project={project} />
+                  <ProjectVisualNote project={project} />
+                </div>}
               </div>
             </div>
           ) : <p className={styles.empty}>No projects in this category. Choose All to browse the work.</p>}
-          <footer className={styles.displayFooter}>
+          <div className={styles.displayFooter} data-projects-footer="">
             <ControlButton
               ref={detailsButton} disabled={!interactive || !project}
               aria-expanded={details} aria-controls="project-display"
@@ -238,7 +289,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               {details ? 'Preview' : 'Details'}
               {details ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
             </ControlButton>
-            <div className={styles.projectNavigation}>
+            {!details && project && <ProjectVisualLink project={project} shortLabel />}
+            {!hardwarePaging && <div className={styles.projectNavigation}>
               <ControlButton iconOnly aria-label="Previous project"
                 disabled={!interactive || filtered.length < 2} onClick={() => selectProject(-1)}>
                 <ArrowLeft size={19} aria-hidden="true" />
@@ -247,37 +299,38 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                 disabled={!interactive || filtered.length < 2} onClick={() => selectProject(1)}>
                 Next <ArrowRight size={19} aria-hidden="true" />
               </ControlButton>
-            </div>
-          </footer>
+            </div>}
+          </div>
           <div className={styles.crtShutter} data-crt-shutter="" aria-hidden="true" />
           <div className={styles.crtBeam} data-crt-beam="" aria-hidden="true" />
           <div className={styles.crtRaster} data-crt-raster="" aria-hidden="true" />
         </div>
       </div>
-      {staged && <div className={styles.sceneControls} aria-hidden={!visible ? true : undefined}>
-        <ControlButton onClick={event => {
+      {staged && <div className={styles.sceneControls} data-avatar-active={avatarPresenting || undefined}
+        aria-hidden={!visible || avatarPresenting ? true : undefined}>
+        <ControlButton aria-label={backLabel} onClick={event => {
           sceneControl.current = { element: event.currentTarget, enterScreen: false };
           step(-1);
         }}
-          disabled={!['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneBack}>
+          disabled={avatarPresenting || !['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneBack}>
           <ArrowLeft size={17} aria-hidden="true" />
-          {phase === 'revealed' ? 'Back to Skills' : 'Back to the scene'}
+          <span className={styles.sceneLabel}>{backLabel}</span>
+          <span className={styles.sceneLabelShort} aria-hidden="true">Back</span>
         </ControlButton>
-        <p className={styles.cue} role="status">
+        {phase !== 'revealed' && <p className={styles.cue} role="status">
           {phase === 'withdrawing' || phase === 'turning' ? 'Turning toward the work'
             : phase === 'approaching' ? 'Approaching the display'
               : phase === 'departing' ? 'Continuing to Contact'
                 : phase === 'unturning' || phase === 'retreating' ? 'Returning through the scene'
                   : phase === 'reading'
                     ? details ? 'Scroll to read. Preview returns to browsing.' : 'Scroll on the screen to browse. Scroll outside to continue.'
-                    : phase === 'revealed' ? 'The tools behind the work'
-                      : 'The work is on the screen'}
-        </p>
-        <ControlButton variant="primary" onClick={event => {
+                    : 'The work is on the screen'}
+        </p>}
+        <ControlButton variant="primary" data-tv-scene-next="" onClick={event => {
           sceneControl.current = { element: event.currentTarget, enterScreen: phase === 'framed' };
           step(1);
         }}
-          disabled={!['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneNext}>
+          disabled={avatarPresenting || !['reading', 'framed', 'revealed'].includes(phase)} className={styles.sceneNext}>
           {phase === 'reading' ? 'Contact' : phase === 'revealed' ? 'Turn to the TV' : 'Open the screen'}
           <ArrowRight size={17} aria-hidden="true" />
         </ControlButton>

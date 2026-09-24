@@ -16,8 +16,9 @@ import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { resetScrollGesture, SCROLL_WAVE_IDLE_MS } from '@/lib/scroll/scrollGesture';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
-import * as scrollContainer from '../About/EducationRail/scrollContainer';
+import * as scrollContainer from '@/lib/scroll/scrollContainer';
 import { CRT_POWER_ON_MS } from './projectBroadcast';
+import { activateTV, getTVState, resetTVState, setTVExposure } from '@/lib/tv/tvState';
 
 let top = 1200;
 let reduced = false;
@@ -31,6 +32,7 @@ vi.mock('@/lib/gateways/animationGateway', () => ({
 }));
 
 beforeEach(() => {
+  resetTVState();
   top = 1200;
   reduced = hidden = false;
   resetScrollGesture();
@@ -111,6 +113,34 @@ const returnInput = (kind: 'held key' | 'wheel', repeat = true) => {
 };
 
 describe('the completed-beat TV chapter', () => {
+  it('pages the current category with physical keys and powers off through the original retreat', async () => {
+    mount();
+    await navbar('projects');
+    await clock.run(CRT_POWER_ON_MS);
+    act(() => setTVExposure(true, 'all'));
+    expect(phase()).toBe('reading');
+    expect(stage()).toHaveRole('region');
+    expect(stage()).toHaveAccessibleName('Project reader');
+    const first = document.querySelector('[data-project-id]')?.getAttribute('data-project-id');
+    expect(screen.queryByRole('button', { name: 'Next project' })).not.toBeInTheDocument();
+    act(() => { expect(activateTV('next')).toBe(true); });
+    expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).not.toBe(first);
+    act(() => activateTV('previous'));
+    expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe(first);
+    act(() => activateTV('power'));
+    expect(phase()).toBe('retreating');
+    expect(getTVState()).toMatchObject({ source: 'projects', broadcastOn: false });
+    await clock.run(PROJECTS_APPROACH_MS);
+    expect(phase()).toBe('framed');
+    expect(getTVState().source).toBe('off');
+    act(() => activateTV('power'));
+    expect(getTVState().source).toBe('broadcast');
+    fireEvent.click(screen.getByRole('button', { name: 'Open the screen' }));
+    await clock.run(PROJECTS_APPROACH_MS);
+    expect(getTVState()).toMatchObject({ source: 'projects', broadcastOn: true });
+    expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe(first);
+  });
+
   it('does not claim a spent physical Projects position before Skills actually departs', async () => {
     mount();
     top = -4000;
@@ -431,8 +461,8 @@ describe('the completed-beat TV chapter', () => {
       const display = screen.getByRole('tabpanel');
       const target = () => region === 'display' ? display
         : region === 'artwork' ? display.querySelector('img')!
-          : region === 'header' ? display.querySelector('header')!
-            : region === 'footer' ? display.querySelector('footer')!
+          : region === 'header' ? display.querySelector('[data-projects-header]')!
+            : region === 'footer' ? display.querySelector('[data-projects-footer]')!
               : region === 'link' ? screen.getByRole('link', { name: 'See project' })
                 : screen.getByRole('button', { name: 'Next project' });
       for (const delta of [200, -200]) {
@@ -511,6 +541,18 @@ describe('the completed-beat TV chapter', () => {
     fireEvent.click(back);
     await clock.run(PROJECTS_APPROACH_MS);
     expect(screen.getByRole('button', { name: 'Back to the scene' })).toHaveFocus();
+  });
+
+  it('keeps the full scene-back name when a tight frame shows only its short label', async () => {
+    mount();
+    handoff();
+    await clock.run(PROJECTS_TURN_MS);
+    fireEvent.click(screen.getByRole('button', { name: 'Open the screen' }));
+    await clock.run(PROJECTS_APPROACH_MS);
+    const back = screen.getByRole('button', { name: 'Back to the scene' });
+    expect(back).toHaveTextContent('Back to the scene');
+    const short = [...back.querySelectorAll('[aria-hidden="true"]')].find(node => node.textContent === 'Back');
+    expect(short).toBeDefined();
   });
 
   it.each(['withdrawing', 'turning', 'approaching', 'reading', 'retreating'])(

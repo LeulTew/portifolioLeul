@@ -91,6 +91,20 @@
   animation: cloudCondense 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/*
+ * In dark theme the mist's own luminance varies behind the copy, from bright
+ * vapour to the night it fades into. A steady feathered light under the
+ * measured copy keeps dark text on a known surface; the mist still draws over it.
+ */
+:global([data-theme='dark']) .plate::before {
+  content: '';
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(244 247 241 / 0.94), rgb(244 247 241 / 0.86) 64%, rgb(244 247 241 / 0));
+  filter: blur(10px);
+}
+
 @keyframes cloudCondense {
   from {
     opacity: 0;
@@ -113,11 +127,25 @@
 .content {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  max-width: 75rem;
   margin: 0;
   width: 100%;
   pointer-events: auto;
   padding-left: max(4rem, 10vw);
+}
+
+.introductionStage {
+  width: 100%;
+  transition: opacity 180ms ease;
+}
+
+.introductionStage[data-avatar-active] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .introductionStage { transition: none; }
 }
 
 .header {
@@ -133,8 +161,8 @@
 }
 
 .imagePlaceholder {
-  width: 120px;
-  height: 120px;
+  width: 7.5rem;
+  height: 7.5rem;
   border-radius: 50%;
   background: rgba(var(--text-color), 0.05);
   border: 1px solid rgba(var(--text-color), 0.15);
@@ -197,6 +225,21 @@
   color: #111827;
 }
 
+/*
+ * The white cloud is a light surface in both themes, but in dark its edges fade
+ * into night, and the copy that runs past its core was dark text on mid-grey.
+ * The same last-name weight as light, and a cloud-coloured halo on the plain
+ * lines, keep every glyph on light without dimming the cloud or the scene.
+ */
+:global([data-theme='dark']) .lastname {
+  opacity: 0.82;
+}
+
+:global([data-theme='dark']) .info,
+:global([data-theme='dark']) .description {
+  text-shadow: 0 0 0.55em rgb(244 247 241 / 0.9), 0 0 0.2em rgb(244 247 241 / 0.9);
+}
+
 .info {
   display: flex;
   gap: 0.75rem;
@@ -236,7 +279,7 @@
 }
 
 .description {
-  max-width: 480px;
+  max-width: 26.25rem;
   font-size: clamp(1rem, 1.25vw, 1.25rem);
   line-height: 1.45;
   color: #1f2937;

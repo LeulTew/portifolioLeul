@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
+import { useActiveSection } from '@/lib/scroll/useActiveSection';
 import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
 import { projectsData } from '../../../data/projects';
+import { ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { KineticHeading } from '../../ui/KineticText';
@@ -20,6 +22,9 @@ import {
 
 const FOCUS_DURATION_MS = 500;
 
+/** The reading copy retires once Contact takes the viewport's focus band. */
+const READING_SECTIONS = ['projects', 'contact'] as const;
+
 const categories = [
   { title: 'All', icon: Grid3x3 },
   { title: 'Web Development', icon: Globe },
@@ -33,44 +38,14 @@ export function FlatProjects({ theme }: { theme?: string }) {
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
-  const [isContactInView, setIsContactInView] = useState(false);
+  // Pixel coverage of a fixed focus band, shared with navigation: Projects is
+  // too tall at compact viewports to reach an element-relative threshold again.
+  const isContactInView = useActiveSection(READING_SECTIONS) === 'contact';
   const reducedMotion = getPrefersReducedMotion();
   const focusPhase = useRef<PhaseState>(PHASE_AT_REST);
   const focusActive = useRef(false);
   const focusFrame = useRef(0);
   const focusLastTime = useRef<number | null>(null);
-
-  // The page scrolls inside the ScrollControls element, so window.scrollY is
-  // always 0 here; section visibility has to come from IntersectionObserver,
-  // which does account for the container's transform.
-  useEffect(() => {
-    const observed = ['projects', 'contact']
-      .map((id) => document.getElementById(id))
-      .filter((el): el is HTMLElement => el !== null);
-
-    if (observed.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-        if (visibleEntry?.target?.id === 'contact') {
-          setIsContactInView(true);
-        } else if (visibleEntry?.target?.id === 'projects') {
-          setIsContactInView(false);
-        }
-      },
-      {
-        threshold: [0.15, 0.35, 0.55],
-        rootMargin: '-35% 0px -35% 0px'
-      }
-    );
-
-    observed.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
 
   // Filter projects based on active category
   const filteredProjects = useMemo(
@@ -96,25 +71,27 @@ export function FlatProjects({ theme }: { theme?: string }) {
       filteredProjects.map((project) => ({
     id: project.id,
     title: project.title,
-    description: project.longDescription ? (
+    description: (
       <div className="flex flex-col gap-3 text-left">
-        {project.longDescription.split('\n').map((line, i) => {
+        <ProjectVisualNote project={project} />
+        {(project.longDescription || project.description).split('\n').map((line, i) => {
           if (!line.trim()) return null;
           return (
-            <p key={i} className="leading-relaxed text-neutral-300">
+            <p key={i} className={`leading-relaxed ${styles.description}`}>
               {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
                 part.startsWith('**') && part.endsWith('**') 
-                  ? <strong key={j} className="text-emerald-400 font-bold">{part.slice(2, -2)}</strong> 
+                  ? <strong key={j}>{part.slice(2, -2)}</strong>
                   : part
               )}
             </p>
           );
         })}
+        {project.evidence && <ProjectEvidence evidence={project.evidence} />}
+        <ProjectVisualLink project={project} />
       </div>
-    ) : (
-      project.description
     ),
     imageSrc: project.image,
+    imageAlt: project.imageAlt,
     demoUrl: project.demoUrl,
     repoUrl: project.githubUrl,
     meta: project.categories.join(' • '),
@@ -200,12 +177,13 @@ export function FlatProjects({ theme }: { theme?: string }) {
 
         {/* Focus Rail Component. Changing category swaps the whole rail, so the
             swap sweeps across as a bending sheet rather than cutting hard. */}
-        <StripReveal revealKey={activeCategory} className="w-full mt-8">
+        <StripReveal revealKey={activeCategory} className={`w-full ${styles.railWrap}`}>
           <FocusRail 
             items={railItems} 
             theme={theme}
             isFocused={!isContactInView}
             autoPlay={false}
+            itemPickerLabel="Choose a project"
             loop={true} 
             className="bg-transparent"
           />

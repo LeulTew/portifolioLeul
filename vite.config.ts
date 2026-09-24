@@ -1,9 +1,26 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
 import path from 'path';
 
-export default defineConfig({
+/**
+ * The deployed site-wide headers, for `vite preview` only. Vercel consumes
+ * vercel.json itself and does not promise it is readable while the build runs,
+ * so the production build never reads it.
+ */
+function deploymentHeaders(): Record<string, string> {
+  const deployment = JSON.parse(readFileSync(path.resolve(__dirname, 'vercel.json'), 'utf8')) as {
+    headers: { source: string; headers: { key: string; value: string }[] }[];
+  };
+  return Object.fromEntries(
+    deployment.headers
+      .filter(rule => rule.source === '/(.*)')
+      .flatMap(rule => rule.headers.map(({ key, value }) => [key, value])),
+  );
+}
+
+export default defineConfig(({ isPreview }) => ({
   plugins: [react()],
   resolve: {
     alias: {
@@ -59,13 +76,18 @@ export default defineConfig({
       target: 'esnext',
     }
   },
-  server: process.env.VITEST ? undefined : {
-    host: '0.0.0.0',
+  server: {
+    host: '127.0.0.1',
     port: 8080,
     strictPort: false,
     fs: {
-      strict: false,
-      allow: ['..']
+      strict: true,
+      allow: [path.resolve(__dirname)]
     }
   },
-});
+  // Exercise the deployed policy in preview, not in development's inline HMR runtime.
+  preview: {
+    host: '127.0.0.1',
+    ...(isPreview ? { headers: deploymentHeaders() } : {}),
+  },
+}));

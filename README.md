@@ -4,9 +4,9 @@
 
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![React Three Fiber](https://img.shields.io/badge/React_Three_Fiber-8.x-049EF4?style=for-the-badge&logo=three.js&logoColor=white)](https://docs.pmnd.rs/react-three-fiber/)
-[![Test Coverage](https://img.shields.io/badge/Test_Coverage-100%25-success?style=for-the-badge&logo=vitest&logoColor=white)]()
+[![Tests](https://img.shields.io/badge/Tests-Vitest-729B1B?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Status](https://img.shields.io/badge/Status-Deployed-success?style=for-the-badge&logo=vercel&logoColor=white)](https://leul-t-agonafer.vercel.app)
 
 **[🔴 LIVE DEMO: leul-t-agonafer.vercel.app](https://leul-t-agonafer.vercel.app)**
@@ -31,27 +31,59 @@ Welcome to my **Interactive 3D Portfolio**. This project is more than just a sho
 
 ## 🏆 Key Highlights
 
-- **Immersive 3D Experience**: A fully interactive 3D world powered by **React Three Fiber**, featuring a custom-optimized avatar and dynamic environment that pushes the boundaries of web performance.
-- **Engineering Excellence**: A bulletproof codebase with **100% Test Coverage** across all metrics, ensuring rock-solid reliability and maintainability.
-- **Performance Masterclass**: Achieved a massive **97% payload reduction** (130MB → 3.3MB) through aggressive asset optimization, delivering a lightning-fast experience even on mobile.
-- **Modern & Scalable Architecture**: Built with the latest tech stack—**React 18, TypeScript, Tailwind CSS**—and designed for scalability, accessibility, and developer experience.
+- **Interactive 3D world**: React Three Fiber connects an animated avatar, a physical television and the portfolio's native reading controls.
+- **Typed interaction ownership**: TypeScript, unit tests and real-component integration tests cover camera handoffs, native input, resource lifecycles and recovery.
+- **Explicit performance budgets**: Optimized scene assets, device-aware rendering and occlusion gates limit work. Optional television media loads only after a visitor switches it on.
+- **Desktop and phone experiences**: The desktop scene retains semantic HTML and a flat WebGL fallback; the separate phone portfolio is selected before loading desktop bundles.
 
 ## ⚡ Performance Optimization
 
-I achieved a **97% reduction** in initial load payload through aggressive asset optimization.
+The scene uses optimized assets instead of loading its archived source models.
+Those archival originals live in `assets/originals/`, and superseded optimized
+variants the site no longer loads live in `assets/unshipped/`; neither is under
+`public/`, so Vite never copies them into `dist/`. `src/deployment.assets.test.ts`
+keeps the published tree free of `original` folders, within its size budget, and
+limited to models and videos the site actually references.
+Representative shipped file sizes are:
 
-| Asset Type   | File Name           | Original Size | Optimized Size | Reduction |
-| :----------- | :------------------ | :------------ | :------------- | :-------- |
-| **3D Model** | `me.glb`            | **18 MB**     | **1.3 MB**     | **~93%**  |
-| **3D Model** | `terrain-1k.glb`    | **83 MB**     | **19 MB**      | **~77%**  |
-| **Video**    | `Significant.mp4`   | 27 MB         | 4.4 MB         | ~84%      |
-| **Video**    | `Spy_Movie...mp4`   | 1.6 MB        | 713 KB         | ~55%      |
-| **Image**    | `Clustering.png`    | 6.1 MB        | 272 KB         | ~95%      |
-| **Image**    | `IrisDatasetML.png` | 5.7 MB        | 256 KB         | ~95%      |
-| **Image**    | `leul-profile.png`  | 1.6 MB        | 41 KB          | ~97%      |
-| **Image**    | `pharmacy.jpg`      | 527 KB        | 45 KB          | ~91%      |
+| Asset | File | Size on disk | Loading |
+| :---- | :--- | -----------: | :------ |
+| Terrain | `terrain-opt.glb` | 3.85 MB | Opening scene; smaller software-renderer variant available |
+| Animated avatar | `me-animated-lite.glb` | 847 KB | Opening scene; smaller software-renderer variant available |
+| Water normals | `waternormals.jpg` | 249 KB | Opening scene |
+| Portrait | `leul-profile.webp` | 42 KB | Hero |
+| Television video | `Spy_Movie_Live_Wallpaper_Video-opt.mp4` | 599 KB | Only after the physical TV is switched on |
 
-_> Total payload reduced by over **150MB**._\_
+These are individual file sizes, not an initial-page transfer total or an FPS
+guarantee. JavaScript, fonts and other images also contribute to startup.
+Measure the production build with normal caching, a cold HTTP cache and explicit
+CPU/network profiles; distinguish those simulations from physical low-end hardware.
+
+Scene readiness reads the same per-model parsed cache entries used by the
+visible objects instead of parsing a second batch of models. HTML and scroll
+controllers remain independent of that readiness check. Model consumers wait
+for their shared native prefetch to settle before entering the parsed-resource
+cache; the rest of the scene and the page are not held behind a download gate.
+Cached bytes remain available until the parsed consumer commits. A failed or
+timed-out prefetch releases that model into the ordinary loader retry.
+Byte-progress prefetch keeps its awaited native stream reader. Failed
+optional prefetches settle visibly and remain recoverable through the ordinary
+scene loader; they are not treated as successful scene readiness.
+
+`patches/three@0.161.0.patch` also fixes the pinned upstream FileLoader's missing
+body-read rejection forwarding. Without it, an interrupted HTTP-200 response
+could leave every subscriber and subsequent retry waiting on the same failed
+URL. Bun applies the three-line source/ES-module/CommonJS patch during frozen
+installation. Real-HTTP tests check both published module formats, shared
+subscribers and successful same-URL retry. Reassess this patch when upgrading
+Three; it changes transport error propagation, not rendering or model data.
+
+The loading mask reuses an integer-sized canvas buffer rather than resetting
+its width and height on each paint. Its wave is capped at 60 paints per second,
+uses elapsed time, and pauses when the document is hidden. Reduced motion keeps
+the same byte-progress signal as a static fill, with a short opacity exit instead
+of a wave or zoom. Completion stops the drawing loop even when the loader is
+used without a parent unmount callback.
 
 ### Island outline and scene edge continuation
 
@@ -152,6 +184,9 @@ A strict 561-cell footprint mask records those original gaps; every gap must
 have measured soil on opposite sides within 0.7 world units, beneath the
 continuous closed cabinet. New misses fail. The grille clears actual terrain
 hits and the measured edges of voids, with no invented ground or terrain edits.
+The test fixture uses the existing mesh-BVH implementation to accelerate those
+rays and compares representative results with Three's native raycaster. The
+full footprint, original void mask and clearance assertions remain unchanged.
 
 ## 🛠️ Tech Stack
 
@@ -160,8 +195,82 @@ hits and the measured edges of voids, with no invented ground or terrain edits.
 | **Core**           | React 18, TypeScript, Vite                    |
 | **3D & Animation** | React Three Fiber, Drei, Framer Motion, GSAP, Anime.js |
 | **Styling**        | Tailwind CSS, CSS Modules                     |
-| **Testing**        | Vitest, React Testing Library (100% Coverage) |
+| **Testing**        | Vitest, React Testing Library, native browser workflow checks |
 | **Deployment**     | Vercel                                        |
+
+### Physical TV controls and screen modes
+
+The television starts **off**. Its physical power control opens a local CRT
+signal in the exposed, front-facing scene; previous/next select the existing
+small video or an original animated test card. The former automatic eight-second
+video cycle and whole-cabinet click handler are removed. No video is fetched
+at startup or counted as a loader-critical asset.
+
+During the Projects approach, reading and retreat, the display belongs
+exclusively to the existing semantic project reader. The CRT entertainment
+shader does not process project text, images or links. The physical previous/
+next keys invoke the reader's original filtered selection callbacks; Details,
+categories, keyboard browsing and project selection stay intact. Conventional
+project paging remains the fallback when physical 48px targets cannot fit or
+the flat reader is used.
+
+The project counter is also a native 48px selection control. It jumps directly
+to any title in the current category, supports the browser's keyboard type-ahead,
+and keeps the selected value synchronized with physical paging. The flat reader
+offers the same control. Its native arrow keys and wheel input do not also page
+the surrounding reader, and choosing a title returns expanded Details to Preview.
+
+Project implementation notes link to immutable public source revisions rather
+than claiming unmeasured results. Amharic IR is identified as collaborative work;
+the published author list does not establish individual implementation roles.
+Preview assets must exist locally as valid WebP files. Portfolio Leul uses a
+genuine local desktop capture; Luna uses original project artwork, explicitly
+identified as artwork rather than an application screenshot. Optional image
+notes and alternative text are carried through both TV and flat readers.
+
+Power-off in Projects uses its existing back-to-scene retreat, then leaves
+dark glass. Entering Projects always makes the reader available, even when
+broadcast was off. A normal exit restores the previous broadcast preference
+and channel; it does not conflate those with the current project. The existing
+camera, island geometry, water, lighting, avatar, prism and Contact journey are
+unchanged.
+
+Native buttons are projected onto the hardware, in a zero-height sticky layer
+inside the real scrollport rather than inside covered/inert main content.
+Back-facing, occluded, hidden and moving-scene controls cannot be activated.
+Separate key targets never overlap. The physical caps and native controls
+share one action; physical press/focus/hover feedback does not invent another
+navigation handler. A keyboard power-off returns focus to the existing visible
+scene-navigation control, not an invisible retired TV surface.
+
+When changing content height makes ScrollControls rebuild its native track,
+the app preserves both the visible scroll position and the previously focused
+control. Focus recovery yields to subsequent navigation, pointer actions, or
+focus in another surface; it never revives a removed, disabled or hidden control.
+
+The complete TV now submits **2,520 triangles in 11 main-view draws**:
+1,778 static housing, 476 moving controls, 264 lower cabinet and two display
+triangles. The existing water mirror may submit the TV again; that cost is not
+an added render pass. Channel-key centers remain at least 54.85px apart even
+in the pre-close-up 900x560 shot. One material-batched cap buffer moves the three
+keys independently, with 75ms depression, 50ms minimum dwell and 130ms release.
+The redundant upper grille is replaced by the broad hardware strip; the approved
+lower speaker, original aperture and world bounds remain intact.
+
+Mechanical audio uses the existing muted-by-default Audio FX preference.
+One short bounded knock accompanies an accepted action; hover is silent,
+repeat input is rate-limited, and ended oscillator/gain nodes disconnect.
+Broadcast media remains muted. The screen-local wake, shutdown and tuning
+effects honor reduced motion and the 50ms visible-frame cap, without a new
+Canvas, light, shadow map or full-scene postprocessing pass.
+
+Only one video element/decoder is created, on deliberate power-on. It pauses
+while off, hidden, in Projects or outside useful screen visibility. The owned
+video texture cancels its `requestVideoFrameCallback` on pause/disposal
+(Three.js r161's built-in implementation does not own that cleanup).
+Late playback promises cannot restart a retired source. Playback rejection
+and media errors announce a recoverable test-card fallback, never false
+successful playback. The test card adds no media download.
 
 ### Production addresses and device routing
 
@@ -176,31 +285,117 @@ query and fragment. Resizing a desktop window or using a touchscreen laptop does
 not redirect. Localhost and deployment-preview hosts remain isolated for review.
 The mobile repository implements the same classification and canonical origins.
 
-Vercel uses the checked-in `bun.lock`, `bunx bun@1.4.0 install --frozen-lockfile`,
-`bunx bun@1.4.0 run build`, and `dist` explicitly. The executable version is
-pinned as well as `packageManager`: Vercel's preinstalled Bun can otherwise be
-older than the lockfile format. The obsolete pnpm lockfile was removed:
+Vercel uses the checked-in `bun.lock`, `bun install --frozen-lockfile`,
+`bun run build`, and `dist` explicitly. Vercel provisions the Bun version the
+lockfile was generated by (here 1.4.x, lockfile format 3), and `packageManager`
+pins it too. An earlier `bunx bun@1.4.0` wrapper worked around an older
+preinstalled Bun, but on current builds it exits before Bun starts, so keep the
+commands plain. The obsolete pnpm lockfile was removed:
 automatic pnpm selection previously rejected the out-of-date dependency list
 and left production serving an older release. Keep the Bun lockfile current and
 verify both published aliases on desktop and phone after deployment.
+
+### Meet the character in the scene
+
+A small, wordless light cue appears only on hover or keyboard focus; the native
+model-aligned target remains clickable wherever the avatar is actionable
+in the exposed island, including Hero and Projects' revealed pre-TV view. It
+waits for the original Hero name entrance, but is not mounted in Hero or in the
+covered/inert main content. Its portal remains inside the real scrollport.
+Its zero-height sticky layer preserves native wheel travel over the controls;
+new entry waits for the existing scroll-track measurement/repair to settle.
+
+Clicking takes the existing camera along a 1.65-second curved approach to a new
+three-quarter medium portrait. The original textured figure turns its upper
+torso/head and gives a finite nod; the underlying wave is never reset or
+replaced. Only identification and a return control accompany the character.
+There is no duplicate figure, SVG portrait, extra model, Canvas, lighting rig,
+render pass, runtime dependency or mandatory chapter beat.
+
+`CinematicCameraController` remains the only camera writer. It computes the
+normal chapter pose separately, then composes the optional encounter. Return
+retraces the approach toward the live base; native scrolling and resize blend
+out from the displayed pose while chapter input continues normally. Navbar
+intent, hidden documents and Contact priority cannot be reclaimed by a stale
+return. Reduced motion uses deliberate camera cuts without rig flourishes.
+Unavailable WebGL leaves the existing flat portfolio, not a false avatar target.
+
+The same drawn-frame clock paces the camera and acknowledgement, capped at 50ms.
+The rig restores its additive offsets without overwriting newer mixer samples
+or disposing cached GLTF resources. The avatar's world placement and feet,
+terrain, CRT, Contact flight and Hero name reveal remain unchanged. Projects'
+revealed controls omit the removed caption while retaining their edge positions.
+
+### The green prism's hidden experiment
+
+The green prism uses the same subtle, wordless hover/focus glint in the exposed
+island. Accessible button names remain available to assistive technology,
+without visible labels, badges or icons. Deliberate activation lifts the existing object, lets the line tie into
+an open spatial knot, and unthreads it back into the exact original beam.
+It does not move the camera, open a panel, retime the character or modify the
+ocean. The ordinary bob and existing point light keep their original owner.
+
+The curve grows through enlarged subarcs rather than interpolating a straight
+shaft through itself. Parallel-transport frames keep the rectangular material
+coherent. One capped 644-triangle body and one sparse line cage replace the two
+ordinary visible draws only during the interaction; original box geometry and
+material references return at rest. Buffers are allocated once and reused.
+No additional light, shadow map, render target, shader pass or dependency is
+introduced. The interaction material is opaque and lit so crossings remain
+readable, including in the dark theme; the ordinary dark additive beam is
+restored afterward.
+
+A single drawn-frame clock runs the finite 5.7-second reveal/hold/return and a
+shorter requested reversal. Escape, native scroll and resize can reverse it;
+navigation, hidden/covered scenes and teardown restore the beam. Reduced motion
+retains the stationary object with brief wire-intensity feedback. An exclusive
+island-secret lease prevents the prism and avatar encounters from competing.
+Both use the real scrollport, stay absent behind opaque chapters, and expose no
+imaginary target without WebGL.
 
 ### Contact delivery
 
 The Contact form uses the deployed `VITE_EMAILJS_SERVICE_ID`,
 `VITE_EMAILJS_TEMPLATE_ID`, and `VITE_EMAILJS_PUBLIC_KEY`. These are client-side
 EmailJS identifiers; never put an EmailJS private key in a `VITE_` variable.
-The template receives `from_name`, `from_email`, and `message`. Confirm the
-template's recipient and reply-to settings in EmailJS, and allow the production
-origin if origin restrictions are enabled.
+The small native REST transport sends `from_name`, `from_email`, `reply_to`, and
+`message`; the two email aliases contain the same visitor address. It never
+accepts a client-selected recipient or a private key.
 
-Success appears only after EmailJS accepts the request. Invalid fields are
+Configure the template in the owning EmailJS account:
+
+- Keep **To Email** fixed to the intended portfolio inbox, not a visitor-controlled variable.
+- Use the authenticated email service's address for **From Email**. Put
+  `{{reply_to}}` (or the compatible `{{from_email}}` alias) in **Reply To**.
+- Use `{{from_name}}` and `{{message}}` in the subject/body as appropriate.
+- Confirm that the service, template and public key belong together, that the
+  outbound service remains connected, and that the production origin is allowed.
+- Inspect the matching Email History entry and actual recipient inbox/spam
+  folder for an explicitly authorized diagnostic message. A successful HTTP
+  response alone cannot establish inbox delivery.
+
+The **Submitted** confirmation appears only after EmailJS accepts the request
+and explicitly distinguishes acceptance from inbox delivery. Invalid fields are
 labelled inline, duplicate submissions are prevented, and fields stay read-only
 while sending so a late response cannot erase a newer draft. Accepted content
 stays in the original native form through its fold and flight; **Send another
-message** clears it and restores the same fields without reloading. On failure the draft remains,
-with a retry and an explicit link to open it in the visitor's email app; that
-link does not pretend the message was sent. The contact email and phone are
+message** clears it and restores the same fields without reloading. Requests
+have a 20-second deadline and abort on form unmount. Late or cancelled responses
+cannot accept a newer draft or start another animation. Aborting a browser
+request does not recall a message the provider may already have accepted:
+network/timeout feedback therefore says submission is unconfirmed, never
+asserts that nothing was delivered, and never retries automatically.
+
+On failure the draft remains, with an explicit email-app fallback. Rate-limit,
+configuration and provider failures explain the available recovery. The same
+draft link remains available after acceptance for a direct follow-up; opening it
+does not send anything automatically. Contact email and phone links remain
 native `mailto:` and `tel:` links.
+
+Submission focus is parked on the stable message group, outside the moving
+sheet. Failure returns it to Send; a completed flight moves it to the new-draft
+action only while that group still owns focus. A visitor who navigates elsewhere
+is not pulled back by a late response.
 
 The Contact finale carries the existing Skills typography and chamfered control
 language into an asymmetric cloud-clearing composition: direct contact links on
@@ -212,7 +407,7 @@ animation never sends another request. Its inner sheet owns the send transforms;
 Motion still owns the outer entrance, independently of the camera presentation.
 Only visible time advances (at most 50ms per frame), with no idle animation loop.
 Reduced motion skips the flight. Navigation, resize, or a live reduced-motion
-change settles to the truthful, recoverable **Sent** confirmation; cleanup cancels
+change settles to the truthful, recoverable **Submitted** confirmation; cleanup cancels
 the score. Focus moves to the reset control only if it was still in the retiring
 form, never back from navigation. The existing camera handoff still reveals the
 same form subtree during its final easing. No new dependency or WebGL canvas is
@@ -329,7 +524,7 @@ cd portifolioLeul
 bun install --frozen-lockfile
 
 # 3. Configure Environment
-# Create .env.local and add your EmailJS credentials:
+# Create .env.local and add the public EmailJS configuration:
 # VITE_EMAILJS_SERVICE_ID=...
 # VITE_EMAILJS_TEMPLATE_ID=...
 # VITE_EMAILJS_PUBLIC_KEY=...
@@ -338,9 +533,11 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-All three EmailJS settings are required for contact-form delivery. Missing or
-incomplete configuration shows the existing send-error message and preserves
-the entered fields; the form does not simulate successful delivery.
+All three EmailJS settings are required for form submission. Missing or
+incomplete configuration explains that the form is unavailable and preserves
+the entered fields with a direct-email fallback. Do not put a private EmailJS
+key in the client configuration. Provider acceptance and actual inbox receipt
+must be verified separately.
 
 ---
 

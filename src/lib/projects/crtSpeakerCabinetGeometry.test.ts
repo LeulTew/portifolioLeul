@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
+import { acceleratedRaycast, MeshBVH } from 'three-mesh-bvh';
 import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
@@ -227,7 +228,9 @@ describe('the integral floor-standing CRT speaker cabinet', () => {
           geometry.setAttribute('position', new THREE.BufferAttribute(array, 3));
           const indices = primitive.getIndices()?.getArray();
           if (indices) geometry.setIndex(Array.from(indices));
+          geometry.boundsTree = new MeshBVH(geometry);
           const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+          mesh.raycast = acceleratedRaycast;
           mesh.matrixAutoUpdate = false;
           mesh.matrix.copy(transform).multiply(new THREE.Matrix4().fromArray(node.getWorldMatrix()));
           mesh.updateMatrixWorld(true);
@@ -247,6 +250,13 @@ describe('the integral floor-standing CRT speaker cabinet', () => {
             new THREE.Vector3(sample.x, sample.y + 30, sample.z), new THREE.Vector3(0, -1, 0),
           );
           const ground = downward.intersectObjects(meshes, false)[0]?.point;
+          if ([0, 7, 16, 32].includes(column) && [0, 8, 16].includes(row)) {
+            for (const mesh of meshes) mesh.raycast = THREE.Mesh.prototype.raycast;
+            const reference = downward.intersectObjects(meshes, false)[0]?.point;
+            for (const mesh of meshes) mesh.raycast = acceleratedRaycast;
+            expect(Boolean(ground)).toBe(Boolean(reference));
+            if (ground && reference) expect(ground.distanceTo(reference)).toBeLessThan(1e-8);
+          }
           const shoulder = downward.intersectObject(cabinet)[0]?.point;
           const upward = new THREE.Raycaster(
             new THREE.Vector3(sample.x, CRT_SPEAKER_CABINET_BOTTOM_WORLD_Y - 1, sample.z),

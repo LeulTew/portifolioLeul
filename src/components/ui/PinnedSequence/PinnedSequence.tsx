@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
+import { getScrollProgress, setScrollProgress, subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
@@ -134,6 +134,12 @@ export function PinnedSequence({
           const entry = entries[entries.length - 1];
           if (!entry) return;
           nearby = entry.isIntersecting;
+          if (nearby) {
+            // A settled navbar jump may publish before the clipped scrollport's
+            // observer reports entry. Wake measurement before beat consumers,
+            // without inventing another gesture or changing the settled offset.
+            setScrollProgress(getScrollProgress(), true);
+          }
           /*
            * Not while the chapter is still playing.
            *
@@ -159,9 +165,24 @@ export function PinnedSequence({
       observer.observe(spacer);
     }
 
+    const publishPosition = (overlay: HTMLElement) => {
+      const rect = spacer.getBoundingClientRect();
+      if (rect.height > 0) {
+        writeStyleProperty(overlay, '--seq', localProgress(rect.top, rect.height, window.innerHeight).toFixed(PRECISION));
+      }
+    };
+    // Set by a navbar jump, which settles every stage before its landing is measured.
+    let landingOwed = false;
+
     const apply = () => {
       const overlay = overlayRef.current;
       if (!overlay) return;
+      // Hidden or not, the overlay is its stages' clock: without the landing they
+      // would read the pre-jump position and unwind offscreen towards it.
+      if (landingOwed) {
+        landingOwed = false;
+        publishPosition(overlay);
+      }
       if (occludesWorld) setOverlayOcclusion(false);
       if (getProjectsView().active || isProjectsReturnOwed()) {
         writeAttribute(overlay, 'data-active', 'false');
@@ -316,6 +337,7 @@ export function PinnedSequence({
       if (overlay) writeAttribute(overlay, 'data-active', 'false');
       publishOwnership(false);
       if (occludesWorld) setOverlayOcclusion(false);
+      landingOwed = true;
     });
     window.addEventListener('resize', apply);
     const about = document.getElementById('about');

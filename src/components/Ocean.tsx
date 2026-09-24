@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Water } from 'three/examples/jsm/objects/Water.js';
+import { OwnedWater } from '@/lib/ocean/OwnedWater';
 import {
   DEFAULT_REFLECTION_SIZE,
   OCEAN_NORMALS_URL,
@@ -18,6 +18,7 @@ import {
 import { DEFAULT_WAVE_SETTINGS, applyWaveShader } from './ocean/waveShader';
 import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
 import { createReflectionCadence } from '@/lib/render/reflectionCadence';
+import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 
 interface OceanProps {
   theme: OceanTheme;
@@ -49,32 +50,23 @@ export function Ocean({
   segments = DEFAULT_OCEAN_GEOMETRY.radialSegments,
   rings = DEFAULT_OCEAN_GEOMETRY.rings,
 }: OceanProps) {
-  const waterRef = useRef<Water | null>(null);
+  const container = useMemo(() => new THREE.Group(), []);
+  const waterRef = useRef<OwnedWater | null>(null);
   const renderTime = useRef(0);
+  const reducedMotion = usePrefersReducedMotion();
 
   const waterNormals = useLoader(THREE.TextureLoader, OCEAN_NORMALS_URL);
   const shoreField = useLoader(THREE.TextureLoader, SHORE_FIELD_URL);
 
-  const geometry = useMemo(
-    () =>
-      createOceanGeometry(ISLAND_IN_PLANE_SPACE, {
-        ...DEFAULT_OCEAN_GEOMETRY,
-        radialSegments: segments,
-        rings,
-        outerRadius: OCEAN_SIZE / 2,
-      }),
-    [segments, rings]
-  );
-
-  const waterConfig = useMemo(
-    () => ({
-      ...getOceanSurfaceConfig(theme, reflectionSize),
-      waterNormals,
-    }),
-    [theme, waterNormals, reflectionSize]
-  );
-
-  const water = useMemo(() => {
+  useLayoutEffect(() => {
+    // Allocate after commit: useMemo can abandon undisposed instances during
+    // StrictMode's render replay or a suspended render.
+    const geometry = createOceanGeometry(ISLAND_IN_PLANE_SPACE, {
+      ...DEFAULT_OCEAN_GEOMETRY,
+      radialSegments: segments,
+      rings,
+      outerRadius: OCEAN_SIZE / 2,
+    });
     waterNormals.wrapS = THREE.RepeatWrapping;
     waterNormals.wrapT = THREE.RepeatWrapping;
 
@@ -96,7 +88,10 @@ export function Ocean({
     shoreField.generateMipmaps = false;
     shoreField.needsUpdate = true;
 
-    const surface = new Water(geometry, waterConfig);
+    const surface = new OwnedWater(geometry, {
+      ...getOceanSurfaceConfig('dark', reflectionSize),
+      waterNormals,
+    });
     surface.rotation.x = -Math.PI / 2;
     surface.receiveShadow = true;
 
@@ -112,23 +107,19 @@ export function Ocean({
       };
     }
 
-    return surface;
-  }, [geometry, waterConfig, waterNormals, shoreField, reflectionFps]);
-
-  useEffect(() => {
-    waterRef.current = water;
-
+    // Attach during this commit so the later <Preload all /> sees the water,
+    // without a state update that would defer its mesh to a second commit.
+    container.add(surface);
+    waterRef.current = surface;
     return () => {
+      container.remove(surface);
       waterRef.current = null;
-      if (water.material) {
-        water.material.dispose();
-      }
+      surface.dispose();
+      geometry.dispose();
     };
-  }, [water]);
+  }, [container, segments, rings, reflectionSize, waterNormals, shoreField, reflectionFps]);
 
-  useEffect(() => () => geometry.dispose(), [geometry]);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     const current = waterRef.current;
     if (current && current.material && current.material.uniforms) {
       const isLight = theme === 'light';
@@ -139,14 +130,14 @@ export function Ocean({
       current.material.uniforms.size.value = isLight ? 1.0 : 1.45;
       current.material.transparent = true;
     }
-  }, [theme]);
+  });
 
   useFrame((state, delta) => {
     renderTime.current = state.clock.elapsedTime;
     // Advancing the swell on a frame that is never drawn spends the reflection
     // pass on an image no one sees. The clock is driven by delta, so it
     // catches up exactly on the next frame that is.
-    if (!isFrameDrawn(state.clock.elapsedTime)) return;
+    if (!isFrameDrawn(state.clock.elapsedTime) || reducedMotion) return;
 
     const current = waterRef.current;
     if (current && current.material && current.material.uniforms && current.material.uniforms.time) {
@@ -155,5 +146,5 @@ export function Ocean({
     }
   });
 
-  return <primitive object={water} position={position} />;
+  return <primitive object={container} position={position} dispose={null} />;
 }

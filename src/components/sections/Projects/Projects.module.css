@@ -1,4 +1,8 @@
 .projects {
+  --project-paper: #101e18;
+  --project-ink: #edf4ea;
+  --project-muted: #b2c7b9;
+  --project-accent: #80e1b4;
   position: relative;
   min-height: 100vh;
   display: flex;
@@ -6,9 +10,25 @@
   justify-content: center;
   padding: 0 max(2rem, 5vw) 8rem;
   overflow: hidden;
-  mix-blend-mode: difference;
+  mix-blend-mode: normal;
   pointer-events: none;
   background: transparent;
+}
+
+:global([data-theme="light"]) .projects {
+  --project-paper: #f4f7f1;
+  --project-ink: #192d25;
+  --project-muted: #4d6357;
+  --project-accent: #126844;
+}
+
+.description {
+  color: var(--project-muted);
+}
+
+.description strong {
+  color: var(--project-accent);
+  font-weight: 600;
 }
 
 .content {
@@ -48,6 +68,40 @@
   padding: 0 2rem;
   position: relative;
   z-index: 10;
+}
+
+.railWrap {
+  margin-top: 2rem;
+}
+
+/* Laptop heights: the gap above the filters alone pushed the project title past a 900px fold. */
+@media (max-height: 960px) {
+  .filterContainer {
+    margin-top: 2rem;
+  }
+
+  .railWrap {
+    margin-top: 1.25rem;
+  }
+}
+/* At the desktop floor the spacing sized for a tall window pushed the reader below the fold. */
+@media (max-height: 640px) {
+  .header {
+    padding-bottom: 0.25rem;
+  }
+
+  .title {
+    padding-bottom: 0.5rem;
+  }
+
+  .filterContainer {
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .railWrap {
+    margin-top: 0.5rem;
+  }
 }
 
 .filterTabs {
@@ -450,4 +504,20 @@
 
 :global([data-theme="light"]) .activeTab {
   color: #000000 !important;
+}
+
+/*
+ * The same widths at the floor of desktop height. The spacing above was sized
+ * for taller windows and left the reader's title below a 560px fold.
+ */
+@media (min-width: 769px) and (max-width: 1366px) and (max-height: 640px) {
+  .projects {
+    padding-top: 2.5rem !important;
+  }
+  .title {
+    margin-top: 0 !important;
+  }
+  .filterContainer {
+    margin-top: 0.5rem !important;
+  }
 }

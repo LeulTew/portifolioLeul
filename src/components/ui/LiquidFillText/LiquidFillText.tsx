@@ -56,7 +56,6 @@ export function LiquidFillText({
       ]
         .filter(Boolean)
         .join(' ')}
-      aria-label={text}
       data-testid="liquid-fill-text"
       data-filling={filling}
       data-settled={settled}
@@ -68,6 +67,7 @@ export function LiquidFillText({
         ['--word-delay' as string]: `${delayMs}ms`,
       }}
     >
+      <span className="sr-only">{text}</span>
       {characters.map((char, index) => {
         if (char === ' ') {
           return (

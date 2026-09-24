@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+// Keep real DOM/GSAP playback without jsdom's costly per-glyph style cascade.
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import gsap from 'gsap';
@@ -22,6 +24,7 @@ let fits = true;
 const mediaListeners = new Map<string, Set<(event: { matches: boolean }) => void>>();
 let clock: ReturnType<typeof animationClock>;
 const rect = Element.prototype.getBoundingClientRect;
+const originalConsolidate = Object.getOwnPropertyDescriptor(SVGTransformList.prototype, 'consolidate');
 
 beforeEach(() => {
   skillsTop = 1200;
@@ -36,6 +39,20 @@ beforeEach(() => {
   releaseContactSky();
   setProjectsView(false, 0, 0);
   setTVScreenReady(true);
+  // Match the Skills playback fixture: preserve actual SVG transform matrices.
+  // Happy DOM exposes transform lists but does not yet consolidate them.
+  if (!originalConsolidate) Object.defineProperty(SVGTransformList.prototype, 'consolidate', {
+    configurable: true,
+    value: function (this: SVGTransformList) {
+      if (this.numberOfItems === 0) return null;
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      let matrix = svg.createSVGMatrix();
+      for (let index = 0; index < this.numberOfItems; index++) {
+        matrix = matrix.multiply(this.getItem(index).matrix);
+      }
+      return this.initialize(svg.createSVGTransformFromMatrix(matrix));
+    },
+  });
   vi.stubGlobal('innerWidth', 1440);
   vi.stubGlobal('innerHeight', 900);
   vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
@@ -54,6 +71,11 @@ beforeEach(() => {
     if (this.id === 'projects') return DOMRect.fromRect({ x: 0, y: projectsTop, width: 1440, height: 2340 });
     return rect.call(this);
   });
+  // Both controllers seek paused scores on their own visible-time rAF clock.
+  // Cancel GSAP's import-time frame before replacing rAF, and keep it asleep.
+  gsap.ticker.wake();
+  gsap.ticker.sleep();
+  vi.spyOn(gsap.ticker, 'wake').mockImplementation(() => {});
   clock = animationClock();
 });
 afterEach(() => {
@@ -67,15 +89,15 @@ afterEach(() => {
   resetCameraHold();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  if (originalConsolidate) Object.defineProperty(SVGTransformList.prototype, 'consolidate', originalConsolidate);
+  else Reflect.deleteProperty(SVGTransformList.prototype, 'consolidate');
 });
 const advance = async (ms: number) => {
-  gsap.ticker.sleep();
   for (let elapsed = 0; elapsed < ms; elapsed += 50) {
     await clock.frame(Math.min(50, ms - elapsed));
   }
-  gsap.ticker.sleep();
 };
-const mount = async () => {
+const mount = () => {
   const navigate = vi.fn((target: string, options?: SectionNavigationOptions) => {
     publishSectionNavigation(target, options);
     if (target === 'projects') {
@@ -97,19 +119,26 @@ const mount = async () => {
       <section id="contact">Contact</section>
     </main>
   </>);
-  gsap.ticker.sleep();
   skillsTop = 80;
+  // Chapter controls settle their pose even during entrance. Start this seam
+  // there rather than replaying unrelated Skills typography in every setup.
   act(() => setScrollProgress(++publication / 100));
-  await advance(1810);
-  fireEvent.click(screen.getByRole('button', { name: `Show ${SKILL_CHAPTERS[SKILL_CHAPTERS.length - 1].title}` }));
+  expect(screen.getByTestId('skills-stage')).toHaveAttribute('data-phase', 'entering');
+  const lastChapter = screen.getByRole('button', { name: `Show ${SKILL_CHAPTERS[SKILL_CHAPTERS.length - 1].title}` });
+  fireEvent.click(lastChapter);
+  const skillsStage = screen.getByTestId('skills-stage');
+  expect(skillsStage).toHaveAttribute('data-staged', 'true');
+  expect(skillsStage).toHaveAttribute('data-phase', 'reading');
+  expect(skillsStage).toHaveAttribute('data-active-skill', String(SKILL_CHAPTERS.length - 1));
+  expect(skillsStage.style.opacity).toBe('1');
   return navigate;
 };
 const projectPhase = () => screen.getByTestId('projects-stage').dataset.phase;
 const skillPhase = () => screen.getByTestId('skills-stage').dataset.phase;
 
 describe('the actual Skills / Projects ownership seam', () => {
-  let navigate: Awaited<ReturnType<typeof mount>>;
-  beforeEach(async () => { navigate = await mount(); });
+  let navigate: ReturnType<typeof mount>;
+  beforeEach(() => { navigate = mount(); });
 
   it('withdraws the real Skills plate before automatically playing a visible turn', async () => {
     expect(getOverlayOcclusion()).toBe(true);

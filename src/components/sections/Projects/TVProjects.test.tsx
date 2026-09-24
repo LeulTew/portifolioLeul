@@ -1,9 +1,11 @@
+// @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TVProjects } from './TVProjects';
 import { PROJECT_CATEGORIES } from './projectCategories';
 import { projectsData } from '@/data/projects';
 import { setProjectsView, setTVScreenReady } from '@/lib/projects/projectsScene';
+import { TV_READER_SURFACE } from '@/lib/tv/tvHardware';
 
 // Animation clocks and retargeting are exercised in projectBroadcast and playback tests.
 vi.mock('./projectBroadcast', () => ({
@@ -21,49 +23,208 @@ afterEach(() => {
 });
 
 describe('the semantic TV project reader', () => {
+  it('keeps the screen panel out of the tab sequence, since it holds its own controls', () => {
+    // A composite stop drew one ring around the whole screen and said nothing about what had focus.
+    render(<TVProjects />);
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('combobox', { name: 'Choose a project' })).not.toHaveAttribute('tabindex', '-1');
+  });
+  it('renders the surface the hardware keys follow in focus order, around its tabs and screen', () => {
+    render(<TVProjects />);
+    const surface = document.querySelector(TV_READER_SURFACE);
+    expect(surface).toContainElement(screen.getByRole('tablist', { name: 'Project categories' }));
+    expect(surface).toContainElement(screen.getByRole('tabpanel'));
+  });
+  it('inspects a loaded capture in place under a resting mouse, but never under touch', () => {
+    render(<TVProjects />);
+    const image = screen.getAllByRole('img').find(node => node.tagName === 'IMG')!;
+    const frame = image.closest<HTMLElement>('[data-project-inspect]')!;
+    frame.getBoundingClientRect = () => DOMRect.fromRect({ x: 100, y: 50, width: 400, height: 200 });
+    fireEvent.pointerMove(frame, { pointerType: 'mouse', clientX: 300, clientY: 100 });
+    expect(frame).not.toHaveAttribute('data-inspecting');
+    fireEvent.load(image);
+    fireEvent.pointerMove(frame, { pointerType: 'touch', clientX: 300, clientY: 100 });
+    expect(frame).not.toHaveAttribute('data-inspecting');
+    fireEvent.pointerMove(frame, { pointerType: 'mouse', clientX: 300, clientY: 100 });
+    expect(frame).toHaveAttribute('data-inspecting', 'true');
+    expect(frame.style.getPropertyValue('--inspect-x')).toBe('50.00%');
+    expect(frame.style.getPropertyValue('--inspect-y')).toBe('25.00%');
+    fireEvent.pointerLeave(frame);
+    expect(frame).not.toHaveAttribute('data-inspecting');
+  });
+  it.each(['Luna', 'Portfolio Leul'])('keeps the %s visual provenance adjacent to the image and available in Details', title => {
+    render(<TVProjects />);
+    const project = projectsData.find(item => item.title === title)!;
+    fireEvent.change(screen.getByRole('combobox', { name: 'Choose a project' }), {
+      target: { value: String(project.id) },
+    });
+    const image = screen.getByRole('img', { name: project.imageAlt });
+    expect(image).toHaveAttribute('src', project.image);
+    expect(image.closest('[data-broadcast-image]')).toContainElement(screen.getByText(project.imageNote!));
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    expect(screen.getByLabelText(`${title} details`)).toContainElement(screen.getByText(project.imageNote!));
+    expect(screen.getAllByText(project.imageNote!)).toHaveLength(1);
+    // Adjacency is what applies the focus-ring clearance in ProjectEvidence.module.css.
+    expect(screen.getByRole('link', { name: `Open ${title} portfolio image at full size (new tab)` })
+      .nextElementSibling).toBe(screen.getByText(project.imageNote!));
+  });
+
+  it('jumps straight to any current-category project and keeps native picker input isolated', () => {
+    render(<TVProjects />);
+    const picker = screen.getByRole('combobox', { name: 'Choose a project' });
+    expect(within(picker).getAllByRole('option')).toHaveLength(projectsData.length);
+    const selected = projectsData[projectsData.length - 1];
+    picker.focus();
+    fireEvent.change(picker, { target: { value: String(selected.id) } });
+    expect(screen.getByRole('heading', { name: selected.title, level: 3 })).toBeVisible();
+    expect(picker).toHaveFocus();
+    const wheel = new WheelEvent('wheel', { deltaY: 900, bubbles: true, cancelable: true });
+    fireEvent(picker, wheel);
+    const retargeted = new WheelEvent('wheel', { deltaY: 900, bubbles: true, cancelable: true });
+    fireEvent(screen.getByRole('tabpanel'), retargeted);
+    expect(retargeted.defaultPrevented).toBe(false);
+    fireEvent.keyDown(picker, { key: 'ArrowLeft' });
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(selected.id));
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    fireEvent.keyDown(picker, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
+    fireEvent.change(picker, { target: { value: String(projectsData[0].id) } });
+    expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Web Development' }));
+    const web = projectsData.filter(project => project.categories.includes('Web Development'));
+    expect(within(picker).getAllByRole('option').map(option => option.textContent)).toEqual(web.map(project => project.title));
+    fireEvent.change(picker, { target: { value: String(web.at(-1)!.id) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
+    expect(screen.getByRole('heading', { name: web[0].title, level: 3 })).toBeInTheDocument();
+  });
+
   it('is readable without a ready TV and exposes a real navigation anchor', () => {
     render(<TVProjects />);
     expect(document.querySelector('#projects')).toHaveAttribute('data-staged', 'false');
     expect(screen.getByRole('heading', { name: 'Projects' })).toBeVisible();
     expect(screen.getByRole('heading', { name: projectsData[0].title })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next project' })).toBeEnabled();
+    expect(document.querySelector('[data-projects-header]')?.tagName).toBe('DIV');
+    expect(document.querySelector('[data-projects-footer]')?.tagName).toBe('DIV');
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 
   it.each(PROJECT_CATEGORIES)('retains every real %s project and original link, including looping', category => {
     render(<TVProjects />);
     fireEvent.click(screen.getByRole('tab', { name: category }));
     const items = category === 'All' ? projectsData : projectsData.filter(project => project.categories.includes(category));
+    const next = screen.getByRole('button', { name: 'Next project' });
+    const previous = screen.getByRole('button', { name: 'Previous project' });
     for (const project of items) {
       expect(screen.getByRole('heading', { name: project.title, level: 3 })).toBeVisible();
       expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
       const links = screen.getAllByRole('link');
       expect(links.map(link => link.getAttribute('href')))
-        .toEqual([project.demoUrl, project.githubUrl].filter(Boolean));
+        .toEqual([project.demoUrl, project.githubUrl, project.image].filter(Boolean));
+      const visual = screen.getByRole('link', {
+        name: `Open ${project.title} portfolio image at full size (new tab)`,
+      });
+      expect(visual.closest('[data-projects-footer]')).not.toBeNull();
+      expect(visual.closest('[data-projects-scrollable]')).toBeNull();
       links.forEach(link => {
         expect(link).toHaveAttribute('target', '_blank');
         expect(link).toHaveAttribute('rel', 'noopener noreferrer');
       });
-      fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
+      fireEvent.click(next);
     }
     expect(screen.getByRole('heading', { name: items[0].title, level: 3 })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Previous project' }));
+    fireEvent.click(previous);
     expect(screen.getByRole('heading', { name: items[items.length - 1].title, level: 3 })).toBeVisible();
   });
 
   it('shows complete factual descriptions and technology in its own scrollable details view', () => {
     render(<TVProjects />);
+    const toggle = screen.getByRole('button', { name: 'Details' });
+    const next = screen.getByRole('button', { name: 'Next project' });
     for (const project of projectsData) {
-      fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+      fireEvent.click(toggle);
       const details = screen.getByLabelText(`${project.title} details`);
       expect(details).toHaveAttribute('data-projects-scrollable');
       for (const line of (project.longDescription || project.description).split('\n').filter(line => line.trim())) {
         expect(details).toHaveTextContent(line.replace(/\*\*/g, ''));
       }
       expect(details).toHaveTextContent(project.tech);
-      expect(screen.getByRole('button', { name: 'Preview' })).toHaveAttribute('aria-expanded', 'true');
-      fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
-      expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle).toHaveAccessibleName('Preview');
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      fireEvent.click(next);
+      expect(toggle).toHaveAccessibleName('Details');
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
     }
+  });
+
+  it('keeps inspection guidance and source proof in Details rather than the preview', () => {
+    render(<TVProjects />);
+    const toggle = screen.getByRole('button', { name: 'Details' });
+    const next = screen.getByRole('button', { name: 'Next project' });
+    for (const project of projectsData) {
+      expect(screen.queryByRole('heading', { name: 'What to inspect' })).not.toBeInTheDocument();
+      if (project.evidence?.access) {
+        expect(screen.getByLabelText(`${project.title} summary`))
+          .toHaveTextContent(project.evidence.access);
+      }
+      fireEvent.click(toggle);
+      const details = screen.getByLabelText(`${project.title} details`);
+      if (project.evidence) {
+        expect(within(details).getByRole('heading', { name: 'What to inspect', level: 4 })).toBeVisible();
+        expect(details).toHaveTextContent(project.evidence.inspect);
+        expect(details).toHaveTextContent(project.evidence.access!);
+        if (project.evidence.sourceNote) expect(details).toHaveTextContent(project.evidence.sourceNote);
+      } else {
+        expect(details.querySelector('[data-project-evidence]')).toBeNull();
+      }
+      if (project.evidence?.decision) {
+        const decision = project.evidence.decision;
+        expect(details).toHaveTextContent(decision.summary);
+        const source = within(details).getByRole('link', { name: decision.sourceLabel });
+        expect(source).toHaveAttribute('href', decision.sourceUrl);
+        expect(source).toHaveAttribute('target', '_blank');
+        expect(source).toHaveAttribute('rel', 'noopener noreferrer');
+        fireEvent.keyDown(source, { key: 'ArrowRight' });
+        expect(document.querySelector('[data-project-id]'))
+          .toHaveAttribute('data-project-id', String(project.id));
+      } else {
+        expect(within(details).queryByRole('heading', { name: 'Implementation' })).not.toBeInTheDocument();
+      }
+      fireEvent.click(next);
+    }
+  });
+
+  it('keeps the native image action in the fixed preview footer and retains the Details alternative', () => {
+    render(<TVProjects />);
+    const project = projectsData[0];
+    const label = `Open ${project.title} portfolio image at full size (new tab)`;
+    const imageLink = screen.getByRole('link', { name: label });
+    expect(imageLink).toHaveAttribute('href', project.image);
+    expect(imageLink).toHaveTextContent('Full image');
+    expect(imageLink.closest('[data-projects-footer]')).not.toBeNull();
+    expect(imageLink.closest('[data-projects-scrollable]')).toBeNull();
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    fireEvent(imageLink, click);
+    expect(click.defaultPrevented).toBe(false);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
+    const toggle = screen.getByRole('button', { name: 'Details' });
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Preview' })).toBe(toggle);
+    const details = screen.getByLabelText(`${project.title} details`);
+    const detailsImage = within(details).getByRole('link', { name: label });
+    expect(detailsImage).toHaveAttribute('href', project.image);
+    expect(detailsImage).toHaveTextContent('Full-size portfolio image');
+    expect(detailsImage.closest('[data-projects-footer]')).toBeNull();
+    expect(screen.getAllByRole('link', { name: label })).toHaveLength(1);
+    const wheel = new WheelEvent('wheel', { deltaY: 600, bubbles: true, cancelable: true });
+    fireEvent(details, wheel);
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', String(project.id));
+    fireEvent.keyDown(details, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Details' })).toBe(toggle);
+    expect(toggle).toHaveFocus();
   });
 
   it('uses roving semantic category tabs and keeps keyboard focus with the selection', () => {

@@ -23,6 +23,7 @@ vi.mock('@/lib/gateways/animationGateway', async (importOriginal) => ({
   // the scroll helpers -- is used for real by the tree under test.
   ...(await importOriginal<typeof import('@/lib/gateways/animationGateway')>()),
   getPrefersReducedMotion: () => reducedMotion(),
+  usePrefersReducedMotion: () => reducedMotion(),
 }));
 
 /**
@@ -111,13 +112,19 @@ vi.mock('framer-motion', async (importOriginal) => {
 describe('Home Section', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    resetHeroCue();
+    resetScrollProgress();
+    reducedMotion.mockReturnValue(false);
+    document.getElementById('about')?.remove();
   });
+
+  afterEach(() => document.getElementById('about')?.remove());
 
   it('renders name, titles, and bio text', () => {
     render(<Home />);
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.getByText('ARCHITECTING')).toBeInTheDocument();
-    expect(screen.getByText(/Full-Stack Developer/i)).toBeInTheDocument();
+    expect(screen.getByText('Software engineer building web and mobile tools, interactive 3D and applied AI.')).toBeInTheDocument();
   });
 
   it('renders magnetic CTA buttons and handles navigation callbacks', () => {
@@ -139,7 +146,8 @@ describe('Home Section', () => {
 
   it('handles scroll arrow click and keyboard activation', async () => {
     const onNavigate = vi.fn();
-    render(<Home onNavigate={onNavigate} />);
+    render(<Home onNavigate={onNavigate} flat />);
+    layOutRail({ aboutTop: window.innerHeight, plateBottom: window.innerHeight - 180 });
 
     const scrollArrow = screen.getByRole('button', { name: /scroll to about section/i });
     expect(scrollArrow).toBeInTheDocument();
@@ -162,7 +170,8 @@ describe('Home Section', () => {
     mockEl.scrollIntoView = scrollIntoViewMock;
     document.body.appendChild(mockEl);
 
-    render(<Home />);
+    render(<Home flat />);
+    layOutRail({ aboutTop: window.innerHeight, plateBottom: window.innerHeight - 180 });
 
     const scrollArrow = screen.getByRole('button', { name: /scroll to about section/i });
     fireEvent.click(scrollArrow);
@@ -249,8 +258,8 @@ describe('Home choreography', () => {
     for (const word of words) {
       expect(word).toHaveAttribute('data-filling', 'true');
       expect(word).toHaveAttribute('data-settled', 'false');
-      expect(word.style.getPropertyValue('--snow-duration')).toBe('2400ms');
-      expect(word.style.getPropertyValue('--word-delay')).toBe('1000ms');
+      expect(word.style.getPropertyValue('--snow-duration')).toBe('2200ms');
+      expect(word.style.getPropertyValue('--word-delay')).toBe('500ms');
     }
     act(() => vi.advanceTimersByTime(sequenceDuration(HERO_SEQUENCE) * 1000 * 0.8));
     expect(content.className).not.toMatch(/settled/);
@@ -275,8 +284,8 @@ describe('Home choreography', () => {
     ]);
 
     // Delays come from the sequence, never hard-coded in the markup.
-    expect(layers.find((l) => l.id === 'role')?.at).toBe('2.1s');
-    expect(layers.find((l) => l.id === 'actions')?.at).toBe('2.8s');
+    expect(layers.find((l) => l.id === 'role')?.at).toBe('1.35s');
+    expect(layers.find((l) => l.id === 'actions')?.at).toBe('1.9s');
   });
 
   it('never hides a layer behind a JS-driven start state', () => {
@@ -334,6 +343,23 @@ describe('Home choreography', () => {
     scrollIntoHold(0);
     playBeats(4500);
     expect(cloud).toHaveAttribute('data-cloud-active', 'true');
+  });
+
+  it('keeps the measured rail height on the portaled cue through the loader handover', () => {
+    // Regression: the handover driver re-runs once the intro is ready, and its
+    // cleanup also stripped the height owned by the rail measurement. The long
+    // viewBox then fitted the stylesheet's 300px fallback, shrinking the whole
+    // line short of About until something happened to measure again.
+    const { rerender } = render(<Home introReady={false} />);
+    enterHero();
+    layOutRail({ aboutTop: window.innerHeight * HERO_SCREENS });
+    const measured = document.getElementById('home')!.style.getPropertyValue('--cue-height');
+    expect(Number.parseFloat(measured)).toBeGreaterThan(0);
+    expect(cueStyle().getPropertyValue('--cue-height')).toBe(measured);
+
+    rerender(<Home introReady />);
+
+    expect(cueStyle().getPropertyValue('--cue-height')).toBe(measured);
   });
 
   it('draws nothing at all until the rail has been measured', () => {
@@ -651,8 +677,8 @@ describe('Home choreography', () => {
     const titleElements = getAllByTestId('liquid-fill-text');
     expect(titleElements[0]).toHaveAttribute('data-filling', 'true');
     expect(titleElements[0]).toHaveAttribute('data-settled', 'false');
-    expect(titleElements[0].style.getPropertyValue('--snow-duration')).toBe('2400ms');
-    expect(titleElements[0].style.getPropertyValue('--word-delay')).toBe('1000ms');
+    expect(titleElements[0].style.getPropertyValue('--snow-duration')).toBe('2200ms');
+    expect(titleElements[0].style.getPropertyValue('--word-delay')).toBe('500ms');
 
     // Settle first load
     act(() => {
@@ -693,7 +719,8 @@ describe('Home choreography', () => {
 
   it('scrolls to about when the cue is activated', async () => {
     const onNavigate = vi.fn();
-    const { getByTestId } = render(<Home onNavigate={onNavigate} />);
+    const { getByTestId } = render(<Home onNavigate={onNavigate} flat />);
+    layOutRail({ aboutTop: window.innerHeight, plateBottom: window.innerHeight - 180 });
 
     fireEvent.click(getByTestId('scroll-cue'));
     expect(onNavigate).toHaveBeenCalledWith('about');
@@ -701,6 +728,37 @@ describe('Home choreography', () => {
     getByTestId('scroll-cue').focus();
     await userEvent.keyboard('{Enter}');
     expect(onNavigate).toHaveBeenCalledTimes(2);
+  });
+
+  it('moves the page when the wheel turns over the body-level cue, as it does anywhere else', () => {
+    // Measured natively: 244 notches with the pointer over the drawing cue moved the page 960px.
+    const scroller = document.createElement('div');
+    scroller.style.overflowY = 'auto';
+    Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 9000 });
+    Object.defineProperty(scroller, 'clientHeight', { configurable: true, value: 900 });
+    const scrollBy = vi.fn();
+    scroller.scrollBy = scrollBy as unknown as HTMLElement['scrollBy'];
+    document.body.append(scroller);
+    try {
+      render(<Home />, { container: scroller });
+      const cue = screen.getByTestId('scroll-cue');
+      expect(scroller.contains(cue)).toBe(false);
+      fireEvent.wheel(cue, { deltaY: 120 });
+      expect(scrollBy).toHaveBeenLastCalledWith({ top: 120, behavior: 'auto' });
+      fireEvent.wheel(cue, { deltaY: 3, deltaMode: 1 });
+      expect(scrollBy).toHaveBeenLastCalledWith({ top: 48, behavior: 'auto' });
+      fireEvent.wheel(cue, { deltaY: 120, ctrlKey: true });
+      expect(scrollBy).toHaveBeenCalledTimes(2);
+    } finally {
+      scroller.remove();
+    }
+  });
+
+  it('leaves wheel over the cue to native scrolling on the flat page', () => {
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    render(<Home flat />);
+    fireEvent.wheel(screen.getByTestId('scroll-cue'), { deltaY: 120 });
+    expect(scrollBy).not.toHaveBeenCalled();
   });
 
   const exitOf = (content: HTMLElement) =>
@@ -726,8 +784,7 @@ describe('Home choreography', () => {
     const { container } = render(<Home />);
     enterHero();
 
-    const pinned = container.querySelector('[data-testid="hero-content"]')
-      ?.parentElement as HTMLElement;
+    const pinned = container.querySelector<HTMLElement>('[data-testid="hero-pinned"]')!;
 
     scrollIntoHold(0.5);
 
@@ -742,8 +799,7 @@ describe('Home choreography', () => {
     const { container } = render(<Home />);
     enterHero();
 
-    const pinned = container.querySelector('[data-testid="hero-content"]')
-      ?.parentElement as HTMLElement;
+    const pinned = container.querySelector<HTMLElement>('[data-testid="hero-pinned"]')!;
 
     scrollIntoHold(3);
 

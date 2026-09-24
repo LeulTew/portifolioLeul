@@ -19,6 +19,6 @@ describe('ContactForm Branch Coverage', () => {
   it('renders error message when submitStatus is error', () => {
     render(<ContactForm />);
     
-    expect(screen.getByText('Failed to send message. Please try again.')).toBeInTheDocument();
+    expect(screen.getByText("We couldn't confirm submission. Your draft is still here.")).toBeInTheDocument();
   });
 });

@@ -302,3 +302,27 @@
   outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
+
+/*
+ * 100%-scaled 4K. The root is already 125%, but the hero grows 2.2x, so the
+ * chrome takes one more step to keep reading as a control, not a caption.
+ */
+@media (min-width: 2880px) and (min-height: 1600px) {
+  .logo { font-size: 1.85rem; }
+  .navItems { gap: 1.75rem; }
+  .navItem { font-size: 1.0625rem; }
+  .navBar { --chamfer-cut: 12px; }
+  .navBarInner {
+    --chamfer-cut: 11.5px;
+    padding: 0.45rem 0.6rem 0.45rem 1.5rem;
+  }
+  .divider { height: 26px; }
+  .themeToggle {
+    width: 44px;
+    height: 44px;
+  }
+  .themeToggle svg {
+    width: 22px;
+    height: 22px;
+  }
+}

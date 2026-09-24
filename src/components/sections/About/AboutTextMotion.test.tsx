@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { About } from './About';
 import { STATEMENT_ARRIVE, STATEMENT_CLEAR, STATEMENT_SWAP } from './aboutBeats';
 import styles from './About.module.css';
-import * as scrollContainer from './EducationRail/scrollContainer';
+import * as scrollContainer from '@/lib/scroll/scrollContainer';
+import { cvData } from '@/data/cv';
+import { projectsData } from '@/data/projects';
 
 const preferences = vi.hoisted(() => ({ reduced: false }));
 vi.mock('@/lib/gateways/animationGateway', () => ({
@@ -193,7 +195,13 @@ describe('About editorial text motion', () => {
       .toEqual(['SCALABLE', 'SYSTEMS']);
     expect(within(right).getByText('CRAFTED TO EMPOWER')).toHaveClass(styles.statementSupport);
     expect([...right.querySelectorAll(`.${styles.metricValue}`)].map(value => value.textContent))
-      .toEqual(['3+', '30+', 'BSc']);
+      .toEqual([
+        String(projectsData.length),
+        String(cvData.skills.reduce((total, category) => total + category.items.length, 0)),
+        'BSc',
+      ]);
+    expect(within(right).getByText('Projects to Explore Across Web, Mobile, AI & Graphics')).toBeInTheDocument();
+    expect(within(right).getByText(`Skills Across ${cvData.skills.length} Engineering & Design Categories`)).toBeInTheDocument();
     for (const column of [left, right]) {
       expect(column.children[0]).toHaveAttribute('data-statement-morph');
       expect(column.children[1]).toHaveAttribute('data-statement-copy');

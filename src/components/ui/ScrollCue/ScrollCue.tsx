@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef, type WheelEvent } from 'react';
+import { writeAttribute } from '@/lib/dom/cachedElement';
 import styles from './ScrollCue.module.css';
 import { CUE_BASE_HEIGHT, CUE_VIEW_WIDTH, CUE_VIEW_Y, CUE_RUN_X, CUE_START_X, cueViewX } from './cueGeometry';
 
@@ -53,7 +54,12 @@ export interface ScrollCueProps {
   run?: number;
   /** Turn the same curve inward when the heading's margin cannot fit its bow. */
   mirrored?: boolean;
+  /** The caller's actual rail/chapter presentation, independent of SVG progress. */
+  presented?: boolean;
   onActivate?: () => void;
+  onFocusRelease?: () => void;
+  /** For a cue rendered outside the scroll layer, so wheel over it still moves the page. */
+  onWheel?: (event: WheelEvent<HTMLButtonElement>) => void;
   className?: string;
   label?: string;
 }
@@ -62,11 +68,16 @@ export function ScrollCue({
   progress = 0,
   run = 0,
   mirrored = false,
+  presented = true,
   onActivate,
+  onFocusRelease,
+  onWheel,
   className,
   label = 'Scroll to the next section',
 }: ScrollCueProps) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const drawn = clamp01(progress);
+  const available = presented && drawn > 0;
   const runUnits = Number.isFinite(run) && run > 0 ? run : 0;
   const { trace, head } = useMemo(() => ({
     trace: traceFor(runUnits),
@@ -76,15 +87,33 @@ export function ScrollCue({
   // The head lands only once the line reaches it.
   const headDrawn = clamp01((drawn - 0.75) / 0.25);
 
+  useLayoutEffect(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+    // Recover focus before disabling/hiding: browsers may otherwise drop it
+    // to body before the caller can return it to the visible navigation.
+    if (!available && document.activeElement === button) {
+      onFocusRelease?.();
+      if (document.activeElement === button) button.blur();
+    }
+    button.disabled = !available;
+    writeAttribute(button, 'inert', available ? null : '');
+    writeAttribute(button, 'aria-hidden', available ? null : 'true');
+  }, [available, onFocusRelease]);
+
   return (
     <button
+      ref={buttonRef}
       type="button"
       className={[styles.cue, className].filter(Boolean).join(' ')}
       aria-label={label}
       data-testid="scroll-cue"
       data-progress={drawn.toFixed(3)}
       data-drawing={drawn > 0}
-      onClick={onActivate}
+      data-presented={available}
+      tabIndex={available ? 0 : -1}
+      onClick={available ? onActivate : undefined}
+      onWheel={onWheel}
     >
       <svg
         className={styles.drawing}
@@ -114,7 +143,7 @@ export function ScrollCue({
         d={trace}
         pathLength={PATH_LENGTH}
         data-testid="scroll-cue-current"
-        data-flowing={drawn > 0.99}
+        data-flowing={available && drawn > 0.99}
       />
       </g>
       </svg>

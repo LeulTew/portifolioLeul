@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useThree, type RootState } from '@react-three/fiber';
 import { useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 import {
@@ -13,7 +13,7 @@ import {
 import { getCameraFreezes } from '@/lib/camera/cameraHold';
 import { isCameraFrozen } from '@/lib/camera/holdRange';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
-import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
+import { drawnFrameDelta, isFrameDrawn, isWorldOccluded } from '@/lib/render/frameGate';
 import { getProjectsView } from '@/lib/projects/projectsScene';
 import { ProjectsCameraPose } from '@/lib/projects/tvScreen';
 import { TVParallax } from '@/lib/projects/tvParallax';
@@ -21,10 +21,12 @@ import { getGpuTier } from '@/lib/gateways/gpuTier';
 import { ContactFlight, CONTACT_SKY_ORIENTATION, CONTACT_SKY_POSITION } from '@/lib/camera/contactFlight';
 import { commitContactPose, getContactView, registerContactCamera } from '@/lib/contact/contactScene';
 import { paintContactPresentation } from '@/lib/contact/contactPresentation';
+import { AvatarCameraTake } from '@/lib/avatar/avatarCamera';
+import { abortAvatarEncounter, getAvatarEncounter, yieldAvatarEncounter } from '@/lib/avatar/avatarEncounter';
 
 /**
  * The sole camera writer: the original island spline, the TV's timed poses,
- * and its composed Contact flight. Scene objects never move with the camera.
+ * its Contact flight, and the optional avatar encounter. Scene objects stay put.
  */
 
 // Module-scope scratch. Allocating inside useFrame would churn the GC at 60fps.
@@ -64,8 +66,23 @@ export function CinematicCameraController({
   const contactRevision = useRef(-1);
   const pointer = useRef({ x: 0, y: 0, width: 1, height: 1, fine: false });
   const hasSettled = useRef(false);
+  const avatarTake = useMemo(() => new AvatarCameraTake(), []);
+  const avatarPose = useMemo(() => ({
+    basePosition: new THREE.Vector3(), baseOrientation: new THREE.Quaternion(),
+    displayedPosition: new THREE.Vector3(), displayedOrientation: new THREE.Quaternion(),
+    applied: false,
+  }), []);
+
+  const composeAvatar = (state: RootState, delta: number) => {
+    if (getAvatarEncounter().phase === 'idle' && !avatarPose.applied) return;
+    avatarPose.basePosition.copy(camera.position);
+    avatarPose.baseOrientation.copy(camera.quaternion);
+    avatarPose.applied = avatarTake.apply(camera, avatarPose.displayedPosition, avatarPose.displayedOrientation,
+      state.size.height, drawnFrameDelta(state.clock.elapsedTime, delta ?? 0), getPrefersReducedMotion());
+  };
 
   useEffect(() => registerContactCamera(), []);
+  useEffect(() => () => abortAvatarEncounter('unmount'), []);
   useFrame(paintContactPresentation, 0.75);
 
   useEffect(() => {
@@ -101,10 +118,20 @@ export function CinematicCameraController({
     if (!camera) return;
     // Same reasoning as the grade: the damping is exact over an accumulated
     // delta, so posing the camera for an undrawn frame buys nothing.
+    if (document.hidden || isWorldOccluded()) abortAvatarEncounter(document.hidden ? 'hidden' : 'navigation');
     if (!isFrameDrawn(state.clock.elapsedTime)) return;
 
     const projects = getProjectsView();
     const contact = getContactView();
+    if (projects.active && (projects.reading || (projects.turn > 0 && projects.turn < 1) ||
+        (projects.approach > 0 && projects.approach < 1))) yieldAvatarEncounter();
+    avatarPose.displayedPosition.copy(camera.position);
+    avatarPose.displayedOrientation.copy(camera.quaternion);
+    if (contact.mode !== 'outside') abortAvatarEncounter('navigation');
+    if (avatarPose.applied && contact.mode === 'outside') {
+      camera.position.copy(avatarPose.basePosition);
+      camera.quaternion.copy(avatarPose.baseOrientation);
+    }
     const parallaxAllowed = pointer.current.fine && !getPrefersReducedMotion() && getGpuTier().tier !== 'low';
     if (projects.active && projectsVisit.current !== projects.visit) {
       projectsVisit.current = projects.visit;
@@ -142,6 +169,7 @@ export function CinematicCameraController({
       smoothedTarget.set(0, 0, -20).applyQuaternion(projectsOrientation).add(desiredPosition);
       hasSettled.current = true;
       commitContactPose(contact.revision, contact.progress);
+      composeAvatar(state, delta);
       return;
     }
 
@@ -161,6 +189,7 @@ export function CinematicCameraController({
       camera.quaternion.copy(projectsOrientation);
       smoothedTarget.set(0, 0, -20).applyQuaternion(projectsOrientation).add(desiredPosition);
       hasSettled.current = true;
+      composeAvatar(state, delta);
       return;
     }
     projectsParallax.reset();
@@ -178,6 +207,7 @@ export function CinematicCameraController({
       smoothedTarget.copy(desiredTarget);
       camera.lookAt(smoothedTarget);
       hasSettled.current = true;
+      composeAvatar(state, delta);
       return;
     }
 
@@ -219,6 +249,7 @@ export function CinematicCameraController({
     }
 
     camera.lookAt(smoothedTarget);
+    composeAvatar(state, delta);
   });
 
   return null;

@@ -1,0 +1,74 @@
+.anchor {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0;
+  z-index: 94;
+  pointer-events: none;
+}
+
+.anchor:focus { outline: none; }
+
+.viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  pointer-events: none;
+}
+
+.control {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.control[hidden] { display: none; }
+.control[aria-disabled='true'] { cursor: default; }
+.control:focus-visible { outline: 2px solid #b3f3d0; outline-offset: 2px; }
+:global([data-theme='light']) .control:focus-visible { outline-color: #065f46; }
+
+.glint {
+  position: absolute;
+  bottom: 3px;
+  left: calc(50% - 2px);
+  width: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: #c2fce0;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.control:focus-visible .glint { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .control:not([aria-disabled='true']):hover .glint { opacity: 0.8; }
+}
+
+.mediaError {
+  position: absolute;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  width: min(30rem, calc(100% - 4rem));
+  padding: 0.6rem 0.8rem;
+  margin: 0;
+  background: #f4f7f1;
+  color: #183a2c;
+  font: 0.875rem/1.5 'Skills Grotesk', 'Inter', sans-serif;
+}
+
+:global([data-theme='dark']) .mediaError { background: #101e18; color: #edf4ea; }
+@media (prefers-reduced-motion: reduce) { .glint { transition: none; } }

@@ -43,9 +43,7 @@ global.IntersectionObserver = class IntersectionObserver {
   takeRecords(): IntersectionObserverEntry[] { return []; }
 };
 
-// Mock emailjs
-vi.mock('@emailjs/browser', () => ({
-  default: {
-    send: vi.fn().mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ status: 200, text: 'OK' }), 100))),
-  },
-}));
+vi.mock('@/components/sections/Contact/contactDelivery', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/components/sections/Contact/contactDelivery')>();
+  return { ...actual, sendContactMessage: vi.fn().mockResolvedValue(undefined) };
+});

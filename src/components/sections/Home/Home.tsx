@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { MagneticButton } from '../../ui/MagneticButton';
@@ -21,9 +21,7 @@ import {
   cuePresence,
   cueRail,
   cueRest,
-  holdExit,
   holdProgress,
-  innerExit,
   pinOffset,
   INNER_EXIT_MS,
   INNER_ENTER,
@@ -44,14 +42,15 @@ import {
   cueDelay,
   cueDuration,
   innerExitCueAt,
-  exitStyle,
   sequenceDuration,
 } from '@/lib/motion/sectionChoreography';
-import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { HeroCloud } from './HeroCloud';
 import { cloudBounds, measureHeroContent } from './heroContentBounds';
+import { setAvatarHeroReady, useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
 
 /**
  * Rendered width of the cue, matching the stylesheet.
@@ -103,9 +102,14 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
   const [sectionElement, setSectionElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
+  const introductionRef = useRef<HTMLDivElement | null>(null);
+  const avatarActive = useAvatarEncounterPresenting();
 
+  useLayoutEffect(() => {
+    if (introductionRef.current) introductionRef.current.inert = avatarActive;
+  }, [avatarActive]);
 
-  const reducedMotion = getPrefersReducedMotion();
+  const reducedMotion = usePrefersReducedMotion();
 
   /*
    * No hold means no extra height.
@@ -141,6 +145,18 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
   const innerPhaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const cuePhaseRef = useRef<PhaseState>(PHASE_AT_REST);
   const cueTargetRef = useRef(0);
+  const cuePresentedRef = useRef(false);
+  const [cuePresented, setCuePresented] = useState(false);
+  const presentCue = useCallback((presented: boolean) => {
+    if (cuePresentedRef.current === presented) return;
+    cuePresentedRef.current = presented;
+    setCuePresented(presented);
+  }, []);
+  const releaseCueFocus = useCallback(() => {
+    document.querySelector<HTMLButtonElement>(
+      'button[data-ink-control][aria-current="page"]:not([tabindex="-1"])',
+    )?.focus({ preventScroll: true });
+  }, []);
   const innerActiveRef = useRef(false);
   const frameRef = useRef(0);
   const applyRef = useRef<(() => void) | null>(null);
@@ -154,6 +170,11 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
   const [reentryCount, setReentryCount] = useState(0);
   const [isReentering, setIsReentering] = useState(false);
   const [reentrySettled, setReentrySettled] = useState(false);
+
+  useEffect(() => {
+    setAvatarHeroReady(introReady && settled && (!isReentering || reentrySettled));
+    return () => setAvatarHeroReady(false);
+  }, [introReady, settled, isReentering, reentrySettled]);
 
   const firstLoadSettledRef = useRef(false);
   const hasLeftHomeRef = useRef(false);
@@ -171,6 +192,18 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!held) {
+      innerPhaseRef.current = PHASE_AT_REST;
+      cuePhaseRef.current = PHASE_AT_REST;
+      innerActiveRef.current = false;
+      cueTargetRef.current = 0;
+      hasLeftHomeRef.current = false;
+      if (isReenteringRef.current) {
+        isReenteringRef.current = false;
+        setIsReentering(false);
+        setReentrySettled(true);
+      }
+    }
     let observedAbout: HTMLElement | null = null;
     let cueWasHeld = false;
     const styledCues = new Set<HTMLElement>();
@@ -270,7 +303,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
         pinned.style.setProperty('--pin', offset);
       }
 
-      cueTargetRef.current = chapterHoldsCue ? 1 : cueDraw(top, holdLength, heldTopRef.current);
+      cueTargetRef.current = held ? (chapterHoldsCue ? 1 : cueDraw(top, holdLength, heldTopRef.current)) : 0;
       setHeroCue(!held ? 1 : cuePhaseRef.current.t);
       const cue = findCue();
       writeAttribute(
@@ -298,6 +331,10 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
 
       const presence = !held || restingCue ? 1 : cuePresence(top, heldTop, window.innerHeight);
       const muted = about?.getAttribute('data-statements-present') === 'true';
+      // The portal cannot inherit main's inertness. Its own painted rail,
+      // including the static/reduced-motion rail, owns its availability.
+      presentCue(!muted && Number(presence.toFixed(3)) > 0 && Number(getHeroCue().toFixed(3)) > 0 &&
+        rail.height > 0 && y < window.innerHeight && y + rail.height > 0);
       if (cue) {
         styledCues.add(cue);
         writeStyleProperty(cue, '--cue-y', `${y.toFixed(3)}px`);
@@ -322,17 +359,15 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
        * Separate custom properties let the copy masks and the fog front paint
        * differently while still reaching their endpoints on the same frame.
        *
-       * Reduced motion keeps the scrub. There is no hold to play across and no
-       * self-running movement wanted, so the block simply tracks the scroll to
-       * its single fade -- and, importantly, still reaches a shut plate, which
-       * is what takes the hero out of the way of everything after it.
+       * Flat and reduced-motion layouts have no hold. Their copy leaves by
+       * native scrolling; only the cue's viewport position still needs updates.
        */
       let inner: number;
       let shut: number;
 
-      if (reducedMotion) {
-        inner = innerExit(progress);
-        shut = inner;
+      if (!held) {
+        inner = 0;
+        shut = 0;
       } else {
         innerActiveRef.current = phaseGate(
           progress,
@@ -396,7 +431,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
             if (reentryTimerRef.current) clearTimeout(reentryTimerRef.current);
           }
         } else if (
-          !reducedMotion &&
+          held &&
           hasLeftHomeRef.current &&
           (progress <= 0.2 || !innerActiveRef.current)
         ) {
@@ -417,19 +452,12 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
 
       const isVisible = shut < 1;
 
-      if (reducedMotion) {
-        /*
-         * One fade for the whole block.
-         *
-         * Staggering seven layers out is motion, and motion is the thing being
-         * opted out of. The block still has to leave -- a hero left printed
-         * over everything after it is worse than either -- so it leaves
-         * plainly, and without a hold to leave across.
-         */
-        const hero = exitStyle(holdExit(progress), true);
-        if (content.style.opacity !== String(hero.opacity)) {
-          content.style.opacity = String(hero.opacity);
-        }
+      if (!held) {
+        // Clear the last held paint when a live preference/fallback releases it.
+        writeStyleProperty(content, 'opacity', '1');
+        writeStyleProperty(content, '--exit', '0.0000');
+        writeStyleProperty(content, '--shut', '0.0000');
+        writeAttribute(content, 'data-leaving', 'false');
       } else {
         /*
          * One number, and every layer reads its own departure out of it.
@@ -468,7 +496,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
     const unsubscribe = subscribeScrollProgress(apply);
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (options?.source !== 'navbar') return;
-      const leaving = target !== 'home';
+      const leaving = held && target !== 'home';
       const phase: PhaseState = { t: leaving ? 1 : 0, heading: leaving ? 1 : -1 };
       innerPhaseRef.current = phase;
       cuePhaseRef.current = phase;
@@ -478,11 +506,12 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
       lastFrameRef.current = 0;
-      setHeroCue(phase.t);
-      if (sectionElement) writeAttribute(sectionElement, 'data-hero-handover-settled', leaving ? 'true' : null);
+      setHeroCue(held ? phase.t : 1);
+      if (sectionElement) writeAttribute(sectionElement, 'data-hero-handover-settled', !held || leaving ? 'true' : null);
     });
     applyRef.current = apply;
     window.addEventListener('resize', apply);
+    window.addEventListener('scroll', apply, { passive: true });
 
     return () => {
       unsubscribe();
@@ -492,18 +521,21 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       chapterObserver.disconnect();
       scrollLayerObserver.disconnect();
       for (const cue of styledCues) {
-        for (const property of ['--cue-x', '--cue-y', '--cue-drawn', '--cue-height',
+        // Only what this driver writes. `--cue-height` belongs to the rail
+        // measurement, which does not rerun when the intro becomes ready.
+        for (const property of ['--cue-x', '--cue-y', '--cue-drawn',
           '--cue-presence', '--cue-chapter-opacity', '--cue-animation-state', '--cue-heading-progress']) {
           cue.style.removeProperty(property);
         }
       }
       window.removeEventListener('resize', apply);
+      window.removeEventListener('scroll', apply);
       if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
       lastFrameRef.current = 0;
       if (reentryTimerRef.current) clearTimeout(reentryTimerRef.current);
     };
-  }, [sectionElement, reducedMotion, held, introReady]);
+  }, [sectionElement, reducedMotion, held, introReady, presentCue]);
 
   /**
    * The rail the cue runs along, measured rather than declared.
@@ -829,11 +861,13 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
         handover. One transform on one wrapper, so the aperture, the copy and
         the cue pin as a single composited layer and cannot drift apart.
       */}
-      <div ref={pinRef} className={styles.pinned}>
+      <div ref={pinRef} className={styles.pinned} data-testid="hero-pinned">
       {/* Opens the world from a slit on arrival. Behind the copy, in front of
           the canvas. The exit belongs to the plate, not to this. */}
       <HeroAperture />
 
+      <div ref={introductionRef} className={styles.introductionStage}
+        data-avatar-active={avatarActive || undefined} aria-hidden={avatarActive || undefined}>
       <div
         ref={contentRef}
         className={[
@@ -854,7 +888,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           data-cue-layer="backdrop"
           data-cloud-active={cloudActive}
         >
-          <HeroCloud active={cloudActive} theme={theme} />
+          <HeroCloud active={cloudActive && !avatarActive} theme={theme} />
         </div>
 
         {/* Always present: it is the frame the sequenced layers arrive into. */}
@@ -867,8 +901,8 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
             <div className={styles.imagePlaceholder}>
               <span className={styles.circleText}>L</span>
               <img 
-                src="/images/leul-profile.webp" 
-                alt="Leul" 
+                src="/images/leul-portrait.webp" 
+                alt="Portrait of Leul Tewodros" 
                 className={styles.circleImage}
               />
             </div>
@@ -920,7 +954,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           style={at('description')}
           data-cue-layer="description"
         >
-          Full-Stack Developer &amp; 3D Web Graphics Engineer crafting high-performance interactive applications, scalable distributed architectures, and award-winning digital experiences.
+          Software engineer building web and mobile tools, interactive 3D and applied AI.
         </p>
 
         {/* Magnetic CTA Buttons */}
@@ -937,6 +971,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           </MagneticButton>
         </div>
       </div>
+      </div>
 
       <motion.div 
         className={styles.profileImage}
@@ -948,7 +983,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           delay: 0.2
         }}
       >
-        <img src="/images/leul-profile.webp" alt="Leul" />
+        <img src="/images/leul-portrait.webp" alt="" />
       </motion.div>
 
       {/* Last cue: the affordance invites the next move, so it must not compete
@@ -969,7 +1004,13 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       */}
       </div>
 
-      <HeroScrollCue onActivate={scrollToAbout} run={cueRun} onDrawComplete={onCueDrawComplete} />
+      <HeroScrollCue
+        onActivate={scrollToAbout}
+        run={cueRun}
+        presented={cuePresented && introReady && !avatarActive}
+        onFocusRelease={releaseCueFocus}
+        onDrawComplete={onCueDrawComplete}
+      />
     </section>
   );
 }
@@ -978,9 +1019,11 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
  *
  * Only the cue's paths re-render as scroll draws the connection.
  */
-function HeroScrollCue({ onActivate, run, onDrawComplete }: {
+function HeroScrollCue({ onActivate, run, presented, onFocusRelease, onDrawComplete }: {
   onActivate: () => void;
   run: number;
+  presented: boolean;
+  onFocusRelease: () => void;
   onDrawComplete: () => void;
 }) {
   const [progress, setProgress] = useState(0);
@@ -1002,12 +1045,25 @@ function HeroScrollCue({ onActivate, run, onDrawComplete }: {
     if (progress === 1) onDrawComplete();
   }, [onDrawComplete, progress]);
 
+  // At body level the cue is outside the scroll layer, so wheel over it would
+  // reach only the unscrollable document. The flat page scrolls natively.
+  const forwardWheel = useCallback((event: WheelEvent<HTMLButtonElement>) => {
+    if (event.ctrlKey) return;
+    const scroller = findScrollContainer(document.getElementById('home'));
+    if (!scroller) return;
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+    scrollContainerBy(scroller, event.deltaY * unit);
+  }, []);
+
   const cue = (
     <ScrollCue
       className={styles.scrollCue}
       progress={progress}
       run={run}
+      presented={presented}
       onActivate={onActivate}
+      onFocusRelease={onFocusRelease}
+      onWheel={forwardWheel}
       label="Scroll to about section"
     />
   );

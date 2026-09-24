@@ -1,4 +1,4 @@
-import { useCallback, useRef, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import type React from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -7,7 +7,7 @@ import { EducationRecord } from './EducationRecord';
 import { EDUCATION_RECORDS } from './educationRecords';
 import { useRailStaged } from './useRailStaging';
 import { useEducationPlayback } from './useEducationPlayback';
-import { findScrollContainer, scrollContainerBy } from './scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import styles from './EducationRail.module.css';
 
 /**
@@ -42,8 +42,12 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
   const trackRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const headRef = useRef<HTMLDivElement | null>(null);
+  const previousRef = useRef<HTMLButtonElement | null>(null);
+  const nextRef = useRef<HTMLButtonElement | null>(null);
+  const initiatingControlRef = useRef<HTMLButtonElement | null>(null);
 
-  const stageRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLElement | null>(null);
+  const headingId = useId();
   const staged = useRailStaged();
 
   const total = EDUCATION_RECORDS.length;
@@ -55,6 +59,47 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
     head: headRef,
     track: trackRef,
   }, staged, total, onNavigate);
+
+  useEffect(() => {
+    const movedFocus = (event: FocusEvent) => {
+      if (event.target !== document.body && event.target !== initiatingControlRef.current) {
+        initiatingControlRef.current = null;
+      }
+    };
+    const pointedElsewhere = (event: PointerEvent) => {
+      if (event.target instanceof Node && !initiatingControlRef.current?.contains(event.target)) {
+        initiatingControlRef.current = null;
+      }
+    };
+    document.addEventListener('focusin', movedFocus);
+    document.addEventListener('pointerdown', pointedElsewhere);
+    return () => {
+      document.removeEventListener('focusin', movedFocus);
+      document.removeEventListener('pointerdown', pointedElsewhere);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!staged || phase === 'outside' || phase === 'closing') {
+      initiatingControlRef.current = null;
+      return;
+    }
+    if (!ready) return;
+    const control = initiatingControlRef.current;
+    initiatingControlRef.current = null;
+    if (!control?.isConnected ||
+        (document.activeElement !== document.body && document.activeElement !== control)) return;
+    const target = control.disabled
+      ? control === nextRef.current ? previousRef.current : nextRef.current
+      : control;
+    if (target && !target.disabled) target.focus({ preventScroll: true });
+  }, [phase, ready, staged]);
+
+  const stepFromControl = (direction: -1 | 1, control: HTMLButtonElement) => {
+    // Native disabling can drop focus to body before the next committed render.
+    initiatingControlRef.current = staged && ready && document.activeElement === control ? control : null;
+    step(direction);
+  };
 
   /*
    * Controls and the artwork's hover surfaces take pointer events,
@@ -84,12 +129,13 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
    * frame behind. See `PinnedSequence`, which is held for the same reason.
    */
   const stage = (
-    <div
+    <section
       ref={stageRef}
       className={styles.stage}
       data-testid="education-stage"
       data-phase={phase}
       data-active-record={active}
+      aria-labelledby={headingId}
       aria-busy={staged && phase !== 'reading' && phase !== 'outside'}
       /* Set here as well as on the rail: the stage is portalled to the body,
          so it inherits nothing from the section the rail lives in, and the
@@ -103,7 +149,7 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
           the frame below it opens.
         */}
         <div ref={headRef} className={styles.head} data-testid="education-sticky-header">
-          <h2 className={styles.headTitle}>Education</h2>
+          <h2 id={headingId} className={styles.headTitle}>Education</h2>
           <p className={styles.headSubtitle}>Academic Foundations &amp; Industry Certifications</p>
         </div>
 
@@ -144,9 +190,10 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
 
               <div className={styles.controls} onWheel={forwardWheel}>
                 <button
+                  ref={previousRef}
                   type="button"
                   className={styles.control}
-                  onClick={() => step(-1)}
+                  onClick={event => stepFromControl(-1, event.currentTarget)}
                   disabled={active === 0 || (staged && !ready)}
                   aria-label="Previous record"
                 >
@@ -170,9 +217,10 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
                 </p>
 
                 <button
+                  ref={nextRef}
                   type="button"
                   className={styles.control}
-                  onClick={() => step(1)}
+                  onClick={event => stepFromControl(1, event.currentTarget)}
                   disabled={active === total - 1 || (staged && !ready)}
                   aria-label="Next record"
                 >
@@ -183,7 +231,7 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 
   return (

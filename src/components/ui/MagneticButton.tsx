@@ -81,6 +81,7 @@ export function MagneticButton({
       href={href}
       target={target}
       rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+      data-theme={theme}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -94,7 +95,7 @@ export function MagneticButton({
     >
       <div className={cn(styles.cutoutFrame, getVariantClass())}>
         {/* Dynamic SVG Cyber Cutout Border */}
-        <svg className={styles.borderSvg} preserveAspectRatio="none">
+        <svg className={styles.borderSvg} preserveAspectRatio="none" aria-hidden="true" focusable="false">
           <rect
             x="1"
             y="1"
@@ -131,7 +132,7 @@ export function MagneticButton({
               whileHover={{ rotate: 45, x: 2, y: -2 }}
               transition={{ type: 'spring', stiffness: 400, damping: 15 }}
             >
-              <ArrowUpRight className="h-4 w-4" />
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </motion.span>
           )}
         </span>

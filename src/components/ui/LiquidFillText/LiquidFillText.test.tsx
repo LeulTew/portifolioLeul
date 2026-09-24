@@ -61,10 +61,19 @@ describe('LiquidFillText', () => {
   });
 
   it('keeps the word readable to assistive technology', () => {
-    render(<LiquidFillText text="Tewodros" />);
-    expect(screen.getByTestId('liquid-fill-text')).toHaveAccessibleName('Tewodros');
+    render(<h2><LiquidFillText text="Tewodros" /></h2>);
+    expect(screen.getByRole('heading', { level: 2 })).toHaveAccessibleName('Tewodros');
+    expect(screen.getByText('Tewodros')).toHaveClass('sr-only');
     for (const char of chars()) {
       expect(char).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
+  it('does not give generic word spans prohibited ARIA names', () => {
+    render(<h1><LiquidFillText text="Leul" />{' '}<LiquidFillText text="Tewodros" /></h1>);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName('Leul Tewodros');
+    for (const word of screen.getAllByTestId('liquid-fill-text')) {
+      expect(word).not.toHaveAttribute('aria-label');
     }
   });
 

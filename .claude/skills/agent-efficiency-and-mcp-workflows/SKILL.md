@@ -45,10 +45,10 @@ For every code modification, adhere strictly to this closed-loop cycle:
 1. **Surgical Patching Over File Replacement**:
    - Apply localized search-and-replace patches instead of rewriting complete source files to protect 3D canvas references, state bindings, and event handlers.
 2. **100% Local Verification via Bun (Zero CI Waiting)**:
-   - `bun test` or `bun x vitest run` (Unit & branch tests)
+   - `bun x vitest run` (Unit & branch tests; `bun test` is Bun's own runner and cannot load this suite)
    - `bun run build` (Vite production bundle compilation)
    - `bun run lint` (ESLint verification)
-   - `bun x tsc --noEmit` (TypeScript strict typecheck)
+   - `bun run typecheck` (app and tooling configs; bare `tsc --noEmit` reads the empty solution tsconfig and checks nothing)
 3. **Automated Self-Correction**:
    - If tests or builds fail, inspect the exact error line and apply targeted patches in an automated verify-fix loop (up to 3 retries) before requesting user guidance.
 

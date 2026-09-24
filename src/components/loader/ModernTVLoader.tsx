@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ThemeContext } from '../sections/theme/ThemeContext';
 import { useAssetLoadingProgress } from './useAssetLoadingProgress';
+import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import styles from './ModernTVLoader.module.css';
 
 export interface ModernTVLoaderProps {
@@ -29,6 +30,7 @@ const WAVE_TRACKING = 0.3;
  * read as arriving rather than as being cut off.
  */
 const FULL_HOLD_MS = 320;
+const FRAME_MS = 1000 / 60;
 
 export function ModernTVLoader({
   onLoaded,
@@ -42,6 +44,7 @@ export function ModernTVLoader({
     (typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme')) ||
     'dark';
   const isLight = resolvedTheme === 'light';
+  const reducedMotion = usePrefersReducedMotion();
 
   const [isCompleted, setIsCompleted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
@@ -52,12 +55,13 @@ export function ModernTVLoader({
   const phaseRef = useRef(0);
   const currentProgressRef = useRef(0);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedRef = useRef(false);
 
   const { progress } = useAssetLoadingProgress({
     minDurationMs,
     onComplete: () => {
       // Let the wave land, and let it be seen landing, before pulling away.
-      holdTimerRef.current = setTimeout(() => setIsExiting(true), FULL_HOLD_MS);
+      holdTimerRef.current = setTimeout(() => setIsExiting(true), reducedMotion ? 0 : FULL_HOLD_MS);
     },
   });
 
@@ -72,46 +76,42 @@ export function ModernTVLoader({
     currentProgressRef.current = progress;
   }, [progress]);
 
-  // Continuous 60fps multi-harmonic fluid wave loop
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const logo = logoRef.current;
+    if (!canvas || !logo || reducedMotion || isCompleted) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let isRunning = true;
-    let animatedProgress = 0;
+    let animatedProgress = currentProgressRef.current;
+    let width = 0;
+    let totalHeight = 0;
+    let dpr = 1;
+    let waveAmp = 45;
+    let lastPaint: number | null = null;
 
-    const render = () => {
-      if (!isRunning) return;
+    const measure = () => {
+      width = logo.clientWidth || 960;
+      waveAmp = window.innerWidth >= 1024 ? 45 : 24;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      totalHeight = (logo.clientHeight || 240) + 1.75 * waveAmp;
+      // Canvas dimensions are integers. A fractional comparison resets the
+      // entire bitmap on every frame even when the layout never changes.
+      const pixelWidth = Math.max(1, Math.round(width * dpr));
+      const pixelHeight = Math.max(1, Math.round(totalHeight * dpr));
+      if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+      if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+    };
 
-      const target = currentProgressRef.current;
-      animatedProgress += (target - animatedProgress) * WAVE_TRACKING;
-      // Otherwise the crest asymptotes just short of the top and the last
-      // sliver of the letters never fills.
-      if (target >= 100 && animatedProgress > 99.5) animatedProgress = 100;
-
-      const width = canvas.offsetWidth || 960;
-      const isLg = typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
-      const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
-      const waveAmp = isLg ? 45 : 24;
-      const totalHeight = (canvas.offsetHeight || 240) + 1.75 * waveAmp;
-
-      if (canvas.width !== width * dpr || canvas.height !== totalHeight * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = totalHeight * dpr;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${totalHeight}px`;
-      }
-
+    const paint = () => {
       ctx.save();
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, totalHeight);
 
       // Fraction: 1 (empty, wave at bottom) -> 0 (full, wave at top)
       const fraction = 1 - Math.min(Math.max(animatedProgress / 100, 0), 1);
-      phaseRef.current += 0.035;
       const m = phaseRef.current;
 
       // Draw multi-harmonic liquid wave fill (exact formulation from NeoLeaf)
@@ -135,22 +135,54 @@ export function ModernTVLoader({
       ctx.fill();
 
       ctx.restore();
-
-      animFrameRef.current = requestAnimationFrame(render);
     };
 
-    render();
+    const render = (now: number) => {
+      animFrameRef.current = null;
+      if (!isRunning || document.hidden) return;
+      animFrameRef.current = requestAnimationFrame(render);
+      const elapsed = lastPaint === null ? FRAME_MS : now - lastPaint;
+      if (elapsed < FRAME_MS - 0.5) return;
+      lastPaint = now;
+      const step = Math.min(elapsed, 50) / FRAME_MS;
+      animatedProgress += (currentProgressRef.current - animatedProgress) *
+        (1 - (1 - WAVE_TRACKING) ** step);
+      if (currentProgressRef.current >= 100 && animatedProgress > 99.5) animatedProgress = 100;
+      phaseRef.current += 0.035 * step;
+      paint();
+    };
+
+    const resize = () => { measure(); paint(); };
+    const visibility = () => {
+      if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+      lastPaint = null;
+      if (!document.hidden && isRunning) animFrameRef.current = requestAnimationFrame(render);
+    };
+    measure();
+    paint();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
+    observer?.observe(logo);
+    window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', visibility);
+    visibility();
 
     return () => {
       isRunning = false;
+      observer?.disconnect();
+      window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', visibility);
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
       }
     };
-  }, [isLight]);
+  }, [isLight, reducedMotion, isCompleted]);
 
   // Handle zoom-expansion exit animation once loading completes
   const handleExitComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
     setIsCompleted(true);
     onLoaded?.();
   }, [onLoaded]);
@@ -159,30 +191,31 @@ export function ModernTVLoader({
     if (!isExiting) return;
     const exitTimer = setTimeout(() => {
       handleExitComplete();
-    }, 900);
+    }, reducedMotion ? 200 : 900);
     return () => clearTimeout(exitTimer);
-  }, [isExiting, handleExitComplete]);
+  }, [isExiting, handleExitComplete, reducedMotion]);
 
   if (isCompleted) {
     return null;
   }
 
   // Calculate dynamic scale factor to zoom past the camera edges on exit
-  const scaleTarget = typeof window !== 'undefined'
+  const scaleTarget = isExiting && !reducedMotion && typeof window !== 'undefined'
     ? Math.max((window.innerWidth / (logoRef.current?.offsetWidth || 760)) * 2.2, 3.2)
-    : 3.2;
+    : 1;
 
   return (
     <motion.div
       className={cn(styles.overlay, isLight && styles.overlayLight)}
       initial={{ opacity: 1 }}
       animate={isExiting ? { opacity: 0 } : { opacity: 1 }}
-      transition={{ duration: 0.7, ease: [0.76, 0, 0.24, 1], delay: 0.15 }}
+      transition={{ duration: reducedMotion ? 0.16 : 0.7, ease: [0.76, 0, 0.24, 1], delay: reducedMotion ? 0 : 0.15 }}
       role="progressbar"
       aria-valuenow={Math.round(progress)}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label="Loading portfolio"
+      data-reduced-motion={reducedMotion || undefined}
     >
       <div className={styles.centerWrapper}>
         <motion.div
@@ -202,7 +235,7 @@ export function ModernTVLoader({
                 }
           }
           transition={{
-            duration: 0.85,
+            duration: reducedMotion ? 0.16 : 0.85,
             ease: [0.76, 0, 0.24, 1],
           }}
           onAnimationComplete={() => {
@@ -212,7 +245,9 @@ export function ModernTVLoader({
           }}
         >
           <div className={styles.canvasWrapper}>
-            <canvas ref={canvasRef} className={styles.canvas} />
+            {reducedMotion ? <div className={styles.staticFill}
+              style={{ transform: `scaleY(${progress / 100})` }} aria-hidden="true" />
+              : <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />}
           </div>
         </motion.div>
       </div>

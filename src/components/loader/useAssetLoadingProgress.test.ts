@@ -175,13 +175,44 @@ describe('useAssetLoadingProgress', () => {
     const { result } = renderHook(() => useAssetLoadingProgress({ minDurationMs: 100 }));
 
     act(() => publish?.(at(0.5, 1)));
+    advance(1);
     expect(result.current.active).toBe(true);
     expect(result.current.loaded).toBe(1);
     expect(result.current.total).toBe(3);
     expect(result.current.rawProgress).toBe(50);
 
     act(() => publish?.(at(1, 3)));
+    advance(1);
     expect(result.current.active).toBe(false);
+  });
+
+  it('coalesces streaming chunk notifications into the next native frame', () => {
+    const rendered = vi.fn();
+    const { result } = renderHook(() => {
+      rendered();
+      return useAssetLoadingProgress({ minDurationMs: 100 });
+    });
+    const initialRenders = rendered.mock.calls.length;
+    for (let chunk = 1; chunk <= 100; chunk++) act(() => publish?.(at(chunk / 200)));
+    expect(rendered).toHaveBeenCalledTimes(initialRenders);
+    advance(1);
+    expect(result.current.rawProgress).toBe(50);
+    expect(result.current.active).toBe(true);
+  });
+
+  it('never mistakes an almost-complete transfer for every file having settled', async () => {
+    const onComplete = vi.fn();
+    const { result } = renderHook(() => useAssetLoadingProgress({ minDurationMs: 50, onComplete }));
+    act(() => publish?.(at(1 - Number.EPSILON, 2)));
+    advance(300);
+    await flush();
+    expect(result.current.isReady).toBe(false);
+    expect(result.current.progress).toBeLessThan(100);
+    expect(onComplete).not.toHaveBeenCalled();
+    act(() => publish?.(at(1, 3)));
+    advance(20);
+    await flush();
+    expect(onComplete).toHaveBeenCalledOnce();
   });
 
   it('describes each stage of the load', () => {

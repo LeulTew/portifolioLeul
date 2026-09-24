@@ -4,7 +4,7 @@ import { Contact } from './Contact';
 import { beginContactFlight, getContactView, parkContactSky, releaseContactSky, setContactProgress } from '@/lib/contact/contactScene';
 import { paintContactPresentation } from '@/lib/contact/contactPresentation';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
-import emailjs from '@emailjs/browser';
+import { sendContactMessage } from './contactDelivery';
 
 describe('Contact Section Component', () => {
   beforeEach(() => {
@@ -58,7 +58,7 @@ describe('Contact Section Component', () => {
     expect(message).toHaveValue('This must survive camera ownership changes.');
     expect(document.getElementById('contact')).toHaveAttribute('data-contact-ready', 'true');
     expect(screen.getByRole('button', { name: 'Send Message' })).toBeEnabled();
-    expect(emailjs.send).not.toHaveBeenCalled();
+    expect(sendContactMessage).not.toHaveBeenCalled();
   });
 
   it('leaves the flat form available when its optional cloud images fail', async () => {
@@ -70,7 +70,7 @@ describe('Contact Section Component', () => {
     expect(screen.getByRole('textbox', { name: 'Message' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Send Message' })).toBeEnabled();
     expect(container.querySelectorAll('form')).toHaveLength(1);
-    expect(emailjs.send).not.toHaveBeenCalled();
+    expect(sendContactMessage).not.toHaveBeenCalled();
   });
 
   it('settles the entire heading on the first painted navbar bypass frame', async () => {
@@ -110,6 +110,6 @@ describe('Contact Section Component', () => {
     expect(main).toHaveAttribute('inert');
     expect(section.querySelector('form')).toBe(form);
     expect(section).toHaveAttribute('data-contact-ready', 'false');
-    expect(emailjs.send).not.toHaveBeenCalled();
+    expect(sendContactMessage).not.toHaveBeenCalled();
   });
 });

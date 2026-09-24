@@ -17,7 +17,7 @@ interface Presentation {
 const presentations = new Map<string, Presentation>([
   ['Languages', {
     scene: 'languages',
-    summary: 'From low-level logic to expressive interfaces. The right language for the problem.',
+    summary: 'Python in Tera Site, C++ in 3D 8 Queens OpenGL, and TypeScript in Portfolio Leul.',
     process: ['Source', 'Logic', 'Execution'],
     textMotion: 'decode',
     inlineMotion: 'decode',
@@ -26,7 +26,7 @@ const presentations = new Map<string, Presentation>([
   }],
   ['Frameworks & Web', {
     scene: 'interfaces',
-    summary: 'Component-driven interfaces, real-time graphics, and connected web applications.',
+    summary: 'React and Three.js in Portfolio Leul; ASP.NET and Entity Framework Core in Car Rental Platform.',
     process: ['Components', 'Connections', 'Experience'],
     textMotion: 'assemble',
     inlineMotion: 'assemble',
@@ -35,7 +35,7 @@ const presentations = new Map<string, Presentation>([
   }],
   ['AI & Data Science', {
     scene: 'intelligence',
-    summary: 'Turning raw data into useful models, searchable knowledge, and clearer decisions.',
+    summary: 'Amharic IR Improved explores language-aware search; Ignition turns goals into structured plans.',
     process: ['Data', 'Learning', 'Insight'],
     textMotion: 'focus',
     inlineMotion: 'focus',
@@ -44,7 +44,7 @@ const presentations = new Map<string, Presentation>([
   }],
   ['Databases', {
     scene: 'data',
-    summary: 'Relational thinking. Structured data, clear connections, and dependable persistence.',
+    summary: 'Relational schemas in Celestial Bodies Database; PostgreSQL-backed goal history in Ignition.',
     process: ['Structure', 'Query', 'Retrieve'],
     textMotion: 'scan',
     inlineMotion: 'type',
@@ -53,7 +53,7 @@ const presentations = new Map<string, Presentation>([
   }],
   ['Tools & Design', {
     scene: 'design',
-    summary: 'From first sketch to versioned code. Visual precision meets a practical toolchain.',
+    summary: 'Tera Site connects Markdown, templates, and CLI tooling; Portfolio Leul applies visual design to interactive graphics.',
     process: ['Draw', 'Refine', 'Build'],
     textMotion: 'draw',
     inlineMotion: 'draw',
@@ -62,7 +62,7 @@ const presentations = new Map<string, Presentation>([
   }],
   ['Professional Skills', {
     scene: 'delivery',
-    summary: 'Break down the problem. Work together. Build across platforms.',
+    summary: 'Team-based search work in Amharic IR Improved, alongside cross-platform development in Ethio Trading.',
     process: ['Understand', 'Collaborate', 'Deliver'],
     textMotion: 'connect',
     inlineMotion: 'reveal',
