@@ -11,7 +11,7 @@ import { useTVScreenReady } from '@/lib/projects/projectsScene';
 import { useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
 import { registerTVReader, setTVPagingAvailable, useTVState } from '@/lib/tv/tvState';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
-import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { projectsData, type Project } from '@/data/projects';
 import { useProjectsFits, useProjectsPlayback } from './useProjectsPlayback';
 import { PROJECT_CATEGORIES } from './projectCategories';

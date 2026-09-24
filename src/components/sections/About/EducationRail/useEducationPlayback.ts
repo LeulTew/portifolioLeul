@@ -10,7 +10,7 @@ import { createEducationReveal, EDUCATION_REVEAL_MS } from './educationReveal';
 import { coverEducationBackground } from './educationCover';
 import { isProjectsReturnOwed } from '@/lib/projects/projectsScene';
 import { stageVisible, trackOffset } from './railTransit';
-import { findScrollContainer, scrollContainerBy } from './scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 
 type Phase = 'outside' | 'opening' | 'reading' | 'crossing' | 'closing';
 type Ref = RefObject<HTMLDivElement | null>;

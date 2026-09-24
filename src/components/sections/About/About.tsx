@@ -4,7 +4,7 @@ import { STATEMENT_LAYERS, ABOUT_SCREENS } from './statementLayers';
 import { StatementMorph } from './StatementMorph';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { EducationRail } from './EducationRail/EducationRail';
-import { findScrollContainer, scrollContainerBy } from './EducationRail/scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import styles from './About.module.css';
 import { cvData } from '../../../data/cv';
 import { projectsData } from '@/data/projects';

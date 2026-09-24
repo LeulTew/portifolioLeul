@@ -16,7 +16,7 @@ import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { resetScrollGesture, SCROLL_WAVE_IDLE_MS } from '@/lib/scroll/scrollGesture';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
-import * as scrollContainer from '../About/EducationRail/scrollContainer';
+import * as scrollContainer from '@/lib/scroll/scrollContainer';
 import { CRT_POWER_ON_MS } from './projectBroadcast';
 import { activateTV, getTVState, resetTVState, setTVExposure } from '@/lib/tv/tvState';
 

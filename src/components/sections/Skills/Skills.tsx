@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, type CSSProperties, type WheelEvent } f
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { ControlButton } from '@/components/ui/ControlButton';
-import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { SKILL_CHAPTERS, type SkillChapter } from './skillsData';
 import { SkillInlineText, SkillText, TiltedInstrument } from './SkillsMotion';
 import { SkillSculpture } from './SkillSculpture';

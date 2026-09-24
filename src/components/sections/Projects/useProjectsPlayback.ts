@@ -15,7 +15,7 @@ import {
 } from '@/lib/projects/projectsScene';
 import { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
-import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
 import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';

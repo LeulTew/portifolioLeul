@@ -10,7 +10,7 @@ import { subscribeSectionNavigation, type SectionNavigate } from '@/lib/scroll/s
 import {
   finishProjectsSkillsReturn, isProjectsReturnOwed, publishSkillsProjectsHandoff,
 } from '@/lib/projects/projectsScene';
-import { findScrollContainer, scrollContainerBy } from '../About/EducationRail/scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { createSkillsTimeline } from './skillsTimeline';
 import { SKILLS_STAGE_QUERY } from './skillsData';

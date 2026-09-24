@@ -7,7 +7,7 @@ import { EducationRecord } from './EducationRecord';
 import { EDUCATION_RECORDS } from './educationRecords';
 import { useRailStaged } from './useRailStaging';
 import { useEducationPlayback } from './useEducationPlayback';
-import { findScrollContainer, scrollContainerBy } from './scrollContainer';
+import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import styles from './EducationRail.module.css';
 
 /**

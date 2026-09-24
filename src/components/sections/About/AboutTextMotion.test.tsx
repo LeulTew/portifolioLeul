@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { About } from './About';
 import { STATEMENT_ARRIVE, STATEMENT_CLEAR, STATEMENT_SWAP } from './aboutBeats';
 import styles from './About.module.css';
-import * as scrollContainer from './EducationRail/scrollContainer';
+import * as scrollContainer from '@/lib/scroll/scrollContainer';
 import { cvData } from '@/data/cv';
 import { projectsData } from '@/data/projects';
 
