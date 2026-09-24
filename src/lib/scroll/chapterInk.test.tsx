@@ -145,6 +145,45 @@ describe('chrome painted through the actual chapter background', () => {
     unmount();
   });
 
+  it('re-measures a surface that scrolls with the document, as on the no-WebGL page', () => {
+    // Round 7 (TECH-008): with no translated layer, native scroll moved the ground but the clip froze.
+    const { ground } = scene();
+    let top = 1200;
+    const measure = vi.spyOn(ground, 'getBoundingClientRect').mockImplementation(() =>
+      new DOMRect(0, top, window.innerWidth, window.innerHeight));
+    const scrollY = vi.spyOn(window, 'scrollY', 'get').mockReturnValue(0);
+    updateChapterInk();
+    expect(root.dataset.chapterInk).toBe('none');
+    top = 100;
+    scrollY.mockReturnValue(1100);
+    updateChapterInk();
+    expect(root.dataset.chapterInk).toBe('solid');
+    expect(ink.style.getPropertyValue('--chapter-ink-clip')).toBe('inset(100px 0px 0px 0px)');
+    expect(measure).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-measures a reparented surface and never caches one that transitions its geometry', () => {
+    const { about, ground } = scene();
+    const measure = vi.spyOn(ground, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 70, window.innerWidth, window.innerHeight));
+    updateChapterInk();
+    updateChapterInk();
+    expect(measure).toHaveBeenCalledTimes(1);
+    const wrapper = document.createElement('div');
+    about.append(wrapper);
+    wrapper.append(ground);
+    updateChapterInk();
+    expect(measure).toHaveBeenCalledTimes(2);
+    ground.style.transitionProperty = 'transform';
+    ground.style.transitionDuration = '0.4s';
+    updateChapterInk();
+    updateChapterInk();
+    expect(measure).toHaveBeenCalledTimes(4);
+    ground.style.transitionProperty = 'background-color';
+    updateChapterInk();
+    updateChapterInk();
+    expect(measure).toHaveBeenCalledTimes(5);
+  });
   it('keeps the ink off the document root and paints a late layer at once', () => {
     const { education } = scene();
     education.dataset.visible = 'true';
