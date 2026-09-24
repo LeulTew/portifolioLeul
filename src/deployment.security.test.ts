@@ -119,6 +119,7 @@ describe('local Vite exposure', () => {
     explicitStrict: boolean;
     previewHost: string;
     previewHeaders: Record<string, string>;
+    buildWithoutDeploymentFile: string;
     developmentCsp?: string;
     hmr?: boolean;
   };
@@ -131,10 +132,24 @@ describe('local Vite exposure', () => {
     };
     // Resolve the real configuration in Node: jsdom's Uint8Array realm is incompatible with esbuild.
     const script = `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
       import { isFileLoadingAllowed, normalizePath, resolveConfig } from 'vite';
       const options = { configFile: 'vite.config.ts', logLevel: 'silent' };
       const config = await resolveConfig(options, 'serve');
       const explicit = await resolveConfig({ ...options, server: { host: '0.0.0.0' } }, 'serve');
+      const preview = await resolveConfig(options, 'serve', 'production', 'production', true);
+      // Vercel does not promise vercel.json is readable during its build.
+      const read = fs.readFileSync;
+      fs.readFileSync = (file, ...rest) => {
+        if (String(file).endsWith('vercel.json')) throw Object.assign(new Error('ENOENT: vercel.json'), { code: 'ENOENT' });
+        return read.call(fs, file, ...rest);
+      };
+      syncBuiltinESMExports();
+      const buildWithoutDeploymentFile = await resolveConfig(options, 'build', 'production', 'production')
+        .then(() => 'resolved', error => String(error?.message ?? error));
+      fs.readFileSync = read;
+      syncBuiltinESMExports();
       console.log(JSON.stringify({
         host: config.server.host,
         allowedHosts: config.server.allowedHosts,
@@ -144,8 +159,9 @@ describe('local Vite exposure', () => {
           .map(([name, file]) => [name, isFileLoadingAllowed(config, normalizePath(file))])),
         explicitHost: explicit.server.host,
         explicitStrict: explicit.server.fs.strict,
-        previewHost: config.preview.host,
-        previewHeaders: config.preview.headers,
+        previewHost: preview.preview.host,
+        previewHeaders: preview.preview.headers,
+        buildWithoutDeploymentFile,
         developmentCsp: config.server.headers?.['Content-Security-Policy'],
         hmr: config.server.hmr,
       }));
@@ -187,6 +203,11 @@ describe('local Vite exposure', () => {
     expect(result.previewHeaders).toEqual(headers);
     expect(result.developmentCsp).toBeUndefined();
     expect(result.hmr).not.toBe(false);
+  });
+
+  it('resolves the production build without reading vercel.json', () => {
+    // Vercel consumes vercel.json itself; the build must not depend on reading it.
+    expect(result.buildWithoutDeploymentFile).toBe('resolved');
   });
 });
 
