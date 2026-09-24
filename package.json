@@ -16,7 +16,7 @@
     "bake:island": "bun scripts/bake-island.mjs",
     "bake:shore": "bun scripts/bake-shore-field.mjs",
     "assets": "bun run optimize:models && bun run bake:island",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
     "@react-three/fiber": "^8.17.10",

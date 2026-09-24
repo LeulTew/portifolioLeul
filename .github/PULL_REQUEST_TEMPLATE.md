@@ -13,7 +13,7 @@
 - [ ] `bun x vitest run` — tests pass
 - [ ] `bun run build` — production build succeeds
 - [ ] `bun run lint` — no lint errors
-- [ ] `bun x tsc --noEmit` — no type errors
+- [ ] `bun run typecheck` — no type errors (app and tooling configs)
 
 ## Related Issues
 

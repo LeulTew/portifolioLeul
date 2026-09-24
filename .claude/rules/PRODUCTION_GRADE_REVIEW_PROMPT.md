@@ -25,7 +25,7 @@ The primary question is:
 
 # HARD RULES
 
-* Do not approve if local verification (`bun test`, `bun run build`, `bun run lint`, `bun x tsc --noEmit`) is failing. (Do not wait for or check remote GitHub Actions CI as quota is over limit).
+* Do not approve if local verification (`bun x vitest run`, `bun run build`, `bun run lint`, `bun run typecheck`) is failing. (Do not wait for or check remote GitHub Actions CI as quota is over limit).
 * Do not approve unless all requirements are verified.
 * Do not assume correctness because tests pass.
 * Do not review only changed files.

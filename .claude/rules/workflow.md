@@ -20,10 +20,10 @@ Use prefix-based commit messages: `<prefix>(<scope>): <description>`
 ## 4. Local Bun Verification Mandate (ZERO CI WAITING)
 - **NO GitHub Actions / CI Waiting**: GitHub Actions is over limit. Never wait for, check, or block on remote GitHub Actions CI workflows.
 - **100% Local Verification via Bun**:
-  - `bun test` or `bun x vitest run` (Unit & branch tests)
+  - `bun x vitest run` (Unit & branch tests; `bun test` is Bun's own runner and cannot load this suite)
   - `bun run build` (Vite production bundle compilation)
   - `bun run lint` (ESLint verification)
-  - `bun x tsc --noEmit` (TypeScript strict type safety)
+  - `bun run typecheck` (app and tooling configs; bare `tsc --noEmit` reads the empty solution tsconfig and checks nothing)
 - Verify locally with Bun before completing any task, issue, or PR.
 - Never run destructive git commands like `git reset --hard` without explicit user instruction.
 
