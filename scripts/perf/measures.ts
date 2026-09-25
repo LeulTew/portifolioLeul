@@ -264,7 +264,8 @@ export function journeyPath(checkpoints: readonly Checkpoint[]): string[] {
  * in order before Skills, read every Skills chapter in order, and reach the TV's
  * reader. Totals from a journey that skipped or reversed its costliest chapters
  * are not comparable (round 9, TECH-022); entering Education is not reading it
- * (TECH-028).
+ * (TECH-028); and a journey that doubles back, or reads the TV outside its own
+ * leg, is not one forward pass (round 11, TECH-033).
  */
 export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: number, educationRecords: number): string[] {
   const journey = checkpoints.filter(checkpoint => checkpoint.phase === 'journey');
@@ -272,6 +273,17 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
   const failures: string[] = [];
   let reached = 0;
   for (const section of sections) if (section === STORY[reached]) reached++;
+  // One forward pass: a return to an earlier chapter adds its cost twice (round 11, TECH-033).
+  let furthest = -1;
+  for (const section of sections) {
+    const index = STORY.indexOf(section as (typeof STORY)[number]);
+    if (index < 0) continue;
+    if (index < furthest) {
+      failures.push(`the journey went back from ${STORY[furthest]} to ${section}`);
+      break;
+    }
+    furthest = index;
+  }
   if (reached < STORY.length) {
     failures.push(`the journey never reached ${STORY[reached]} (passed ${sections.join(' > ') || 'nothing'})`);
   } else if (sections.at(-1) !== 'contact') {
@@ -300,7 +312,12 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
   if (skillChapters >= 1 && reads.join() !== expected.join()) {
     failures.push(`Skills read ${reads.join(' > ') || 'no chapter'}, not ${expected.join(' > ')}`);
   }
-  if (!journey.some(checkpoint => checkpoint.tv === 'reading')) failures.push("the TV never reached its reader");
+  // The reader is read on the Projects leg: after the last Skills chapter, before Contact.
+  const lastSkill = journey.reduce((last, checkpoint, index) => (checkpoint.skills === 'reading' ? index : last), -1);
+  const contactAt = journey.findIndex(checkpoint => checkpoint.section === 'contact');
+  const read = journey.some((checkpoint, index) => checkpoint.tv === 'reading' && checkpoint.section === 'projects'
+    && index > lastSkill && (contactAt < 0 || index < contactAt));
+  if (!read) failures.push("the TV never reached its reader on the way from Skills to Contact");
   return failures;
 }
 

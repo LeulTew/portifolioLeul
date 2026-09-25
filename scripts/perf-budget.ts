@@ -333,6 +333,7 @@ async function main() {
   const config = JSON.parse(await readFile(resolve('scripts/perf-budget.json'), 'utf8')) as BudgetConfig;
   const { width, height } = config.viewport;
   const scope = new Scope();
+  let reported = false;
   const interrupt = (signal: string) => {
     console.error(`${signal}: stopping the preview and Chrome`);
     void scope.close().finally(() => process.exit(130));
@@ -399,7 +400,11 @@ async function main() {
       await record(cdp, page);
     }
 
-    const verdict = judge(config, samples, { cold: options.cold });
+    // Everything the run owns is released before the verdict, so a Chrome, profile or preview that would
+    // not close is in the saved report and its verdict, not only on stderr (round 11, TECH-034).
+    const cleanup = (await scope.close()).map(error => `cleanup: ${error.message}`);
+    const judged = judge(config, samples, { cold: options.cold });
+    const verdict = cleanup.length ? { ...judged, pass: false, failures: [...judged.failures, ...cleanup] } : judged;
     console.table(verdict.rows);
     const indexPath = resolve('dist/index.html');
     await mkdir(resolve('perf-reports'), { recursive: true });
@@ -413,15 +418,19 @@ async function main() {
       distIndexSha256: !options.url && existsSync(indexPath)
         ? createHash('sha256').update(await readFile(indexPath)).digest('hex') : null,
       mode: options.cold ? 'cold' : 'returning visit',
-      headed: options.headed, platform: process.platform, ...provenance, config, samples, verdict,
+      headed: options.headed, platform: process.platform, ...provenance, config, samples, cleanup, verdict,
     }, null, 2));
     for (const failure of verdict.failures) console.error(`FAILED: ${failure}`);
     console.log(`${verdict.pass ? 'PASS' : 'FAIL'}: ${report}`);
     process.exitCode = verdict.pass ? 0 : 1;
+    reported = true;
   } finally {
-    const errors = await scope.close();
-    for (const error of errors) console.error(`cleanup: ${error.message}`);
-    if (errors.length) process.exitCode = 1;
+    // Closing is idempotent: after the report this reports only what an early failure left open.
+    if (!reported) {
+      const errors = await scope.close();
+      for (const error of errors) console.error(`cleanup: ${error.message}`);
+      if (errors.length) process.exitCode = 1;
+    }
   }
 }
 
