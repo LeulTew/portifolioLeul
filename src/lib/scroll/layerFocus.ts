@@ -12,6 +12,7 @@
  */
 import { chromeClearance } from './chromeInset';
 import { landSectionFocus } from './sectionLanding';
+import { viewOwner } from './viewOwner';
 
 const TABBABLE = [
   'a[href]', 'area[href]', 'button', 'input:not([type="hidden"])', 'select', 'textarea', 'iframe',
@@ -22,6 +23,19 @@ const TABBABLE = [
 const REVEAL_MARGIN_PX = 96;
 /** Room a stop keeps from the edge of the box it scrolls in, for its focus ring. */
 const OWN_BOX_MARGIN_PX = 8;
+
+/** The event a component sends to have new content shown the way keyboard focus is. */
+export const REVEAL_REQUEST = 'portfolio:reveal';
+
+/**
+ * Asks the page to bring `element` into view, clear of the navbar: feedback
+ * that arrives below the fold, as Contact's send error and its draft link did
+ * at 900x560 (round 10, D-CONTACT-001). The browser's own scrollIntoView
+ * would scroll drei's transformed layer instead of the story.
+ */
+export function requestReveal(element: HTMLElement): void {
+  element.dispatchEvent(new Event(REVEAL_REQUEST, { bubbles: true }));
+}
 
 /** What a reveal has to show: the control, and for a field the labels that name it. */
 export function revealBox(element: HTMLElement): { top: number; bottom: number } {
@@ -190,14 +204,17 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     if (!(field instanceof HTMLElement)) return;
     view.requestAnimationFrame(() => { if (root.activeElement === field) reveal(field); });
   };
+  const requested = (event: Event) => reveal(event.target instanceof Element ? event.target : null);
 
   track.addEventListener('scroll', hold, { capture: true, passive: true });
   root.addEventListener('keydown', tab);
   root.addEventListener('invalid', invalid, true);
+  root.addEventListener(REVEAL_REQUEST, requested, true);
   return () => {
     track.removeEventListener('scroll', hold, { capture: true });
     root.removeEventListener('keydown', tab);
     root.removeEventListener('invalid', invalid, true);
+    root.removeEventListener(REVEAL_REQUEST, requested, true);
     view.cancelAnimationFrame(frame);
   };
 }
@@ -245,18 +262,14 @@ function chapterIndex(content: HTMLElement, sections: Element[], element: Elemen
 }
 
 /**
- * The chapter whose portalled reader holds the view, or -1. The story is
- * inert exactly while one does (Skills, the TV); the reader is the one live
- * owner of a section.
+ * The chapter whose portalled reader holds the view, or -1: the one named by
+ * the standing view claim (viewOwner), while the story is inert beneath it.
  */
 function pinnedChapter(content: HTMLElement, sections: Element[]): number {
-  if (!content.closest('[inert]')) return -1;
-  for (const owner of content.ownerDocument.querySelectorAll('[data-section-owner]')) {
-    if (owner.closest('[inert], [aria-hidden="true"], [hidden]')) continue;
-    const index = chapterIndex(content, sections, owner);
-    if (index >= 0) return index;
-  }
-  return -1;
+  const owner = viewOwner();
+  if (!owner || !content.closest('[inert]')) return -1;
+  const reader = content.ownerDocument.getElementById(owner);
+  return reader?.parentElement === content ? sections.indexOf(reader) : -1;
 }
 
 /**
@@ -384,16 +397,26 @@ export function installDocumentFocus({ main, navigate }: {
       if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
     });
   };
+  // Requested feedback is brought in whole, then clear of the bar if that put it under it.
+  const requested = (event: Event) => {
+    const element = event.target;
+    if (!(element instanceof HTMLElement) || !main()?.contains(element)) return;
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const hidden = chromeClearance() - revealBox(element).top;
+    if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+  };
 
   root.addEventListener('keydown', key, { capture: true, passive: true });
   root.addEventListener('pointerdown', pointer, { capture: true, passive: true });
   root.addEventListener('focusin', follow, true);
   root.addEventListener('invalid', invalid, true);
+  root.addEventListener(REVEAL_REQUEST, requested, true);
   return () => {
     root.removeEventListener('keydown', key, { capture: true });
     root.removeEventListener('pointerdown', pointer, { capture: true });
     root.removeEventListener('focusin', follow, true);
     root.removeEventListener('invalid', invalid, true);
+    root.removeEventListener(REVEAL_REQUEST, requested, true);
     view.cancelAnimationFrame(frame);
   };
 }
