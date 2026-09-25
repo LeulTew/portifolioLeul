@@ -368,14 +368,8 @@ export function FocusRail({
                       }}
                       className="overflow-hidden space-y-6 px-6 pb-6 -mx-6 -mb-6"
                     >
-                      {activeItem.description && (
-                        <div className={cn("text-sm md:text-base leading-relaxed max-w-4xl", styles.description)}>
-                          {activeItem.description}
-                        </div>
-                      )}
-
-                      {/* Buttons */}
-                      <div className="flex flex-wrap items-center gap-4 pt-2">
+                      {/* The project's own actions, beside its name rather than after its whole description (round 11, D-UI-003). */}
+                      <div className="flex flex-wrap items-center gap-4">
                         {activeItem.demoUrl && (
                           <MagneticButton
                             href={activeItem.demoUrl}
@@ -402,6 +396,12 @@ export function FocusRail({
                           </MagneticButton>
                         )}
                       </div>
+
+                      {activeItem.description && (
+                        <div className={cn("text-sm md:text-base leading-relaxed max-w-4xl", styles.description)}>
+                          {activeItem.description}
+                        </div>
+                      )}
                     </motion.div>
                   </div>
                 </motion.div>
