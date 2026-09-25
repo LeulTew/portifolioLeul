@@ -316,13 +316,23 @@ function App() {
    * rebuild that resets scrollTop.
    */
   const scrollToSectionRef = useRef<((id: string, options?: SectionNavigationOptions) => void) | null>(null);
+  /** A replay queued for the next task; any later navigation cancels it, so it can never land last. */
+  const replayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelReplay = useCallback(() => {
+    if (replayTimerRef.current !== null) clearTimeout(replayTimerRef.current);
+    replayTimerRef.current = null;
+  }, []);
   /** Takes a destination chosen during a rebuild again, once, outside the render loop. */
   const replayNavigation = useCallback(() => {
     const navigation = navigationAfterRebuildRef.current;
     if (!navigation) return;
     navigationAfterRebuildRef.current = null;
-    setTimeout(() => scrollToSectionRef.current?.(navigation.id, navigation.options), 0);
-  }, []);
+    cancelReplay();
+    replayTimerRef.current = setTimeout(() => {
+      replayTimerRef.current = null;
+      scrollToSectionRef.current?.(navigation.id, navigation.options);
+    }, 0);
+  }, [cancelReplay]);
   const applyPendingRestore = useCallback((): number | null => {
     const track = scrollElementRef.current;
     const pending = pendingRestoreRef.current;
@@ -414,6 +424,7 @@ function App() {
   }, [updateScrollPages]);
 
   useEffect(() => () => {
+    cancelReplay();
     contentObserverRef.current?.disconnect();
     contentObserverRef.current = null;
     settleWatcherRef.current?.stop();
@@ -422,7 +433,7 @@ function App() {
     glideRef.current = null;
     trackFocus.cancel();
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-  }, [trackFocus]);
+  }, [trackFocus, cancelReplay]);
 
   const scrollToSection = useCallback((id: string, options?: SectionNavigationOptions) => {
     const target = document.getElementById(id);
@@ -430,6 +441,8 @@ function App() {
     trackFocus.cancel();
     const immediate = options?.immediate || options?.source === 'navbar';
     if (options?.source === 'navbar') {
+      // A newer choice outranks one still queued to replay (round 11, TECH-032).
+      cancelReplay();
       // A rebuild still to land would reset the track under this choice: keep it, and take it again after.
       const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current);
       navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
@@ -510,7 +523,7 @@ function App() {
 
     // The document's scroll padding clears the navbar for focus reveals; this landing keeps the section's own edge.
     window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide });
-  }, [scrollElement, trackFocus]);
+  }, [scrollElement, trackFocus, cancelReplay]);
   useEffect(() => { scrollToSectionRef.current = scrollToSection; }, [scrollToSection]);
 
   // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
