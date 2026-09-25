@@ -165,9 +165,11 @@ export function useSkillsPlayback(
 
     const alignAfterRelease = (direction: Direction, control: boolean) => {
       if (navigation !== null) return;
+      // The reader is handed to the neighbouring chapter however far the document ran on
+      // beneath the hold: the gestures this chapter consumed were requests for its own
+      // chapters, not travel past the next one. Wheeling the flat page past the last skill
+      // otherwise landed on Contact, Projects skipped (round 9, D-FLAT-003).
       const rect = rail.getBoundingClientRect();
-      const stillOnRail = direction > 0 ? rect.bottom > window.innerHeight : rect.top < 96;
-      if (!stillOnRail) return;
       if (direction < 0 && !control) {
         // Natural reverse returns to Education's trailing edge; only the
         // explicitly labelled Back to About button jumps to About's heading.

@@ -59,6 +59,14 @@
   letter-spacing: -0.02em;
 }
 
+/*
+ * The highlighted word. Emerald-400 reads on the dark page and was 1.8:1 on
+ * the light one (round 9, D-A11Y-003); emerald-700 is the same hue at 5.1:1.
+ */
+:global([data-theme='light']) .title :global(.text-emerald-400) {
+  color: #047857;
+}
+
 /* Category Filter Tabs */
 .filterContainer {
   display: flex;
