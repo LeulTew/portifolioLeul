@@ -71,7 +71,7 @@ const projectRecords: Project[] = [
     categories: ["AI/DataScience", "Web Development"],
     evidence: {
       inspect: "Enter a goal, inspect the five-step result, then open a step for sub-actions. Switch between English and Amharic.",
-      access: "Plan generation depends on the live AI service.",
+      access: "Plan generation depends on the live AI service. The demo publicly lists other visitors' recent goals.",
       decision: {
         summary: "Model output is not assumed to be valid: the service checks for exactly five non-empty steps and a complexity score from 1 to 10 before accepting a response.",
         sourceLabel: "Response validation source",
@@ -89,7 +89,17 @@ const projectRecords: Project[] = [
     imageKind: "interface",
     githubUrl: "https://github.com/LeulTew/Kitefew",
     demoUrl: "https://kitefew.vercel.app/",
-    categories: ["AI/DataScience", "Desktop & Games", "Web Development"]
+    categories: ["AI/DataScience", "Desktop & Games", "Web Development"],
+    evidence: {
+      inspect: "Open How to Play, then start the camera and move an index finger to slice fruit while avoiding bombs.",
+      access: "The game asks for a player name, and camera play needs camera access.",
+      sourceNote: "MediaPipe provides the hand recognition; this is an integration, not a trained model or measured tracking performance.",
+      decision: {
+        summary: "Tracking is configured for one hand with MediaPipe's lite model, and both detection and tracking confidence thresholds set to 0.6.",
+        sourceLabel: "Hand-tracking configuration",
+        sourceUrl: "https://github.com/LeulTew/Kitefew/blob/ea3c4905625940204e521e8ecc10e6d66308b0fb/webapp/src/logic/MediaPipeService.ts#L32-L37",
+      },
+    }
   },
   {
     id: 28,
@@ -166,7 +176,12 @@ const projectRecords: Project[] = [
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://agenda-flow-ai.vercel.app",
-    categories: ["AI/DataScience", "Web Development"]
+    categories: ["AI/DataScience", "Web Development"],
+    evidence: {
+      inspect: "Open Wizard and compare Step-by-Step with Quick Create, then describe a meeting and generate its agenda.",
+      access: "No sign-in is needed to open the builder; generation depends on the live Gemini service.",
+      sourceNote: "The implementation repository is private, so no source is linked; this describes the live demo only.",
+    }
   },
   {
     id: 27,
@@ -213,7 +228,16 @@ const projectRecords: Project[] = [
     image: "/images/projects/car-rental.webp",
     imageKind: "interface",
     githubUrl: "https://github.com/LeulTew/CarRental-ThreeJS-MVC",
-    categories: ["Web Development", "Graphics & Algorithms"]
+    categories: ["Web Development", "Graphics & Algorithms"],
+    evidence: {
+      inspect: "In a local setup, browse cars in the 3D viewer, filter them, book one, and follow the sandbox PayPal checkout.",
+      access: "No live demo is linked; it runs as a local ASP.NET Core app with its SQL Server database.",
+      decision: {
+        summary: "One EF Core context extends ASP.NET Identity's with cars, bookings, reviews, payments, favorites and vehicle versions, so accounts and rentals share one data model.",
+        sourceLabel: "Data model source",
+        sourceUrl: "https://github.com/LeulTew/CarRental-ThreeJS-MVC/blob/d6f8f89911df9ac5341e38b464bfb1c0a8d81c32/Carrental/Carrental/Models/CarContext.cs#L2-L17",
+      },
+    }
   },
   {
     id: 22,
@@ -502,7 +526,7 @@ const projectRecords: Project[] = [
  * source, most with a real task on screen; staged mockups and artwork stay in
  * the archive, labelled.
  */
-export const FEATURED_PROJECT_IDS: readonly number[] = [23, 4, 31, 25, 21, 24];
+export const FEATURED_PROJECT_IDS: readonly number[] = [4, 23, 1, 25, 24, 21];
 
 export function isFeaturedProject(project: Pick<Project, 'id'>): boolean {
   return FEATURED_PROJECT_IDS.includes(project.id);

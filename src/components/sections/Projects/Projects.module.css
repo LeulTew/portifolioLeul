@@ -529,3 +529,48 @@
     margin-top: 0.5rem !important;
   }
 }
+
+/*
+ * Reading-first (round 11, D-UI-003). The heading and its filters share one
+ * row, and the padding stacked above them by the width rules is dropped, so
+ * the first viewport holds the image, the project's name, its purpose and its
+ * actions rather than the framing around them. Later than the width and
+ * height rules on purpose: it replaces their vertical spacing.
+ */
+@media (min-width: 900px) {
+  .projects {
+    padding-top: 2rem !important;
+    justify-content: flex-start;
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    column-gap: 2rem;
+  }
+
+  .header {
+    grid-column: 1;
+    margin-bottom: 0;
+    padding: 0;
+    text-align: left;
+  }
+
+  .title {
+    margin-top: 0 !important;
+    padding-bottom: 0.4rem;
+  }
+
+  .filterContainer {
+    grid-column: 2;
+    justify-content: flex-end !important;
+    margin: 0 0 0.35rem !important;
+    padding: 0;
+  }
+
+  .railWrap {
+    grid-column: 1 / -1;
+    margin-top: 0.75rem;
+  }
+}

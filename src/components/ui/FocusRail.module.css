@@ -48,6 +48,16 @@
 }
 
 /*
+ * The rail itself is a Tab stop, browsed with the arrow keys, so it shows it
+ * has focus like every other control (round 11, D-A11Y-005). Drawn inside its
+ * edge: the rail clips what overflows it.
+ */
+.rail:focus-visible {
+  outline: 2px solid var(--rail-accent);
+  outline-offset: -4px;
+}
+
+/*
  * At the desktop floor the reader's own title sat below the fold, under a
  * carousel sized for a tall window. Shorter windows get a shorter stage, so
  * the project name and its copy arrive with the images.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type CSSProperties, type WheelEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { ControlButton } from '@/components/ui/ControlButton';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { SKILL_CHAPTERS, type SkillChapter } from './skillsData';
@@ -40,6 +40,13 @@ function Chapter({
             </li>
           ))}
         </ul>
+        {/* One inspectable piece of the named work, the last thing the chapter reveals. */}
+        <a className={styles.proof} data-skill-copy="" data-skill-proof="" href={chapter.proof.url}
+          target="_blank" rel="noopener noreferrer" tabIndex={staged && !active ? -1 : undefined}>
+          <span className={styles.proofKind}>In the source</span>
+          <span className={styles.proofLabel}>{chapter.proof.label}<ArrowUpRight size="1em" aria-hidden="true" /></span>
+          <span className={styles.proofClaim}>{chapter.proof.claim}</span>
+        </a>
       </div>
 
       {!staged && <div className={styles.visual}>
