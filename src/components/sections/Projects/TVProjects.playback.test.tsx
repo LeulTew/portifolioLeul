@@ -14,6 +14,7 @@ import {
 } from '@/lib/contact/contactScene';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { isScrollKeyClaimed } from '@/lib/scroll/keyboardScroll';
+import { installStoryKeys } from '@/lib/scroll/storyKeys';
 import { resetScrollGesture, SCROLL_WAVE_IDLE_MS } from '@/lib/scroll/scrollGesture';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
@@ -445,6 +446,26 @@ describe('the completed-beat TV chapter', () => {
     expect(isScrollKeyClaimed(press('PageUp'))).toBe(true);
     expect(isScrollKeyClaimed(press('Home'))).toBe(false);
     expect(isScrollKeyClaimed(press('End'))).toBe(false);
+  });
+
+  it('lets Home and End travel the story from an engaged TV, releasing it on the way', async () => {
+    // Round 9 (TECH-018): the engaged TV claimed every key, so neither the story nor the TV moved for them.
+    mount();
+    await navbar('projects');
+    expect(phase()).toBe('reading');
+    const travels: string[] = [];
+    const release = installStoryKeys({
+      navigate: (section, options) => { travels.push(section); publishSectionNavigation(section, options); },
+    });
+    try {
+      fireEvent.keyDown(document.body, { key: 'ArrowDown' });
+      expect(travels).toEqual([]);
+      fireEvent.keyDown(document.body, { key: 'End' });
+      expect(travels).toEqual(['contact']);
+      expect(phase()).toBe('outside');
+    } finally {
+      release();
+    }
   });
 
   it('does not forward a held return key after explicit navbar cancellation', async () => {
