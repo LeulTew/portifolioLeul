@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { observeChromeInset } from './chromeInset';
 import { installDocumentFocus, installLayerFocus, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
+import { cancelSectionLanding } from './sectionLanding';
 
 type Box = { top: number; bottom: number };
 const boxes = new Map<Element, Box>();
@@ -251,7 +252,7 @@ describe('keyboard focus in the scroll layer', () => {
   });
 });
 
-describe('Tab past a chapter whose reader is not in place', () => {
+describe('Tab through the story, chapter by chapter', () => {
   let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
   let release: () => void;
 
@@ -259,78 +260,133 @@ describe('Tab past a chapter whose reader is not in place', () => {
     document.body.innerHTML = `
       <header><button id="logo">LT</button><button id="theme">Theme</button></header>
       <div id="track"><main id="main">
-        <section id="home"><button id="cta">Explore</button></section>
+        <section id="home"><h1 id="title" tabindex="-1" data-section-landing="home" data-tab-entry="">Leul</h1>
+          <button id="cta">Explore</button></section>
         <section id="about" tabindex="-1" data-section-landing="about"><p>Statements</p></section>
+        <section id="skills"></section>
         <section id="projects"></section>
-        <section id="contact"><a id="email" href="mailto:hello@example.com">Email</a></section>
+        <section id="contact"><div id="connect" tabindex="-1" data-section-landing="contact" data-tab-entry="">Connect</div>
+          <a id="email" href="mailto:hello@example.com">Email</a></section>
       </main></div>
-      <div id="stage" inert><div id="reader" tabindex="-1" data-section-landing="projects" data-tab-entry="">
-        <button id="details">Details</button></div><button id="scene-next">Contact</button></div>`;
+      <section id="skills-stage" aria-hidden="true" data-section-owner="skills">
+        <h2 id="skills-heading" tabindex="-1" data-section-landing="skills" data-tab-entry="">Skills</h2>
+        <button id="skill-next">Next skill</button></section>
+      <div id="stage" inert data-section-owner="projects">
+        <div id="reader" tabindex="-1" data-section-landing="projects" data-tab-entry=""><button id="details">Details</button></div>
+        <button id="scene-next" data-section-landing="projects">Contact</button></div>`;
     navigate = vi.fn<(section: string) => void>();
     scrollable(byId('track'), { scrollHeight: 8000, clientHeight: 800 });
     vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
-    place('home', 0, 900); place('cta', 600);
-    place('about', 900, 2000); place('projects', 2900, 1500); place('contact', 4400, 900); place('email', 4600);
+    view('home');
     release = installLayerFocus({ track: byId('track'), main: () => byId('main'), navigate });
   });
-  afterEach(() => release());
+  afterEach(() => {
+    release();
+    cancelSectionLanding();
+  });
 
-  /** The reader the navigation brings in takes focus once its chapter is live. */
-  const goLive = () => {
-    byId('stage').removeAttribute('inert');
+  const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'];
+  const HEIGHTS = [900, 2000, 1500, 1500, 900];
+  /** Lays the story out with `section` under the reader, as drei's layer would. */
+  function view(section: string) {
+    let top = 0;
+    const tops = SECTIONS.map((_, index) => { const at = top; top += HEIGHTS[index]; return at; });
+    const offset = tops[SECTIONS.indexOf(section)];
+    SECTIONS.forEach((id, index) => place(id, tops[index] - offset, HEIGHTS[index]));
+    place('cta', 600 - offset); place('email', tops[4] + 200 - offset);
+  }
+  /** Which chapter holds the view: its reader live, everything else inert or hidden. */
+  function live(section: 'home' | 'skills' | 'projects' | 'contact') {
+    view(section);
+    byId('main').toggleAttribute('inert', section === 'skills' || section === 'projects');
+    if (section === 'skills') byId('skills-stage').removeAttribute('aria-hidden');
+    else byId('skills-stage').setAttribute('aria-hidden', 'true');
+    byId('stage').toggleAttribute('inert', section !== 'projects');
     flushFrames();
-  };
+  }
 
-  it('visits Projects between Home and Contact, by navigating there', () => {
-    // Round 7 (D-A11Y-001): Tab went from Home straight to Contact past the inert TV reader.
+  it('visits every chapter with controls in story order, forward', () => {
+    // Round 7 (D-A11Y-001): Tab went from Home straight to Contact; round 8: past Skills entirely.
     byId('cta').focus();
     expect(tab().defaultPrevented).toBe(true);
-    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
-    expect(document.activeElement).toBe(byId('cta'));
-    goLive();
+    expect(navigate).toHaveBeenLastCalledWith('skills');
+    live('skills');
+    expect(document.activeElement).toBe(byId('skills-heading'));
+    tab();
+    expect(document.activeElement).toBe(byId('skill-next'));
+    // Past a portalled reader's last stop the document ends; the story does not.
+    expect(tab().defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenLastCalledWith('projects');
+    live('projects');
     expect(document.activeElement).toBe(byId('reader'));
+    tab();
+    tab();
+    expect(document.activeElement).toBe(byId('scene-next'));
+    tab();
+    expect(navigate).toHaveBeenLastCalledWith('contact');
+    live('contact');
+    expect(document.activeElement).toBe(byId('connect'));
+    tab();
+    expect(document.activeElement).toBe(byId('email'));
+    expect(navigate).toHaveBeenCalledTimes(3);
+    // And from Contact, the last chapter, Tab leaves for the browser.
+    expect(tab().defaultPrevented).toBe(false);
   });
 
-  it('visits it on the way back from Contact, and from a section landing', () => {
+  it('mirrors the way back with Shift+Tab', () => {
+    live('contact');
     byId('email').focus();
     tab(true);
-    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
-    goLive();
-    expect(document.activeElement).toBe(byId('reader'));
-
-    byId('stage').setAttribute('inert', '');
-    byId('about').focus();
-    tab();
     expect(navigate).toHaveBeenLastCalledWith('projects');
+    live('projects');
+    expect(document.activeElement).toBe(byId('reader'));
+    tab(true);
+    expect(navigate).toHaveBeenLastCalledWith('skills');
+    live('skills');
+    expect(document.activeElement).toBe(byId('skills-heading'));
+    // Home's controls sit under the inert story while Skills holds the view: visited by navigating.
+    tab(true);
+    expect(navigate).toHaveBeenLastCalledWith('home');
+    live('home');
+    expect(document.activeElement).toBe(byId('title'));
+    tab();
+    expect(document.activeElement).toBe(byId('cta'));
   });
 
-  it('counts the navbar as the chapter in view when Tab leaves it', () => {
-    // Contact fills the window: the next stop is Contact's own, so nothing is passed.
-    place('home', -4400, 900); place('about', -3500, 2000); place('projects', -1500, 1500); place('contact', 0, 900);
-    byId('theme').focus();
-    byId('cta').setAttribute('data-no-box', '');
+  it('starts from where the reader is, not from focus the wheel left behind', () => {
+    byId('cta').focus();
+    view('contact');
     tab();
     expect(navigate).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(byId('email'));
   });
 
-  it('does not send Tab back into the chapter it is leaving', () => {
-    byId('stage').removeAttribute('inert');
-    byId('main').setAttribute('inert', '');
-    place('home', -2900, 900); place('about', -2000, 2000); place('projects', 0, 1500); place('contact', 1500, 900);
-    byId('details').focus();
-    tab(true);
+  it('moves within the chapter in view without navigating, from the navbar too', () => {
+    live('skills');
+    byId('theme').focus();
+    tab();
     expect(navigate).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(byId('theme'));
+    expect(document.activeElement).toBe(byId('skill-next'));
+    view('contact');
+    byId('main').removeAttribute('inert');
+    byId('skills-stage').setAttribute('aria-hidden', 'true');
+    byId('theme').focus();
+    byId('cta').setAttribute('data-no-box', '');
+    byId('title').setAttribute('data-no-box', '');
+    tab();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('email'));
   });
 
   it('leaves a reader that is in place to the ordinary order', () => {
     byId('projects').append(byId('reader'));
+    byId('skills').append(byId('skills-stage'));
     byId('stage').removeAttribute('inert');
+    byId('skills-stage').removeAttribute('aria-hidden');
     byId('cta').focus();
     tab();
     expect(navigate).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(byId('details'));
+    expect(document.activeElement).toBe(byId('skill-next'));
   });
 });
 

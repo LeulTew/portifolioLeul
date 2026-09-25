@@ -88,10 +88,11 @@ html {
 }
 
 /*
- * A heading that navigation hands focus to (see `sectionLanding`) is a starting
- * point for Tab and the scroll keys, not a control: it draws no focus ring.
+ * A heading or section that navigation hands focus to (see `sectionLanding`)
+ * is a starting point for Tab and the scroll keys, not a control: it draws no
+ * focus ring. Landings that are controls or readers keep theirs.
  */
-[data-section-landing]:not([role]):focus {
+[data-section-landing]:not(button, a, [role]):focus {
   outline: none;
 }
 

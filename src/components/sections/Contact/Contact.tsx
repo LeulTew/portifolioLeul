@@ -44,7 +44,7 @@ export function Contact({ spatial = false }: { spatial?: boolean }) {
       <div className={styles.content}>
         <div className={styles.grid}>
           <div className={styles.introduction}>
-            <div className={styles.header} tabIndex={-1} data-section-landing="contact">
+            <div className={styles.header} tabIndex={-1} data-section-landing="contact" data-tab-entry="">
               <svg className={styles.messagePlane} viewBox="0 0 200 160" fill="none" aria-hidden="true">
                 <path className={styles.flightPath} d="M8 141C46 146 19 74 59 76C98 78 72 109 117 83" />
                 <path className={styles.planeWing} d={CONTACT_PAPER_PLANE.outline} />

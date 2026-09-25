@@ -33,7 +33,9 @@
    A gesture is an intention, never a permission.
    ========================================================================== */
 
-export type ScrollDirection = 'down' | 'up';
+import { scrollKeyIntent, type ScrollDirection } from './scrollKeys';
+
+export type { ScrollDirection } from './scrollKeys';
 
 type Listener = (direction: ScrollDirection) => void;
 
@@ -56,17 +58,6 @@ const WHEEL_THRESHOLD = 2;
 
 /** Touch travel below this is a tap wobble. */
 const TOUCH_THRESHOLD = 6;
-
-const SCROLL_KEYS = new Map<string, ScrollDirection>([
-  ['ArrowDown', 'down'],
-  ['PageDown', 'down'],
-  [' ', 'down'],
-  ['Spacebar', 'down'],
-  ['End', 'down'],
-  ['ArrowUp', 'up'],
-  ['PageUp', 'up'],
-  ['Home', 'up'],
-]);
 
 function emit(direction: ScrollDirection, waveStart: boolean, target: EventTarget | null): void {
   for (const [listener, options] of listeners) {
@@ -107,13 +98,9 @@ function onTouchEnd(): void {
 }
 
 function onKeyDown(event: KeyboardEvent): void {
-  const target = event.target;
-  if (target instanceof Element) {
-    if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
-    if ((event.key === ' ' || event.key === 'Spacebar') && target.closest('button')) return;
-  }
-  const direction = SCROLL_KEYS.get(event.key);
-  if (direction) emit(direction, !event.repeat, event.target);
+  // The same reading of the key the physical scroll uses: see scrollKeys.
+  const intent = scrollKeyIntent(event);
+  if (intent) emit(intent.direction, !event.repeat, event.target);
 }
 
 /** Starts listening. Safe to call more than once. */

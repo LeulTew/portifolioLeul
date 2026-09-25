@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import postcss from 'postcss';
+import { cancelSectionLanding, landSectionFocus } from '@/lib/scroll/sectionLanding';
 import { Skills } from './Skills';
 import { SKILL_CHAPTERS } from './skillsData';
 
@@ -34,6 +35,20 @@ describe('Skills chapter controls', () => {
     expect(stage.querySelectorAll('header, footer')).toHaveLength(0);
     expect(stage).toContainElement(screen.getByRole('button', { name: /^Next:/ }));
     expect(stage).not.toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('lands navbar focus on the staged heading, not the inert host left in the document', () => {
+    const main = document.createElement('main');
+    main.inert = true;
+    document.body.append(main);
+    render(<Skills />, { container: main });
+    const heading = screen.getByRole('heading', { name: 'Skills' });
+    expect(main).not.toContainElement(heading);
+    expect(main.querySelector('#skills')).not.toHaveAttribute('data-section-landing');
+    landSectionFocus('skills');
+    expect(heading).toHaveFocus();
+    cancelSectionLanding();
+    main.remove();
   });
 
   it('keeps all six named selectors in the native tab order with native activation', async () => {

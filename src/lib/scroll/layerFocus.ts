@@ -148,15 +148,16 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const stops = tabbableElements(root);
     if (!reproducesNativeOrder(active, stops)) return;
     const next = sequentialNeighbour(active, event.shiftKey, root, stops);
-    if (!next) return;
-    event.preventDefault();
     const content = main();
-    const entry = content ? passedEntry(content, active, next, event.shiftKey, view) : null;
+    const entry = content ? tabDetour(content, active, next, event.shiftKey, view) : null;
     if (entry) {
+      event.preventDefault();
       navigate(entry);
       landSectionFocus(entry, root);
       return;
     }
+    if (!next) return;
+    event.preventDefault();
     next.focus({ preventScroll: true });
     reveal(next);
   };
@@ -178,49 +179,69 @@ function sectionOf(content: HTMLElement, element: Element): HTMLElement | null {
 }
 
 /**
- * Where a stop sits in the story: its own section, or the section whose
- * reader holds it outside the content (the staged TV is portalled to the
- * body). The navbar and other chrome are where the reader is when Tab leaves
- * them, and where they sit in the document when Tab arrives at them.
+ * Which chapter a stop belongs to, as an index into the story: its own
+ * section, or the section named by the `data-section-owner` of the portalled
+ * reader that holds it (Skills, Education and the TV are portalled to the
+ * body, so document order does not place them). -1 for chrome.
  */
-function placeOf(content: HTMLElement, element: HTMLElement, view: Window, leaving: boolean): number {
-  const sections = [...content.children];
+function chapterIndex(content: HTMLElement, sections: Element[], element: Element): number {
   const section = sectionOf(content, element);
   if (section) return sections.indexOf(section);
-  const root = content.ownerDocument;
-  for (let node = element.parentElement; node && node !== root.body && !node.contains(content); node = node.parentElement) {
-    const owner = node.querySelector<HTMLElement>('[data-section-landing]')?.dataset.sectionLanding;
-    const reader = owner ? root.getElementById(owner) : null;
-    if (reader?.parentElement === content) return sections.indexOf(reader);
-  }
-  if (leaving) {
-    const inView = sectionInView(content, view);
-    return inView ? sections.indexOf(inView) : -1;
-  }
-  return content.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING ? -1 : sections.length;
+  const owner = element.closest<HTMLElement>('[data-section-owner]')?.dataset.sectionOwner;
+  const reader = owner ? content.ownerDocument.getElementById(owner) : null;
+  return reader?.parentElement === content ? sections.indexOf(reader) : -1;
 }
 
 /**
- * The section a Tab from `from` to `to` passes over whose reader cannot take
- * focus in its place. The staged TV reader is inert until the TV is on
- * screen, so Tab went from Home straight to Contact and Projects was never
- * visited (round 7, D-A11Y-001). Such a reader marks itself `data-tab-entry`
- * with its section's landing, and Tab visits the section by navigating there.
+ * A chapter's entry, when Tab cannot reach its controls where they are: its
+ * reader is portalled out of the story's order (Skills, the TV), or the
+ * story itself is inert because another chapter holds the view. Chapters
+ * with controls mark their landing `data-tab-entry`; those without (About's
+ * statements) are passed over, as Tab passes over text.
  */
-function passedEntry(content: HTMLElement, from: HTMLElement, to: HTMLElement, backward: boolean, view: Window): string | null {
-  const first = placeOf(content, from, view, true);
-  const last = placeOf(content, to, view, false);
-  // Only a move that travels through the story in its own direction passes anything.
-  if (first < 0 && backward) return null;
-  if (backward ? last >= first : last <= first) return null;
+function unreachableEntry(content: HTMLElement, section: Element): boolean {
+  if (!section.id) return false;
+  const entry = content.ownerDocument.querySelector(`[data-tab-entry][data-section-landing="${section.id}"]`);
+  return Boolean(entry) && (!section.contains(entry) || Boolean(section.closest('[inert]')));
+}
+
+/**
+ * The chapter a Tab should visit before `to`, the stop the browser would move
+ * to (null past either end of the document).
+ *
+ * Document order skipped whole chapters: the staged TV reader is inert until
+ * the TV is on screen, so Tab went from Home straight to Contact and Projects
+ * was never visited (round 7, D-A11Y-001); and a portalled reader's last stop
+ * was the end of the document, so Tab left Skills and the TV for the browser's
+ * own chrome instead of continuing the story. A Tab that passes over a chapter
+ * whose entry is unreachable, or that runs off the end of a reader with the
+ * story unfinished, visits that chapter by navigating there, forward and back.
+ *
+ * The story position is the reader's, not the focused control's: focus left on
+ * Home while the wheel carried the reader to Contact must not send the next
+ * Tab back through the chapters already read.
+ */
+function tabDetour(content: HTMLElement, from: HTMLElement, to: HTMLElement | null, backward: boolean,
+  view: Window): string | null {
   const sections = [...content.children];
-  const passed = backward ? sections.slice(Math.max(last + 1, 0), first).reverse() : sections.slice(first + 1, last);
-  for (const section of passed) {
-    if (!section.id) continue;
-    const entry = content.ownerDocument.querySelector(`[data-tab-entry][data-section-landing="${section.id}"]`);
-    if (entry && !section.contains(entry)) return section.id;
+  const inView = sectionInView(content, view);
+  const viewed = inView ? sections.indexOf(inView) : -1;
+  const own = chapterIndex(content, sections, from);
+  const start = own < 0 ? viewed : viewed < 0 ? own : backward ? Math.min(own, viewed) : Math.max(own, viewed);
+  if (start < 0) return null;
+  let end: number;
+  if (to) {
+    end = chapterIndex(content, sections, to);
+    if (end < 0) end = content.compareDocumentPosition(to) & Node.DOCUMENT_POSITION_PRECEDING ? -1 : sections.length;
+  } else {
+    // Off the end of the document: only a chapter's own reader continues into the story.
+    if (own < 0) return null;
+    end = backward ? -1 : sections.length;
   }
-  return null;
+  // Only a move that travels through the story in its own direction passes anything.
+  if (backward ? end >= start : end <= start) return null;
+  const passed = backward ? sections.slice(end + 1, start).reverse() : sections.slice(start + 1, end);
+  return passed.find(section => unreachableEntry(content, section))?.id ?? null;
 }
 
 /** The section under the middle of the window. */

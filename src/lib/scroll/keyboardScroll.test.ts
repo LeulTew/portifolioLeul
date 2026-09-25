@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { claimScrollKeys, installKeyboardScroll, keyboardScrollDelta } from './keyboardScroll';
+import { resetScrollGesture, subscribeScrollGesture } from './scrollGesture';
 
 let track: HTMLElement;
 let release: () => void;
@@ -20,7 +21,6 @@ beforeEach(() => {
       <button id="scene">Back</button>
       <a id="link" href="/work">Work</a>
       <input id="field" /><div role="tablist"><button id="tab" role="tab">All</button></div>
-      <div data-projects-display=""><button id="reader-control">Next</button></div>
       <div id="notes" style="overflow-y: auto"><p id="note" tabindex="-1">Notes</p></div>
     </div>`;
   track = document.getElementById('track')!;
@@ -64,22 +64,28 @@ describe('scroll keys outside the 3D track', () => {
   });
 
   it.each([
-    ['a field', 'field', 'ArrowDown'], ['a tab list', 'tab', 'ArrowDown'], ['the TV screen', 'reader-control', 'PageDown'],
+    ['a field', 'field', 'ArrowDown'], ['a tab list', 'tab', 'ArrowDown'],
     ['a button for Space', 'scene', ' '], ['another scroller', 'note', 'PageDown'],
   ])('leaves keys that %s uses itself', (_label, id, name) => {
     key(document.getElementById(id)!, { key: name });
     expect(scrolled).toEqual([]);
   });
 
-  it('forwards only unmodified keys the page has not already used', () => {
+  it('forwards only the modified keys the browser scrolls for', () => {
     key(document.body, { key: 'PageDown', ctrlKey: true });
     key(document.body, { key: 'ArrowDown', altKey: true });
     key(document.body, { key: 'ArrowDown', shiftKey: true });
+    key(document.body, { key: 'PageDown', metaKey: true });
+    key(document.body, { key: ' ', ctrlKey: true });
     const used = new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true, cancelable: true });
     used.preventDefault();
     document.body.dispatchEvent(used);
     key(document.body, { key: 'Tab' });
     expect(scrolled).toEqual([]);
+    // Chromium scrolls to either end for Control+Home and Control+End.
+    key(document.body, { key: 'End', ctrlKey: true });
+    key(document.body, { key: 'Home', ctrlKey: true });
+    expect(scrolled).toEqual([10_000 - 800 - 1200, -1200]);
   });
 
   it('yields to a chapter that claims the key, until it releases the claim', () => {
@@ -97,5 +103,37 @@ describe('scroll keys outside the 3D track', () => {
     release();
     key(document.body, { key: 'PageDown' });
     expect(scrolled).toEqual([]);
+  });
+});
+
+describe('one reading of a key for the scroll and the chapter request', () => {
+  afterEach(() => resetScrollGesture());
+
+  it.each([
+    [' ', {}, 700, 'down'], [' ', { shiftKey: true }, -700, 'up'], ['PageUp', {}, -700, 'up'],
+    ['ArrowDown', {}, 40, 'down'], ['End', { ctrlKey: true }, 10_000 - 800 - 1200, 'down'],
+  ] as const)('scrolls and requests the same way for %s %o', (name, modifiers, distance, direction) => {
+    // Round 8 (TECH-013): Shift+Space scrolled the track up while requesting the next chapter.
+    const requests: string[] = [];
+    const off = subscribeScrollGesture(request => requests.push(request));
+    key(document.body, { key: name, ...modifiers });
+    off();
+    expect(scrolled).toEqual([distance]);
+    expect(requests).toEqual([direction]);
+  });
+
+  it.each([
+    ['Shift+ArrowDown', { key: 'ArrowDown', shiftKey: true }, 'body'],
+    ['Control+PageDown', { key: 'PageDown', ctrlKey: true }, 'body'],
+    ['Space on a button', { key: ' ' }, 'scene'],
+    ['ArrowDown in a field', { key: 'ArrowDown' }, 'field'],
+    ['ArrowDown on a tab', { key: 'ArrowDown' }, 'tab'],
+  ] as const)('neither scrolls nor requests for %s', (_label, init, id) => {
+    const requests: string[] = [];
+    const off = subscribeScrollGesture(request => requests.push(request));
+    key(id === 'body' ? document.body : document.getElementById(id)!, init);
+    off();
+    expect(scrolled).toEqual([]);
+    expect(requests).toEqual([]);
   });
 });

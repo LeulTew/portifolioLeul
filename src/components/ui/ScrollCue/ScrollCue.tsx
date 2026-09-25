@@ -62,6 +62,8 @@ export interface ScrollCueProps {
   onWheel?: (event: WheelEvent<HTMLButtonElement>) => void;
   className?: string;
   label?: string;
+  /** The section a cue portalled out of it belongs to, for keyboard order. */
+  sectionOwner?: string;
 }
 
 export function ScrollCue({
@@ -74,6 +76,7 @@ export function ScrollCue({
   onWheel,
   className,
   label = 'Scroll to the next section',
+  sectionOwner,
 }: ScrollCueProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const drawn = clamp01(progress);
@@ -111,6 +114,7 @@ export function ScrollCue({
       data-progress={drawn.toFixed(3)}
       data-drawing={drawn > 0}
       data-presented={available}
+      data-section-owner={sectionOwner}
       tabIndex={available ? 0 : -1}
       onClick={available ? onActivate : undefined}
       onWheel={onWheel}

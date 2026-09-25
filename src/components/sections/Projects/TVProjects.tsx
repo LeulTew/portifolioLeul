@@ -196,6 +196,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     <div
       ref={stage} className={styles.stage} data-staged={staged} data-phase={phase}
       data-testid="projects-stage" data-visible={staged && visible ? 'true' : undefined}
+      data-section-owner="projects"
       role={staged ? 'region' : undefined} aria-label={staged ? 'Project reader' : undefined}
       aria-hidden={staged && !visible ? true : undefined} onWheel={forwardWheel}
     >
@@ -327,7 +328,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                     ? details ? 'Scroll to read. Preview returns to browsing.' : 'Scroll on the screen to browse. Scroll outside to continue.'
                     : 'The work is on the screen'}
         </p>}
-        <ControlButton variant="primary" data-tv-scene-next="" onClick={event => {
+        {/* The landing while the screen is still dark, after the screen itself. */}
+        <ControlButton variant="primary" data-tv-scene-next="" data-section-landing="projects" onClick={event => {
           sceneControl.current = { element: event.currentTarget, enterScreen: phase === 'framed' };
           step(1);
         }}

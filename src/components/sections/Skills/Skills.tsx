@@ -89,6 +89,7 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
       data-phase={phase}
       data-active-skill={active}
       data-testid="skills-stage"
+      data-section-owner="skills"
       role={staged ? 'region' : undefined}
       aria-labelledby={staged ? 'skills-heading' : undefined}
       aria-hidden={staged && !visible ? true : undefined}
@@ -96,7 +97,8 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
     >
       <div className={styles.content}>
         <div className={styles.header} data-skill-chrome="">
-          <h2 id="skills-heading" className={styles.sectionTitle}>Skills</h2>
+          <h2 id="skills-heading" className={styles.sectionTitle} tabIndex={-1}
+            data-section-landing="skills" data-tab-entry="">Skills</h2>
           <p className={styles.intro}>The tools behind the work.</p>
         </div>
         <div className={styles.chapters}>
@@ -178,8 +180,6 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
       className={styles.skills}
       data-staged={staged}
       aria-label="Skills"
-      tabIndex={-1}
-      data-section-landing="skills"
       style={{ '--skill-count': SKILL_CHAPTERS.length } as CSSProperties}
     >
       {staged ? createPortal(stage, document.body) : stage}

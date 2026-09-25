@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { landSectionFocus } from './sectionLanding';
+import { cancelSectionLanding, landSectionFocus } from './sectionLanding';
 
 const frames: FrameRequestCallback[] = [];
 const flush = (count = 1) => {
@@ -17,6 +17,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
 });
 afterEach(() => {
+  cancelSectionLanding();
   vi.restoreAllMocks();
   document.body.innerHTML = '';
 });
@@ -82,5 +83,30 @@ describe('landing focus after navigation', () => {
     landSectionFocus('skills');
     expect(frames).toHaveLength(0);
     expect(byId('projects-link')).toHaveFocus();
+  });
+
+  it('takes the first candidate that can take focus: the screen, else its scene control', () => {
+    const control = document.createElement('button');
+    control.id = 'scene-next';
+    control.dataset.sectionLanding = 'projects';
+    control.disabled = true;
+    document.body.append(control);
+    landSectionFocus('projects');
+    expect(document.activeElement).not.toBe(control);
+    control.disabled = false;
+    flush();
+    expect(control).toHaveFocus();
+    // Once the screen can be read, it is preferred.
+    byId('stage').removeAttribute('inert');
+    landSectionFocus('projects');
+    expect(byId('reader')).toHaveFocus();
+  });
+
+  it('abandons a waiting landing on request', () => {
+    landSectionFocus('projects');
+    cancelSectionLanding();
+    byId('stage').removeAttribute('inert');
+    flush(5);
+    expect(byId('reader')).not.toHaveFocus();
   });
 });

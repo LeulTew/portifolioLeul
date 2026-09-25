@@ -11,6 +11,7 @@ import { cachedElement, writeAttribute, writeStyleProperty } from '@/lib/dom/cac
 import { useSectionFocusEffect } from '@/lib/scroll/useSectionFocus';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
+import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import {
   HERO_SCREENS,
@@ -820,9 +821,11 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
     ['--exit-at' as string]: `${innerExitCueAt(HERO_SEQUENCE, id)}`,
   });
 
+  // In-page navigation moves the focus starting point with the reader, as a link would.
   const scrollToAbout = () => {
     if (onNavigate) {
       onNavigate('about');
+      landSectionFocus('about');
       return;
     }
     const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -830,11 +833,13 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       behavior: prefersReduced ? 'auto' : 'smooth', 
       block: 'start' 
     });
+    landSectionFocus('about');
   };
 
   const scrollToContact = () => {
     if (onNavigate) {
       onNavigate('contact');
+      landSectionFocus('contact');
       return;
     }
     const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -842,6 +847,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       behavior: prefersReduced ? 'auto' : 'smooth', 
       block: 'start' 
     });
+    landSectionFocus('contact');
   };
 
   return (
@@ -909,6 +915,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
             data-cue-layer="title"
             tabIndex={-1}
             data-section-landing="home"
+            data-tab-entry=""
           >
             <LiquidFillText
               key={reentryCount > 0 ? `reentry-leul-${reentryCount}` : 'first-load-leul'}
@@ -1062,6 +1069,7 @@ function HeroScrollCue({ onActivate, run, presented, onFocusRelease, onDrawCompl
       onFocusRelease={onFocusRelease}
       onWheel={forwardWheel}
       label="Scroll to about section"
+      sectionOwner="home"
     />
   );
 
