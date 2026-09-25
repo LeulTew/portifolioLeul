@@ -1,11 +1,14 @@
 import { ArrowUpRight } from 'lucide-react';
-import type { Project, ProjectEvidence as Evidence } from '@/data/projects';
+import { IMAGE_KIND_LABEL, type Project, type ProjectEvidence as Evidence } from '@/data/projects';
 import styles from './ProjectEvidence.module.css';
 
-export function ProjectVisualNote({ project }: { project: Pick<Project, 'imageNote'> }) {
-  return project.imageNote
-    ? <p className={styles.visualNote} data-project-visual-note="">{project.imageNote}</p>
-    : null;
+/** What the preview image is -- for every project -- and anything more it needs said. */
+export function ProjectVisualNote({ project }: { project: Pick<Project, 'imageKind' | 'imageNote'> }) {
+  return (
+    <p className={styles.visualNote} data-project-visual-note="" data-image-kind={project.imageKind}>
+      {IMAGE_KIND_LABEL[project.imageKind]}{project.imageNote ? ` · ${project.imageNote}` : ''}
+    </p>
+  );
 }
 
 export function ProjectEvidence({ evidence }: { evidence: Evidence }) {

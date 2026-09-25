@@ -222,17 +222,20 @@
   }
 }
 
-.image:has([data-project-visual-note]) {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 6px;
-  overflow: visible;
-  background: transparent;
-}
-
+/* What the image is, set on the image itself: the same small plate on every project. */
 .image [data-project-visual-note] {
-  font-size: clamp(14px, 1.7cqw, 20px);
-  line-height: 1.35;
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 3px 8px;
+  font-size: clamp(12px, 1.35cqw, 15px);
+  line-height: 1.3;
+  color: var(--project-ink);
+  background: color-mix(in srgb, var(--project-paper) 90%, transparent);
+  box-shadow: 0 0 0 1px var(--project-rule);
+  pointer-events: none;
 }
 
 .copy {
@@ -557,7 +560,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
   /* The copy keeps the row's height, and so its own scroll. */
-  .image:not(:has([data-project-visual-note])) {
+  .image {
     align-self: start;
     aspect-ratio: 16 / 10;
   }
