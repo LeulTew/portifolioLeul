@@ -16,6 +16,8 @@ export type FocusRailItem = {
   demoUrl?: string;
   repoUrl?: string;
   meta?: string;
+  /** Consecutive items with the same group are listed under it in the picker. */
+  group?: string;
 };
 
 interface FocusRailProps {
@@ -200,6 +202,10 @@ export function FocusRail({
         className
       )}
       data-testid="carousel"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Project carousel"
+      aria-keyshortcuts="ArrowLeft ArrowRight"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       tabIndex={0}

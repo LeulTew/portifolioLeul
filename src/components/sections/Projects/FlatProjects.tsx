@@ -96,6 +96,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
     demoUrl: project.demoUrl,
     repoUrl: project.githubUrl,
     meta: [projectTier(project), ...project.categories].join(' • '),
+    group: projectTier(project),
       })),
     [filteredProjects]
   );

@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { IMAGE_KIND_LABEL, projectsData } from '@/data/projects';
+import { IMAGE_KIND_LABEL, projectTier, projectsData } from '@/data/projects';
 import type { FocusRailItem } from '@/components/ui/focus-rail';
 import { FlatProjects } from './FlatProjects';
 
 vi.mock('@/components/ui/focus-rail', () => ({
   FocusRail: ({ items }: { items: FocusRailItem[] }) => <div>
-    {items.map(item => <article key={item.id} aria-label={item.title}>{item.description}</article>)}
+    {items.map(item => <article key={item.id} aria-label={item.title} data-group={item.group}>{item.description}</article>)}
   </div>,
 }));
 vi.mock('@/components/ui/StripReveal', () => ({
@@ -29,6 +29,8 @@ describe('flat project evidence parity', () => {
     for (const [index, project] of projectsData.entries()) {
       const article = articles[index];
       expect(article).toHaveAccessibleName(project.title);
+      // Round 11 (D-BRAND-002): the flat picker groups Selected work and the Archive too.
+      expect(article).toHaveAttribute('data-group', projectTier(project));
       expect(article).toHaveTextContent(IMAGE_KIND_LABEL[project.imageKind]);
       if (project.imageNote) expect(article).toHaveTextContent(project.imageNote);
       for (const line of (project.longDescription || project.description).split('\n').filter(line => line.trim())) {

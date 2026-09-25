@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { FocusRail, type FocusRailItem } from "./focus-rail";
 
 const mockItems: FocusRailItem[] = [
@@ -63,6 +65,18 @@ describe("FocusRail Component", () => {
 
     fireEvent.keyDown(carousel, { key: "ArrowLeft" });
     expect(screen.getByRole("heading", { level: 2, name: "Project Alpha" })).toBeInTheDocument();
+  });
+
+  it("names its keyboard stop and shows focus on it", () => {
+    // Round 11 (D-A11Y-005): the arrow-key rail was an unnamed Tab stop with no visible focus.
+    render(<FocusRail items={mockItems} />);
+    const carousel = screen.getByRole("region", { name: "Project carousel" });
+    expect(carousel).toBe(screen.getByTestId("carousel"));
+    expect(carousel).toHaveAttribute("tabindex", "0");
+    expect(carousel).toHaveAttribute("aria-roledescription", "carousel");
+    expect(carousel).toHaveAttribute("aria-keyshortcuts", "ArrowLeft ArrowRight");
+    const css = readFileSync(resolve(__dirname, "FocusRail.module.css"), "utf8");
+    expect(css).toMatch(/\.rail:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--rail-accent\)/);
   });
 
   it("renders nothing for an empty list without computing an invalid index", () => {
