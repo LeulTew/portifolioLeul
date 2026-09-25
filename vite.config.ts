@@ -43,16 +43,17 @@ export default defineConfig(({ isPreview }) => ({
           if (id.includes('node_modules/three/')) {
             return 'three-core';
           }
-          // React must be co-located with R3F — R3F calls useLayoutEffect
-          // at module init time, so React must be in the same chunk to
-          // guarantee it is available before R3F executes.
+          // React has its own chunk, which the DOM page and R3F both import, so a
+          // page without WebGL loads React without the renderer (round 10,
+          // TECH-029). ES module order still evaluates React before R3F.
           if (
-            id.includes('node_modules/@react-three/fiber/') ||
-            id.includes('node_modules/@react-three/drei/') ||
             id.includes('node_modules/react/') ||
             id.includes('node_modules/react-dom/') ||
             id.includes('node_modules/scheduler/')
           ) {
+            return 'react-vendor';
+          }
+          if (id.includes('node_modules/@react-three/fiber/') || id.includes('node_modules/@react-three/drei/')) {
             return 'r3f-vendor';
           }
           if (id.includes('node_modules/framer-motion/') || id.includes('node_modules/gsap/') || id.includes('node_modules/animejs/')) {

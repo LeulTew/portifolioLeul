@@ -1,4 +1,4 @@
-import { contactReveal } from '@/lib/camera/contactFlight';
+import { contactReveal } from '@/lib/camera/contactTiming';
 import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
 import { getContactView } from './contactScene';
 

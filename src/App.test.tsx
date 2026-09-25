@@ -221,6 +221,14 @@ vi.mock("./components/ParticleBackground", () => ({
   default: () => <div data-testid="particle-background" />,
 }));
 
+// The spatial stage is a lazy module in the page. Here it is handed over already
+// resolved, through a thenable React.lazy reads at once, so each render is synchronous.
+vi.mock("./components/3d/spatialStageModule", async () => {
+  const stage = await vi.importActual<typeof import("./components/3d/SpatialStage")>("./components/3d/SpatialStage");
+  const resolved = { then: (onFulfilled: (module: typeof stage) => unknown) => onFulfilled(stage) };
+  return { loadSpatialStage: () => resolved };
+});
+
 vi.mock("./components/sections/Home/Home", () => ({
   Home: ({ introReady }: { introReady?: boolean }) =>
     <div data-testid="home-section" data-intro-ready={introReady}>Home Section</div>,
@@ -616,6 +624,55 @@ describe("App scroll position across a track resize", () => {
 
   const pagesOf = () =>
     Number(screen.getByTestId("scroll-controls").getAttribute("data-pages"));
+
+  describe("a navbar choice made while the track rebuilds", () => {
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    /** A settled page, then a resize whose rebuild is still to land. */
+    const resizing = () => {
+      renderApp();
+      for (const [name, top] of [["skills", 4000], ["contact", 7000]] as const) {
+        const element = screen.getByTestId(`${name}-section`);
+        element.id = name;
+        Object.defineProperty(element, "offsetTop", { configurable: true, value: top });
+      }
+      act(() => runFrames(4));
+      act(() => {
+        contentHeight = 11000;
+        window.dispatchEvent(new Event("resize"));
+      });
+    };
+
+    it("is taken again once the new geometry is in place", () => {
+      // Round 10 (D-NAV-001): the pre-resize offset was restored over the choice.
+      resizing();
+      const calls: string[] = [];
+      const stop = subscribeSectionNavigation(id => calls.push(id));
+      try {
+        fireEvent.click(screen.getByRole("button", { name: "Skills" }));
+        act(() => runFrames(1));
+        act(() => vi.advanceTimersByTime(1));
+        expect(calls).toEqual(["skills", "skills"]);
+        expect(mockScroll.offset).toBeCloseTo((4000 - 80) / 10000);
+      } finally { stop(); }
+    });
+
+    it("never lands over a newer choice made before it replays", () => {
+      // Round 11 (TECH-032): the queued replay of Skills ran after a later Contact click.
+      resizing();
+      const calls: string[] = [];
+      const stop = subscribeSectionNavigation(id => calls.push(id));
+      try {
+        fireEvent.click(screen.getByRole("button", { name: "Skills" }));
+        act(() => runFrames(1));
+        fireEvent.click(screen.getByRole("button", { name: "Contact" }));
+        act(() => vi.advanceTimersByTime(1));
+        expect(calls.at(-1)).toBe("contact");
+        expect(mockScroll.offset).toBeCloseTo((7000 - 80) / 10000);
+      } finally { stop(); }
+    });
+  });
 
   it("settles navbar intent and physical/damped position together without traversing intermediate sections", () => {
     renderApp();

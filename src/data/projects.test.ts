@@ -124,7 +124,7 @@ describe("projectsData", () => {
   it("pins each implementation claim to inspectable source, not a moving branch", () => {
     const decisions = projectsData.flatMap(project => project.evidence?.decision
       ? [project.evidence.decision] : []);
-    expect(decisions).toHaveLength(4);
+    expect(decisions).toHaveLength(3);
     for (const decision of decisions) {
       expect(decision.summary).toBeTruthy();
       expect(decision.sourceLabel).toBeTruthy();
@@ -135,6 +135,15 @@ describe("projectsData", () => {
     }
   });
 
+  it("links only source a visitor can open", () => {
+    // Round 11: six repositories are private, so their Source links and ProtoChem's source pin were 404s.
+    const privateRepositories = ["chem-hands-3d", "AgendaFlow-AI", "Samadhi", "bible-learn-webapp", "system-design-guide-blog", "ArchGuide"];
+    for (const project of projectsData) {
+      const links = [project.githubUrl, project.evidence?.decision?.sourceUrl].filter(Boolean).join(" ");
+      for (const repository of privateRepositories) expect(links, project.title).not.toContain(`/LeulTew/${repository}`);
+    }
+    expect(projectsData.find(project => project.title === "ProtoChem 3D")!.evidence?.sourceNote).toMatch(/private/);
+  });
   it("does not invent public source evidence for the sign-in-only ledger", () => {
     const mizan = projectsData.find(project => project.title === "Mizan")!;
     expect(mizan.githubUrl).toBe("");

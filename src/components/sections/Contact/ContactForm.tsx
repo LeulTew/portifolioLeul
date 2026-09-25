@@ -61,9 +61,11 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
     }
   }, [accepted, retired, submitStatus, isSubmitting]);
 
-  // A failed send shows its notice and the draft link whole, not cut off by the window's edge.
+  // A failed send shows its notice and the draft link whole, not cut off by the window's edge --
+  // while the visitor is still with the form: a late answer never pulls them back (TECH-031).
   useEffect(() => {
-    if (submitStatus === 'error' && !isSubmitting && errorNotice.current) requestReveal(errorNotice.current);
+    if (submitStatus !== 'error' || isSubmitting || !errorNotice.current) return;
+    if (stage.current?.contains(document.activeElement)) requestReveal(errorNotice.current);
   }, [submitStatus, submitError, isSubmitting]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {

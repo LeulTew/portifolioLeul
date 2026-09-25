@@ -4,14 +4,11 @@ import { getContactView } from '@/lib/contact/contactScene';
 import { getIslandReadiness, getIslandSecret } from '@/lib/scene/islandSecret';
 import { isWorldOccluded } from '@/lib/render/frameGate';
 import { TV_SCREEN_CENTER, TV_SCREEN_ORIENTATION, TV_SCREEN_WORLD, TV_SCREEN_HEIGHT } from '@/lib/projects/tvScreen';
-import { TV_CONTROLS, TV_CONTROL_IDS, type TVControlId } from './tvHardware';
+import { TV_CONTROLS, TV_CONTROL_IDS } from './tvHardware';
 import { getTVState, setTVExposure } from './tvState';
+import { tvTargets } from './tvControlTargets';
 
-let targets: Record<TVControlId, HTMLButtonElement | null> | null = null;
-export function registerTVTargets(elements: NonNullable<typeof targets>): () => void {
-  targets = elements;
-  return () => { if (targets === elements) targets = null; };
-}
+export { registerTVTargets } from './tvControlTargets';
 
 const screenNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(TV_SCREEN_ORIENTATION);
 const STABLE = new Set(['outside', 'revealed', 'framed', 'reading']);
@@ -75,6 +72,7 @@ export class TVControlProjection {
       this.centers[2] - this.centers[0] >= (this.widths[0] + this.widths[1]) / 2 + 2 &&
       this.centers[4] - this.centers[2] >= (this.widths[1] + this.widths[2]) / 2 + 2;
     const layout = STABLE.has(tv.phase) ? allFit ? 'all' : 'power' : 'hidden';
+    const targets = tvTargets();
     if (targets) {
       for (let i = 0; i < TV_CONTROL_IDS.length; i++) {
         const target = targets[TV_CONTROL_IDS[i]];

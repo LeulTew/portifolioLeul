@@ -99,7 +99,7 @@ const projectRecords: Project[] = [
     tech: "React, Vite, TypeScript, Tailwind CSS",
     image: "/projects/samadhi.webp",
     imageKind: "interface",
-    githubUrl: "https://github.com/LeulTew/Samadhi",
+    githubUrl: "",
     demoUrl: "https://samadhi-one.vercel.app",
     categories: ["Web Development"]
   },
@@ -111,7 +111,7 @@ const projectRecords: Project[] = [
     tech: "Next.js, React, TypeScript, Tailwind CSS, Google Gemini",
     image: "/projects/bible-learn.webp",
     imageKind: "interface",
-    githubUrl: "https://github.com/LeulTew/bible-learn-webapp",
+    githubUrl: "",
     demoUrl: "https://bible-learn-webapp.vercel.app",
     categories: ["Web Development", "AI/DataScience"]
   },
@@ -123,17 +123,13 @@ const projectRecords: Project[] = [
     tech: "React, TypeScript, Three.js, React Three Fiber, MediaPipe",
     image: "/projects/chem-hands.webp",
     imageKind: "interface",
-    githubUrl: "https://github.com/LeulTew/chem-hands-3d",
+    githubUrl: "",
     demoUrl: "https://chem-hands-3d.vercel.app",
     categories: ["Web Development", "Graphics & Algorithms"],
     evidence: {
       inspect: "Choose a molecule and open its element legend. With camera access, move both hands apart or together to change the view.",
       access: "Camera access is needed for hand tracking.",
-      decision: {
-        summary: "Two-hand distance controls zoom. Small changes are ignored and zoom is clamped between 0.5× and 5×, keeping the camera within a defined range.",
-        sourceLabel: "Gesture handling source",
-        sourceUrl: "https://github.com/LeulTew/chem-hands-3d/blob/447802a3a0a976e9541c93a4a7b2e216b1fb6edb/src/App.tsx#L22-L35",
-      },
+      sourceNote: "The implementation repository is private, so no source is linked; this describes the live demo only.",
     }
   },
   {
@@ -168,7 +164,7 @@ const projectRecords: Project[] = [
     tech: "REACT, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI, LUCIDE REACT",
     image: "/projects/agenda-flow.webp",
     imageKind: "interface",
-    githubUrl: "https://github.com/LeulTew/AgendaFlow-AI",
+    githubUrl: "",
     demoUrl: "https://agenda-flow-ai.vercel.app",
     categories: ["AI/DataScience", "Web Development"]
   },
@@ -192,7 +188,7 @@ const projectRecords: Project[] = [
     tech: "React, TypeScript, Tailwind CSS",
     image: "/projects/system-design.webp",
     imageKind: "interface",
-    githubUrl: "https://github.com/LeulTew/system-design-guide-blog",
+    githubUrl: "",
     demoUrl: "https://system-design-guide-blog.vercel.app/",
     categories: ["Web Development"]
   },
@@ -314,7 +310,7 @@ const projectRecords: Project[] = [
     tech: "React, TypeScript, Tailwind CSS",
     image: "/projects/arch-guide.webp",
     imageKind: "interface",
-    githubUrl: "https://github.com/LeulTew/ArchGuide",
+    githubUrl: "",
     demoUrl: "https://arch-guide-one.vercel.app",
     categories: ["Web Development", "Desktop & Games"]
   },

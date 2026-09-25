@@ -78,14 +78,14 @@ describe('the journey a sample must have travelled', () => {
     expect(failures).toContain('About never reached its statements beat (saw nothing)');
     expect(failures).toContain('Education settled on no record, not 0 > 1 > 2');
     expect(failures).toContain('Skills read no chapter, not 0 > 1 > 2 > 3 > 4 > 5');
-    expect(failures).toContain('the TV never reached its reader');
+    expect(failures).toContain('the TV never reached its reader on the way from Skills to Contact');
   });
 
   it('rejects one that stops short of Contact, or ends anywhere else', () => {
     const short = completeJourney().slice(0, -1);
     expect(check(short)).toEqual(['the journey never reached contact (passed home > about > skills > projects)']);
     const bounced = [...completeJourney(), at('journey', 'projects', { tv: 'reading' })];
-    expect(check(bounced)).toEqual(['the journey ended on projects, not Contact']);
+    expect(check(bounced)).toEqual(['the journey went back from contact to projects', 'the journey ended on projects, not Contact']);
   });
 
   it('rejects one that passed through About without its green rise or Education', () => {
@@ -119,10 +119,20 @@ describe('the journey a sample must have travelled', () => {
       .toEqual(['Skills read 0 > 2 > 1 > 3 > 4 > 5, not 0 > 1 > 2 > 3 > 4 > 5']);
     expect(check(completeJourney(['0', '1', '0', '1', '2', '3', '4', '5']))).toHaveLength(1);
     const dark = completeJourney().map(checkpoint => (checkpoint.tv === 'reading' ? { ...checkpoint, tv: 'framed' } : checkpoint));
-    expect(check(dark)).toEqual(['the TV never reached its reader']);
+    expect(check(dark)).toEqual(['the TV never reached its reader on the way from Skills to Contact']);
     expect(check(completeJourney(), 0)).toContain('the page shows no Skills chapters');
   });
 
+  it('rejects one that doubles back, or reads the TV anywhere but on its own leg', () => {
+    // Round 11 (TECH-033): an About excursion after Skills, and a TV receipt at Home, both passed.
+    const excursion = completeJourney();
+    const leaving = excursion.findIndex(checkpoint => checkpoint.skills === 'leaving');
+    excursion.splice(leaving, 0, at('journey', 'about', { about: 'green' }), at('journey', 'skills', { skills: 'leaving' }));
+    expect(check(excursion)).toEqual(['the journey went back from skills to about']);
+    const misplaced = completeJourney().map(checkpoint => (checkpoint.tv === 'reading' ? { ...checkpoint, tv: 'framed' } : checkpoint));
+    misplaced.splice(1, 0, at('journey', 'home', { tv: 'reading' }));
+    expect(check(misplaced)).toEqual(['the TV never reached its reader on the way from Skills to Contact']);
+  });
   it('counts only what happened while the journey was measured', () => {
     const outside = completeJourney().map(checkpoint => ({ ...checkpoint, phase: 'settle' as const }));
     expect(check(outside)[0]).toBe('the journey never reached home (passed nothing)');

@@ -3,12 +3,9 @@ import { writeStyleProperty } from '@/lib/dom/cachedElement';
 import { isIslandExposed } from '@/lib/scene/islandVisibility';
 import { getIslandSecret } from '@/lib/scene/islandSecret';
 import { getPrismExperiment, setPrismAvailable } from './prismExperiment';
+import { prismTarget } from './prismTarget';
 
-let target: HTMLButtonElement | null = null;
-export function registerPrismTarget(element: HTMLButtonElement): () => void {
-  target = element;
-  return () => { if (target === element) target = null; };
-}
+export { registerPrismTarget } from './prismTarget';
 
 export class PrismProjection {
   private point = new THREE.Vector3();
@@ -38,6 +35,7 @@ export class PrismProjection {
     left = Math.max(8, left - 12); right = Math.min(width - 8, right + 12);
     const y = Math.max(84, top - 4), end = Math.min(height - 88, bottom + 24);
     const visible = x > 24 && x < width - 24 && end - y > 48 && right - left > 16;
+    const target = prismTarget();
     if (visible && target) {
       const targetWidth = Math.max(48, right - left);
       writeStyleProperty(target, 'transform', `translate3d(${left.toFixed(1)}px, ${y.toFixed(1)}px, 0)`);

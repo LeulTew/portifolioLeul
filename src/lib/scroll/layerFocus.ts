@@ -142,7 +142,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange);
   };
 
-  const reveal = (element: Element | null) => {
+  /** `inPlace`: only within the chapter on screen; a chapter the reader left is never brought back. */
+  const reveal = (element: Element | null, inPlace = false) => {
     const content = main();
     if (!(element instanceof HTMLElement) || !content || element === content || !content.contains(element)) return;
     const height = track.clientHeight || view.innerHeight;
@@ -151,8 +152,10 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     let section: HTMLElement = element;
     while (section.parentElement && section.parentElement !== content) section = section.parentElement;
     const area = section.getBoundingClientRect();
+    const offscreen = area.bottom <= 0 || area.top >= height;
+    if (inPlace && (offscreen || content.closest('[inert]'))) return;
     view.cancelAnimationFrame(frame);
-    if (section.id && (area.bottom <= 0 || area.top >= height)) {
+    if (section.id && offscreen) {
       navigate(section.id);
       frame = view.requestAnimationFrame(() => { frame = view.requestAnimationFrame(() => nudge(element)); });
     } else nudge(element);
@@ -204,7 +207,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     if (!(field instanceof HTMLElement)) return;
     view.requestAnimationFrame(() => { if (root.activeElement === field) reveal(field); });
   };
-  const requested = (event: Event) => reveal(event.target instanceof Element ? event.target : null);
+  const requested = (event: Event) => reveal(event.target instanceof Element ? event.target : null, true);
 
   track.addEventListener('scroll', hold, { capture: true, passive: true });
   root.addEventListener('keydown', tab);
@@ -397,10 +400,15 @@ export function installDocumentFocus({ main, navigate }: {
       if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
     });
   };
-  // Requested feedback is brought in whole, then clear of the bar if that put it under it.
+  // Requested feedback is brought in whole, then clear of the bar if that put it under it --
+  // but only in the chapter on screen: a late answer never pulls the reader back to its section.
   const requested = (event: Event) => {
     const element = event.target;
-    if (!(element instanceof HTMLElement) || !main()?.contains(element)) return;
+    const content = main();
+    if (!(element instanceof HTMLElement) || !content?.contains(element)) return;
+    const section = sectionOf(content, element);
+    const area = section?.getBoundingClientRect();
+    if (!area || area.bottom <= 0 || area.top >= view.innerHeight) return;
     element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const hidden = chromeClearance() - revealBox(element).top;
     if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });

@@ -12,9 +12,7 @@ export const TV_SCREEN_PITCH = 0.08;
 export const TV_SCREEN_WIDTH = CRT_HOUSING_APERTURE.width;
 export const TV_SCREEN_HEIGHT = CRT_HOUSING_APERTURE.height;
 export const TV_SCREEN_ASPECT = TV_SCREEN_WIDTH / TV_SCREEN_HEIGHT;
-export const PROJECTS_TURN_MS = 2200;
-export const PROJECTS_APPROACH_MS = 1400;
-export const PROJECTS_STAGE_QUERY = '(min-width: 900px) and (min-height: 560px)';
+export { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from './projectsTiming';
 
 /** Nav and category tabs above the cabinet, and the corner scene controls' band below it. */
 const CHROME_TOP = 134;
