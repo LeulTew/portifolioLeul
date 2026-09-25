@@ -13,6 +13,7 @@ import {
 } from '@/lib/projects/projectsScene';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { landSectionFocus } from '@/lib/scroll/sectionLanding';
+import { claimView } from '@/lib/scroll/viewOwner';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { createSkillsTimeline } from './skillsTimeline';
 import { SKILLS_STAGE_QUERY } from './skillsData';
@@ -62,7 +63,7 @@ export function useSkillsPlayback(
 
     const initialRect = rail.getBoundingClientRect();
     const main = rail.closest('main');
-    const previouslyInert = main?.hasAttribute('inert') ?? false;
+    let viewClaim: (() => void) | null = null;
     // As in Education: apply runs on every scroll publication, so the rail's
     // place comes from the layer's transform and sizes only from layout changes.
     const position = createTranslatedPositionReader(rail, cachedElement(() => translatedLayerOf(rail)));
@@ -117,13 +118,19 @@ export function useSkillsPlayback(
       state = next;
       setPhase(next);
       setReady(next === 'reading');
+      // A landing waiting on Skills does not age while its stage is still coming in.
+      writeAttribute(panel, 'data-arriving', next === 'entering' ? 'true' : null);
     };
     const show = (value: boolean) => {
       shown = value;
       setVisible(value);
       writeAttribute(panel, 'data-visible', value ? 'true' : null);
       writeAttribute(rail, 'data-skills-active', value ? 'true' : null);
-      if (main && !previouslyInert) writeAttribute(main, 'inert', value ? '' : null);
+      if (value) viewClaim ??= claimView('skills', main);
+      else {
+        viewClaim?.();
+        viewClaim = null;
+      }
       if (!value) cover(false);
     };
     const wake = () => {
@@ -437,7 +444,9 @@ export function useSkillsPlayback(
       document.removeEventListener('visibilitychange', visibility);
       writeAttribute(rail, 'data-skills-active', null);
       writeAttribute(rail, 'data-skills-released', null);
-      if (main && !previouslyInert) writeAttribute(main, 'inert', null);
+      writeAttribute(panel, 'data-arriving', null);
+      viewClaim?.();
+      viewClaim = null;
       cover(false);
       finishProjectsSkillsReturn();
       context.revert();

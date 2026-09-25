@@ -338,6 +338,20 @@ This exception must never be inferred from scroll position, an automatic
 chapter landing, wheel, touch, or scroll keys. Natural forward/reverse scrolling
 still plays every required movement and must have separate regressions.
 
+**One view owner (2026-09-25):** a chapter whose portalled reader takes the
+window (Skills' stage, the TV) holds a `claimView` from
+`src/lib/scroll/viewOwner.ts` for exactly as long as it shows, and releases it
+with its cover. The story's `main` is inert while any claim stands; the newest
+claim names the chapter on screen for Tab order. Never set or clear `main`'s
+`inert` directly, and never infer ownership from whether `main` happened to be
+inert when an effect started: a handoff or a motion-preference remount then
+reopens the story under the TV or leaves Skills unclaimed. A chapter's reader
+marks `data-arriving` while its entrance is still moving, so a navbar landing
+waiting on it does not age; landing waits age by capped visible frame time,
+never wall-clock time, and never through a hidden tab. A navbar choice made
+while the track is about to rebuild (a resize) is kept and taken again once the
+new geometry is in place, instead of restoring the pre-resize offset over it.
+
 ---
 
 ## 6. A movement is never skippable, and never plays to an empty room

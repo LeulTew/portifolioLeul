@@ -74,6 +74,30 @@ describe("projectsData", () => {
     }
   });
 
+  it("describes what each project's own source shows, without borrowed features or superlatives", () => {
+    // Round 10 audit: seven descriptions claimed features their repositories and demos do not have.
+    const byTitle = (title: string) => projectsData.find(project => project.title === title)!;
+    const copy = (title: string) => {
+      const project = byTitle(title);
+      return `${project.description} ${project.longDescription ?? ""} ${project.tech}`;
+    };
+    expect(copy("Dream Weaver")).not.toMatch(/gemini|interpret|psycholog/i);
+    expect(byTitle("Dream Weaver").categories).not.toContain("AI/DataScience");
+    expect(copy("Ethio Trading")).not.toMatch(/real-time|secure messaging|backend integration/i);
+    expect(copy("Elona Practice")).toMatch(/Chemistry of Natural Products/);
+    expect(copy("Bookbot")).toMatch(/word/i);
+    expect(copy("Bookbot")).not.toMatch(/book lists|reading workflows/i);
+    expect(copy("Amet AI")).not.toMatch(/semantic|any verse/i);
+    expect(copy("Spider Solitaire C#")).not.toMatch(/save\/load|scoring|modular/i);
+    expect(copy("Samadhi")).not.toMatch(/static-site|NEXT\.JS|MDX/i);
+    expect(copy("Car Rental Platform")).not.toMatch(/JWT/);
+    expect(copy("CS Exit Practice")).not.toMatch(/WebAssembly/);
+    for (const project of projectsData) {
+      expect(`${project.description} ${project.longDescription ?? ""}`, project.title)
+        .not.toMatch(/\b(definitive|next-gen|hyper-modern|mastering|world-class|cutting-edge)\b/i);
+    }
+  });
+
   it("adds inspection notes only to the researched projects", () => {
     expect(projectsData.filter(project => project.evidence).map(project => project.title))
       .toEqual(["Mizan", "Ignition", "ProtoChem 3D", "Amharic IR Improved", "Portfolio Leul"]);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LANDING_WAIT_MS, cancelSectionLanding, landSectionFocus } from './sectionLanding';
+import { LANDING_FRAME_CAP_MS, LANDING_WAIT_MS, cancelSectionLanding, landSectionFocus } from './sectionLanding';
 
 const frames: FrameRequestCallback[] = [];
 let clock = 0;
@@ -79,6 +79,41 @@ describe('landing focus after navigation', () => {
     expect(frames).toHaveLength(0);
     byId('stage').removeAttribute('inert');
     flush();
+    expect(byId('projects-link')).toHaveFocus();
+  });
+
+  it('ages only by visible frames: a hidden tab or a stalled frame counts as one capped frame', () => {
+    // Round 9 (TECH-026): a tab switch mid-turn, or a display painting every 150ms, outlived a wall clock.
+    let hidden = false;
+    vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden);
+    landSectionFocus('projects');
+    hidden = true;
+    flush(1, 8000);
+    hidden = false;
+    flush(46, 150);
+    expect(frames).toHaveLength(1);
+    byId('stage').removeAttribute('inert');
+    flush();
+    expect(byId('reader')).toHaveFocus();
+  });
+
+  it('does not age while its destination is still arriving, and lets go of an arrival that never ends', () => {
+    byId('stage').setAttribute('data-section-owner', 'projects');
+    byId('stage').setAttribute('data-arriving', 'true');
+    landSectionFocus('projects');
+    flush(Math.ceil((LANDING_WAIT_MS * 2) / 50), 50);
+    expect(frames).toHaveLength(1);
+    byId('stage').removeAttribute('data-arriving');
+    byId('stage').removeAttribute('inert');
+    flush();
+    expect(byId('reader')).toHaveFocus();
+
+    byId('projects-link').focus();
+    byId('stage').setAttribute('inert', '');
+    byId('stage').setAttribute('data-arriving', 'true');
+    landSectionFocus('projects');
+    flush(Math.ceil((LANDING_WAIT_MS * 4) / LANDING_FRAME_CAP_MS) + 1, LANDING_FRAME_CAP_MS);
+    expect(frames).toHaveLength(0);
     expect(byId('projects-link')).toHaveFocus();
   });
 

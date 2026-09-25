@@ -20,6 +20,7 @@ import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollConta
 import { claimScrollKeys } from '@/lib/scroll/keyboardScroll';
 import { scrollKeyIntent } from '@/lib/scroll/scrollKeys';
 import { landSectionFocus } from '@/lib/scroll/sectionLanding';
+import { claimView } from '@/lib/scroll/viewOwner';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
 import { PROJECTS_ENTRY_EDGE, projectsEntry, projectsStep } from './projectsTransitions';
@@ -36,6 +37,9 @@ interface Refs {
   stage: RefObject<HTMLDivElement>;
   surface: RefObject<HTMLDivElement>;
 }
+
+/** The movements that bring the reader in; a landing waiting on it does not age through them. */
+const ARRIVING: ReadonlySet<ProjectsPhase> = new Set(['withdrawing', 'turning', 'approaching']);
 
 function isContactEditingTarget(target: EventTarget | null): boolean {
   return target instanceof Element && !!target.closest(
@@ -98,7 +102,7 @@ export function useProjectsPlayback(
     let frame = 0;
     let lastTime = 0;
     let alive = true;
-    let ownedInert = false;
+    let viewClaim: (() => void) | null = null;
     let uncover: (() => void) | null = null;
     let contactComplete: (() => void) | null = null;
     let flight: {
@@ -111,13 +115,12 @@ export function useProjectsPlayback(
       setProjectsReading(next === 'reading');
       setTVProjectPhase(next);
       writeAttribute(panel, 'data-phase', next);
+      // A landing waiting on the TV does not age while the camera is still bringing it in.
+      writeAttribute(panel, 'data-arriving', ARRIVING.has(next) ? 'true' : null);
       setPhase(next);
     };
     const inert = () => {
-      if (main && !main.hasAttribute('inert')) {
-        main.setAttribute('inert', '');
-        ownedInert = true;
-      }
+      viewClaim ??= claimView('projects', main);
     };
     const show = () => {
       if (active) return;
@@ -148,8 +151,8 @@ export function useProjectsPlayback(
       if (!keepSky) releaseContactSky();
       writeAttribute(rail, 'data-projects-active', null);
       writeAttribute(panel, 'data-visible', null);
-      if (main && ownedInert) main.removeAttribute('inert');
-      ownedInert = false;
+      viewClaim?.();
+      viewClaim = null;
       writeAttribute(panel, 'data-contact-flight', null);
       writeStyleProperty(panel, '--contact-flight-progress', '');
       uncover?.();

@@ -195,6 +195,25 @@ describe('ContactForm', () => {
     expect(draft.searchParams.get('body')).toBe('Name: John Doe\nEmail: john@example.com\n\nHello world');
   });
 
+  it('asks the page to show a failed send notice and its draft link whole', async () => {
+    // Round 10 (D-CONTACT-001): at 900x560 the draft link arrived below the window.
+    const user = userEvent.setup({ delay: null });
+    const requests: EventTarget[] = [];
+    const listen = (event: Event) => requests.push(event.target!);
+    document.addEventListener('portfolio:reveal', listen, true);
+    try {
+      render(<ContactForm />);
+      await user.type(screen.getByLabelText(/name/i), 'John Doe');
+      await user.type(screen.getByLabelText(/email/i), 'john@example.com');
+      await user.type(screen.getByRole('textbox', { name: 'Message' }), 'Hello world');
+      await user.click(screen.getByRole('button', { name: /send message/i }));
+      await waitFor(() => expect(requests).toEqual([screen.getByRole('alert')]));
+      expect(screen.getByRole('alert')).toContainElement(screen.getByRole('link', { name: 'Open this draft in your email app' }));
+    } finally {
+      document.removeEventListener('portfolio:reveal', listen, true);
+    }
+  });
+
   it('shows field errors and clears them when the visitor corrects the draft', async () => {
     const user = userEvent.setup({ delay: null });
     render(<ContactForm />);

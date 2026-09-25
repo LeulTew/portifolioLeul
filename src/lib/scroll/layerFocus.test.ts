@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { observeChromeInset } from './chromeInset';
-import { installDocumentFocus, installLayerFocus, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
+import { installDocumentFocus, installLayerFocus, requestReveal, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
 import { cancelSectionLanding } from './sectionLanding';
+import { claimView } from './viewOwner';
 
 type Box = { top: number; bottom: number };
 const boxes = new Map<Element, Box>();
@@ -202,6 +203,15 @@ describe('keyboard focus in the scroll layer', () => {
     expect(byId('track').scrollTop).toBe(0);
   });
 
+  it('brings requested feedback that arrived below the fold into view', () => {
+    // Round 10 (D-CONTACT-001): a send error's draft link sat below the 900x560 window.
+    place('contact', 0, 1000); place('send', 740, 70);
+    requestReveal(byId('send'));
+    expect(navigate).not.toHaveBeenCalled();
+    // 810 - (800 - 96) = 106px, in track pixels.
+    expect(byId('track').scrollTop).toBeCloseTo((106 * 7200) / 6200, 5);
+  });
+
   it('scrolls a portalled stop into view within its own box, through the TV projection', () => {
     // Round 9 (TECH-020): a Source link below the TV copy's fold took focus without the box scrolling.
     const panel = byId('panel');
@@ -299,6 +309,7 @@ describe('keyboard focus in the scroll layer', () => {
 describe('Tab through the story, chapter by chapter', () => {
   let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
   let release: () => void;
+  let viewClaim: (() => void) | null = null;
 
   beforeEach(() => {
     document.body.innerHTML = `
@@ -326,6 +337,8 @@ describe('Tab through the story, chapter by chapter', () => {
   });
   afterEach(() => {
     release();
+    viewClaim?.();
+    viewClaim = null;
     cancelSectionLanding();
   });
 
@@ -339,10 +352,11 @@ describe('Tab through the story, chapter by chapter', () => {
     SECTIONS.forEach((id, index) => place(id, tops[index] - offset, HEIGHTS[index]));
     place('cta', 600 - offset); place('email', tops[4] + 200 - offset);
   }
-  /** Which chapter holds the view: its reader live, everything else inert or hidden. */
+  /** Which chapter holds the view: its reader live and claiming it, everything else inert or hidden. */
   function live(section: 'home' | 'skills' | 'projects' | 'contact') {
     view(section);
-    byId('main').toggleAttribute('inert', section === 'skills' || section === 'projects');
+    viewClaim?.();
+    viewClaim = section === 'skills' || section === 'projects' ? claimView(section, byId('main')) : null;
     if (section === 'skills') byId('skills-stage').removeAttribute('aria-hidden');
     else byId('skills-stage').setAttribute('aria-hidden', 'true');
     byId('stage').toggleAttribute('inert', section !== 'projects');
@@ -425,6 +439,22 @@ describe('Tab through the story, chapter by chapter', () => {
     },
   );
 
+  it('keeps the pinned order when Skills takes the view under a TV that then lets it go', () => {
+    // Round 9 (TECH-027): Skills remounted while the TV held the story, then the TV released it.
+    live('projects');
+    const skills = claimView('skills', byId('main'));
+    byId('skills-stage').removeAttribute('aria-hidden');
+    byId('stage').setAttribute('inert', '');
+    viewClaim?.();
+    viewClaim = skills;
+    expect(byId('main')).toHaveAttribute('inert');
+    view('contact');
+    flushFrames();
+    byId('skill-next').focus();
+    expect(tab().defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenLastCalledWith('projects');
+  });
+
   it('moves within the chapter in view without navigating, from the navbar too', () => {
     live('skills');
     byId('theme').focus();
@@ -432,7 +462,8 @@ describe('Tab through the story, chapter by chapter', () => {
     expect(navigate).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(byId('skill-next'));
     view('contact');
-    byId('main').removeAttribute('inert');
+    viewClaim?.();
+    viewClaim = null;
     byId('skills-stage').setAttribute('aria-hidden', 'true');
     byId('theme').focus();
     byId('cta').setAttribute('data-no-box', '');
@@ -552,6 +583,19 @@ describe('keyboard focus in the no-WebGL document', () => {
     // The label's top, 60, to below the bar and the ring's room, 82.
     expect(scrolled).toHaveBeenCalledExactlyOnceWith({ top: -22, behavior: 'auto' });
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows requested feedback whole, and clear of the bar', () => {
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    place('message', 40, 120);
+    requestReveal(byId('message'));
+    expect(revealed).toEqual([byId('message')]);
+    // Its top, 40, to below the bar and the ring's room, 82.
+    expect(scrolled).toHaveBeenCalledExactlyOnceWith({ top: -42, behavior: 'auto' });
   });
 
   it('stops listening once released', () => {

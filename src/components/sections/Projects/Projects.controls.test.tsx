@@ -38,9 +38,9 @@ describe('responsive project content selection', () => {
     act(() => {
       screen.getByRole('tab', { name: 'Mobile Apps' }).click();
       screen.getByRole('button', { name: 'Next project' }).click();
-      screen.getByRole('button', { name: 'Next project' }).click();
     });
-    expect(current()).toBe(mobile[2].id);
+    expect(mobile.length).toBeGreaterThan(1);
+    expect(current()).toBe(mobile[1].id);
   });
 
   it('isolates the whole expanded-details screen while keeping its explicit controls immediate', () => {
