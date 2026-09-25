@@ -12,6 +12,7 @@ import { useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
 import { registerTVReader, setTVPagingAvailable, useTVState } from '@/lib/tv/tvState';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
+import { useOverflowHint } from '@/lib/dom/overflowHint';
 import { projectsData, type Project } from '@/data/projects';
 import { useProjectsFits, useProjectsPlayback } from './useProjectsPlayback';
 import { PROJECT_CATEGORIES } from './projectCategories';
@@ -167,6 +168,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     if (content.current) content.current.scrollTop = 0;
     paging.current?.reset();
   }, [project?.id, details]);
+  useOverflowHint(content, `${project?.id}:${details}`);
   useEffect(() => registerTVReader({ page: selectProject, retreat: () => step(-1) }), [selectProject, step]);
   useEffect(() => {
     setTVPagingAvailable(staged && ready && filtered.length > 1);

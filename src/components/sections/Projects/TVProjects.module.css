@@ -544,6 +544,44 @@
   }
 }
 
+/*
+ * A compact screen (900x560 draws it about 455px wide) gives the copy an equal
+ * column instead of 157px of it, and the capture the height its shape needs
+ * rather than a column-tall matte (round 8, D-UI-001).
+ */
+@container (max-width: 560px) {
+  .work {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .display[data-details='true'] .work {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The copy keeps the row's height, and so its own scroll. */
+  .image:not(:has([data-project-visual-note])) {
+    align-self: start;
+    aspect-ratio: 16 / 10;
+  }
+}
+
+/* Copy that continues below the screen's fold fades into it, and says so. */
+.copy[data-overflow='more'] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.75em), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.75em), transparent);
+}
+
+.work:has(> .copy[data-overflow='more'])::after {
+  content: '';
+  position: absolute;
+  right: 3%;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--project-accent);
+  border-bottom: 2px solid var(--project-accent);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
 @media (max-width: 1100px), (max-height: 680px) {
   .sceneControls,
   .stage[data-phase='reading'] .sceneControls {
