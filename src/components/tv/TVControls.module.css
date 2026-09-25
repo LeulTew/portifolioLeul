@@ -10,6 +10,11 @@
 
 .anchor:focus { outline: none; }
 
+/* While the reader is lifted out of the screen, the cabinet's keys are behind it; its own take over. */
+:global(body:has([data-testid='projects-stage'][data-reading='expanded'])) .anchor {
+  visibility: hidden;
+}
+
 .viewport {
   position: absolute;
   top: 0;

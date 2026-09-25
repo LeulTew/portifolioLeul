@@ -3,7 +3,7 @@ import {
   type PointerEvent, type WheelEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ArrowRight, ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import { ControlButton } from '@/components/ui/ControlButton';
 import { IndexPicker } from '@/components/ui/IndexPicker';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
@@ -80,10 +80,12 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const paging = useRef<ProjectWheelPaging | null>(null);
   if (paging.current === null) paging.current = new ProjectWheelPaging();
   const detailsButton = useRef<HTMLButtonElement>(null);
+  const enlargeButton = useRef<HTMLButtonElement>(null);
   const sceneControl = useRef<{ element: HTMLButtonElement; enterScreen: boolean } | null>(null);
   const pointer = useRef<{ x: number; y: number; id: number } | null>(null);
   const [{ category, index }, setSelection] = useState({ category: 'All', index: 0 });
   const [details, setDetails] = useState(false);
+  const [enlarged, setEnlarged] = useState(false);
   const available = useTVScreenReady();
   const fits = useProjectsFits();
   const reduced = usePrefersReducedMotion();
@@ -93,6 +95,9 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const { phase, visible, ready, step } = useProjectsPlayback({ host, stage, surface }, staged, reduced, onNavigate);
   const interactive = !staged || ready;
   const hardwarePaging = staged && ready && television.layout === 'all';
+  // A short window fits the whole cabinet, so its screen is small: the reader can lift out of it.
+  const reading = staged && phase === 'reading';
+  const expanded = enlarged && reading;
   const filtered = useMemo(() => category === 'All'
     ? projectsData : projectsData.filter(project => project.categories.includes(category)), [category]);
   const project = filtered[index % Math.max(filtered.length, 1)];
@@ -118,6 +123,10 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     setDetails(false);
     paging.current?.reset();
   }, [interactive]);
+  const collapse = () => {
+    setEnlarged(false);
+    enlargeButton.current?.focus({ preventScroll: true });
+  };
   const tabsKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!interactive || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     const next = (activeTab + (event.key === 'ArrowRight' ? 1 : -1) + PROJECT_CATEGORIES.length) %
@@ -127,6 +136,10 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   };
   const readerKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.target instanceof HTMLSelectElement) return;
+    if (event.key === 'Escape' && expanded) {
+      collapse();
+      return;
+    }
     if (event.key === 'Escape' && details) {
       setDetails(false);
       detailsButton.current?.focus({ preventScroll: true });
@@ -168,13 +181,15 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
     if (content.current) content.current.scrollTop = 0;
     paging.current?.reset();
   }, [project?.id, details]);
-  useOverflowHint(content, `${project?.id}:${details}`);
+  useOverflowHint(content, `${project?.id}:${details}:${expanded}`);
   useEffect(() => registerTVReader({ page: selectProject, retreat: () => step(-1) }), [selectProject, step]);
   useEffect(() => {
     setTVPagingAvailable(staged && ready && filtered.length > 1);
     return () => setTVPagingAvailable(false);
   }, [staged, ready, filtered.length]);
   useEffect(() => { if (!interactive) paging.current?.reset(); }, [interactive]);
+  // Leaving the reader returns the screen to the TV, so a later visit starts framed.
+  useEffect(() => { if (!reading) setEnlarged(false); }, [reading]);
   useEffect(() => {
     if (!stage.current) return;
     stage.current.inert = staged && !visible;
@@ -201,7 +216,9 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
       data-section-owner="projects"
       role={staged ? 'region' : undefined} aria-label={staged ? 'Project reader' : undefined}
       aria-hidden={staged && !visible ? true : undefined} onWheel={forwardWheel}
+      data-reading={expanded ? 'expanded' : undefined}
     >
+      {expanded && <div className={styles.readerScrim} data-reader-scrim="" aria-hidden="true" onClick={collapse} />}
       <div ref={surface} className={styles.surface} data-projects-surface="">
         <div
           className={styles.tabs} role="tablist" aria-label="Project categories"
@@ -294,7 +311,15 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               {details ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
             </ControlButton>
             {!details && project && <ProjectVisualLink project={project} shortLabel />}
-            {!hardwarePaging && <div className={styles.projectNavigation}>
+            {staged && <ControlButton
+              ref={enlargeButton} iconOnly aria-label="Enlarge the screen" aria-pressed={expanded}
+              title={expanded ? 'Return the screen to the TV (Esc)' : 'Enlarge the screen'}
+              disabled={!interactive || !reading} className={styles.enlargeButton}
+              onClick={() => setEnlarged(value => !value)}
+            >
+              {expanded ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}
+            </ControlButton>}
+            {(!hardwarePaging || expanded) && <div className={styles.projectNavigation}>
               <ControlButton iconOnly aria-label="Previous project"
                 disabled={!interactive || filtered.length < 2} onClick={() => selectProject(-1)}>
                 <ArrowLeft size={19} aria-hidden="true" />
@@ -327,7 +352,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               : phase === 'departing' ? 'Continuing to Contact'
                 : phase === 'unturning' || phase === 'retreating' ? 'Returning through the scene'
                   : phase === 'reading'
-                    ? details ? 'Scroll to read. Preview returns to browsing.' : 'Scroll on the screen to browse. Scroll outside to continue.'
+                    ? expanded ? 'Enlarged for reading. Esc returns the screen to the TV.'
+                      : details ? 'Scroll to read. Preview returns to browsing.' : 'Scroll on the screen to browse. Scroll outside to continue.'
                     : 'The work is on the screen'}
         </p>}
         {/* The landing while the screen is still dark, after the screen itself. */}
