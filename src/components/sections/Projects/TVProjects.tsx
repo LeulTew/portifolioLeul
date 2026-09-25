@@ -136,11 +136,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   };
   const readerKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.target instanceof HTMLSelectElement) return;
-    if (event.key === 'Escape' && expanded) {
-      collapse();
-      return;
-    }
-    if (event.key === 'Escape' && details) {
+    // Enlarged, Esc belongs to the whole reader: the stage returns it to the TV first.
+    if (event.key === 'Escape' && details && !expanded) {
       setDetails(false);
       detailsButton.current?.focus({ preventScroll: true });
       return;
@@ -217,6 +214,11 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
       role={staged ? 'region' : undefined} aria-label={staged ? 'Project reader' : undefined}
       aria-hidden={staged && !visible ? true : undefined} onWheel={forwardWheel}
       data-reading={expanded ? 'expanded' : undefined}
+      onKeyDown={event => {
+        // Its scene controls and the closed picker are part of the enlarged reader, so Esc from
+        // them returns it too. An open picker's own Esc closes its menu before the page sees a key.
+        if (event.key === 'Escape' && expanded) collapse();
+      }}
     >
       {expanded && <div className={styles.readerScrim} data-reader-scrim="" aria-hidden="true" onClick={collapse} />}
       <div ref={surface} className={styles.surface} data-projects-surface="">

@@ -588,6 +588,25 @@ describe('the completed-beat TV chapter', () => {
     fireEvent.click(document.querySelector('[data-reader-scrim]')!);
     expect(stage()).not.toHaveAttribute('data-reading');
 
+    // Round 9 (TECH-030): Esc from a scene control, part of the enlarged reader, returns it too.
+    fireEvent.click(enlarge);
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Contact' }), { key: 'Escape' });
+    expect(stage()).not.toHaveAttribute('data-reading');
+    expect(enlarge).toHaveFocus();
+    // Round 10 (D-A11Y-004): and from the closed project picker.
+    fireEvent.click(enlarge);
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Choose a project' }), { key: 'Escape' });
+    expect(stage()).not.toHaveAttribute('data-reading');
+
+    // Enlarged Details: the first Esc returns the screen, the next returns the preview.
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    fireEvent.click(enlarge);
+    fireEvent.keyDown(screen.getByRole('tabpanel'), { key: 'Escape' });
+    expect(stage()).not.toHaveAttribute('data-reading');
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole('tabpanel'), { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument();
+
     fireEvent.click(enlarge);
     fireEvent.click(enlarge);
     expect(stage()).not.toHaveAttribute('data-reading');
