@@ -212,6 +212,21 @@ describe('keyboard focus in the scroll layer', () => {
     expect(byId('track').scrollTop).toBeCloseTo((106 * 7200) / 6200, 5);
   });
 
+  it('never brings the reader back to a chapter they left for a late answer', () => {
+    // Round 11 (TECH-031): a delayed send failure navigated a reader who had moved on back to Contact.
+    place('contact', 4800, 1000); place('send', 5260, 70);
+    requestReveal(byId('send'));
+    flushFrames();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(byId('track').scrollTop).toBe(0);
+    // Nor under another chapter's pinned reader.
+    place('contact', 0, 1000); place('send', 740, 70);
+    byId('main').setAttribute('inert', '');
+    requestReveal(byId('send'));
+    expect(byId('track').scrollTop).toBe(0);
+    byId('main').removeAttribute('inert');
+  });
+
   it('scrolls a portalled stop into view within its own box, through the TV projection', () => {
     // Round 9 (TECH-020): a Source link below the TV copy's fold took focus without the box scrolling.
     const panel = byId('panel');
@@ -591,11 +606,21 @@ describe('keyboard focus in the no-WebGL document', () => {
     boxes.set(header, { top: 0, bottom: 70 });
     onTestFinished(observeChromeInset(header));
     const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    place('contact', 0, 1000);
     place('message', 40, 120);
     requestReveal(byId('message'));
     expect(revealed).toEqual([byId('message')]);
     // Its top, 40, to below the bar and the ring's room, 82.
     expect(scrolled).toHaveBeenCalledExactlyOnceWith({ top: -42, behavior: 'auto' });
+  });
+
+  it('leaves the document where it is for feedback in a chapter the reader has left', () => {
+    // Round 11 (TECH-031).
+    const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    place('contact', 4800, 1000); place('message', 5100, 120);
+    requestReveal(byId('message'));
+    expect(revealed).toEqual([]);
+    expect(scrolled).not.toHaveBeenCalled();
   });
 
   it('stops listening once released', () => {
