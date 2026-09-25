@@ -18,13 +18,23 @@
  */
 
 /**
- * How long a landing waits for its chapter, in milliseconds: past the TV's
- * 2.2-second turn toward the reader, the longest arrival a landing waits on.
- * Measured in time, not frames, which gave up after one second at 60 Hz and
- * sooner on faster displays -- before the TV could take focus (round 9,
- * TECH-025).
+ * How long a landing waits for its chapter, in milliseconds of visible time:
+ * past the TV's 2.2-second turn toward the reader, the longest arrival a
+ * landing waits on. Measured in time, not frames, which gave up after one
+ * second at 60 Hz and sooner on faster displays -- before the TV could take
+ * focus (round 9, TECH-025).
+ *
+ * But not in wall-clock time either: the chapters' own movements advance on
+ * visible frame time, capped per frame, and stop while the tab is hidden, so a
+ * wall clock retired the landing mid-turn after a tab switch or on a display
+ * painting every 150ms (round 9, TECH-026). The wait ages by the same capped
+ * visible frames, and not at all while the destination says it is still
+ * arriving (`data-arriving` on its reader).
  */
 export const LANDING_WAIT_MS = 5000;
+
+/** The most one frame ages the wait: a hidden tab or a stalled frame counts as one frame. */
+export const LANDING_FRAME_CAP_MS = 100;
 
 let pending: (() => void) | null = null;
 
@@ -53,7 +63,10 @@ export function landSectionFocus(section: string, root: Document = document): ()
   const view = root.defaultView;
   if (!view) return () => {};
   let frame = 0;
-  const started = view.performance.now();
+  let last = view.performance.now();
+  let waited = 0;
+  let visible = 0;
+  const arriving = () => Boolean(root.querySelector(`[data-section-owner="${section}"][data-arriving]`));
   /** Whether landing is over: focus taken, no landing to take it, or the wait spent. */
   const attempt = (now: number) => {
     const landings = sectionLandings(section, root);
@@ -63,9 +76,14 @@ export function landSectionFocus(section: string, root: Document = document): ()
       landing.focus({ preventScroll: true });
       if (root.activeElement === landing) return true;
     }
-    return now - started >= LANDING_WAIT_MS;
+    const step = root.hidden ? 0 : Math.min(Math.max(0, now - last), LANDING_FRAME_CAP_MS);
+    last = now;
+    visible += step;
+    if (!arriving()) waited += step;
+    // An arrival that never ends still lets go, after four waits' worth of visible time.
+    return waited >= LANDING_WAIT_MS || visible >= LANDING_WAIT_MS * 4;
   };
-  if (attempt(started)) return () => {};
+  if (attempt(last)) return () => {};
 
   const stop = () => {
     view.cancelAnimationFrame(frame);
