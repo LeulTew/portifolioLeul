@@ -56,6 +56,10 @@ describe('Skills chapter controls', () => {
     render(<Skills />);
     const selectors = within(screen.getByRole('list', { name: 'Skills chapters' })).getAllByRole('button');
     expect(selectors).toHaveLength(SKILL_CHAPTERS.length);
+    // The reading chapter's own source link comes first, as content before its controls;
+    // the other chapters' links are out of the order while they are hidden.
+    await user.tab();
+    expect(screen.getByRole('link', { name: new RegExp(SKILL_CHAPTERS[0].proof.label) })).toHaveFocus();
     for (const [index, button] of selectors.entries()) {
       expect(button).toHaveAccessibleName(`Show ${SKILL_CHAPTERS[index].title}`);
       await user.tab();

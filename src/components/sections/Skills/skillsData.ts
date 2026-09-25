@@ -12,6 +12,8 @@ interface Presentation {
   inlineMotion: SkillInlineMotion;
   composition: 'visual-right' | 'visual-left';
   camera: { x: number; y: number; scale: number; roll: number };
+  /** One inspectable piece of the named work, pinned to a commit (round 11, D-UX-002). */
+  proof: { label: string; claim: string; url: string; project: string };
 }
 
 const presentations = new Map<string, Presentation>([
@@ -23,6 +25,12 @@ const presentations = new Map<string, Presentation>([
     inlineMotion: 'decode',
     composition: 'visual-right',
     camera: { x: 25, y: 0, scale: 1.04, roll: -3 },
+    proof: {
+      label: "Tera Site's Python title parser",
+      claim: 'Extracts the first level-one Markdown heading, and raises an error when a page has none.',
+      url: 'https://github.com/LeulTew/TeraSite/blob/8f7c6c1b75cb6791a2a016dea367412b7c9021d0/src/block_markdown.py#L165-L175',
+      project: 'Tera Site',
+    },
   }],
   ['Frameworks & Web', {
     scene: 'interfaces',
@@ -32,6 +40,12 @@ const presentations = new Map<string, Presentation>([
     inlineMotion: 'assemble',
     composition: 'visual-left',
     camera: { x: -25, y: 1, scale: 1.04, roll: 3 },
+    proof: {
+      label: "Car Rental's EF Core context",
+      claim: "Extends ASP.NET Identity's context with cars, bookings, reviews, payments, favorites and vehicle versions.",
+      url: 'https://github.com/LeulTew/CarRental-ThreeJS-MVC/blob/d6f8f89911df9ac5341e38b464bfb1c0a8d81c32/Carrental/Carrental/Models/CarContext.cs#L2-L17',
+      project: 'Car Rental Platform',
+    },
   }],
   ['AI & Data Science', {
     scene: 'intelligence',
@@ -41,6 +55,12 @@ const presentations = new Map<string, Presentation>([
     inlineMotion: 'focus',
     composition: 'visual-right',
     camera: { x: 24, y: -1, scale: 1.1, roll: -5 },
+    proof: {
+      label: "Amharic IR's composite ranker",
+      claim: 'Combines TF-IDF, position and proximity scores, normalizes for length, and returns each component.',
+      url: 'https://github.com/LeulTew/amharic-ir-improved/blob/4096030543826b66370f9cc9ff35b6762b8e832c/core/ranker.py#L133-L150',
+      project: 'Amharic IR Improved',
+    },
   }],
   ['Databases', {
     scene: 'data',
@@ -50,6 +70,12 @@ const presentations = new Map<string, Presentation>([
     inlineMotion: 'type',
     composition: 'visual-left',
     camera: { x: -24, y: 2, scale: 1.04, roll: 5 },
+    proof: {
+      label: "Ignition's PostgreSQL goal schema",
+      claim: 'Goals with JSON steps and creation timestamps, indexed on creation time.',
+      url: 'https://github.com/LeulTew/Ignition/blob/dc5c5380ef1225ef11703da2858c03fbad269305/frontend/prisma/schema.prisma#L5-L18',
+      project: 'Ignition',
+    },
   }],
   ['Tools & Design', {
     scene: 'design',
@@ -59,6 +85,12 @@ const presentations = new Map<string, Presentation>([
     inlineMotion: 'draw',
     composition: 'visual-right',
     camera: { x: 25, y: 0, scale: 1.1, roll: -4 },
+    proof: {
+      label: "Tera Site's generation CLI",
+      claim: 'Takes a base path, copies static assets, and generates every page through an HTML template.',
+      url: 'https://github.com/LeulTew/TeraSite/blob/8f7c6c1b75cb6791a2a016dea367412b7c9021d0/src/main.py#L40-L58',
+      project: 'Tera Site',
+    },
   }],
   ['Professional Skills', {
     scene: 'delivery',
@@ -68,6 +100,12 @@ const presentations = new Map<string, Presentation>([
     inlineMotion: 'reveal',
     composition: 'visual-left',
     camera: { x: -24, y: 0, scale: 1.09, roll: 2 },
+    proof: {
+      label: "Amharic IR's credited team",
+      claim: 'The README credits Leul Tewodros Agonafer and five co-authors.',
+      url: 'https://github.com/LeulTew/amharic-ir-improved/blob/4096030543826b66370f9cc9ff35b6762b8e832c/README.md#L120-L127',
+      project: 'Amharic IR Improved',
+    },
   }],
 ]);
 

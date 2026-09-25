@@ -32,4 +32,16 @@ describe('Skills editorial content', () => {
     }
     expect(chapter.summary.split(/\s+/).length).toBeLessThanOrEqual(24);
   });
+
+  it.each(SKILL_CHAPTERS)('shows $title in one pinned, public line of the named work', chapter => {
+    // Round 11 (D-UX-002): each hold showed a list of tools and no work to inspect.
+    const { proof } = chapter;
+    expect(projectsData.map(project => project.title)).toContain(proof.project);
+    const url = new URL(proof.url);
+    expect(url.origin).toBe('https://github.com');
+    expect(url.pathname).toMatch(/^\/LeulTew\/[^/]+\/blob\/[a-f0-9]{40}\//);
+    expect(url.hash).toMatch(/^#L\d+-L\d+$/);
+    expect(proof.label.split(/\s+/).length).toBeLessThanOrEqual(6);
+    expect(proof.claim.split(/\s+/).length).toBeLessThanOrEqual(20);
+  });
 });
