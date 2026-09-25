@@ -1,13 +1,8 @@
 export const cvData = {
   about: {
     title: "Software Engineer & Creative Developer",
-    subtitle: "Bridging the gap between complex algorithms and engaging user experiences",
+    subtitle: "Software engineer in Addis Ababa, building for Amharic readers and the wider web",
     description: "Motivated Computer Science graduate (BSc, HiLCoE) with hands-on expertise in AI/ML, full-stack web development, mobile applications, and real-time graphics. Proficient in building production-ready solutions using Python (PyTorch, scikit-learn), Flutter/Dart, React/TypeScript, ASP.NET, PHP, and OpenGL/Three.js. Complemented by creative design skills in Adobe tools and Figma, I deliver technically robust and visually polished products. Passionate about solving real-world problems through innovative technology, with a track record of developing impactful applications from concept to deployment.",
-    stats: [
-      { value: "3+", label: "Years Experience" },
-      { value: "30+", label: "Projects" },
-      { value: "100%", label: "Happy Clients" }
-    ],
     highlights: [
       "AI/ML & Data Science",
       "Full-stack Development",
@@ -69,14 +64,6 @@ export const cvData = {
         "JavaScript Algorithms and Data Structures (Beta)",
         "Responsive Web Design"
       ]
-    }
-  ],
-  experience: [
-    {
-      role: "Software Developer Intern",
-      company: "Example Company",
-      period: "2023 - Present",
-      description: "Worked on full-stack web applications..."
     }
   ],
   skills: [

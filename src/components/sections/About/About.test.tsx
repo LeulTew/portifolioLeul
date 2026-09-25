@@ -28,8 +28,8 @@ describe("About Section", () => {
     const section = document.getElementById("about");
     expect(section).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /About Me/i })).toBeInTheDocument();
-    expect(screen.getByText(/KEEP IT SIMPLE/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: /SCALABLE SYSTEMS/i })).toBeInTheDocument();
+    expect(screen.getByText(/START WITH/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: /FROM MODEL TO INTERFACE/i })).toBeInTheDocument();
     const summary = within(screen.getByTestId("about-right-column"));
     expect(summary.getByText(String(projectsData.length))).toBeInTheDocument();
     expect(summary.getByText(String(cvData.skills.reduce((total, category) => total + category.items.length, 0))))
