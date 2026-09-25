@@ -96,4 +96,47 @@ describe('flat page resize anchoring', () => {
     act(() => flush());
     expect(scrollBy).not.toHaveBeenCalled();
   });
+
+  describe('through a change of motion preference', () => {
+    let motionListeners: (() => void)[];
+    /** Skills re-staged as a tall track: every chapter below it moves down 3,300px. */
+    const STAGED = Object.fromEntries(Object.entries(WIDE).map(([id, [top, height]]) =>
+      [id, id === 'home' || id === 'about' ? [top, height] : id === 'skills' ? [top, height + 3300] : [top + 3300, height]],
+    )) as typeof WIDE;
+
+    beforeEach(() => {
+      motionListeners = [];
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: false, media: query,
+        addEventListener: (_: string, listener: () => void) => { motionListeners.push(listener); },
+        removeEventListener: vi.fn(),
+      }));
+    });
+
+    it('keeps a Projects reader in Projects while the chapters rebuild', () => {
+      // Round 11 (D-NAV-002): turning reduced motion off carried a Projects reader into Contact.
+      render(<Probe />);
+      // The stylesheet re-lays the page before the change event arrives.
+      layout = STAGED;
+      act(() => motionListeners.forEach(listener => listener()));
+      // The browser's own anchoring moves the page, and reports it.
+      scrollY += 3289 - 3300;
+      act(() => { window.dispatchEvent(new Event('scroll')); });
+      act(() => flush());
+      expect(ratio('projects')).toBeCloseTo(0.4, 5);
+      act(() => flush());
+      expect(ratio('projects')).toBeCloseTo(0.4, 5);
+    });
+
+    it('lets the reader go the moment they scroll themselves', () => {
+      render(<Probe />);
+      act(() => motionListeners.forEach(listener => listener()));
+      act(() => flush());
+      act(() => { window.dispatchEvent(new Event('wheel')); });
+      layout = STAGED;
+      scrollBy.mockClear();
+      act(() => flush());
+      expect(scrollBy).not.toHaveBeenCalled();
+    });
+  });
 });
