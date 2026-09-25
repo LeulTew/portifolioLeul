@@ -1,13 +1,33 @@
 import { ChevronDown } from 'lucide-react';
 import styles from './IndexPicker.module.css';
 
+interface IndexPickerItem {
+  id: string | number;
+  title: string;
+  /** Consecutive items with the same group are listed under it. */
+  group?: string;
+}
+
 interface IndexPickerProps {
-  items: readonly { id: string | number; title: string }[];
+  items: readonly IndexPickerItem[];
   index: number;
   label: string;
   onSelect: (index: number) => void;
   disabled?: boolean;
   className?: string;
+}
+
+const option = (item: IndexPickerItem) => <option key={item.id} value={item.id}>{item.title}</option>;
+
+/** Consecutive items sharing a group, in order; ungrouped items form runs without one. */
+function groupRuns(items: readonly IndexPickerItem[]) {
+  const runs: { group?: string; members: IndexPickerItem[] }[] = [];
+  for (const item of items) {
+    const last = runs.at(-1);
+    if (last && last.group === item.group) last.members.push(item);
+    else runs.push({ group: item.group, members: [item] });
+  }
+  return runs;
 }
 
 export function IndexPicker({ items, index, label, onSelect, disabled = false, className }: IndexPickerProps) {
@@ -30,7 +50,9 @@ export function IndexPicker({ items, index, label, onSelect, disabled = false, c
           }
           onSelect(selected);
         }}>
-        {items.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+        {groupRuns(items).map(({ group, members }) => group
+          ? <optgroup key={`group:${group}:${members[0].id}`} label={group}>{members.map(option)}</optgroup>
+          : members.map(option))}
       </select>
     </label>
   );

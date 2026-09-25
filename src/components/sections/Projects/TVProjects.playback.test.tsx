@@ -21,6 +21,10 @@ import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 import * as scrollContainer from '@/lib/scroll/scrollContainer';
 import { CRT_POWER_ON_MS } from './projectBroadcast';
 import { activateTV, getTVState, resetTVState, setTVExposure } from '@/lib/tv/tvState';
+import { projectsData } from '@/data/projects';
+
+/** The id of the project at index in reading order. */
+const nth = (index: number) => String(projectsData[index].id);
 
 let top = 1200;
 let reduced = false;
@@ -501,7 +505,7 @@ describe('the completed-beat TV chapter', () => {
         wheel(delta, target());
         expect(phase()).toBe('reading');
         expect(document.querySelector('[data-project-id]')).toHaveAttribute(
-          'data-project-id', delta > 0 ? '23' : '36',
+          'data-project-id', delta > 0 ? nth(1) : nth(0),
         );
         expect(scroller.scrollTop).toBe(0);
       }
@@ -512,10 +516,10 @@ describe('the completed-beat TV chapter', () => {
       expect(fireEvent.touchMove(target(), { touches: [{ clientY: 300 }], cancelable: true })).toBe(true);
       fireEvent.touchEnd(target());
       expect(phase()).toBe('reading');
-      expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '36');
+      expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', nth(0));
       expect(scroller.scrollTop).toBe(0);
       fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
-      expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '23');
+      expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', nth(1));
       fireEvent.click(screen.getByRole('button', { name: /^Contact$/ }));
       expect(phase()).toBe('departing');
     },
@@ -526,23 +530,24 @@ describe('the completed-beat TV chapter', () => {
     await navbar('projects');
     const display = screen.getByRole('tabpanel');
     wheel(100, display);
-    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '23');
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', nth(1));
     wheel(100, display);
-    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '25');
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', nth(2));
     wheel(100, display);
-    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '28');
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', nth(3));
     expect(screen.getByRole('button', { name: 'Next project' })).toBeEnabled();
     expect(screen.getByRole('tab', { name: 'Mobile Apps' })).toBeEnabled();
     expect(phase()).toBe('reading');
     fireEvent.click(screen.getByRole('tab', { name: 'Mobile Apps' }));
-    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id', '36');
+    expect(document.querySelector('[data-project-id]')).toHaveAttribute('data-project-id',
+      String(projectsData.find(project => project.categories.includes('Mobile Apps'))!.id));
   });
 
   it('preserves native scrolling and control keys inside the reader without changing chapters', async () => {
     mount();
     await navbar('projects');
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
-    const details = screen.getByLabelText('Mizan details');
+    const details = screen.getByLabelText(`${projectsData[0].title} details`);
     const initial = document.querySelector('[data-project-id]')!.getAttribute('data-project-id');
     for (const key of ['PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End']) {
       const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });

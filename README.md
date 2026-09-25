@@ -292,6 +292,9 @@ identified as artwork rather than an application screenshot. Kitefew, AgendaFlow
 Elona Practice, EthioDriveMaster, System Design Guide, CS Exit Practice and Dream
 Weaver use 16:10 desktop captures of their own live demos. Every image is
 labelled as an interface capture, a presentation mockup or project artwork.
+Six projects lead as **Selected work** (`FEATURED_PROJECT_IDS`): genuine
+interface captures of work with its own demo or source. The rest follow as the
+**Archive**, named as such in the reader, its picker and the flat cards.
 Optional image notes and alternative text are carried through both TV and flat
 readers.
 

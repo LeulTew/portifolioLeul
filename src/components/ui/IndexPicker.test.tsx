@@ -19,6 +19,21 @@ it('keeps a real named native select with every item available for keyboard type
   expect(select.closest('label')).toHaveTextContent('03/ 03');
 });
 
+it('lists grouped items under their group, keeping order and selection by index', () => {
+  // Round 10 (D-BRAND-002): the lead set and the archive are named in the picker.
+  const grouped = [
+    { id: 23, title: 'Ignition', group: 'Selected work' }, { id: 4, title: 'Portfolio Leul', group: 'Selected work' },
+    { id: 36, title: 'Mizan', group: 'Archive' },
+  ];
+  const onSelect = vi.fn();
+  const { container } = render(<IndexPicker items={grouped} index={0} label="Choose a project" onSelect={onSelect} />);
+  const groups = [...container.querySelectorAll('optgroup')];
+  expect(groups.map(group => [group.label, [...group.querySelectorAll('option')].map(option => option.textContent)]))
+    .toEqual([['Selected work', ['Ignition', 'Portfolio Leul']], ['Archive', ['Mizan']]]);
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: '36' } });
+  expect(onSelect).toHaveBeenCalledWith(2);
+});
+
 it('leaves native navigation keys and wheel uncanceled', () => {
   render(<Picker />);
   const select = screen.getByRole('combobox');
