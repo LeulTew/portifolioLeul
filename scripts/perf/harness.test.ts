@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { createServer, type AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  Scope, assertPortFree, awaitOwnedPreview, createCdp, ownProcess, until, withTimeout, type SocketLike,
+  Scope, assertPortFree, awaitOwnedPreview, createCdp, ownProcess, scoped, until, withTimeout, type SocketLike,
 } from './harness';
 
 afterEach(() => { vi.useRealTimers(); });
@@ -46,6 +46,44 @@ describe('resource scope', () => {
     scope.defer('late', release);
     await Promise.resolve();
     expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('closes a child scope however its work ends and hands its cleanup errors back', async () => {
+    // Round 9 (TECH-023): a cold sample's Chrome that would not close was only logged.
+    const parent = new Scope();
+    const kept = await scoped(parent, 'sample 1', async own => {
+      own.defer('chrome', () => { throw new Error('still running'); });
+      return 7;
+    });
+    expect(kept.outcome).toEqual({ status: 'fulfilled', value: 7 });
+    expect(kept.cleanup.map(error => error.message)).toEqual(['chrome: still running']);
+
+    const profile = vi.fn();
+    const failed = await scoped(parent, 'sample 2', async own => {
+      own.defer('profile', profile);
+      throw new Error('navigation failed');
+    });
+    expect(failed.outcome).toMatchObject({ status: 'rejected', reason: new Error('navigation failed') });
+    expect(failed.cleanup).toEqual([]);
+    expect(profile).toHaveBeenCalledOnce();
+    // Closing the parent later releases nothing twice.
+    await expect(parent.close()).resolves.toEqual([]);
+    expect(profile).toHaveBeenCalledOnce();
+  });
+
+  it('lets an interrupted run close a child scope that is still working', async () => {
+    const parent = new Scope();
+    const chrome = vi.fn();
+    let started!: () => void;
+    const running = new Promise<void>(resolve => { started = resolve; });
+    void scoped(parent, 'sample 1', async own => {
+      own.defer('chrome', chrome);
+      started();
+      await new Promise(() => {});
+    });
+    await running;
+    await parent.close();
+    expect(chrome).toHaveBeenCalledOnce();
   });
 });
 

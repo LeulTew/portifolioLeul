@@ -82,6 +82,8 @@ export interface Checkpoint {
   tv: string;
   /** The world quality level the canvas publishes. */
   quality: string;
+  /** About's furthest beat: statements, then its green rise, then Education. */
+  about: string;
 }
 
 export interface LongFrame {
@@ -146,6 +148,9 @@ export const PAGE_PROBE = String.raw`(() => {
     skill: read('[data-testid="skills-stage"]', 'data-active-skill'),
     tv: read('[data-testid="projects-stage"]', 'data-phase'),
     quality: read('canvas[data-world-quality]', 'data-world-quality'),
+    about: read('#about', 'data-education-active') === 'true' ? 'education'
+      : read('#about', 'data-bg-settled') === 'true' ? 'green'
+        : read('#about', 'data-statements-present') === 'true' ? 'statements' : '',
   });
   let current = state();
   const mark = () => {
@@ -154,11 +159,12 @@ export const PAGE_PROBE = String.raw`(() => {
   const record = () => {
     const next = state();
     if (next.section === current.section && next.skills === current.skills && next.skill === current.skill
-      && next.tv === current.tv && next.quality === current.quality) return;
+      && next.tv === current.tv && next.quality === current.quality && next.about === current.about) return;
     current = next;
     mark();
   };
   const context = () => (current.section || '?')
+    + (current.section === 'about' && current.about ? ' about:' + current.about : '')
     + (current.skills && current.skills !== 'outside' ? ' skills:' + current.skills : '')
     + (current.tv && current.tv !== 'outside' ? ' tv:' + current.tv : '')
     + (current.quality && current.quality !== '0' ? ' q' + current.quality : '');
@@ -230,12 +236,27 @@ export const PAGE_PROBE = String.raw`(() => {
 /** The chapters of the story, in the order a forward journey reads them. */
 export const STORY = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
+/** About's beats, in the order a forward journey sees them. */
+export const ABOUT_BEATS = ['statements', 'green', 'education'] as const;
+
 const collapse = (values: readonly string[]) => values.filter((value, index) => value && value !== values[index - 1]);
 
 /**
+ * The readable path a sample travelled, for its report: chapters, About's
+ * beats, each Skills chapter read and the TV's phases.
+ */
+export function journeyPath(checkpoints: readonly Checkpoint[]): string[] {
+  return collapse(checkpoints.filter(checkpoint => checkpoint.phase === 'journey').map(({ section, about, skills, skill, tv }) =>
+    section + (section === 'about' && about ? `:${about}` : '') + (skills === 'reading' ? `:skill-${skill}` : '')
+      + (tv && tv !== 'outside' ? `:tv-${tv}` : '')));
+}
+
+/**
  * Why a forward journey does not count, or nothing if it does: it has to pass
- * through every chapter in story order and end on Contact, settle on every
- * Skills chapter, and reach the TV's reader.
+ * through every chapter in story order and end on Contact, see About's
+ * statements, green rise and Education in turn, read every Skills chapter in
+ * order, and reach the TV's reader. Totals from a journey that skipped or
+ * reversed its costliest chapters are not comparable (round 9, TECH-022).
  */
 export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: number): string[] {
   const journey = checkpoints.filter(checkpoint => checkpoint.phase === 'journey');
@@ -248,10 +269,17 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
   } else if (sections.at(-1) !== 'contact') {
     failures.push(`the journey ended on ${sections.at(-1)}, not Contact`);
   }
+  const beats = collapse(journey.map(checkpoint => checkpoint.about ?? ''));
+  let beat = 0;
+  for (const seen of beats) if (seen === ABOUT_BEATS[beat]) beat++;
+  if (beat < ABOUT_BEATS.length) {
+    failures.push(`About never reached its ${ABOUT_BEATS[beat]} beat (saw ${beats.join(' > ') || 'nothing'})`);
+  }
   if (skillChapters < 1) failures.push('the page shows no Skills chapters');
-  const read = new Set(journey.filter(checkpoint => checkpoint.skills === 'reading').map(checkpoint => checkpoint.skill));
-  if (skillChapters >= 1 && read.size < skillChapters) {
-    failures.push(`Skills settled on ${read.size} of ${skillChapters} chapters`);
+  const reads = collapse(journey.filter(checkpoint => checkpoint.skills === 'reading').map(checkpoint => checkpoint.skill));
+  const expected = Array.from({ length: skillChapters }, (_, index) => String(index));
+  if (skillChapters >= 1 && reads.join() !== expected.join()) {
+    failures.push(`Skills read ${reads.join(' > ') || 'no chapter'}, not ${expected.join(' > ')}`);
   }
   if (!journey.some(checkpoint => checkpoint.tv === 'reading')) failures.push("the TV never reached its reader");
   return failures;
@@ -332,6 +360,10 @@ export interface Startup {
 export interface Sample {
   /** How the caches stood when the sample was taken. */
   cache: string;
+  /** The readable path the journey travelled (journeyPath), for auditing that it counted. */
+  path: string[];
+  /** Every checkpoint the probe recorded, the evidence behind `path` and `failures`. */
+  checkpoints: Checkpoint[];
   startup: Startup;
   journey: FrameSummary & IntervalSummary & { seconds: number };
   parkedContact: FrameSummary;

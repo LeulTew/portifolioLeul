@@ -70,20 +70,32 @@ describe('judging frame pressure', () => {
     // Every other frame a refresh late: 40 fps against a budget of 60.
     const first = secondsUntilChange(gauge, [ON_TIME, LATE], ON_TIME);
     expect(gauge.level).toBe(1);
-    expect(first).toBeGreaterThan(PRESSURE_POLICY.windowSeconds * 0.9);
+    expect(first).toBeGreaterThanOrEqual(PRESSURE_POLICY.windowSeconds - PRESSURE_POLICY.stallSeconds);
     expect(first).toBeLessThan(PRESSURE_POLICY.windowSeconds * 1.1);
     // At 30 a second the budget is 1/30: a steady 16 fps is late against it.
-    expect(secondsUntilChange(gauge, [0.06], LATE)).toBeGreaterThan(PRESSURE_POLICY.windowSeconds * 0.9);
+    expect(secondsUntilChange(gauge, [0.06], LATE)).toBeGreaterThanOrEqual(PRESSURE_POLICY.windowSeconds - PRESSURE_POLICY.stallSeconds);
     expect(gauge.level).toBe(2);
     expect(secondsUntilChange(gauge, [0.06], LATE, 30)).toBe(Infinity);
   });
 
-  it('judges nothing while shaders compile, and nothing of stalls', () => {
+  it('judges nothing while shaders compile, and lets an isolated stall pass', () => {
     const gauge = createPressureGauge(3);
     expect(Math.max(...draw(gauge, PRESSURE_POLICY.warmupSeconds * 0.95, [LATE]))).toBe(0);
     const stalls = createPressureGauge(3);
     draw(stalls, PRESSURE_POLICY.warmupSeconds, [ON_TIME]);
-    expect(Math.max(...draw(stalls, 20, [ON_TIME, 0.4, 0.3]))).toBe(0);
+    // A 0.4s collection or first-use compile every two seconds among ordinary frames.
+    const everyTwoSeconds = [...Array.from({ length: 96 }, () => ON_TIME), 0.4];
+    expect(Math.max(...draw(stalls, 20, everyTwoSeconds))).toBe(0);
+  });
+
+  it('lowers quality for a renderer that stalls on frame after frame', () => {
+    // Round 9 (TECH-021): 3 fps was discarded as a run of stalls and never judged at all.
+    const gauge = createPressureGauge(3);
+    draw(gauge, PRESSURE_POLICY.warmupSeconds, [ON_TIME]);
+    expect(secondsUntilChange(gauge, [0.3], ON_TIME)).toBeLessThan(PRESSURE_POLICY.windowSeconds * 1.5);
+    expect(gauge.level).toBe(1);
+    expect(secondsUntilChange(gauge, [0.3], LATE)).toBeLessThan(PRESSURE_POLICY.windowSeconds * 1.5);
+    expect(gauge.level).toBe(2);
   });
 
   it('forgets what it was judging when the world stops drawing', () => {

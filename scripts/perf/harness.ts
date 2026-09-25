@@ -81,6 +81,23 @@ export class Scope {
   }
 }
 
+/**
+ * Runs `work` in a scope of its own, closed however `work` ends, and returns
+ * the cleanup errors beside the outcome instead of letting a log line swallow
+ * them (round 9, TECH-023). The parent scope closes it too if the run is
+ * interrupted first.
+ */
+export async function scoped<T>(parent: Scope, label: string, work: (scope: Scope) => Promise<T>):
+  Promise<{ outcome: PromiseSettledResult<T>; cleanup: Error[] }> {
+  const own = new Scope();
+  parent.defer(label, () => own.close());
+  const outcome = await work(own).then(
+    (value): PromiseSettledResult<T> => ({ status: 'fulfilled', value }),
+    (reason: unknown): PromiseSettledResult<T> => ({ status: 'rejected', reason }),
+  );
+  return { outcome, cleanup: await own.close() };
+}
+
 export interface OwnedProcess {
   readonly label: string;
   /** The exit code, null for a signal or a failed start, undefined while running. */
