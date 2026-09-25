@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Navigation } from './Navigation';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -69,6 +69,22 @@ describe('Navigation', () => {
     unmount();
     expect(document.documentElement.style.scrollPaddingTop).toBe('');
     rect.mockRestore();
+  });
+
+  it('hands focus to the destination, as an in-page link would', async () => {
+    // Round 7 (D-A11Y-001): focus stayed on the navbar, so Tab went back through Home.
+    const landing = document.createElement('section');
+    landing.id = 'contact';
+    landing.tabIndex = -1;
+    landing.dataset.sectionLanding = 'contact';
+    vi.spyOn(landing, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+    document.body.append(landing);
+    render(<Navigation scrollToSection={mockScrollToSection} />);
+    const link = screen.getByRole('button', { name: 'Contact' });
+    link.focus();
+    fireEvent.click(link);
+    expect(mockScrollToSection).toHaveBeenCalledWith('contact', { source: 'navbar' });
+    await waitFor(() => expect(landing).toHaveFocus());
   });
 
   it('toggles theme', () => {

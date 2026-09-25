@@ -168,7 +168,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
           willChange: reducedMotion ? 'auto' : 'opacity, transform',
         }}
       >
-        <header className={styles.header}>
+        <header className={styles.header} tabIndex={-1} data-section-landing="projects">
           <KineticHeading 
             text="Featured Projects" 
             as="h2" 

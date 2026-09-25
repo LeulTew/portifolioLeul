@@ -907,6 +907,8 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
             className={`${styles.title} ${isReentering ? styles.titleReentering : ''}`}
             style={at('title')}
             data-cue-layer="title"
+            tabIndex={-1}
+            data-section-landing="home"
           >
             <LiquidFillText
               key={reentryCount > 0 ? `reentry-leul-${reentryCount}` : 'first-load-leul'}

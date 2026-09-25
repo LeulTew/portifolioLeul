@@ -6,6 +6,7 @@ import { ThemeContext } from './sections/theme/ThemeContext';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { useActiveSection } from '@/lib/scroll/useActiveSection';
 import { observeChromeInset } from '@/lib/scroll/chromeInset';
+import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { ChapterInkLayer, InkLabel } from './ui/ChapterInkLayer/ChapterInkLayer';
 
@@ -50,6 +51,8 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   const handleNavClick = (id: string, index: number = 0) => {
     soundFx.playTabHum(index);
     scrollToSection(id, { source: 'navbar' });
+    // Focus follows, as it would through an in-page link, so Tab and scroll keys continue from there.
+    landSectionFocus(id);
     // Show the destination immediately, then hand back to live tracking once
     // the smooth scroll has actually arrived.
     setPinnedSection(id);

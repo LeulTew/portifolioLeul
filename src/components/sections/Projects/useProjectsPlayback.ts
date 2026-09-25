@@ -16,6 +16,8 @@ import {
 import { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
+import { claimScrollKeys } from '@/lib/scroll/keyboardScroll';
+import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
 import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
@@ -160,12 +162,9 @@ export function useProjectsPlayback(
       }
       navigating = false;
     };
+    // Focus that was on the TV, or lost with it, continues where the reader has been carried.
     const focusNavigation = (target: string) => {
-      if (panel.contains(document.activeElement) || document.activeElement === document.body) {
-        document.querySelector<HTMLButtonElement>(
-          `button[data-ink-control="${target}"]:not([tabindex="-1"])`,
-        )?.focus({ preventScroll: true });
-      }
+      if (panel.contains(document.activeElement) || document.activeElement === document.body) landSectionFocus(target);
     };
     const leave = (target: 'skills' | 'contact') => {
       side = target === 'contact' ? 'after' : 'before';
@@ -360,6 +359,9 @@ export function useProjectsPlayback(
       scrollContainerBy(scroller, projectsReturnKeyDelta(event, scroller));
     };
     window.addEventListener('keydown', forwardReturnKey, { passive: true });
+    // While engaged, scroll keys are requests to the TV; parked after it, the return keys are this chapter's.
+    const releaseKeys = claimScrollKeys(event => active ||
+      (side === 'after' && (event.key === 'ArrowUp' || event.key === 'PageUp' || event.key === 'Home')));
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (navigating) return;
       wave = null;
@@ -434,6 +436,7 @@ export function useProjectsPlayback(
       unsubscribeScroll();
       observer.disconnect();
       window.removeEventListener('keydown', forwardReturnKey);
+      releaseKeys();
       window.removeEventListener('focusin', focusEditing);
       window.removeEventListener('input', focusEditing);
       window.removeEventListener('scroll', apply);

@@ -251,6 +251,89 @@ describe('keyboard focus in the scroll layer', () => {
   });
 });
 
+describe('Tab past a chapter whose reader is not in place', () => {
+  let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
+  let release: () => void;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <header><button id="logo">LT</button><button id="theme">Theme</button></header>
+      <div id="track"><main id="main">
+        <section id="home"><button id="cta">Explore</button></section>
+        <section id="about" tabindex="-1" data-section-landing="about"><p>Statements</p></section>
+        <section id="projects"></section>
+        <section id="contact"><a id="email" href="mailto:hello@example.com">Email</a></section>
+      </main></div>
+      <div id="stage" inert><div id="reader" tabindex="-1" data-section-landing="projects" data-tab-entry="">
+        <button id="details">Details</button></div><button id="scene-next">Contact</button></div>`;
+    navigate = vi.fn<(section: string) => void>();
+    scrollable(byId('track'), { scrollHeight: 8000, clientHeight: 800 });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    place('home', 0, 900); place('cta', 600);
+    place('about', 900, 2000); place('projects', 2900, 1500); place('contact', 4400, 900); place('email', 4600);
+    release = installLayerFocus({ track: byId('track'), main: () => byId('main'), navigate });
+  });
+  afterEach(() => release());
+
+  /** The reader the navigation brings in takes focus once its chapter is live. */
+  const goLive = () => {
+    byId('stage').removeAttribute('inert');
+    flushFrames();
+  };
+
+  it('visits Projects between Home and Contact, by navigating there', () => {
+    // Round 7 (D-A11Y-001): Tab went from Home straight to Contact past the inert TV reader.
+    byId('cta').focus();
+    expect(tab().defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
+    expect(document.activeElement).toBe(byId('cta'));
+    goLive();
+    expect(document.activeElement).toBe(byId('reader'));
+  });
+
+  it('visits it on the way back from Contact, and from a section landing', () => {
+    byId('email').focus();
+    tab(true);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
+    goLive();
+    expect(document.activeElement).toBe(byId('reader'));
+
+    byId('stage').setAttribute('inert', '');
+    byId('about').focus();
+    tab();
+    expect(navigate).toHaveBeenLastCalledWith('projects');
+  });
+
+  it('counts the navbar as the chapter in view when Tab leaves it', () => {
+    // Contact fills the window: the next stop is Contact's own, so nothing is passed.
+    place('home', -4400, 900); place('about', -3500, 2000); place('projects', -1500, 1500); place('contact', 0, 900);
+    byId('theme').focus();
+    byId('cta').setAttribute('data-no-box', '');
+    tab();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('email'));
+  });
+
+  it('does not send Tab back into the chapter it is leaving', () => {
+    byId('stage').removeAttribute('inert');
+    byId('main').setAttribute('inert', '');
+    place('home', -2900, 900); place('about', -2000, 2000); place('projects', 0, 1500); place('contact', 1500, 900);
+    byId('details').focus();
+    tab(true);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('theme'));
+  });
+
+  it('leaves a reader that is in place to the ordinary order', () => {
+    byId('projects').append(byId('reader'));
+    byId('stage').removeAttribute('inert');
+    byId('cta').focus();
+    tab();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('details'));
+  });
+});
+
 describe('keyboard focus in the no-WebGL document', () => {
   let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
   let revealed: Element[];

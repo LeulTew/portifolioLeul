@@ -17,6 +17,16 @@ describe('global document styles', () => {
     expect(behaviours.filter(value => value !== 'auto')).toEqual([]);
   });
 
+  it('draws no focus ring on a landing that navigation hands focus to, and keeps one on a reader that has a role', () => {
+    const landings: string[] = [];
+    css.walkRules(rule => {
+      rule.walkDecls('outline', declaration => {
+        if (declaration.value === 'none') landings.push(...rule.selectors);
+      });
+    });
+    expect(landings).toEqual(['[data-section-landing]:not([role]):focus']);
+  });
+
   it('holds the footer scroll cue still under reduced motion', () => {
     // Round 7 (D-MOTION-001): the cue's line kept looping every two seconds.
     const app = postcss.parse(readFileSync(resolve('src', 'App.module.css'), 'utf8'));

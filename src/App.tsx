@@ -35,6 +35,7 @@ import { publishSectionNavigation, type SectionNavigationOptions } from './lib/s
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
+import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
 import { useResizeAnchor } from './lib/scroll/resizeAnchor';
 import { AvatarEncounter } from './components/avatar/AvatarEncounter';
 import { TVControls } from './components/tv/TVControls';
@@ -510,6 +511,10 @@ function App() {
       },
     });
   }, [show3D, scrollElement, scrollToSection]);
+
+  // Scroll keys pressed with focus outside drei's track still walk the story.
+  useEffect(() => (show3D && scrollElement ? installKeyboardScroll(scrollElement) : undefined),
+    [show3D, scrollElement]);
 
   /*
    * One definition, rendered either inside the canvas's scroll layer or

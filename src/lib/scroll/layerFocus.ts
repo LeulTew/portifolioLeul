@@ -11,6 +11,7 @@
  * section navigation, which settles the chapters in between like the navbar.
  */
 import { chromeInsetTop } from './chromeInset';
+import { landSectionFocus } from './sectionLanding';
 
 const TABBABLE = [
   'a[href]', 'area[href]', 'button', 'input:not([type="hidden"])', 'select', 'textarea', 'iframe',
@@ -149,6 +150,13 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const next = sequentialNeighbour(active, event.shiftKey, root, stops);
     if (!next) return;
     event.preventDefault();
+    const content = main();
+    const entry = content ? passedEntry(content, active, next, event.shiftKey, view) : null;
+    if (entry) {
+      navigate(entry);
+      landSectionFocus(entry, root);
+      return;
+    }
     next.focus({ preventScroll: true });
     reveal(next);
   };
@@ -167,6 +175,52 @@ function sectionOf(content: HTMLElement, element: Element): HTMLElement | null {
   let section: Element = element;
   while (section.parentElement && section.parentElement !== content) section = section.parentElement;
   return section.parentElement === content && section instanceof HTMLElement ? section : null;
+}
+
+/**
+ * Where a stop sits in the story: its own section, or the section whose
+ * reader holds it outside the content (the staged TV is portalled to the
+ * body). The navbar and other chrome are where the reader is when Tab leaves
+ * them, and where they sit in the document when Tab arrives at them.
+ */
+function placeOf(content: HTMLElement, element: HTMLElement, view: Window, leaving: boolean): number {
+  const sections = [...content.children];
+  const section = sectionOf(content, element);
+  if (section) return sections.indexOf(section);
+  const root = content.ownerDocument;
+  for (let node = element.parentElement; node && node !== root.body && !node.contains(content); node = node.parentElement) {
+    const owner = node.querySelector<HTMLElement>('[data-section-landing]')?.dataset.sectionLanding;
+    const reader = owner ? root.getElementById(owner) : null;
+    if (reader?.parentElement === content) return sections.indexOf(reader);
+  }
+  if (leaving) {
+    const inView = sectionInView(content, view);
+    return inView ? sections.indexOf(inView) : -1;
+  }
+  return content.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING ? -1 : sections.length;
+}
+
+/**
+ * The section a Tab from `from` to `to` passes over whose reader cannot take
+ * focus in its place. The staged TV reader is inert until the TV is on
+ * screen, so Tab went from Home straight to Contact and Projects was never
+ * visited (round 7, D-A11Y-001). Such a reader marks itself `data-tab-entry`
+ * with its section's landing, and Tab visits the section by navigating there.
+ */
+function passedEntry(content: HTMLElement, from: HTMLElement, to: HTMLElement, backward: boolean, view: Window): string | null {
+  const first = placeOf(content, from, view, true);
+  const last = placeOf(content, to, view, false);
+  // Only a move that travels through the story in its own direction passes anything.
+  if (first < 0 && backward) return null;
+  if (backward ? last >= first : last <= first) return null;
+  const sections = [...content.children];
+  const passed = backward ? sections.slice(Math.max(last + 1, 0), first).reverse() : sections.slice(first + 1, last);
+  for (const section of passed) {
+    if (!section.id) continue;
+    const entry = content.ownerDocument.querySelector(`[data-tab-entry][data-section-landing="${section.id}"]`);
+    if (entry && !section.contains(entry)) return section.id;
+  }
+  return null;
 }
 
 /** The section under the middle of the window. */

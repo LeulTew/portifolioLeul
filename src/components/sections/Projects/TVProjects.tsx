@@ -220,6 +220,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
           ref={display} id="project-display" className={styles.display} role="tabpanel"
           aria-labelledby={`project-category-${activeTab}`} tabIndex={-1}
           aria-hidden={!interactive ? true : undefined} onKeyDown={readerKeyboard}
+          data-section-landing="projects" data-tab-entry=""
           onFocusCapture={event => {
             if (event.target instanceof HTMLSelectElement) paging.current?.reset();
           }}
