@@ -95,6 +95,13 @@ function App() {
   const scrollStateRef = useRef<ReturnType<typeof useScroll> | null>(null);
   /** Reader position captured just before the track is resized. */
   const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
+  /**
+   * A navbar destination chosen while the track was about to rebuild. The
+   * rebuild resets the track, and restoring the old offset afterwards threw
+   * the reader back into About instead of Skills (round 10, D-NAV-001); the
+   * latest explicit choice is taken again once the new geometry is in place.
+   */
+  const navigationAfterRebuildRef = useRef<{ id: string; options?: SectionNavigationOptions } | null>(null);
   const trackFocus = useMemo(createTrackFocusRecovery, []);
 
   const handleLoaded = useCallback(() => setIsLoading(false), []);
@@ -312,6 +319,14 @@ function App() {
    * this component and ScrollControls, and an effect here can run *before* the
    * rebuild that resets scrollTop.
    */
+  const scrollToSectionRef = useRef<((id: string, options?: SectionNavigationOptions) => void) | null>(null);
+  /** Takes a destination chosen during a rebuild again, once, outside the render loop. */
+  const replayNavigation = useCallback(() => {
+    const navigation = navigationAfterRebuildRef.current;
+    if (!navigation) return;
+    navigationAfterRebuildRef.current = null;
+    setTimeout(() => scrollToSectionRef.current?.(navigation.id, navigation.options), 0);
+  }, []);
   const applyPendingRestore = useCallback((): number | null => {
     const track = scrollElementRef.current;
     const pending = pendingRestoreRef.current;
@@ -336,6 +351,7 @@ function App() {
       if (!settleTimerRef.current) {
         trackFocus.restore();
         setAvatarLayoutReady(true);
+        replayNavigation();
       }
       return null;
     }
@@ -349,12 +365,17 @@ function App() {
     if (Math.abs(nextPages - pending.fromPages) < 1e-3) return expectedOffset;
 
     pendingRestoreRef.current = null;
+    // A destination chosen during the rebuild replaces the offset it would have restored.
+    if (navigationAfterRebuildRef.current) {
+      if (!settleTimerRef.current) replayNavigation();
+      return null;
+    }
     const offset = preserveScrollOffset(pending.offset, pending.fromPages, nextPages);
     track.scrollTop = offset * scrollable;
     restoredOffsetRef.current = offset;
     restoreSyncFramesRef.current = 2;
     return offset;
-  }, [trackFocus]);
+  }, [trackFocus, replayNavigation]);
 
   const attachMain = useCallback((node: HTMLElement | null) => {
     contentObserverRef.current?.disconnect();
@@ -413,8 +434,11 @@ function App() {
     trackFocus.cancel();
     const immediate = options?.immediate || options?.source === 'navbar';
     if (options?.source === 'navbar') {
-      pendingRestoreRef.current = null;
+      // A rebuild still to land would reset the track under this choice: keep it, and take it again after.
+      const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current);
+      navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
       restoreSyncFramesRef.current = 0;
+      if (!rebuilding) pendingRestoreRef.current = null;
     }
     publishSectionNavigation(id, options);
 
@@ -491,6 +515,7 @@ function App() {
     // The document's scroll padding clears the navbar for focus reveals; this landing keeps the section's own edge.
     window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide });
   }, [scrollElement, trackFocus]);
+  useEffect(() => { scrollToSectionRef.current = scrollToSection; }, [scrollToSection]);
 
   // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
   useEffect(() => {
