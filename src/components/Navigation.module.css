@@ -29,7 +29,10 @@
   max-width: none;
 }
 
+/* Controls keep a 48px target (round 10, D-HIT-002); padding, not type, supplies it. */
 .logo {
+  min-width: 48px;
+  min-height: 48px;
   font-size: 1.5rem;
   font-weight: 700;
   color: rgb(var(--text-color));
@@ -42,7 +45,8 @@
   z-index: 100;
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* The mark stays where it was; its target extends into the empty bar beside it. */
+  justify-content: flex-start;
 }
 
 .desktopNav {
@@ -82,7 +86,7 @@
   background: rgba(var(--bg-color), 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  padding: 0.35rem 0.5rem 0.35rem 1.25rem;
+  padding: 0 0.5rem 0 1.25rem;
   clip-path: chamferPath;
   width: 100%;
 }
@@ -95,10 +99,11 @@
   background: navSurfaceDark;
 }
 
+/* Label-to-label spacing is unchanged: the gap gave the targets its width. */
 .navItems {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.75rem;
 }
 
 .navItem {
@@ -107,7 +112,9 @@
   color: rgba(var(--text-color), 0.65);
   background: none;
   border: none;
-  padding: 0.5rem 0.25rem;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 0.625rem;
   cursor: pointer;
   transition: color 0.25s ease;
   position: relative;
@@ -148,9 +155,9 @@
 /* Subtle, clean, non-distracting underline active indicator */
 .activeIndicator {
   position: absolute;
-  bottom: -2px;
-  left: 0;
-  right: 0;
+  bottom: 6px;
+  left: 0.625rem;
+  right: 0.625rem;
   height: 2.5px;
   background: brandEmerald; /* Brand emerald in light mode */
   border-radius: 2px;
@@ -185,8 +192,9 @@
 }
 
 .themeToggle {
-  width: 34px;
-  height: 34px;
+  position: relative;
+  width: 48px;
+  height: 48px;
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -199,15 +207,36 @@
   transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
+/* The visible chip stays 34px inside the 48px target. */
+.themeToggle::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 6px;
+  background: transparent;
+  transition: background-color 0.2s ease;
+  pointer-events: none;
+}
+
+.themeToggle > * {
+  position: relative;
+}
+
 .themeToggle:hover {
-  background: rgba(var(--text-color), 0.08);
   color: brandEmerald;
   transform: scale(1.06);
 }
 
+.themeToggle:hover::before {
+  background: rgba(var(--text-color), 0.08);
+}
+
 :global([data-theme='dark']) .themeToggle:hover {
-  background: rgba(0, 255, 157, 0.15);
   color: brandMint;
+}
+
+:global([data-theme='dark']) .themeToggle:hover::before {
+  background: rgba(0, 255, 157, 0.15);
 }
 
 .soundMutedIcon {
@@ -237,14 +266,18 @@
     font-size: 1.2rem;
   }
   .navBarInner {
-    padding: 0.3rem 0.45rem 0.3rem 1rem;
+    padding: 0 0.45rem 0 1rem;
   }
   .navItems {
-    gap: 1rem;
+    gap: 0.5rem;
   }
   .navItem {
     font-size: 0.8125rem;
-    padding: 0.4rem 0.25rem;
+    padding: 0 0.5rem;
+  }
+  .activeIndicator {
+    left: 0.5rem;
+    right: 0.5rem;
   }
   .divider {
     margin: 0 0.65rem 0 0.85rem;
@@ -260,13 +293,18 @@
     font-size: 1.35rem;
   }
   .navBarInner {
-    padding: 0.35rem 0.5rem 0.35rem 1.25rem;
+    padding: 0 0.5rem 0 1.25rem;
   }
   .navItems {
-    gap: 1.35rem;
+    gap: 0.75rem;
   }
   .navItem {
     font-size: 0.875rem;
+    padding: 0 0.55rem;
+  }
+  .activeIndicator {
+    left: 0.55rem;
+    right: 0.55rem;
   }
 }
 
@@ -318,18 +356,20 @@
  */
 @media (min-width: 2880px) and (min-height: 1600px) {
   .logo { font-size: 1.85rem; }
-  .navItems { gap: 1.75rem; }
-  .navItem { font-size: 1.0625rem; }
+  .navItems { gap: 0.75rem; }
+  .navItem { font-size: 1.0625rem; padding: 0 0.75rem; }
+  .activeIndicator { left: 0.75rem; right: 0.75rem; }
   .navBar { --chamfer-cut: 12px; }
   .navBarInner {
     --chamfer-cut: 11.5px;
-    padding: 0.45rem 0.6rem 0.45rem 1.5rem;
+    padding: 0.1rem 0.6rem 0.1rem 1.5rem;
   }
   .divider { height: 26px; }
   .themeToggle {
-    width: 44px;
-    height: 44px;
+    width: 56px;
+    height: 56px;
   }
+  .themeToggle::before { inset: 6px; }
   .themeToggle svg {
     width: 22px;
     height: 22px;
