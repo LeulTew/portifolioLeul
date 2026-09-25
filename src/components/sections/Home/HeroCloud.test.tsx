@@ -334,6 +334,28 @@ describe('HeroCloud', () => {
     expect(cloud(container)).not.toHaveAttribute('data-cloud-theme');
   });
 
+  it('draws a night mist in dark, toned for the ground it drifts over', () => {
+    // Round 9 (D-UI-002): the dark hero was a daytime-white patch on the night scene.
+    const { container, rerender } = render(<HeroCloud theme="dark" />);
+    expect(cloud(container)).toHaveAttribute('data-cloud-ground', 'scene');
+    rerender(<HeroCloud theme="dark" ground="plain" />);
+    expect(cloud(container)).toHaveAttribute('data-cloud-ground', 'plain');
+
+    const night = declarationsFor(".cloud[data-cloud-theme='dark']");
+    const plain = declarationsFor(".cloud[data-cloud-theme='dark'][data-cloud-ground='plain']");
+    for (const tone of ['--cloud-body-tone', '--cloud-vapor-tone', '--cloud-light-tone']) {
+      expect(night.get(tone), tone).toMatch(/^brightness\(0\.\d+\)/);
+      expect(plain.get(tone), tone).toMatch(/^brightness\(0\.\d+\)/);
+      expect(plain.get(tone), tone).not.toBe(night.get(tone));
+    }
+    // The tone sits on images that do not move; the drifting wrappers carry no filter.
+    expect(declarationsFor('.cloud .body').get('filter')).toBe('var(--cloud-body-tone, none)');
+    expect(declarationsFor('.cloud .vapor .layerImage').get('filter')).toBe('var(--cloud-vapor-tone, none)');
+    expect(declarationsFor('.cloud .shear .layerImage').get('filter')).toBe('var(--cloud-light-tone, none)');
+    for (const layer of ['.vapor', '.shear']) expect(declarationsFor(layer).has('filter')).toBe(false);
+    expect(declarationsFor(".cloud[data-cloud-theme='light']").has('--cloud-body-tone')).toBe(false);
+  });
+
   it('keeps simultaneous instances independent without shared mutable SVG ids', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { container } = render(<><HeroCloud /><HeroCloud /></>);

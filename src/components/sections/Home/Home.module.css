@@ -92,17 +92,21 @@
 }
 
 /*
- * In dark theme the mist's own luminance varies behind the copy, from bright
- * vapour to the night it fades into. A steady feathered light under the
- * measured copy keeps dark text on a known surface; the mist still draws over it.
+ * In dark the mist is night, not a lit patch (round 9, D-UI-002): a steady
+ * feathered shade under the measured copy keeps light text on a known dark
+ * surface, and the mist still draws over it.
  */
 :global([data-theme='dark']) .plate::before {
   content: '';
   position: absolute;
   inset: 12% 8%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(244 247 241 / 0.94), rgb(244 247 241 / 0.86) 64%, rgb(244 247 241 / 0));
+  background: radial-gradient(closest-side, rgb(5 16 14 / 0.78), rgb(5 16 14 / 0.62) 64%, rgb(5 16 14 / 0));
   filter: blur(10px);
+}
+
+:global([data-theme='dark']) .plate[data-cloud-ground='plain']::before {
+  background: radial-gradient(closest-side, rgb(9 13 26 / 0.78), rgb(9 13 26 / 0.62) 64%, rgb(9 13 26 / 0));
 }
 
 @keyframes cloudCondense {
@@ -226,18 +230,22 @@
 }
 
 /*
- * The white cloud is a light surface in both themes, but in dark its edges fade
- * into night, and the copy that runs past its core was dark text on mid-grey.
- * The same last-name weight as light, and a cloud-coloured halo on the plain
- * lines, keep every glyph on light without dimming the cloud or the scene.
+ * Dark copy sits on the night mist and its shade, so it is light: the same
+ * last-name weight as light theme, and a shade-coloured halo on the plain
+ * lines where the copy runs past the mist's core.
  */
+:global([data-theme='dark']) .title {
+  color: #eef3ef;
+}
+
 :global([data-theme='dark']) .lastname {
   opacity: 0.82;
+  color: #eef3ef;
 }
 
 :global([data-theme='dark']) .info,
 :global([data-theme='dark']) .description {
-  text-shadow: 0 0 0.55em rgb(244 247 241 / 0.9), 0 0 0.2em rgb(244 247 241 / 0.9);
+  text-shadow: 0 0 0.55em rgb(5 16 14 / 0.9), 0 0 0.2em rgb(5 16 14 / 0.9);
 }
 
 .info {
@@ -255,9 +263,17 @@
   color: #1f2937;
 }
 
-/* The white cloud is a light surface in both themes. */
+:global([data-theme='dark']) .info {
+  color: #d3ddd7;
+}
+
+/* The light cloud keeps the deep accent; the night mist takes the bright one. */
 .info :global(.text-emerald-400) {
   color: #035d45;
+}
+
+:global([data-theme='dark']) .info :global(.text-emerald-400) {
+  color: #6ee7b7;
 }
 
 /*
@@ -292,6 +308,11 @@
 
 :global([data-theme='light']) .description {
   color: #374151;
+  font-weight: 450;
+}
+
+:global([data-theme='dark']) .description {
+  color: #c8d4ce;
   font-weight: 450;
 }
 

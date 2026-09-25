@@ -888,8 +888,9 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           aria-hidden="true"
           data-cue-layer="backdrop"
           data-cloud-active={cloudActive}
+          data-cloud-ground={flat ? 'plain' : 'scene'}
         >
-          <HeroCloud active={cloudActive && !avatarActive} theme={theme} />
+          <HeroCloud active={cloudActive && !avatarActive} theme={theme} ground={flat ? 'plain' : 'scene'} />
         </div>
 
         {/* Always present: it is the frame the sequenced layers arrive into. */}

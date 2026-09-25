@@ -124,7 +124,7 @@ export function ExpandableTabs({
             onClick={() => handleSelect(index)}
             transition={transition}
             className={cn(
-              "relative flex items-center justify-center rounded-full text-[0.8125rem] font-medium transition-colors duration-300",
+              "group relative flex items-center justify-center rounded-full text-[0.8125rem] font-medium transition-colors duration-300",
               // Keep a 48px target while the Projects surface scales to 0.97.
               "min-h-[50px] min-w-[50px]",
               "focus-visible:[outline-style:solid] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-current",
@@ -166,6 +166,18 @@ export function ExpandableTabs({
                 </motion.span>
               )}
             </AnimatePresence>
+            {!isSelected && (
+              // An icon alone cannot say "Graphics & Algorithms": name it on hover and keyboard
+              // focus, beside the rail rather than in it, so pointing along the row moves nothing.
+              // Arbitrary `.group` variants: this build's Tailwind emits no `group-*` rules.
+              <span
+                aria-hidden="true"
+                data-tab-hint=""
+                className="pointer-events-none absolute left-1/2 top-[calc(100%+0.5rem)] z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-[var(--pill-active-bg)] px-2.5 py-1 text-xs font-medium text-[var(--pill-active-text)] opacity-0 shadow-sm transition-opacity duration-150 [.group:hover_&]:opacity-100 [.group:focus-visible_&]:opacity-100 motion-reduce:transition-none"
+              >
+                {displayTitle}
+              </span>
+            )}
           </motion.button>
         );
       })}
