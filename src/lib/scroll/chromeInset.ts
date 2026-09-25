@@ -10,8 +10,16 @@
  */
 let insetTop = 0;
 
+/** Room below the navbar for the focus ring, which draws outside the control it marks. */
+export const CHROME_GAP_PX = 12;
+
 export function chromeInsetTop(): number {
   return insetTop;
+}
+
+/** Where revealed content may start: below the navbar and the ring's room, or the top without one. */
+export function chromeClearance(): number {
+  return insetTop > 0 ? insetTop + CHROME_GAP_PX : 0;
 }
 
 /** Tracks the header's height, which is its bottom edge: it is fixed at the top of the window. */
@@ -22,7 +30,7 @@ export function observeChromeInset(header: HTMLElement): () => void {
     if (next === insetTop) return;
     insetTop = next;
     // Only when the height changes, at a breakpoint: a write on <html> restyles the document.
-    root.style.scrollPaddingTop = `${next}px`;
+    root.style.scrollPaddingTop = `${chromeClearance()}px`;
   };
   publish(header.getBoundingClientRect().height);
   // Delivered after layout, so the read is already resolved.

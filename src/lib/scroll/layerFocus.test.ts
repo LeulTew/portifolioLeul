@@ -169,8 +169,37 @@ describe('keyboard focus in the scroll layer', () => {
     tab();
     expect(document.activeElement).toBe(byId('message'));
     expect(navigate).not.toHaveBeenCalled();
-    // 110 - 132 = -22px, in track pixels.
-    expect(byId('track').scrollTop).toBeCloseTo(1000 - (22 * 7200) / 6200, 5);
+    // 110 - (132 + the 12px ring gap) = -34px, in track pixels.
+    expect(byId('track').scrollTop).toBeCloseTo(1000 - (34 * 7200) / 6200, 5);
+  });
+
+  it('reveals the field native validation focuses with its label, clear of the navbar', () => {
+    // Round 8 (D-A11Y-002): at 900x560 a blank Send left Name half under the bar.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    const label = document.createElement('label');
+    label.htmlFor = 'message';
+    byId('message').before(label);
+    boxes.set(label, { top: 20, bottom: 40 });
+    place('contact', 0, 1000); place('message', 44, 120);
+    rendered = 1000;
+    // The browser fires invalid, then focuses the first invalid control.
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    flushFrames();
+    expect(navigate).not.toHaveBeenCalled();
+    // The label's top, 20, to the 96px reveal margin (below the bar and its gap here) = -76px, in track pixels.
+    expect(byId('track').scrollTop).toBeCloseTo(1000 - (76 * 7200) / 6200, 5);
+  });
+
+  it('leaves a field that is invalid but not focused where it is', () => {
+    place('contact', 0, 1000); place('email', 40, 52); place('message', 900, 120);
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('email').focus();
+    flushFrames();
+    expect(byId('track').scrollTop).toBe(0);
   });
 
   it('holds the html layer at zero when the browser reveals focus by scrolling it', () => {
@@ -467,6 +496,26 @@ describe('keyboard focus in the no-WebGL document', () => {
   it('ignores Tab that leaves the content', () => {
     byId('cta').focus();
     tabTo('logo', true);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows the label of the field native validation focuses, below the bar', () => {
+    // Round 8 (D-A11Y-002): the browser aligns the field with the scroll padding; its label stayed under the bar.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    const label = document.createElement('label');
+    label.htmlFor = 'message';
+    byId('message').before(label);
+    boxes.set(label, { top: 60, bottom: 80 });
+    place('message', 82, 120);
+    const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    flushFrames();
+    // The label's top, 60, to below the bar and the ring's room, 82.
+    expect(scrolled).toHaveBeenCalledExactlyOnceWith({ top: -22, behavior: 'auto' });
     expect(navigate).not.toHaveBeenCalled();
   });
 

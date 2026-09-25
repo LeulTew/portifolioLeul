@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chromeInsetTop, observeChromeInset } from './chromeInset';
+import { CHROME_GAP_PX, chromeClearance, chromeInsetTop, observeChromeInset } from './chromeInset';
 
 let resize: (() => void) | null = null;
 let disconnected = 0;
@@ -29,20 +29,22 @@ afterEach(() => {
 });
 
 describe('the navbar inset keyboard reveals clear', () => {
-  it('publishes the fixed header height as the inset and the document scroll padding', () => {
+  it('publishes the fixed header height as the inset, and the document scroll padding with room for a focus ring', () => {
     vi.stubGlobal('ResizeObserver', FakeResizeObserver);
     const bar = header(69.4);
     const release = observeChromeInset(bar.element);
     expect(chromeInsetTop()).toBe(70);
-    expect(padding()).toBe('70px');
+    expect(chromeClearance()).toBe(70 + CHROME_GAP_PX);
+    expect(padding()).toBe(`${70 + CHROME_GAP_PX}px`);
 
     bar.resizeTo(132);
     expect(chromeInsetTop()).toBe(132);
-    expect(padding()).toBe('132px');
+    expect(padding()).toBe(`${132 + CHROME_GAP_PX}px`);
 
     release();
     expect(disconnected).toBe(1);
     expect(chromeInsetTop()).toBe(0);
+    expect(chromeClearance()).toBe(0);
     expect(padding()).toBe('');
   });
 

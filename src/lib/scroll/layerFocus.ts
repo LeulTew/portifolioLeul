@@ -10,7 +10,7 @@
  * without the browser's reveal, and the page is brought to the control through
  * section navigation, which settles the chapters in between like the navbar.
  */
-import { chromeInsetTop } from './chromeInset';
+import { chromeClearance } from './chromeInset';
 import { landSectionFocus } from './sectionLanding';
 
 const TABBABLE = [
@@ -20,6 +20,19 @@ const TABBABLE = [
 
 /** A reveal leaves this much room between the control and the window's edge, and clears the navbar. */
 const REVEAL_MARGIN_PX = 96;
+
+/** What a reveal has to show: the control, and for a field the labels that name it. */
+export function revealBox(element: HTMLElement): { top: number; bottom: number } {
+  const box = element.getBoundingClientRect();
+  let { top, bottom } = box;
+  const labels = (element as Partial<HTMLInputElement>).labels;
+  for (const label of labels ?? []) {
+    const named = label.getBoundingClientRect();
+    top = Math.min(top, named.top);
+    bottom = Math.max(bottom, named.bottom);
+  }
+  return { top, bottom };
+}
 
 function isTabbable(element: HTMLElement): boolean {
   if (element.tabIndex < 0 || element.matches(':disabled')) return false;
@@ -101,9 +114,9 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const content = main();
     if (!element.isConnected || !content) return;
     const height = track.clientHeight || view.innerHeight;
-    const box = element.getBoundingClientRect();
+    const box = revealBox(element);
     const margin = Math.min(REVEAL_MARGIN_PX, height * 0.12);
-    const top = Math.max(margin, chromeInsetTop());
+    const top = Math.max(margin, chromeClearance());
     let shift = box.bottom > height - margin ? box.bottom - (height - margin) : 0;
     if (box.top - shift < top) shift = box.top - top;
     if (Math.abs(shift) < 1) return;
@@ -117,8 +130,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const content = main();
     if (!(element instanceof HTMLElement) || !content || element === content || !content.contains(element)) return;
     const height = track.clientHeight || view.innerHeight;
-    const box = element.getBoundingClientRect();
-    if (box.top >= chromeInsetTop() && box.bottom <= height) return;
+    const box = revealBox(element);
+    if (box.top >= chromeClearance() && box.bottom <= height) return;
     let section: HTMLElement = element;
     while (section.parentElement && section.parentElement !== content) section = section.parentElement;
     const area = section.getBoundingClientRect();
@@ -162,11 +175,26 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     reveal(next);
   };
 
+  /*
+   * Native validation focuses the first invalid field and scrolls it into
+   * view, but the browser's view is the viewport, not what the navbar leaves
+   * of it: at 900x560 a blank Send put Name half under the bar, its message
+   * bubble over the navigation (round 8, D-A11Y-002). The field it focuses is
+   * revealed the way keyboard focus is, clear of the bar.
+   */
+  const invalid = (event: Event) => {
+    const field = event.target;
+    if (!(field instanceof HTMLElement)) return;
+    view.requestAnimationFrame(() => { if (root.activeElement === field) reveal(field); });
+  };
+
   track.addEventListener('scroll', hold, { capture: true, passive: true });
   root.addEventListener('keydown', tab);
+  root.addEventListener('invalid', invalid, true);
   return () => {
     track.removeEventListener('scroll', hold, { capture: true });
     root.removeEventListener('keydown', tab);
+    root.removeEventListener('invalid', invalid, true);
     view.cancelAnimationFrame(frame);
   };
 }
@@ -300,13 +328,26 @@ export function installDocumentFocus({ main, navigate }: {
     });
   };
 
+  // Native validation aligns the field under the bar; its label, above it, is shown with it.
+  const invalid = (event: Event) => {
+    const field = event.target;
+    if (!(field instanceof HTMLElement) || !main()?.contains(field)) return;
+    view.requestAnimationFrame(() => {
+      if (root.activeElement !== field) return;
+      const hidden = chromeClearance() - revealBox(field).top;
+      if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+    });
+  };
+
   root.addEventListener('keydown', key, { capture: true, passive: true });
   root.addEventListener('pointerdown', pointer, { capture: true, passive: true });
   root.addEventListener('focusin', follow, true);
+  root.addEventListener('invalid', invalid, true);
   return () => {
     root.removeEventListener('keydown', key, { capture: true });
     root.removeEventListener('pointerdown', pointer, { capture: true });
     root.removeEventListener('focusin', follow, true);
+    root.removeEventListener('invalid', invalid, true);
     view.cancelAnimationFrame(frame);
   };
 }

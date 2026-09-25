@@ -65,7 +65,8 @@ describe('Navigation', () => {
       return { top: 0, bottom: height, height, left: 0, right: 0, width: 0, x: 0, y: 0, toJSON() {} } as DOMRect;
     });
     const { unmount } = render(<Navigation scrollToSection={mockScrollToSection} />);
-    expect(document.documentElement.style.scrollPaddingTop).toBe('70px');
+    // The bar's height and room below it for a focus ring.
+    expect(document.documentElement.style.scrollPaddingTop).toBe('82px');
     unmount();
     expect(document.documentElement.style.scrollPaddingTop).toBe('');
     rect.mockRestore();
