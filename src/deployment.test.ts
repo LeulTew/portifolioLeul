@@ -13,7 +13,11 @@ describe('the deployed portfolio contract', () => {
       buildCommand: 'bun run build',
       outputDirectory: 'dist',
     });
-    expect(config.rewrites).toContainEqual({ source: '/(.*)', destination: '/index.html' });
+    // Every page path falls back to the app; content-hashed bundles do not (deployment.caching.test.ts).
+    const fallback = config.rewrites.find((rule: { destination: string }) => rule.destination === '/index.html');
+    const fallsBack = (path: string) => new RegExp(`^${fallback.source}$`).test(path);
+    expect(fallsBack('/')).toBe(true);
+    expect(fallsBack('/any/deep/link')).toBe(true);
   });
 
   it('pins the Bun that produced the lockfile Vercel reads', () => {
