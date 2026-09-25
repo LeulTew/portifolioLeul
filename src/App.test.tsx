@@ -124,6 +124,7 @@ const runFrames = (count = 1, delta = 0.016) => {
 const threeState = {
   camera: { fov: 50, position: { set: vi.fn() }, updateProjectionMatrix: vi.fn() },
   size: { width: 1920, height: 1080 },
+  viewport: { dpr: 1 },
   gl: {
     render: vi.fn(),
     domElement: document.createElement("canvas"),

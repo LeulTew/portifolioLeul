@@ -6,6 +6,7 @@ import { setWorldOcclusion, setOverlayOcclusion, resetCameraHold } from '@/lib/c
 import { setProjectsView } from '@/lib/projects/projectsScene';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
 import { beginContactFlight, parkContactSky, releaseContactSky } from '@/lib/contact/contactScene';
+import { getWorldQualityLevel, resetWorldQuality, setWorldQualityLevels } from './worldQuality';
 
 describe('frameGate', () => {
   beforeEach(() => {
@@ -252,6 +253,33 @@ describe('frameGate', () => {
 
       setFrameBudget(-1);
       expect(isFrameDrawn(0.002)).toBe(true);
+    });
+  });
+
+  describe('reporting how well the world draws', () => {
+    afterEach(() => resetWorldQuality());
+
+    it('lowers the world quality when drawn frames keep missing the budget, and only then', () => {
+      // Round 8 (TECH-009): quality was fixed at load whatever the device then did.
+      setWorldQualityLevels(3);
+      setFrameBudget(1 / 60);
+      let time = 0;
+      // Six seconds at 40 fps: every other frame a refresh late.
+      for (let frame = 0; time < 6; frame++) isFrameDrawn(time += frame % 2 ? 1 / 30 : 1 / 60);
+      expect(getWorldQualityLevel()).toBe(1);
+    });
+
+    it('does not count time the world spends covered, however slow the page is meanwhile', () => {
+      setWorldQualityLevels(3);
+      setFrameBudget(1 / 60);
+      let time = 0;
+      for (let frame = 0; time < 30; frame++) {
+        // Covered for all but one second in five.
+        setOverlayOcclusion(frame % 150 >= 30, 'about');
+        isFrameDrawn(time += 1 / 30);
+      }
+      setOverlayOcclusion(false, 'about');
+      expect(getWorldQualityLevel()).toBe(0);
     });
   });
 });

@@ -25,9 +25,11 @@ export interface RenderGovernorProps {
    * this never changes R3F's native subscriber/DOM cadence.
    */
   maxFps?: number;
+  /** The world quality level the ceiling belongs to, published on the canvas. */
+  quality?: number;
 }
 
-export function RenderGovernor({ maxFps = 60 }: RenderGovernorProps = {}) {
+export function RenderGovernor({ maxFps = 60, quality = 0 }: RenderGovernorProps = {}) {
   useEffect(() => {
     setFrameBudget(maxFps > 0 ? 1 / maxFps : 0);
     return resetFrameGate;
@@ -36,6 +38,16 @@ export function RenderGovernor({ maxFps = 60 }: RenderGovernorProps = {}) {
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
+  const dpr = useThree((state) => state.viewport.dpr);
+
+  // What the world is drawing at, for anyone measuring it.
+  useEffect(() => {
+    gl.domElement.dataset.worldRate = String(maxFps);
+    gl.domElement.dataset.worldQuality = String(quality);
+  }, [gl, maxFps, quality]);
+
+  // A new pixel ratio reallocates the canvas, which clears the image a still world was keeping.
+  useEffect(() => { invalidateStillWorld(); }, [dpr]);
 
   // A still world keeps its last image only while that image is still the right one.
   useEffect(() => {

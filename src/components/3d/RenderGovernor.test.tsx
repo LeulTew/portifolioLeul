@@ -54,6 +54,7 @@ function scene(maxFps: number) {
   };
   harness.state = {
     camera, scene, clock, mouse: { x: 0, y: 0 }, gl: { render: harness.draw, domElement: harness.canvas },
+    viewport: { dpr: 1 },
   };
   const mounted = render(<>
     <CinematicCameraController />
@@ -72,6 +73,12 @@ function scene(maxFps: number) {
 }
 
 describe('one render decision for every producer in a frame', () => {
+  it('publishes the rate and quality level the world is drawing at', () => {
+    const { rerender } = scene(60);
+    expect(harness.canvas.dataset).toMatchObject({ worldRate: '60', worldQuality: '0' });
+    rerender(<RenderGovernor maxFps={30} quality={1} />);
+    expect(harness.canvas.dataset).toMatchObject({ worldRate: '30', worldQuality: '1' });
+  });
   it('draws at 60fps on a high-refresh display while native callbacks keep running', () => {
     const result = scene(60);
     expect(harness.draw).toHaveBeenCalledTimes(61);
@@ -108,6 +115,23 @@ describe('one render decision for every producer in a frame', () => {
 });
 
 describe('a still world at parked Contact', () => {
+  it('keeps its last image until a new pixel ratio clears the canvas', () => {
+    const { clock, rerender } = scene(60);
+    const frames = [...harness.frames].sort((a, b) => a.priority - b.priority);
+    const tick = (seconds: number) => {
+      clock.elapsedTime = seconds;
+      for (const { callback } of frames) callback(harness.state, 1 / 60);
+    };
+    parkContactSky();
+    for (let frame = 0; frame < 120; frame++) tick(2 + frame / 60);
+    harness.draw.mockClear();
+    tick(4);
+    expect(harness.draw).not.toHaveBeenCalled();
+    harness.state = { ...harness.state, viewport: { dpr: 2 } };
+    rerender(<RenderGovernor maxFps={60} />);
+    tick(4.5);
+    expect(harness.draw).toHaveBeenCalledOnce();
+  });
   it.each([
     ['a resize', () => window.dispatchEvent(new Event('resize'))],
     ['a theme change', async () => {
