@@ -3,7 +3,6 @@ import { PAGE_PROBE, type PageTrace } from './measures';
 
 type Probe = PageTrace & { sample(on: boolean): void; enter(phase: string): void };
 const probe = () => (window as unknown as { __budget: Probe }).__budget;
-const flush = () => new Promise(done => setTimeout(done, 0));
 
 let frames: FrameRequestCallback[] = [];
 const runFrame = (now: number) => {
@@ -31,16 +30,15 @@ afterEach(() => {
 });
 
 describe('the in-page probe', () => {
-  it('marks each part of the run and every change of chapter within it', async () => {
+  it('marks each part of the run and every change of chapter within it', () => {
     probe().enter('journey');
     const stage = document.querySelector('[data-testid="skills-stage"]')!;
     document.querySelector('[data-testid="page-footer"]')!.setAttribute('data-footer-section', 'skills');
     stage.setAttribute('data-phase', 'reading');
-    await flush();
+    vi.advanceTimersByTime(100);
     stage.setAttribute('data-active-skill', '1');
-    await flush();
-    stage.setAttribute('data-active-skill', '1');
-    await flush();
+    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100);
     const journey = probe().checkpoints.filter(checkpoint => checkpoint.phase === 'journey');
     expect(journey.map(({ section, skills, skill, tv }) => [section, skills, skill, tv])).toEqual([
       ['home', 'outside', '0', ''],
@@ -49,11 +47,22 @@ describe('the in-page probe', () => {
     ]);
   });
 
-  it('picks up a reader that arrives with its phase already set', () => {
+  it('reads the chapter on every sampled frame, and a reader that arrives later', () => {
     probe().enter('journey');
+    probe().sample(true);
     document.body.insertAdjacentHTML('beforeend', '<div data-testid="projects-stage" data-phase="reading"></div>');
-    vi.advanceTimersByTime(250);
+    runFrame(1000);
     expect(probe().checkpoints.at(-1)).toMatchObject({ phase: 'journey', tv: 'reading' });
+    document.body.insertAdjacentHTML('beforeend', '<canvas data-world-quality="1"></canvas>');
+    runFrame(1016.7);
+    expect(probe().checkpoints.at(-1)).toMatchObject({ tv: 'reading', quality: '1' });
+  });
+
+  it('adds no observer that every attribute write on the page would have to consult', () => {
+    const observe = vi.spyOn(MutationObserver.prototype, 'observe');
+    delete (window as unknown as { __budget?: Probe }).__budget;
+    new Function(PAGE_PROBE)();
+    expect(observe).not.toHaveBeenCalled();
   });
 
   it('says which timings the browser cannot give rather than reporting none', () => {

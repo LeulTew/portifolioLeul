@@ -80,9 +80,20 @@ export interface Checkpoint {
   skill: string;
   /** The TV's phase. */
   tv: string;
+  /** The world quality level the canvas publishes. */
+  quality: string;
 }
 
-export interface LongFrame { phase: Phase; ms: number; blocking: number; context: string }
+export interface LongFrame {
+  phase: Phase;
+  ms: number;
+  blocking: number;
+  context: string;
+  /** Milliseconds of the frame spent rendering: style, layout, paint. */
+  render?: number;
+  /** For a frame of 150ms or more, the script that took longest in it. */
+  cause?: string;
+}
 export interface TimedEvent { phase: Phase; name: string; ms: number }
 
 /** What the in-page probe hands back. */
@@ -101,12 +112,16 @@ export interface PageTrace {
 }
 
 /**
- * Installed before the page's own scripts on every navigation. Records the
- * reader's chapter on each change -- attribute mutations as they happen, and a
- * slow poll for elements that arrive with their attributes already set -- and
- * tags every long frame and interaction with it. `sample(true)` times every
- * animation frame until `sample(false)`; `enter(phase)` marks where a part of
- * the run begins.
+ * Installed before the page's own scripts on every navigation. Reads the
+ * reader's chapter on every sampled animation frame, and ten times a second
+ * otherwise, and tags every long frame and interaction with it. `sample(true)`
+ * times every animation frame until `sample(false)`; `enter(phase)` marks
+ * where a part of the run begins.
+ *
+ * It reads rather than observes: an attribute MutationObserver on the
+ * document makes every inline-style write on the page -- thousands a frame in
+ * About's text animations -- look for observers, and the first version of this
+ * probe tripled the journey's blocking time that way.
  */
 export const PAGE_PROBE = String.raw`(() => {
   if (window.__budget) return;
@@ -115,31 +130,38 @@ export const PAGE_PROBE = String.raw`(() => {
     readyAt: null, fcp: null, lcp: null,
   };
   window.__budget = trace;
-  const query = selector => document.querySelector(selector);
-  const read = (element, name) => (element && element.getAttribute(name)) || '';
-  const state = () => {
-    const skills = query('[data-testid="skills-stage"]');
-    return {
-      section: read(query('[data-testid="page-footer"]'), 'data-footer-section'),
-      skills: read(skills, 'data-phase'),
-      skill: read(skills, 'data-active-skill'),
-      tv: read(query('[data-testid="projects-stage"]'), 'data-phase'),
-    };
+  const found = {};
+  const find = selector => {
+    const element = found[selector];
+    if (element && element.isConnected) return element;
+    return (found[selector] = document.querySelector(selector));
   };
+  const read = (selector, name) => {
+    const element = find(selector);
+    return (element && element.getAttribute(name)) || '';
+  };
+  const state = () => ({
+    section: read('[data-testid="page-footer"]', 'data-footer-section'),
+    skills: read('[data-testid="skills-stage"]', 'data-phase'),
+    skill: read('[data-testid="skills-stage"]', 'data-active-skill'),
+    tv: read('[data-testid="projects-stage"]', 'data-phase'),
+    quality: read('canvas[data-world-quality]', 'data-world-quality'),
+  });
   let current = state();
   const mark = () => {
     trace.checkpoints.push(Object.assign({ t: Math.round(performance.now()), phase: trace.phase }, current));
   };
   const record = () => {
     const next = state();
-    if (next.section === current.section && next.skills === current.skills
-      && next.skill === current.skill && next.tv === current.tv) return;
+    if (next.section === current.section && next.skills === current.skills && next.skill === current.skill
+      && next.tv === current.tv && next.quality === current.quality) return;
     current = next;
     mark();
   };
   const context = () => (current.section || '?')
     + (current.skills && current.skills !== 'outside' ? ' skills:' + current.skills : '')
-    + (current.tv && current.tv !== 'outside' ? ' tv:' + current.tv : '');
+    + (current.tv && current.tv !== 'outside' ? ' tv:' + current.tv : '')
+    + (current.quality && current.quality !== '0' ? ' q' + current.quality : '');
   const observe = (type, callback, extra) => {
     const types = typeof PerformanceObserver === 'function' ? PerformanceObserver.supportedEntryTypes || [] : [];
     if (!types.includes(type)) {
@@ -150,7 +172,17 @@ export const PAGE_PROBE = String.raw`(() => {
       .observe(Object.assign({ type, buffered: true }, extra));
   };
   observe('long-animation-frame', entry => {
-    trace.frames.push({ phase: trace.phase, ms: entry.duration, blocking: entry.blockingDuration, context: context() });
+    const frame = { phase: trace.phase, ms: entry.duration, blocking: entry.blockingDuration, context: context() };
+    if (entry.renderStart) frame.render = Math.round(entry.startTime + entry.duration - entry.renderStart);
+    if (entry.duration >= 150) {
+      let top = null;
+      for (const script of entry.scripts || []) if (!top || script.duration > top.duration) top = script;
+      if (top) {
+        frame.cause = [top.invokerType, top.sourceFunctionName || top.invoker,
+          (top.sourceURL || '').split('/').pop() + ':' + top.sourceCharPosition, Math.round(top.duration) + 'ms'].join(' ');
+      }
+    }
+    trace.frames.push(frame);
   });
   observe('event', entry => {
     if (entry.interactionId) trace.events.push({ phase: trace.phase, name: entry.name, ms: entry.duration });
@@ -160,13 +192,10 @@ export const PAGE_PROBE = String.raw`(() => {
   });
   observe('largest-contentful-paint', entry => { trace.lcp = Math.round(entry.startTime); });
 
-  new MutationObserver(record).observe(document, {
-    subtree: true, attributes: true, attributeFilter: ['data-footer-section', 'data-phase', 'data-active-skill'],
-  });
-  setInterval(record, 250);
+  setInterval(record, 100);
 
   const settle = now => {
-    const hero = query('[data-testid="hero-content"]');
+    const hero = find('[data-testid="hero-content"]');
     if (hero && /settled/.test(hero.className)) {
       trace.readyAt = Math.round(now);
       return;
@@ -185,6 +214,7 @@ export const PAGE_PROBE = String.raw`(() => {
         if (mine !== generation) return;
         if (last) trace.intervals.push(Math.round((now - last) * 10) / 10);
         last = now;
+        record();
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -241,21 +271,29 @@ export interface FrameSummary {
   longFrames: number;
   blockingMs: number;
   worstFrameMs: number;
+  /** Where the worst frame fell, and what it was busy with. */
+  worstContext: string;
+  worstCause?: string;
   /** Long frames and blocking by chapter, to say where a failure happened. */
   contexts: Record<string, { longFrames: number; blockingMs: number }>;
 }
 
 export function summariseFrames(frames: readonly LongFrame[]): FrameSummary {
   const contexts: FrameSummary['contexts'] = {};
+  let worst: LongFrame | undefined;
   for (const frame of frames) {
     const bucket = contexts[frame.context] ??= { longFrames: 0, blockingMs: 0 };
     bucket.longFrames += 1;
     bucket.blockingMs += Math.round(frame.blocking);
+    if (!worst || frame.ms > worst.ms) worst = frame;
   }
   return {
     longFrames: frames.length,
     blockingMs: Math.round(frames.reduce((total, frame) => total + frame.blocking, 0)),
-    worstFrameMs: Math.round(Math.max(0, ...frames.map(frame => frame.ms))),
+    worstFrameMs: Math.round(worst?.ms ?? 0),
+    worstContext: worst?.context ?? '',
+    ...(worst && (worst.cause || worst.render !== undefined)
+      ? { worstCause: worst.cause ?? `rendering ${worst.render}ms` } : {}),
     contexts,
   };
 }
@@ -304,12 +342,33 @@ export interface Sample {
 
 export interface Budget { gate: Record<string, number>; target?: Record<string, number> }
 
+type Measured = 'journey' | 'parkedContact' | 'interaction';
+
 export interface BudgetConfig {
   viewport: { width: number; height: number };
   cpuThrottle: number;
   journeyTimeoutSeconds: number;
   contactSeconds: number;
-  budgets: Record<'journey' | 'parkedContact' | 'interaction' | 'coldStartup', Budget>;
+  budgets: Record<Measured, Budget>;
+  /**
+   * Fresh-profile samples: the startup, and any figure an empty cache changes
+   * -- a first-use shader compile lands in the journey as one long frame.
+   */
+  cold: Partial<Record<Measured, Budget>> & { startup: Budget };
+}
+
+/** The budgets a run is judged by: cold samples take the cold overrides and the startup budget. */
+export function budgetsFor(config: BudgetConfig, cold: boolean): Record<string, Budget> {
+  if (!cold) return config.budgets;
+  const budgets: Record<string, Budget> = {};
+  for (const [phase, budget] of Object.entries(config.budgets)) {
+    const override = config.cold[phase as Measured];
+    budgets[phase] = override
+      ? { gate: { ...budget.gate, ...override.gate }, target: { ...budget.target, ...override.target } }
+      : budget;
+  }
+  budgets.startup = config.cold.startup;
+  return budgets;
 }
 
 export interface VerdictRow {
@@ -323,22 +382,21 @@ export interface VerdictRow {
 }
 
 const metricOf = (sample: Sample, phase: string, metric: string): number => {
-  const section = phase === 'coldStartup' ? sample.startup : (sample as unknown as Record<string, Record<string, unknown>>)[phase];
-  const value = section?.[metric as keyof typeof section];
+  const section = (sample as unknown as Record<string, Record<string, unknown> | undefined>)[phase];
+  const value = section?.[metric];
   return typeof value === 'number' ? value : Number.NaN;
 };
 
 /**
  * The run passes when every sample counts and the median of every gated
  * figure is within its gate. A figure that was not measured fails its gate;
- * cold startup is only judged on cold samples, which have an empty cache.
+ * the startup is only judged on cold samples, which have an empty cache.
  */
 export function judge(config: BudgetConfig, samples: readonly Sample[], { cold }: { cold: boolean }) {
   const failures = samples.flatMap((sample, index) => sample.failures.map(failure => `sample ${index + 1}: ${failure}`));
   if (!samples.length) failures.push('no samples were taken');
   const rows: VerdictRow[] = [];
-  for (const [phase, { gate, target }] of Object.entries(config.budgets)) {
-    if (phase === 'coldStartup' && !cold) continue;
+  for (const [phase, { gate, target }] of Object.entries(budgetsFor(config, cold))) {
     for (const [metric, limit] of Object.entries(gate)) {
       const values = samples.map(sample => metricOf(sample, phase, metric));
       const value = values.length && values.every(Number.isFinite) ? median(values) : Number.NaN;

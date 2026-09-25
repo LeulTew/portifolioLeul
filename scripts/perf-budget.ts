@@ -76,10 +76,14 @@ async function launchChrome(scope: Scope, { executable, headed, width, height }:
   executable: string; headed: boolean; width: number; height: number;
 }): Promise<Cdp> {
   const profile = await mkdtemp(join(tmpdir(), 'perf-budget-'));
-  scope.defer('remove the Chrome profile', () => rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
+  // Windows lets go of a closed Chrome's files a moment after its processes exit.
+  scope.defer('remove the Chrome profile', () => rm(profile, { recursive: true, force: true, maxRetries: 25, retryDelay: 200 }));
   const child = spawn(executable, [
     ...(headed ? [] : ['--headless=new']), '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${width},${height}`,
+    // No crash handler, updater or background fetches: nothing that outlives Chrome or competes with the page.
+    '--disable-breakpad', '--disable-crash-reporter', '--disable-background-networking',
+    '--disable-component-update', '--disable-sync', '--no-service-autorun',
     'about:blank',
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   const chrome = ownProcess(child, 'Chrome');
@@ -288,7 +292,7 @@ async function travel(page: Page, origin: string, config: BudgetConfig, { cold, 
 }
 
 function failedSample(cache: string, error: unknown): Sample {
-  const none = { longFrames: NaN, blockingMs: NaN, worstFrameMs: NaN, contexts: {} };
+  const none = { longFrames: NaN, blockingMs: NaN, worstFrameMs: NaN, worstContext: '', contexts: {} };
   return {
     cache,
     startup: { readyMs: null, fcpMs: null, lcpMs: null, transferKb: NaN, longFrames: NaN, blockingMs: NaN },
@@ -304,7 +308,8 @@ function describeSample(sample: Sample): string {
   const worst = Object.entries(journey.contexts).sort((a, b) => b[1].blockingMs - a[1].blockingMs).slice(0, 3)
     .map(([name, bucket]) => `${name}: ${bucket.longFrames}/${bucket.blockingMs}ms`).join(', ');
   return [
-    `  journey ${journey.seconds}s: ${journey.longFrames} long frames, ${journey.blockingMs}ms blocking, worst ${journey.worstFrameMs}ms;`
+    `  journey ${journey.seconds}s: ${journey.longFrames} long frames, ${journey.blockingMs}ms blocking,`
+      + ` worst ${journey.worstFrameMs}ms${journey.worstContext ? ` (${journey.worstContext}${journey.worstCause ? `; ${journey.worstCause}` : ''})` : ''};`
       + ` frames p95 ${journey.p95FrameMs}ms, ${journey.missedFramePercent}% missed${worst ? ` [${worst}]` : ''}`,
     `  parked Contact: ${parkedContact.longFrames} long frames, ${parkedContact.blockingMs}ms blocking; typing: worst event ${interaction.worstEventMs}ms`,
     `  startup: ready ${startup.readyMs}ms, LCP ${startup.lcpMs}ms, ${startup.transferKb} KB, ${startup.blockingMs}ms blocking`,

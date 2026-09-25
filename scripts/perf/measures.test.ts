@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  STORY, checkJourney, judge, parseOptions, percentile, summariseFrames, summariseIntervals,
+  STORY, budgetsFor, checkJourney, judge, parseOptions, percentile, summariseFrames, summariseIntervals,
   type BudgetConfig, type Checkpoint, type Sample,
 } from './measures';
 
@@ -35,7 +35,7 @@ describe('options', () => {
 });
 
 const at = (phase: Checkpoint['phase'], section: string, extra: Partial<Checkpoint> = {}): Checkpoint =>
-  ({ t: 0, phase, section, skills: 'outside', skill: '0', tv: 'outside', ...extra });
+  ({ t: 0, phase, section, skills: 'outside', skill: '0', tv: 'outside', quality: '0', ...extra });
 
 /** A forward journey through the whole story, as the probe records one. */
 function completeJourney(chapters = 6): Checkpoint[] {
@@ -102,7 +102,7 @@ describe('figures', () => {
       { phase: 'journey', ms: 60, blocking: 10, context: 'projects tv:reading' },
     ]);
     expect(summary).toEqual({
-      longFrames: 3, blockingMs: 121, worstFrameMs: 120,
+      longFrames: 3, blockingMs: 121, worstFrameMs: 120, worstContext: 'about',
       contexts: { about: { longFrames: 2, blockingMs: 110 }, 'projects tv:reading': { longFrames: 1, blockingMs: 10 } },
     });
   });
@@ -122,20 +122,23 @@ const config: BudgetConfig = {
   journeyTimeoutSeconds: 150,
   contactSeconds: 10,
   budgets: {
-    journey: { gate: { longFrames: 110, p95FrameMs: 34 }, target: { longFrames: 20, p95FrameMs: 17 } },
+    journey: { gate: { longFrames: 110, p95FrameMs: 34, worstFrameMs: 400 }, target: { longFrames: 20, p95FrameMs: 17 } },
     parkedContact: { gate: { longFrames: 2 } },
     interaction: { gate: { worstEventMs: 200 } },
-    coldStartup: { gate: { readyMs: 12_000, transferKb: 6000 } },
+  },
+  cold: {
+    journey: { gate: { worstFrameMs: 1500 }, target: { worstFrameMs: 400 } },
+    startup: { gate: { readyMs: 12_000, transferKb: 6000 } },
   },
 };
 
 function sample(overrides: { longFrames?: number; failures?: string[]; readyMs?: number | null } = {}): Sample {
-  const frames = { longFrames: overrides.longFrames ?? 40, blockingMs: 800, worstFrameMs: 150, contexts: {} };
+  const frames = { longFrames: overrides.longFrames ?? 40, blockingMs: 800, worstFrameMs: 150, worstContext: 'about', contexts: {} };
   return {
     cache: 'test',
     startup: { readyMs: overrides.readyMs === undefined ? 9000 : overrides.readyMs, fcpMs: 800, lcpMs: 1200, transferKb: 4000, longFrames: 5, blockingMs: 300 },
     journey: { ...frames, frames: 3000, p50FrameMs: 16.7, p95FrameMs: 20, p99FrameMs: 40, missedFramePercent: 2, seconds: 70 },
-    parkedContact: { longFrames: 0, blockingMs: 0, worstFrameMs: 0, contexts: {} },
+    parkedContact: { longFrames: 0, blockingMs: 0, worstFrameMs: 0, worstContext: '', contexts: {} },
     interaction: { worstEventMs: 48, events: 2 },
     failures: overrides.failures ?? [],
   };
@@ -147,7 +150,7 @@ describe('the verdict', () => {
     expect(verdict.pass).toBe(true);
     expect(verdict.rows.find(row => row.metric === 'longFrames' && row.phase === 'journey'))
       .toMatchObject({ value: 50, gate: 110, pass: true, target: 20, onTarget: false });
-    expect(verdict.rows.some(row => row.phase === 'coldStartup')).toBe(false);
+    expect(verdict.rows.some(row => row.phase === 'startup')).toBe(false);
   });
 
   it('fails a stalled journey even though it measured no long frames at all', () => {
@@ -161,13 +164,25 @@ describe('the verdict', () => {
   it('fails a figure that was not measured, and a run with no samples', () => {
     const verdict = judge(config, [sample(), sample({ readyMs: null }), sample()], { cold: true });
     expect(verdict.rows.find(row => row.metric === 'readyMs')).toMatchObject({ pass: false });
-    expect(verdict.failures).toContain('coldStartup readyMs: not measured over the gate of 12000');
+    expect(verdict.failures).toContain('startup readyMs: not measured over the gate of 12000');
     expect(judge(config, [], { cold: false }).failures).toContain('no samples were taken');
   });
 
   it('judges startup only for cold samples', () => {
     const slow = sample({ readyMs: 20_000 });
     expect(judge(config, [slow], { cold: false }).pass).toBe(true);
-    expect(judge(config, [slow], { cold: true }).failures).toContain('coldStartup readyMs: 20000 over the gate of 12000');
+    expect(judge(config, [slow], { cold: true }).failures).toContain('startup readyMs: 20000 over the gate of 12000');
+  });
+
+  it('gives cold samples their own allowance only where an empty cache changes the figure', () => {
+    const warm = budgetsFor(config, false);
+    const cold = budgetsFor(config, true);
+    expect(warm).toBe(config.budgets);
+    expect(cold.journey).toEqual({
+      gate: { longFrames: 110, p95FrameMs: 34, worstFrameMs: 1500 },
+      target: { longFrames: 20, p95FrameMs: 17, worstFrameMs: 400 },
+    });
+    expect(cold.parkedContact).toBe(config.budgets.parkedContact);
+    expect(cold.startup).toBe(config.cold.startup);
   });
 });
