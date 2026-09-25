@@ -299,7 +299,7 @@ describe('the original-avatar encounter overlay', () => {
     expect(navigation).toHaveFocus();
   });
 
-  it.each(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End'])('does not cancel %s or strand held scrolling keys on a hidden button', key => {
+  it.each(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp'])('does not cancel %s or strand held scrolling keys on a hidden button', key => {
     const { root, back, scroller } = setup();
     open();
     const bubble = vi.fn();
@@ -314,6 +314,26 @@ describe('the original-avatar encounter overlay', () => {
     expect(held.defaultPrevented).toBe(false);
     expect(bubble).toHaveBeenCalledTimes(2);
     expect(getAvatarEncounter().phase).toBe('yielding');
+  });
+
+  it.each([
+    ['Home', 'home', { source: 'navbar' }],
+    ['End', 'contact', { source: 'navbar', edge: 'end' }],
+  ] as const)('does not cancel %s, which ends the encounter by navigating rather than as a scroll gesture', (key, section, options) => {
+    // Round 8 (D-FLAT-002): Home and End go to the ends of the story (storyKeys), which publishes navigation.
+    const { root, back, scroller } = setup();
+    open();
+    const bubble = vi.fn();
+    scroller.addEventListener('keydown', bubble);
+    const keydown = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    expect(fireEvent(back, keydown)).toBe(true);
+    expect(keydown.defaultPrevented).toBe(false);
+    // Nothing here moves focus for the key: the navigation that follows lands it in the destination.
+    expect(back).toHaveFocus();
+    expect(bubble).toHaveBeenCalledOnce();
+    expect(getAvatarEncounter().phase).not.toBe('yielding');
+    act(() => { publishSectionNavigation(section, options); });
+    expect(getAvatarEncounter()).toMatchObject({ phase: 'idle', exit: 'navigation' });
   });
 
   it('preserves native Space activation for both buttons rather than treating it as a scroll gesture', async () => {

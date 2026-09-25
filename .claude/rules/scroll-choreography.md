@@ -118,6 +118,14 @@ in About with the page refusing to move.
 things.** Only the first is allowed. Everything in §4–§6 achieves sequencing
 without ever touching an event.
 
+**Terminal keys are navigation, not gestures.** Home and End go where the
+navbar's Home and Contact go (`storyKeys.ts`), with the same release of pinned
+chapters, still passively: the browser's own jump happens too, to the same
+place. They request no beat and are not forwarded to the track as a scroll.
+*Why:* a pinned chapter cannot follow a jump -- its beats play one at a time --
+so End left About on screen over the end of the page (round 8, D-FLAT-002).
+Line and page keys stay gestures, one beat at a time.
+
 ---
 
 ## 4. Beats are serialised by completion, never by distance
