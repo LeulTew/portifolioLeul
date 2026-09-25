@@ -202,6 +202,21 @@ describe('keyboard focus in the scroll layer', () => {
     expect(byId('track').scrollTop).toBe(0);
   });
 
+  it('scrolls a portalled stop into view within its own box, through the TV projection', () => {
+    // Round 9 (TECH-020): a Source link below the TV copy's fold took focus without the box scrolling.
+    const panel = byId('panel');
+    panel.style.overflowY = 'auto';
+    scrollable(panel, { scrollHeight: 400, clientHeight: 100 });
+    // Drawn at half its layout height by the projection.
+    place('panel', 100, 50); place('picker', 110, 10); place('image', 200, 20);
+    byId('picker').focus();
+    expect(tab().defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(byId('image'));
+    // The link's drawn bottom, 220, to 4 drawn px inside the box's 150: 74 drawn, 148 of the box's own.
+    expect(panel.scrollTop).toBeCloseTo(148, 5);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('holds the html layer at zero when the browser reveals focus by scrolling it', () => {
     byId('email').focus();
     byId('layer').scrollTop = 13995;
@@ -389,6 +404,26 @@ describe('Tab through the story, chapter by chapter', () => {
     expect(navigate).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(byId('email'));
   });
+
+  it.each([['ahead of', 'contact'], ['behind', 'home']] as const)(
+    'takes the pinned reader as the story position when the track underneath runs %s it', (_where, underneath) => {
+      // Round 9 (TECH-019): Skills keeps the view while the wheel carries the native track on, to Contact.
+      live('skills');
+      view(underneath);
+      byId('skill-next').focus();
+      expect(tab().defaultPrevented).toBe(true);
+      expect(navigate).toHaveBeenLastCalledWith('projects');
+      navigate.mockClear();
+      byId('skills-heading').focus();
+      tab(true);
+      expect(navigate).toHaveBeenLastCalledWith('home');
+      navigate.mockClear();
+      // From the navbar, the chapter on screen is the one the reader holds.
+      byId('theme').focus();
+      tab();
+      expect(navigate).not.toHaveBeenCalled();
+    },
+  );
 
   it('moves within the chapter in view without navigating, from the navbar too', () => {
     live('skills');

@@ -18,6 +18,7 @@ import { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from '@/
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { claimScrollKeys } from '@/lib/scroll/keyboardScroll';
+import { scrollKeyIntent } from '@/lib/scroll/scrollKeys';
 import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
@@ -359,7 +360,8 @@ export function useProjectsPlayback(
     };
     window.addEventListener('keydown', forwardReturnKey, { passive: true });
     // While engaged, scroll keys are requests to the TV; parked after it, the return keys are this chapter's.
-    const releaseKeys = claimScrollKeys(event => active ||
+    // Home and End are never the TV's: they travel the story (storyKeys), which releases the TV on the way.
+    const releaseKeys = claimScrollKeys(event => (active && scrollKeyIntent(event)?.extent !== 'document') ||
       (side === 'after' && (event.key === 'ArrowUp' || event.key === 'PageUp')));
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (navigating) return;

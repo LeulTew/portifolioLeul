@@ -13,11 +13,18 @@
  * while the screen is still dark. The first one that can take focus wins.
  *
  * A landing can still be inert or hidden while its chapter settles, so focus
- * waits for one, for about a second, and gives way to the reader's own next
- * key or pointer press.
+ * waits for one, for as long as the longest authored arrival, and gives way
+ * to the reader's own next key or pointer press.
  */
 
-const ATTEMPT_FRAMES = 60;
+/**
+ * How long a landing waits for its chapter, in milliseconds: past the TV's
+ * 2.2-second turn toward the reader, the longest arrival a landing waits on.
+ * Measured in time, not frames, which gave up after one second at 60 Hz and
+ * sooner on faster displays -- before the TV could take focus (round 9,
+ * TECH-025).
+ */
+export const LANDING_WAIT_MS = 5000;
 
 let pending: (() => void) | null = null;
 
@@ -46,9 +53,9 @@ export function landSectionFocus(section: string, root: Document = document): ()
   const view = root.defaultView;
   if (!view) return () => {};
   let frame = 0;
-  let attempts = 0;
+  const started = view.performance.now();
   /** Whether landing is over: focus taken, no landing to take it, or the wait spent. */
-  const attempt = () => {
+  const attempt = (now: number) => {
     const landings = sectionLandings(section, root);
     if (!landings.length) return true;
     for (const landing of landings) {
@@ -56,9 +63,9 @@ export function landSectionFocus(section: string, root: Document = document): ()
       landing.focus({ preventScroll: true });
       if (root.activeElement === landing) return true;
     }
-    return ++attempts >= ATTEMPT_FRAMES;
+    return now - started >= LANDING_WAIT_MS;
   };
-  if (attempt()) return () => {};
+  if (attempt(started)) return () => {};
 
   const stop = () => {
     view.cancelAnimationFrame(frame);
@@ -66,9 +73,9 @@ export function landSectionFocus(section: string, root: Document = document): ()
     root.removeEventListener('pointerdown', stop, true);
     if (pending === stop) pending = null;
   };
-  const retry = () => {
+  const retry = (now: number) => {
     frame = 0;
-    if (attempt()) stop();
+    if (attempt(now)) stop();
     else frame = view.requestAnimationFrame(retry);
   };
   root.addEventListener('keydown', stop, { capture: true, passive: true });

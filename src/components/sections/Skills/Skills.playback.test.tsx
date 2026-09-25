@@ -429,14 +429,16 @@ describe('Skills completed-beat playback', () => {
     expect(document.getElementById('skills')).not.toHaveAttribute('data-skills-active');
   });
 
-  it('does not drag a reader back after a natural exit beyond the spacer', () => {
+  it('hands the reader to Projects however far the document ran on beneath the last chapter', () => {
+    // Round 9 (D-FLAT-003): the flat page's native scroll carried on under the hold, and a
+    // release that only aligned "still on the rail" left the reader at Contact, Projects skipped.
     const navigate = vi.fn();
     enter(navigate);
     for (let count = 1; count < SKILL_CHAPTERS.length; count++) cross();
     place(-20000);
     wheel(500);
     advance(650);
-    expect(navigate).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
     expect(stage()).toHaveAttribute('data-phase', 'outside');
   });
 

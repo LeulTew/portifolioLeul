@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cancelSectionLanding, landSectionFocus } from './sectionLanding';
+import { LANDING_WAIT_MS, cancelSectionLanding, landSectionFocus } from './sectionLanding';
 
 const frames: FrameRequestCallback[] = [];
-const flush = (count = 1) => {
-  for (let index = 0; index < count && frames.length; index++) frames.shift()!(performance.now());
+let clock = 0;
+/** Runs `count` animation frames `stepMs` apart on the test's clock. */
+const flush = (count = 1, stepMs = 1000 / 60) => {
+  for (let index = 0; index < count && frames.length; index++) frames.shift()!(clock += stepMs);
 };
 
 beforeEach(() => {
@@ -12,6 +14,8 @@ beforeEach(() => {
     <main><section id="contact" tabindex="-1" data-section-landing="contact"><a href="mailto:a@b.c">Email</a></section></main>
     <div id="stage" inert><div id="reader" tabindex="-1" data-section-landing="projects">Reader</div></div>`;
   frames.length = 0;
+  clock = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => clock);
   vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => frames.push(callback));
   vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => { frames.length = 0; });
   vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
@@ -59,13 +63,23 @@ describe('landing focus after navigation', () => {
     expect(byId('reader')).not.toHaveFocus();
   });
 
-  it('gives up after about a second rather than taking focus late', () => {
+  it('waits through the TV turn on a fast display, then gives up rather than taking focus late', () => {
+    // Round 9 (TECH-025): 60 frames were a second at 60 Hz, half that at 120 -- shorter than the 2.2s turn.
     landSectionFocus('projects');
-    flush(59);
+    flush(Math.round(2.3 * 144), 1000 / 144);
+    expect(frames).toHaveLength(1);
+    byId('stage').removeAttribute('inert');
+    flush(1, 1000 / 144);
+    expect(byId('reader')).toHaveFocus();
+
+    byId('projects-link').focus();
+    byId('stage').setAttribute('inert', '');
+    landSectionFocus('projects');
+    flush(Math.ceil(LANDING_WAIT_MS / (1000 / 60)) + 1);
     expect(frames).toHaveLength(0);
     byId('stage').removeAttribute('inert');
     flush();
-    expect(byId('reader')).not.toHaveFocus();
+    expect(byId('projects-link')).toHaveFocus();
   });
 
   it('keeps only the latest navigation', () => {

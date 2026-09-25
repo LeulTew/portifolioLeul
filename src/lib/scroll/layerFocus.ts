@@ -20,6 +20,8 @@ const TABBABLE = [
 
 /** A reveal leaves this much room between the control and the window's edge, and clears the navbar. */
 const REVEAL_MARGIN_PX = 96;
+/** Room a stop keeps from the edge of the box it scrolls in, for its focus ring. */
+const OWN_BOX_MARGIN_PX = 8;
 
 /** What a reveal has to show: the control, and for a field the labels that name it. */
 export function revealBox(element: HTMLElement): { top: number; bottom: number } {
@@ -172,7 +174,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     if (!next) return;
     event.preventDefault();
     next.focus({ preventScroll: true });
-    reveal(next);
+    if (content?.contains(next)) reveal(next);
+    else revealInOwnBox(next, view);
   };
 
   /*
@@ -199,6 +202,27 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   };
 }
 
+/**
+ * Scrolls the box a portalled stop scrolls in, so the stop shows. Tab moves
+ * focus without the browser's reveal, which would scroll drei's transformed
+ * layer, so a link below the TV copy's fold took focus out of sight (round 9,
+ * TECH-020). The TV's reader is drawn through a projection: its drawn pixels
+ * are converted to the box's own before scrolling.
+ */
+function revealInOwnBox(element: HTMLElement, view: Window): void {
+  for (let box = element.parentElement; box && box !== element.ownerDocument.body; box = box.parentElement) {
+    if (box.scrollHeight <= box.clientHeight + 1 || !/auto|scroll|overlay/.test(view.getComputedStyle(box).overflowY)) continue;
+    const outer = box.getBoundingClientRect();
+    const inner = element.getBoundingClientRect();
+    const scale = box.clientHeight > 0 && outer.height > 0 ? outer.height / box.clientHeight : 1;
+    const margin = OWN_BOX_MARGIN_PX * scale;
+    let shift = inner.bottom > outer.bottom - margin ? inner.bottom - (outer.bottom - margin) : 0;
+    if (inner.top - shift < outer.top + margin) shift = inner.top - (outer.top + margin);
+    if (Math.abs(shift) >= 1) box.scrollTop += shift / scale;
+    return;
+  }
+}
+
 /** The direct child of `content` that holds `element`: its section. */
 function sectionOf(content: HTMLElement, element: Element): HTMLElement | null {
   let section: Element = element;
@@ -218,6 +242,21 @@ function chapterIndex(content: HTMLElement, sections: Element[], element: Elemen
   const owner = element.closest<HTMLElement>('[data-section-owner]')?.dataset.sectionOwner;
   const reader = owner ? content.ownerDocument.getElementById(owner) : null;
   return reader?.parentElement === content ? sections.indexOf(reader) : -1;
+}
+
+/**
+ * The chapter whose portalled reader holds the view, or -1. The story is
+ * inert exactly while one does (Skills, the TV); the reader is the one live
+ * owner of a section.
+ */
+function pinnedChapter(content: HTMLElement, sections: Element[]): number {
+  if (!content.closest('[inert]')) return -1;
+  for (const owner of content.ownerDocument.querySelectorAll('[data-section-owner]')) {
+    if (owner.closest('[inert], [aria-hidden="true"], [hidden]')) continue;
+    const index = chapterIndex(content, sections, owner);
+    if (index >= 0) return index;
+  }
+  return -1;
 }
 
 /**
@@ -247,15 +286,22 @@ function unreachableEntry(content: HTMLElement, section: Element): boolean {
  *
  * The story position is the reader's, not the focused control's: focus left on
  * Home while the wheel carried the reader to Contact must not send the next
- * Tab back through the chapters already read.
+ * Tab back through the chapters already read. While a pinned reader holds the
+ * view, though, the native track runs on beneath it, and the chapter on
+ * screen is the reader's own (round 9, TECH-019).
  */
 function tabDetour(content: HTMLElement, from: HTMLElement, to: HTMLElement | null, backward: boolean,
   view: Window): string | null {
   const sections = [...content.children];
-  const inView = sectionInView(content, view);
-  const viewed = inView ? sections.indexOf(inView) : -1;
   const own = chapterIndex(content, sections, from);
-  const start = own < 0 ? viewed : viewed < 0 ? own : backward ? Math.min(own, viewed) : Math.max(own, viewed);
+  const pinned = pinnedChapter(content, sections);
+  let start: number;
+  if (pinned >= 0) start = own >= 0 ? own : pinned;
+  else {
+    const inView = sectionInView(content, view);
+    const viewed = inView ? sections.indexOf(inView) : -1;
+    start = own < 0 ? viewed : viewed < 0 ? own : backward ? Math.min(own, viewed) : Math.max(own, viewed);
+  }
   if (start < 0) return null;
   let end: number;
   if (to) {
