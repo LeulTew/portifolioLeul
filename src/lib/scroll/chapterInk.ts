@@ -198,14 +198,19 @@ export function useChapterInk(): void {
     discovery.observe(document.body, { childList: true, subtree: true });
     update();
     const unsubscribe = subscribeScrollProgress(update);
-    document.addEventListener('scroll', update, { passive: true, capture: true });
+    // The document's own scroll, in the no-WebGL page. drei's track and inner scrollers move no cover:
+    // the 3D layer follows scroll progress, which publishes after drei has moved it.
+    const scrolled = (event: Event) => {
+      if (event.target === document) update();
+    };
+    document.addEventListener('scroll', scrolled, { passive: true, capture: true });
     window.addEventListener('resize', resize);
     return () => {
       unsubscribe();
       observer.disconnect();
       discovery.disconnect();
       layout?.disconnect();
-      document.removeEventListener('scroll', update, { capture: true });
+      document.removeEventListener('scroll', scrolled, { capture: true });
       window.removeEventListener('resize', resize);
       for (const layer of inkLayers) for (const property of properties) layer.style.removeProperty(property);
       painted = null;

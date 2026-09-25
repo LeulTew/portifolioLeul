@@ -17,10 +17,12 @@ const ATTEMPT_FRAMES = 60;
 
 let pending: (() => void) | null = null;
 
-/** Whether the element can take focus and be perceived now. */
+/**
+ * Whether the element can take focus now, without a layout read: focus() then
+ * refuses an element that is not rendered, which `attempt` checks for.
+ */
 function accepts(element: HTMLElement): boolean {
-  if (element.closest('[inert], [hidden], [aria-hidden="true"]')) return false;
-  return element.getClientRects().length > 0;
+  return !element.closest('[inert], [hidden], [aria-hidden="true"]');
 }
 
 export function sectionLanding(section: string, root: Document = document): HTMLElement | null {

@@ -4,7 +4,8 @@ import { getScrollProgress, setScrollProgress, subscribeScrollProgress } from '@
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { windowPresence, layerOpacity } from '@/lib/motion/sequenceWindow';
 import { localProgress } from './localProgress';
-import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty, cachedElement } from '@/lib/dom/cachedElement';
+import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { getProjectsView, isProjectsReturnOwed } from '@/lib/projects/projectsScene';
 import styles from './PinnedSequence.module.css';
@@ -127,6 +128,20 @@ export function PinnedSequence({
 
     let nearby = true;
 
+    /*
+     * The spacer's position, without a layout flush per publication.
+     *
+     * It rides drei's translated layer, so between layout changes its top is
+     * its laid-out offset plus the layer's translation. Reading the rect on
+     * every publication instead forced layout whenever the frame had written
+     * anything: 474ms of a 70-second journey at 4x CPU, the largest single
+     * source of forced layout on the page (round 8 profile). The document-
+     * scroll fallback has no translated layer and still reads real geometry.
+     */
+    const position = createTranslatedPositionReader(spacer, cachedElement(() => translatedLayerOf(spacer)));
+    const layout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => position.refresh());
+    layout?.observe(spacer.closest('main') ?? spacer);
+
     let observer: IntersectionObserver | null = null;
     if (typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver(
@@ -166,7 +181,7 @@ export function PinnedSequence({
     }
 
     const publishPosition = (overlay: HTMLElement) => {
-      const rect = spacer.getBoundingClientRect();
+      const rect = position.readRect();
       if (rect.height > 0) {
         writeStyleProperty(overlay, '--seq', localProgress(rect.top, rect.height, window.innerHeight).toFixed(PRECISION));
       }
@@ -215,7 +230,8 @@ export function PinnedSequence({
       if (eligible && !nearby && !chapterBusy() && !completed &&
           overlay.dataset.active !== 'true') return;
 
-      const rect = spacer.getBoundingClientRect();
+      const { top, height } = position.readRect();
+      const rect = { top, height, bottom: top + height };
       const rootHeight = window.innerHeight;
       const progress = localProgress(rect.top, rect.height, rootHeight);
 
@@ -339,7 +355,11 @@ export function PinnedSequence({
       if (occludesWorld) setOverlayOcclusion(false);
       landingOwed = true;
     });
-    window.addEventListener('resize', apply);
+    const resized = () => {
+      position.refresh();
+      apply();
+    };
+    window.addEventListener('resize', resized);
     const about = document.getElementById('about');
     const completionObserver = (about || home) && typeof MutationObserver !== 'undefined'
       ? new MutationObserver(apply)
@@ -387,8 +407,9 @@ export function PinnedSequence({
       unsubscribe();
       unsubscribeNavigation();
       observer?.disconnect();
+      layout?.disconnect();
       completionObserver?.disconnect();
-      window.removeEventListener('resize', apply);
+      window.removeEventListener('resize', resized);
       window.removeEventListener('scroll', apply);
       publishOwnership(false);
       if (occludesWorld) setOverlayOcclusion(false);
