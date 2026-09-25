@@ -18,10 +18,11 @@ import type { GpuTierConfig } from '@/lib/gateways/gpuTier';
  * after a few tries, while one passing spike costs nothing.
  *
  * Only frames the world drew count: a covered, hidden or still world proves
- * neither pressure nor calm. A frame spaced over a quarter of a second after
- * the last is a stall -- a collection, a first-use shader -- not a cadence,
- * and the first seconds of drawing, while shaders compile and textures upload,
- * are not judged.
+ * neither pressure nor calm. A stall -- a collection, a first-use shader --
+ * counts as one late frame with its time capped at a quarter of a second, so
+ * one is a sliver of a window while a renderer that stalls on every frame
+ * fills its windows; and the first seconds of drawing, while shaders compile
+ * and textures upload, are not judged.
  */
 
 export interface WorldQuality {
@@ -56,7 +57,7 @@ export interface PressurePolicy {
   maxRecoverSeconds: number;
   /** Pressure this soon after a step up means the try failed. */
   probeSeconds: number;
-  /** Spacing past which a frame is a stall rather than a cadence. */
+  /** The most one frame adds to the judged clock: a longer frame is a stall, one late frame. */
   stallSeconds: number;
   /** Seconds of drawing before anything is judged. */
   warmupSeconds: number;
@@ -118,8 +119,11 @@ export function createPressureGauge(levels: number, policy: PressurePolicy = PRE
   return {
     get level() { return level; },
     observe(interval, budget) {
-      if (!(interval > 0) || interval > policy.stallSeconds) return level;
-      drawn += interval;
+      if (!(interval > 0)) return level;
+      // A stall -- a collection, a first-use compile -- counts as one late frame, its time
+      // capped: alone it is a sliver of a window of ordinary frames, while a renderer that
+      // stalls frame after frame fills its windows with them (round 9, TECH-021).
+      drawn += Math.min(interval, policy.stallSeconds);
       if (drawn < policy.warmupSeconds) return level;
 
       const isLate = interval > policy.lateFactor * (budget > 0 ? budget : NOMINAL_BUDGET);
@@ -139,8 +143,8 @@ export function createPressureGauge(levels: number, policy: PressurePolicy = PRE
         count--;
       }
 
-      // A window only counts once it spans most of its length since the last change.
-      const spans = count > 1 && drawn - at[head] >= policy.windowSeconds * 0.9;
+      // A window only counts once it spans all of its length but one stall since the last change.
+      const spans = count > 1 && drawn - at[head] >= policy.windowSeconds - policy.stallSeconds;
       const share = count ? lateCount / count : 0;
       if (spans && share >= policy.pressureShare && level < levels - 1) lower();
       else if (share > policy.calmShare) calmSince = drawn;
