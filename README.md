@@ -93,7 +93,8 @@ port checked free first -- and drives a headless Chrome over the DevTools
 protocol with the mouse wheel from Home to a usable Contact at 4x CPU
 throttling, parks on Contact for ten seconds and types into its form. A sample
 counts only once it has passed Home, About (its statements, green rise and
-Education, in turn), all six Skills chapters one after another, the TV's reader
+Education, settling on each Education record in turn before Skills), all six
+Skills chapters one after another, the TV's reader
 and a usable Contact, in order, with no uncaught error, console error or
 failed request; otherwise the run fails whatever its figures. Each sample's
 report keeps the path it travelled and every checkpoint behind it, and a

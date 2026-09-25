@@ -74,6 +74,23 @@ describe('the in-page probe', () => {
     expect(beats()).toEqual(['', 'statements', 'green', 'education', 'green']);
   });
 
+  it('records an Education record only once it has settled for reading', () => {
+    // Round 9 (TECH-028): entering Education is not reading it.
+    document.body.insertAdjacentHTML('beforeend', '<section data-testid="education-stage" data-phase="opening" data-active-record="0"></section>');
+    const stage = document.querySelector('[data-testid="education-stage"]')!;
+    probe().enter('journey');
+    const records = () => probe().checkpoints.filter(checkpoint => checkpoint.phase === 'journey').map(checkpoint => checkpoint.record);
+    vi.advanceTimersByTime(100);
+    stage.setAttribute('data-phase', 'reading');
+    vi.advanceTimersByTime(100);
+    stage.setAttribute('data-phase', 'crossing');
+    stage.setAttribute('data-active-record', '1');
+    vi.advanceTimersByTime(100);
+    stage.setAttribute('data-phase', 'reading');
+    vi.advanceTimersByTime(100);
+    expect(records()).toEqual(['', '0', '', '1']);
+  });
+
   it('adds no observer that every attribute write on the page would have to consult', () => {
     const observe = vi.spyOn(MutationObserver.prototype, 'observe');
     delete (window as unknown as { __budget?: Probe }).__budget;

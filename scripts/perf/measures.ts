@@ -84,6 +84,8 @@ export interface Checkpoint {
   quality: string;
   /** About's furthest beat: statements, then its green rise, then Education. */
   about: string;
+  /** The Education record settled for reading, '' while none is (entering, crossing, outside). */
+  record: string;
 }
 
 export interface LongFrame {
@@ -151,6 +153,8 @@ export const PAGE_PROBE = String.raw`(() => {
     about: read('#about', 'data-education-active') === 'true' ? 'education'
       : read('#about', 'data-bg-settled') === 'true' ? 'green'
         : read('#about', 'data-statements-present') === 'true' ? 'statements' : '',
+    record: read('[data-testid="education-stage"]', 'data-phase') === 'reading'
+      ? read('[data-testid="education-stage"]', 'data-active-record') : '',
   });
   let current = state();
   const mark = () => {
@@ -159,7 +163,8 @@ export const PAGE_PROBE = String.raw`(() => {
   const record = () => {
     const next = state();
     if (next.section === current.section && next.skills === current.skills && next.skill === current.skill
-      && next.tv === current.tv && next.quality === current.quality && next.about === current.about) return;
+      && next.tv === current.tv && next.quality === current.quality && next.about === current.about
+      && next.record === current.record) return;
     current = next;
     mark();
   };
@@ -243,22 +248,25 @@ const collapse = (values: readonly string[]) => values.filter((value, index) => 
 
 /**
  * The readable path a sample travelled, for its report: chapters, About's
- * beats, each Skills chapter read and the TV's phases.
+ * beats and each Education record read, each Skills chapter read and the TV's phases.
  */
 export function journeyPath(checkpoints: readonly Checkpoint[]): string[] {
-  return collapse(checkpoints.filter(checkpoint => checkpoint.phase === 'journey').map(({ section, about, skills, skill, tv }) =>
-    section + (section === 'about' && about ? `:${about}` : '') + (skills === 'reading' ? `:skill-${skill}` : '')
+  return collapse(checkpoints.filter(checkpoint => checkpoint.phase === 'journey').map(({ section, about, record, skills, skill, tv }) =>
+    section + (section === 'about' && about ? `:${about}` : '') + (record ? `:record-${record}` : '')
+      + (skills === 'reading' ? `:skill-${skill}` : '')
       + (tv && tv !== 'outside' ? `:tv-${tv}` : '')));
 }
 
 /**
  * Why a forward journey does not count, or nothing if it does: it has to pass
  * through every chapter in story order and end on Contact, see About's
- * statements, green rise and Education in turn, read every Skills chapter in
- * order, and reach the TV's reader. Totals from a journey that skipped or
- * reversed its costliest chapters are not comparable (round 9, TECH-022).
+ * statements, green rise and Education in turn, settle on every Education record
+ * in order before Skills, read every Skills chapter in order, and reach the TV's
+ * reader. Totals from a journey that skipped or reversed its costliest chapters
+ * are not comparable (round 9, TECH-022); entering Education is not reading it
+ * (TECH-028).
  */
-export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: number): string[] {
+export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: number, educationRecords: number): string[] {
   const journey = checkpoints.filter(checkpoint => checkpoint.phase === 'journey');
   const sections = collapse(journey.map(checkpoint => checkpoint.section));
   const failures: string[] = [];
@@ -274,6 +282,17 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
   for (const seen of beats) if (seen === ABOUT_BEATS[beat]) beat++;
   if (beat < ABOUT_BEATS.length) {
     failures.push(`About never reached its ${ABOUT_BEATS[beat]} beat (saw ${beats.join(' > ') || 'nothing'})`);
+  }
+  if (educationRecords < 1) failures.push('the page shows no Education records');
+  const records = collapse(journey.map(checkpoint => checkpoint.record ?? '').filter(Boolean));
+  const expectedRecords = Array.from({ length: educationRecords }, (_, index) => String(index));
+  if (educationRecords >= 1 && records.join() !== expectedRecords.join()) {
+    failures.push(`Education settled on ${records.join(' > ') || 'no record'}, not ${expectedRecords.join(' > ')}`);
+  }
+  const lastRecord = journey.reduce((last, checkpoint, index) => (checkpoint.record ? index : last), -1);
+  const firstSkill = journey.findIndex(checkpoint => checkpoint.skills === 'reading');
+  if (lastRecord >= 0 && firstSkill >= 0 && lastRecord > firstSkill) {
+    failures.push('Education was still being read after Skills began');
   }
   if (skillChapters < 1) failures.push('the page shows no Skills chapters');
   const reads = collapse(journey.filter(checkpoint => checkpoint.skills === 'reading').map(checkpoint => checkpoint.skill));

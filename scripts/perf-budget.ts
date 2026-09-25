@@ -270,7 +270,8 @@ async function travel(page: Page, origin: string, config: BudgetConfig, { cold, 
 
   const trace = JSON.parse(await page.evaluate<string>('JSON.stringify(window.__budget)')) as PageTrace;
   const skillChapters = await page.evaluate<number>(`document.querySelectorAll('[aria-label="Skills chapters"] button').length`);
-  failures.push(...checkJourney(trace.checkpoints, skillChapters));
+  const educationRecords = await page.evaluate<number>(`document.querySelectorAll('[data-testid="education-progress"] > li').length`);
+  failures.push(...checkJourney(trace.checkpoints, skillChapters, educationRecords));
   for (const type of ['long-animation-frame', 'event']) {
     if (trace.unsupported.includes(type)) failures.push(`this browser does not report ${type} entries`);
   }

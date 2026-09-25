@@ -35,12 +35,14 @@ describe('options', () => {
 });
 
 const at = (phase: Checkpoint['phase'], section: string, extra: Partial<Checkpoint> = {}): Checkpoint =>
-  ({ t: 0, phase, section, skills: 'outside', skill: '0', tv: 'outside', quality: '0', about: '', ...extra });
+  ({ t: 0, phase, section, skills: 'outside', skill: '0', tv: 'outside', quality: '0', about: '', record: '', ...extra });
 
 const chapters = (count: number) => Array.from({ length: count }, (_, index) => String(index));
+/** The journey judged against six Skills chapters and three Education records. */
+const check = (checkpoints: Checkpoint[], skills = 6, records = 3) => checkJourney(checkpoints, skills, records);
 
 /** A forward journey through the whole story, as the probe records one. */
-function completeJourney(read = chapters(6)): Checkpoint[] {
+function completeJourney(read = chapters(6), records = chapters(3)): Checkpoint[] {
   return [
     at('load', 'home'),
     at('journey', 'home'),
@@ -48,6 +50,10 @@ function completeJourney(read = chapters(6)): Checkpoint[] {
     at('journey', 'about'),
     at('journey', 'about', { about: 'green' }),
     at('journey', 'about', { about: 'education' }),
+    ...records.flatMap(record => [
+      at('journey', 'about', { about: 'education', record }),
+      at('journey', 'about', { about: 'education' }),
+    ]),
     at('journey', 'skills', { skills: 'entering', about: 'green' }),
     ...read.map(skill => at('journey', 'skills', { skills: 'reading', skill, about: 'green' })),
     at('journey', 'skills', { skills: 'leaving', tv: 'withdrawing' }),
@@ -62,60 +68,75 @@ describe('the journey a sample must have travelled', () => {
   it('accepts the whole story, Home to Contact', () => {
     expect(STORY).toEqual(['home', 'about', 'skills', 'projects', 'contact']);
     expect(ABOUT_BEATS).toEqual(['statements', 'green', 'education']);
-    expect(checkJourney(completeJourney(), 6)).toEqual([]);
+    expect(check(completeJourney())).toEqual([]);
   });
 
   it('rejects a journey that never left Home', () => {
     // Round 8 (TECH-002): wheeling a Home that ignored every notch passed all six gates.
-    const failures = checkJourney([at('load', 'home'), at('journey', 'home')], 6);
+    const failures = check([at('load', 'home'), at('journey', 'home')]);
     expect(failures).toContain('the journey never reached about (passed home)');
     expect(failures).toContain('About never reached its statements beat (saw nothing)');
+    expect(failures).toContain('Education settled on no record, not 0 > 1 > 2');
     expect(failures).toContain('Skills read no chapter, not 0 > 1 > 2 > 3 > 4 > 5');
     expect(failures).toContain('the TV never reached its reader');
   });
 
   it('rejects one that stops short of Contact, or ends anywhere else', () => {
     const short = completeJourney().slice(0, -1);
-    expect(checkJourney(short, 6)).toEqual(['the journey never reached contact (passed home > about > skills > projects)']);
+    expect(check(short)).toEqual(['the journey never reached contact (passed home > about > skills > projects)']);
     const bounced = [...completeJourney(), at('journey', 'projects', { tv: 'reading' })];
-    expect(checkJourney(bounced, 6)).toEqual(['the journey ended on projects, not Contact']);
+    expect(check(bounced)).toEqual(['the journey ended on projects, not Contact']);
   });
 
   it('rejects one that passed through About without its green rise or Education', () => {
     // Round 9 (TECH-022): About is the costliest chapter; a journey that skipped its beats measured less.
-    const flat = completeJourney().map(checkpoint => ({ ...checkpoint, about: '' }));
-    expect(checkJourney(flat, 6)).toEqual(['About never reached its statements beat (saw nothing)']);
-    const early = completeJourney().map(checkpoint => (checkpoint.about === 'education' ? { ...checkpoint, about: 'green' } : checkpoint));
-    expect(checkJourney(early, 6)).toEqual(['About never reached its education beat (saw statements > green)']);
+    const flat = completeJourney(chapters(6), []).map(checkpoint => ({ ...checkpoint, about: '' }));
+    expect(check(flat)).toEqual([
+      'About never reached its statements beat (saw nothing)', 'Education settled on no record, not 0 > 1 > 2',
+    ]);
+    const early = completeJourney(chapters(6), []).map(checkpoint => (checkpoint.about === 'education' ? { ...checkpoint, about: 'green' } : checkpoint));
+    expect(check(early)[0]).toBe('About never reached its education beat (saw statements > green)');
     const unwritten = completeJourney().filter(checkpoint => checkpoint.about !== 'statements');
-    expect(checkJourney(unwritten, 6)[0]).toBe('About never reached its statements beat (saw green > education > green)');
+    expect(check(unwritten)[0]).toBe('About never reached its statements beat (saw green > education > green)');
+  });
+
+  it('rejects one that entered Education without settling on each record in order, before Skills', () => {
+    // Round 9 (TECH-028): entering Education for a moment and skipping every record passed.
+    expect(check(completeJourney(chapters(6), []))).toEqual(['Education settled on no record, not 0 > 1 > 2']);
+    expect(check(completeJourney(chapters(6), ['0', '2']))).toEqual(['Education settled on 0 > 2, not 0 > 1 > 2']);
+    expect(check(completeJourney(chapters(6), ['0', '2', '1']))).toEqual(['Education settled on 0 > 2 > 1, not 0 > 1 > 2']);
+    const late = completeJourney();
+    const firstSkill = late.findIndex(checkpoint => checkpoint.skills === 'reading');
+    late.splice(firstSkill + 1, 0, at('journey', 'about', { record: '2' }));
+    expect(check(late)).toContain('Education was still being read after Skills began');
+    expect(check(completeJourney(), 6, 0)).toContain('the page shows no Education records');
   });
 
   it('rejects one that skipped, repeated or reordered Skills chapters, or never read the TV', () => {
-    expect(checkJourney(completeJourney(chapters(4)), 6)).toEqual(['Skills read 0 > 1 > 2 > 3, not 0 > 1 > 2 > 3 > 4 > 5']);
+    expect(check(completeJourney(chapters(4)))).toEqual(['Skills read 0 > 1 > 2 > 3, not 0 > 1 > 2 > 3 > 4 > 5']);
     // The set of chapters read is complete in both; the order is not.
-    expect(checkJourney(completeJourney(['0', '2', '1', '3', '4', '5']), 6))
+    expect(check(completeJourney(['0', '2', '1', '3', '4', '5'])))
       .toEqual(['Skills read 0 > 2 > 1 > 3 > 4 > 5, not 0 > 1 > 2 > 3 > 4 > 5']);
-    expect(checkJourney(completeJourney(['0', '1', '0', '1', '2', '3', '4', '5']), 6)).toHaveLength(1);
+    expect(check(completeJourney(['0', '1', '0', '1', '2', '3', '4', '5']))).toHaveLength(1);
     const dark = completeJourney().map(checkpoint => (checkpoint.tv === 'reading' ? { ...checkpoint, tv: 'framed' } : checkpoint));
-    expect(checkJourney(dark, 6)).toEqual(['the TV never reached its reader']);
-    expect(checkJourney(completeJourney(), 0)).toContain('the page shows no Skills chapters');
+    expect(check(dark)).toEqual(['the TV never reached its reader']);
+    expect(check(completeJourney(), 0)).toContain('the page shows no Skills chapters');
   });
 
   it('counts only what happened while the journey was measured', () => {
     const outside = completeJourney().map(checkpoint => ({ ...checkpoint, phase: 'settle' as const }));
-    expect(checkJourney(outside, 6)[0]).toBe('the journey never reached home (passed nothing)');
+    expect(check(outside)[0]).toBe('the journey never reached home (passed nothing)');
   });
 
   it('reads the path a sample travelled back for its report', () => {
-    expect(journeyPath(completeJourney(chapters(2)))).toEqual([
-      'home', 'about:statements', 'about', 'about:green', 'about:education', 'skills',
+    expect(journeyPath(completeJourney(chapters(2), chapters(2)))).toEqual([
+      'home', 'about:statements', 'about', 'about:green', 'about:education',
+      'about:education:record-0', 'about:education', 'about:education:record-1', 'about:education', 'skills',
       'skills:skill-0', 'skills:skill-1', 'skills:tv-withdrawing', 'projects:tv-approaching',
       'projects:tv-reading', 'projects:tv-departing', 'contact',
     ]);
   });
 });
-
 describe('figures', () => {
   it('takes nearest-rank percentiles and the lower median', () => {
     expect(percentile([5, 1, 4, 2, 3], 0.5)).toBe(3);
