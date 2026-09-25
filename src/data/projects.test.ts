@@ -113,7 +113,7 @@ describe("projectsData", () => {
 
   it("adds inspection notes only to the researched projects", () => {
     expect(projectsData.filter(project => project.evidence).map(project => project.title))
-      .toEqual(["Ignition", "Portfolio Leul", "ProtoChem 3D", "Mizan", "Amharic IR Improved"]);
+      .toEqual(["Portfolio Leul", "Ignition", "Car Rental Platform", "Kitefew", "AgendaFlow AI", "Mizan", "ProtoChem 3D", "Amharic IR Improved"]);
     for (const project of projectsData.filter(project => project.evidence)) {
       expect(project.evidence!.inspect.length).toBeGreaterThan(0);
       expect(project.evidence!.access?.length).toBeGreaterThan(0);
@@ -124,7 +124,7 @@ describe("projectsData", () => {
   it("pins each implementation claim to inspectable source, not a moving branch", () => {
     const decisions = projectsData.flatMap(project => project.evidence?.decision
       ? [project.evidence.decision] : []);
-    expect(decisions).toHaveLength(3);
+    expect(decisions).toHaveLength(5);
     for (const decision of decisions) {
       expect(decision.summary).toBeTruthy();
       expect(decision.sourceLabel).toBeTruthy();
