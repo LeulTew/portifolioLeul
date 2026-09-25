@@ -14,6 +14,7 @@ type FrameState = { clock: { elapsedTime: number } };
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let frameCallback: ((state: FrameState) => void) | null = null;
+const gl = { initTexture: vi.fn() };
 const gpu: Pick<GpuTierConfig, 'tier' | 'softwareRenderer'> = {
   tier: 'high', softwareRenderer: false,
 };
@@ -24,8 +25,8 @@ const frameGate = vi.fn<(time: number) => boolean>();
 const gpuReading = vi.fn(() => gpu);
 
 vi.mock('@react-three/fiber', () => ({
-  useThree: (selector: (state: { scene: THREE.Scene; camera: THREE.PerspectiveCamera }) => unknown) =>
-    selector({ scene, camera }),
+  useThree: (selector: (state: { scene: THREE.Scene; camera: THREE.PerspectiveCamera; gl: typeof gl }) => unknown) =>
+    selector({ scene, camera, gl }),
   useFrame: (callback: (state: FrameState) => void) => { frameCallback = callback; },
 }));
 vi.mock('@/lib/gateways/gpuTier', () => ({ getGpuTier: () => gpuReading() }));
@@ -99,6 +100,7 @@ beforeEach(() => {
   synchronousLoadError = null;
   frameGate.mockReset().mockReturnValue(true);
   gpuReading.mockClear();
+  gl.initTexture.mockClear();
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   vi.spyOn(THREE.TextureLoader.prototype, 'load').mockImplementation(function (
     this: THREE.TextureLoader, url, onLoad, _onProgress, onError,
@@ -125,6 +127,31 @@ afterEach(() => {
 });
 
 describe('ContactSky geometry and ownership', () => {
+  it('uploads each loaded bank while idle, before any flight shows it, and not after unmount', () => {
+    // Round 8 trace: the first upload decoded the cloud image inside the flight's first cloudy frame.
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(<ContactSky isLight />);
+      requests[0].resolve();
+      depart(0.9);
+      requests[1].resolve();
+      expect(gl.initTexture).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(300);
+      expect(gl.initTexture.mock.calls.map(([texture]) => texture)).toEqual(cloudMeshes().map(mesh => mesh.material.map));
+      unmount();
+
+      gl.initTexture.mockClear();
+      requests = [];
+      render(<ContactSky isLight />);
+      loadTextures();
+      cleanup();
+      vi.advanceTimersByTime(300);
+      expect(gl.initTexture).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('uses five quads, two materials and one shared two-triangle geometry', () => {
     render(<ContactSky isLight={false} />);
     const meshes = cloudMeshes();

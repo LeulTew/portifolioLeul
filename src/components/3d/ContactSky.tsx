@@ -54,6 +54,7 @@ const DARK_CLOUDS = {
 export function ContactSky({ isLight }: { isLight: boolean }) {
   const scene = useThree(state => state.scene);
   const camera = useThree(state => state.camera);
+  const renderer = useThree(state => state.gl);
   const cloudsRef = useRef<CloudScene | null>(null);
 
   useEffect(() => {
@@ -127,6 +128,22 @@ export function ContactSky({ isLight }: { isLight: boolean }) {
     // Optional images have their own manager, never Suspense or critical-asset receipts.
     const loader = new THREE.TextureLoader(new THREE.LoadingManager());
     let disposed = false;
+    const pendingUploads = new Set<number>();
+    /*
+     * A texture's first upload decodes its image on the main thread, and that
+     * happened inside the first frame of the flight to Contact that showed the
+     * clouds: 8.6ms of a 16.7ms frame on an unthrottled desktop (round 8
+     * trace). Uploaded while idle instead, long before any flight.
+     */
+    const uploadWhenIdle = (batch: CloudBatch) => {
+      const upload = () => {
+        pendingUploads.delete(handle);
+        if (!disposed && batch.texture && !batch.textureReleased && batch.status !== 'failed') renderer.initTexture(batch.texture);
+      };
+      const handle = typeof requestIdleCallback === 'function'
+        ? requestIdleCallback(upload, { timeout: 3000 }) : window.setTimeout(upload, 250);
+      pendingUploads.add(handle);
+    };
     for (const batch of clouds.batches) {
       const url = `/textures/hero-cloud/${batch.textureName}.webp`;
       const texture = loader.load(url, loaded => {
@@ -138,6 +155,7 @@ export function ContactSky({ isLight }: { isLight: boolean }) {
           return;
         }
         if (batch.status !== 'loading') return;
+        uploadWhenIdle(batch);
         const view = getContactView();
         const opacity = getContactCloudOpacity(view.mode, view.progress);
         // Admit new banks before the shared reveal, never into an already visible flight or park.
@@ -173,6 +191,10 @@ export function ContactSky({ isLight }: { isLight: boolean }) {
 
     return () => {
       disposed = true;
+      for (const handle of pendingUploads) {
+        if (typeof cancelIdleCallback === 'function') cancelIdleCallback(handle);
+        else window.clearTimeout(handle);
+      }
       cloudsRef.current = null;
       scene.remove(root);
       root.clear();
@@ -183,7 +205,7 @@ export function ContactSky({ isLight }: { isLight: boolean }) {
       }
       geometry.dispose();
     };
-  }, [scene]);
+  }, [scene, renderer]);
 
   useFrame(state => {
     const clouds = cloudsRef.current;
