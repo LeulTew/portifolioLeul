@@ -46,8 +46,9 @@ portifolioXLeul/
 scripts/*
 !scripts/optimize-models.mjs
 !scripts/bake-hero-cloud.mjs
-!scripts/perf-budget.mjs
+!scripts/perf-budget.ts
 !scripts/perf-budget.json
+!scripts/perf/
 # Local performance budget reports (bun run perf:budget)
 perf-reports/
 !scripts/bake-island.mjs

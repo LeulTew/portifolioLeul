@@ -16,7 +16,7 @@
     "bake:island": "bun scripts/bake-island.mjs",
     "bake:shore": "bun scripts/bake-shore-field.mjs",
     "assets": "bun run optimize:models && bun run bake:island",
-    "perf:budget": "bun scripts/perf-budget.mjs",
+    "perf:budget": "bun scripts/perf-budget.ts",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {

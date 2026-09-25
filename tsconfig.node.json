@@ -5,7 +5,8 @@
     // Without a target this project defaulted to ES5, which cannot even parse
     // the private fields in its own dependencies' type declarations.
     "target": "ES2022",
-    "lib": ["ES2022"],
+    // DOM for the scripts' in-page probes and their jsdom tests.
+    "lib": ["ES2022", "DOM"],
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -13,5 +14,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "vitest.config.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "scripts/**/*.ts"]
 }

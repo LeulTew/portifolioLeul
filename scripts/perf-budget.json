@@ -1,17 +1,25 @@
 {
-  "$comment": "Local runtime budgets for bun run perf:budget: 'gate' fails the run, 'target' is reported. Medians of --runs. Measured on the reference machine in README > Performance budget.",
+  "$comment": "Local runtime budgets for bun run perf:budget: 'gate' fails the run, 'target' is reported. Medians of --runs samples; a sample counts only once it has travelled Home to a usable Contact without a page error. coldStartup is judged with --cold only. Measured on the reference machine in README > Performance budget.",
   "viewport": { "width": 1440, "height": 900 },
   "cpuThrottle": 4,
-  "journeySeconds": 80,
+  "journeyTimeoutSeconds": 150,
   "contactSeconds": 10,
   "budgets": {
     "journey": {
-      "gate": { "longFrames": 110, "blockingMs": 2600, "worstFrameMs": 300 },
-      "target": { "longFrames": 20, "blockingMs": 600, "worstFrameMs": 200 }
+      "gate": { "longFrames": 110, "blockingMs": 2600, "worstFrameMs": 300, "p95FrameMs": 34, "missedFramePercent": 12 },
+      "target": { "longFrames": 20, "blockingMs": 600, "worstFrameMs": 200, "p95FrameMs": 17, "missedFramePercent": 3 }
     },
     "parkedContact": {
       "gate": { "longFrames": 2, "blockingMs": 100, "worstFrameMs": 150 },
       "target": { "longFrames": 0, "blockingMs": 0, "worstFrameMs": 0 }
+    },
+    "interaction": {
+      "gate": { "worstEventMs": 200 },
+      "target": { "worstEventMs": 100 }
+    },
+    "coldStartup": {
+      "gate": { "readyMs": 20000, "transferKb": 8000, "blockingMs": 6000 },
+      "target": { "readyMs": 8000, "transferKb": 4000, "blockingMs": 2000 }
     }
   }
 }
