@@ -1,0 +1,17 @@
+{
+  "$comment": "Local runtime budgets for bun run perf:budget: 'gate' fails the run, 'target' is reported. Medians of --runs. Measured on the reference machine in README > Performance budget.",
+  "viewport": { "width": 1440, "height": 900 },
+  "cpuThrottle": 4,
+  "journeySeconds": 80,
+  "contactSeconds": 10,
+  "budgets": {
+    "journey": {
+      "gate": { "longFrames": 110, "blockingMs": 2600, "worstFrameMs": 300 },
+      "target": { "longFrames": 20, "blockingMs": 600, "worstFrameMs": 200 }
+    },
+    "parkedContact": {
+      "gate": { "longFrames": 2, "blockingMs": 100, "worstFrameMs": 150 },
+      "target": { "longFrames": 0, "blockingMs": 0, "worstFrameMs": 0 }
+    }
+  }
+}
