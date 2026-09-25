@@ -116,10 +116,13 @@ The gates were calibrated on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti
 through ANGLE/D3D11, Chrome 153): returning-visit medians of 43 long frames,
 0.8s of blocking and a 279ms worst frame over a 42-second journey; cold medians
 of an 11.4-second throttled startup, 6.1 MB transferred and 3.0s of blocking
-during load. CPU throttling slows the main thread, not the GPU, so it is a
-proxy for weak hardware rather than a measurement of it; another machine should
-record its own baseline instead of loosening these numbers. Under the throttle
-the world lowers its own quality (below), and the report shows when.
+during load. The local preview serves files uncompressed, so the transfer
+figure overstates what a visitor downloads: production serves brotli, which
+takes the island terrain from 3.76 MB to 2.8 MB. CPU throttling slows the main
+thread, not the GPU, so it is a proxy for weak hardware rather than a
+measurement of it; another machine should record its own baseline instead of
+loosening these numbers. Under the throttle the world lowers its own quality
+(below), and the report shows when.
 
 ### Adaptive world quality
 
