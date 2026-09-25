@@ -26,6 +26,12 @@ export function claimScrollKeys(claim: Claim): () => void {
   return () => { claims.delete(claim); };
 }
 
+/** Whether a chapter is keeping this key for itself. */
+export function isScrollKeyClaimed(event: KeyboardEvent): boolean {
+  for (const claim of claims) if (claim(event)) return true;
+  return false;
+}
+
 const ARROW_PX = 40;
 /** A page keeps an eighth of the view for context, as the browsers' pages do. */
 const PAGE_SHARE = 0.875;
@@ -35,20 +41,26 @@ function scrolls(element: HTMLElement): boolean {
   return /auto|scroll|overlay/.test(overflow) && element.scrollHeight > element.clientHeight + 1;
 }
 
-/** How far the browser would move the track for this key, or 0 when the key is not the track's. */
+/** Whether focus sits in a scroller of its own, other than `track`, which the browser scrolls for the key. */
+export function inOwnScroller(target: EventTarget | null, track: HTMLElement | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const scroller = scrolls(target) ? target : findScrollContainer(target);
+  return !!scroller && scroller !== track;
+}
+
+/**
+ * How far the browser would move the track for this key, or 0 when the key is
+ * not the track's. Home and End are the story's, not the track's: see `storyKeys`.
+ */
 export function keyboardScrollDelta(event: KeyboardEvent, track: HTMLElement): number {
   const intent = scrollKeyIntent(event);
-  if (!intent) return 0;
+  if (!intent || intent.extent === 'document') return 0;
   const target = event.target;
   if (target instanceof Node && track.contains(target)) return 0;
-  if (target instanceof HTMLElement) {
-    const scroller = scrolls(target) ? target : findScrollContainer(target);
-    if (scroller && scroller !== track) return 0;
-  }
+  if (inOwnScroller(target, track)) return 0;
   const sign = intent.direction === 'down' ? 1 : -1;
   if (intent.extent === 'line') return sign * ARROW_PX;
-  if (intent.extent === 'page') return sign * track.clientHeight * PAGE_SHARE;
-  return sign > 0 ? track.scrollHeight - track.clientHeight - track.scrollTop : -track.scrollTop;
+  return sign * track.clientHeight * PAGE_SHARE;
 }
 
 export function installKeyboardScroll(track: HTMLElement): () => void {
@@ -56,8 +68,7 @@ export function installKeyboardScroll(track: HTMLElement): () => void {
   if (!view) return () => {};
   const forward = (event: KeyboardEvent) => {
     const delta = keyboardScrollDelta(event, track);
-    if (!delta) return;
-    for (const claim of claims) if (claim(event)) return;
+    if (!delta || isScrollKeyClaimed(event)) return;
     scrollContainerBy(track, delta);
   };
   view.addEventListener('keydown', forward, { passive: true });

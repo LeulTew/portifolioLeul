@@ -352,9 +352,11 @@ export function useSkillsPlayback(
         immediateEntry = directlyRequested;
         navigation = directlyRequested ? null : target;
         if (ownedFocus) {
+          // Held on the navbar's entry while the destination settles, then landed in it.
           document.querySelector<HTMLButtonElement>(
             `button[data-ink-control="${target}"]:not([tabindex="-1"])`,
           )?.focus({ preventScroll: true });
+          landSectionFocus(target);
         }
         // Claim only after all previous owners have restored their covers.
         queueMicrotask(() => { if (alive) apply(); });

@@ -13,6 +13,7 @@ import {
   commitContactPose, getContactView, registerContactCamera, releaseContactSky,
 } from '@/lib/contact/contactScene';
 import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
+import { isScrollKeyClaimed } from '@/lib/scroll/keyboardScroll';
 import { resetScrollGesture, SCROLL_WAVE_IDLE_MS } from '@/lib/scroll/scrollGesture';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
@@ -403,7 +404,7 @@ describe('the completed-beat TV chapter', () => {
     },
   );
 
-  it.each(['ArrowUp', 'PageUp', 'Home'])(
+  it.each(['ArrowUp', 'PageUp'])(
     'moves real scroll-linked return geometry for accepted navbar-focused %s, without skipping the position gate', async key => {
       mount();
       await navbar('projects');
@@ -435,6 +436,16 @@ describe('the completed-beat TV chapter', () => {
       expect(navigationTarget).toHaveFocus();
     },
   );
+
+  it('keeps the return keys at parked Contact, and leaves Home to the start of the story', async () => {
+    mount();
+    await navbar('contact');
+    const press = (key: string) => new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    expect(isScrollKeyClaimed(press('ArrowUp'))).toBe(true);
+    expect(isScrollKeyClaimed(press('PageUp'))).toBe(true);
+    expect(isScrollKeyClaimed(press('Home'))).toBe(false);
+    expect(isScrollKeyClaimed(press('End'))).toBe(false);
+  });
 
   it('does not forward a held return key after explicit navbar cancellation', async () => {
     mount();

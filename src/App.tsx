@@ -36,6 +36,7 @@ import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
 import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
+import { installStoryKeys } from './lib/scroll/storyKeys';
 import { useResizeAnchor } from './lib/scroll/resizeAnchor';
 import { AvatarEncounter } from './components/avatar/AvatarEncounter';
 import { TVControls } from './components/tv/TVControls';
@@ -515,6 +516,12 @@ function App() {
   // Scroll keys pressed with focus outside drei's track still walk the story.
   useEffect(() => (show3D && scrollElement ? installKeyboardScroll(scrollElement) : undefined),
     [show3D, scrollElement]);
+
+  // Home and End go to the start and the end of the story, as the navbar's Home and Contact do.
+  useEffect(() => {
+    if (show3D && !scrollElement) return;
+    return installStoryKeys({ track: show3D ? scrollElement : null, navigate: scrollToSection });
+  }, [show3D, scrollElement, scrollToSection]);
 
   /*
    * One definition, rendered either inside the canvas's scroll layer or

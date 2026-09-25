@@ -105,10 +105,20 @@ describe('scrollGesture', () => {
 
   it('reports the keys that scroll, and nothing else', () => {
     const off = listen();
-    for (const key of ['ArrowDown', 'PageUp', 'a', 'Shift', 'Home']) {
+    for (const key of ['ArrowDown', 'PageUp', 'a', 'Shift', 'ArrowUp']) {
       window.dispatchEvent(new KeyboardEvent('keydown', { key }));
     }
     expect(seen).toEqual(['down', 'up', 'up']);
+    off();
+  });
+
+  it('asks no beat for more on Home or End, which navigate to the ends of the story', () => {
+    // Round 8 (D-FLAT-002): see storyKeys.
+    const off = listen();
+    for (const init of [{ key: 'Home' }, { key: 'End' }, { key: 'End', ctrlKey: true }]) {
+      window.dispatchEvent(new KeyboardEvent('keydown', init));
+    }
+    expect(seen).toEqual([]);
     off();
   });
 
@@ -121,7 +131,7 @@ describe('scrollGesture', () => {
       { key: 'ArrowDown', shiftKey: true }, { key: 'PageDown', ctrlKey: true }, { key: 'ArrowUp', altKey: true },
       { key: 'PageUp', metaKey: true }, { key: ' ', ctrlKey: true },
     ]) window.dispatchEvent(new KeyboardEvent('keydown', init));
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', ctrlKey: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown' }));
     expect(seen).toEqual(['up', 'down', 'down']);
     off();
   });

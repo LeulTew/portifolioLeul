@@ -100,7 +100,8 @@ function onTouchEnd(): void {
 function onKeyDown(event: KeyboardEvent): void {
   // The same reading of the key the physical scroll uses: see scrollKeys.
   const intent = scrollKeyIntent(event);
-  if (intent) emit(intent.direction, !event.repeat, event.target);
+  // Home and End navigate to the story's first or last chapter (storyKeys); they ask no beat for more.
+  if (intent && intent.extent !== 'document') emit(intent.direction, !event.repeat, event.target);
 }
 
 /** Starts listening. Safe to call more than once. */
