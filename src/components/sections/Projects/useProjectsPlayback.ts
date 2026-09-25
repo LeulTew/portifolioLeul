@@ -14,7 +14,7 @@ import {
   holdProjectsViewForSkills, registerProjectsSurface, setProjectsView,
   setProjectsReading, setProjectsReturnOwed, subscribeSkillsProjectsHandoff, type ProjectsPhase,
 } from '@/lib/projects/projectsScene';
-import { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
+import { PROJECTS_APPROACH_MS, PROJECTS_STAGE_QUERY, PROJECTS_TURN_MS } from '@/lib/projects/projectsTiming';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { claimScrollKeys } from '@/lib/scroll/keyboardScroll';
@@ -24,7 +24,7 @@ import { claimView } from '@/lib/scroll/viewOwner';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
 import { PROJECTS_ENTRY_EDGE, projectsEntry, projectsStep } from './projectsTransitions';
-import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
+import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactTiming';
 import {
   beginContactFlight, getContactView, hasContactCamera, isContactPoseCommitted,
   parkContactSky, releaseContactSky, setContactProgress, subscribeContactPose,

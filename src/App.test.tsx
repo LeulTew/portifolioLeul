@@ -221,6 +221,14 @@ vi.mock("./components/ParticleBackground", () => ({
   default: () => <div data-testid="particle-background" />,
 }));
 
+// The spatial stage is a lazy module in the page. Here it is handed over already
+// resolved, through a thenable React.lazy reads at once, so each render is synchronous.
+vi.mock("./components/3d/spatialStageModule", async () => {
+  const stage = await vi.importActual<typeof import("./components/3d/SpatialStage")>("./components/3d/SpatialStage");
+  const resolved = { then: (onFulfilled: (module: typeof stage) => unknown) => onFulfilled(stage) };
+  return { loadSpatialStage: () => resolved };
+});
+
 vi.mock("./components/sections/Home/Home", () => ({
   Home: ({ introReady }: { introReady?: boolean }) =>
     <div data-testid="home-section" data-intro-ready={introReady}>Home Section</div>,

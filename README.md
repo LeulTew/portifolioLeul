@@ -34,7 +34,7 @@ Welcome to my **Interactive 3D Portfolio**. This project is more than just a sho
 - **Interactive 3D world**: React Three Fiber connects an animated avatar, a physical television and the portfolio's native reading controls.
 - **Typed interaction ownership**: TypeScript, unit tests and real-component integration tests cover camera handoffs, native input, resource lifecycles and recovery.
 - **Explicit performance budgets**: Optimized scene assets, device-aware rendering and occlusion gates limit work. Optional television media loads only after a visitor switches it on.
-- **Desktop and phone experiences**: The desktop scene retains semantic HTML and a flat WebGL fallback; the separate phone portfolio is selected before loading desktop bundles.
+- **Desktop and phone experiences**: The desktop scene retains semantic HTML and a flat WebGL fallback; the separate phone portfolio is selected before loading desktop bundles. The flat page never downloads the renderer: the world, Drei's scroll track and three load as their own chunks only once the page knows it can draw them (`SpatialStage`, loaded lazily), and a test walks the startup import graph to keep three and R3F off it.
 
 ## ⚡ Performance Optimization
 

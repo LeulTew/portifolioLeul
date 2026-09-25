@@ -1,6 +1,5 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useFrame } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Loader } from './components/Loader';
 import { Navigation } from './components/Navigation';
@@ -9,20 +8,15 @@ import { About } from './components/sections/About/About';
 import { aboutNavigationInset } from './components/sections/About/aboutNavigation';
 import { Projects } from './components/sections/Projects/Projects';
 import { Skills } from './components/sections/Skills/Skills';
-import { BackgroundScene } from './components/BackgroundScene';
-import { Preload, ScrollControls, Scroll, useScroll } from '@react-three/drei';
-import ParticleBackground from './components/ParticleBackground';
+import type { ScrollControlsState } from '@react-three/drei';
 import { Contact } from './components/sections/Contact/Contact';
-import { ThemeContext } from './components/sections/theme/ThemeContext';
 import { useTheme } from './components/sections/theme/useTheme';
 import { useGpuTier } from './lib/gateways/gpuTier';
-import { setScrollProgress } from './lib/scroll/scrollProgress';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
 import { createTrackFocusRecovery } from './lib/scroll/preserveTrackFocus';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraFreezes, setWorldOcclusion } from './lib/camera/cameraHold';
-import { WorldCanvas } from './components/3d/WorldCanvas';
-import { ContextLossGuard } from './components/3d/ContextLossGuard';
+import { loadSpatialStage } from './components/3d/spatialStageModule';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isWebGLAvailable } from './lib/render/webglSupport';
 import { isSceneReady, subscribeSceneReady } from './lib/render/sceneReady';
@@ -33,7 +27,6 @@ import { ChapterInkLayer, InkLabel } from './components/ui/ChapterInkLayer/Chapt
 import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
-import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
 import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
 import { installStoryKeys } from './lib/scroll/storyKeys';
@@ -44,6 +37,9 @@ import { setAvatarLayoutReady } from './lib/avatar/avatarEncounter';
 
 import './index.css';
 import styles from './App.module.css';
+
+/** The world and its scroll track: downloaded only when the page can draw them (round 10, TECH-029). */
+const SpatialStage = lazy(loadSpatialStage);
 
 /**
  * Page-count churn below this is ignored. Every applied change makes
@@ -92,7 +88,7 @@ function App() {
   /** The in-flight navigation glide, so a second click replaces the first. */
   const glideRef = useRef<Glide | null>(null);
   const scrollElementRef = useRef<HTMLDivElement | null>(null);
-  const scrollStateRef = useRef<ReturnType<typeof useScroll> | null>(null);
+  const scrollStateRef = useRef<ScrollControlsState | null>(null);
   /** Reader position captured just before the track is resized. */
   const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
   /**
@@ -168,7 +164,7 @@ function App() {
 
   const handleScrollElement = useCallback((
     element: HTMLDivElement | null,
-    state: ReturnType<typeof useScroll> | null
+    state: ScrollControlsState | null
   ) => {
     scrollElementRef.current = element;
     scrollStateRef.current = state;
@@ -595,49 +591,20 @@ function App() {
           setWebglRuntimeError(true);
         }}
       >
-          <WorldCanvas
-            tier={gpuConfig}
-            onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); }}
-            camera={{
-              position: [0, 0, 10],
-              fov: 50,
-              near: 0.1,
-              far: 100
-            }}
-            gl={{
-              antialias: gpuConfig.tier !== 'low',
-              alpha: true,
-              powerPreference: 'default',
-              stencil: false,
-              depth: true,
-            }}
-          >
-            <ThemeContext.Provider value={{ theme, toggleTheme }}>
-              <ScrollControls pages={scrollPages} damping={0.3}>
-                <ScrollManager onReady={handleScrollElement} onFrame={applyPendingRestore} />
-                <BackgroundScene
-                  theme={theme}
-                  particleCount={gpuConfig.particleCount}
-                  reflectionSize={gpuConfig.waterReflectionSize}
-                  reflectionFps={gpuConfig.waterReflectionFps}
-                  videoClips={gpuConfig.videoClips}
-                  oceanSegments={gpuConfig.oceanSegments}
-                  oceanRings={gpuConfig.oceanRings}
-                />
-                <ParticleBackground theme={theme} count={gpuConfig.particleCount} />
-                <Scroll html style={{ width: '100%' }}>
-                  {sections}
-                </Scroll>
-              </ScrollControls>
-              <Preload all />
-              {/*
-                A lost context throws nothing, so the error boundary above
-                cannot see it. Without this the backdrop simply stops drawing
-                and the reader is left with a site whose world is missing.
-              */}
-              <ContextLossGuard onUnrecoverable={handleContextUnrecoverable} />
-            </ThemeContext.Provider>
-          </WorldCanvas>
+          {/* The loader stays over the page while the stage's module arrives. */}
+          <Suspense fallback={null}>
+            <SpatialStage
+              tier={gpuConfig}
+              theme={theme}
+              toggleTheme={toggleTheme}
+              pages={scrollPages}
+              onScrollElement={handleScrollElement}
+              onFrame={applyPendingRestore}
+              onUnrecoverable={handleContextUnrecoverable}
+            >
+              {sections}
+            </SpatialStage>
+          </Suspense>
         
 
 
@@ -677,38 +644,4 @@ function PageFooter() {
     {paint(false)}
     <ChapterInkLayer className={styles.footerInk}>{paint(true)}</ChapterInkLayer>
   </>;
-}
-
-function ScrollManager({
-  onReady,
-  onFrame,
-}: {
-  onReady: (el: HTMLDivElement | null, state: ReturnType<typeof useScroll> | null) => void;
-  onFrame: () => number | null;
-}) {
-  const scroll = useScroll();
-
-  useEffect(() => {
-    onReady(scroll?.el ?? null, scroll ?? null);
-    return () => onReady(null, null);
-  }, [scroll, onReady]);
-
-  // The page scrolls inside the ScrollControls element, so this is the only
-  // place that knows the real progress. Publish it for the DOM layer.
-  useFrame((state) => {
-    const restored = onFrame();
-    if (scroll && restored !== null) {
-      // Restoring only scrollTop lets Drei damp its new offset from zero,
-      // briefly publishing a fictitious return through earlier chapters.
-      scroll.offset = restored;
-      scroll.delta = 0;
-    }
-    // Drei 9 skips HTML transforms at zero delta, including a reset to zero
-    // after rebuilding pages. Reconcile only settled, physically agreed state;
-    // moving frames remain exclusively Drei's, and pending restores stay put.
-    const geometryChanged = scroll ? reconcileScrollLayer(scroll, state.size.height) : false;
-    setScrollProgress(scroll?.offset ?? 0, geometryChanged);
-  });
-
-  return null;
 }

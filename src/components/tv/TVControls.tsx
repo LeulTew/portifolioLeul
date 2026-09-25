@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { TV_CONTROL_IDS, TV_READER_SURFACE, dispatchTVHardware, type TVControlId } from '@/lib/tv/tvHardware';
-import { registerTVTargets } from '@/lib/tv/tvControlProjection';
+import { registerTVTargets } from '@/lib/tv/tvControlTargets';
 import { activateTV, getTVState, isTVActionEnabled, setTVExposure, useTVState } from '@/lib/tv/tvState';
 import styles from './TVControls.module.css';
 

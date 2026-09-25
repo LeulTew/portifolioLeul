@@ -1,8 +1,8 @@
-import * as THREE from 'three';
 import { getGpuTier } from '@/lib/gateways/gpuTier';
 import terrainBake from '@/lib/scene/terrain-outline-bake.json';
 import { AssetBuffer } from './assetBuffer';
 import { cacheTextureBytes } from './texturePrefetch';
+import { removeFromThreeCache as removeFromCache, threeCache } from './threeCache';
 
 /**
  * The assets the first view cannot open without, fetched up front with real
@@ -210,14 +210,14 @@ export function createCriticalAssetRun(options: LoadCriticalAssetsOptions = {}):
       const transfer = models.get(url);
       if (!transfer) return;
       transfer.decoded = true;
-      if (transfer.releaseRequested) THREE.Cache.remove(url);
+      if (transfer.releaseRequested) removeFromCache(url);
     },
     releaseModels(requested) {
       for (const asset of requested) {
         if (asset.kind !== 'model') continue;
         const transfer = models.get(asset.url);
         if (transfer && !transfer.decoded) transfer.releaseRequested = true;
-        else THREE.Cache.remove(asset.url);
+        else removeFromCache(asset.url);
       }
     },
   };
@@ -320,8 +320,9 @@ async function runLoad(
   }
 
   // A model that finishes prefetching before GLTFLoader asks for it can be
-  // reused without another HTTP-cache revalidation.
-  THREE.Cache.enabled = true;
+  // reused without another HTTP-cache revalidation. Loaded alongside the
+  // downloads, never ahead of them, and not at all for DOM-only media.
+  const cached = assets.some(asset => asset.kind === 'model') ? threeCache() : null;
 
   const expected = assets.map((asset) => asset.bytes);
   const received = assets.map(() => 0);
@@ -400,7 +401,7 @@ async function runLoad(
             if (!isBinaryGltf(buffer)) {
               throw new Error(`${asset.url} is not a binary glTF`);
             }
-            THREE.Cache.add(asset.url, buffer);
+            (await (cached ?? threeCache())).add(asset.url, buffer);
           } else if (bytes && asset.kind === 'texture') {
             await cacheTextureBytes(asset.url, bytes.finish(), contentType, signal);
           }
@@ -415,7 +416,7 @@ async function runLoad(
             if (!isBinaryGltf(buffer)) {
               throw new Error(`${asset.url} is not a binary glTF`);
             }
-            THREE.Cache.add(asset.url, buffer);
+            (await (cached ?? threeCache())).add(asset.url, buffer);
           } else if (asset.kind === 'texture') {
             await cacheTextureBytes(asset.url, buffer, contentType, signal);
           }
@@ -467,6 +468,6 @@ export function releaseCriticalAssets(
     return;
   }
   for (const asset of assets) {
-    if (asset.kind === 'model') THREE.Cache.remove(asset.url);
+    if (asset.kind === 'model') removeFromCache(asset.url);
   }
 }

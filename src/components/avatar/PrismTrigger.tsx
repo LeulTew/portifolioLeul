@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { subscribeScrollGesture } from '@/lib/scroll/scrollGesture';
 import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
-import { registerPrismTarget } from '@/lib/prism/prismProjection';
+import { registerPrismTarget } from '@/lib/prism/prismTarget';
 import {
   closePrismExperiment, getPrismExperiment, requestPrismExperiment, resetPrismExperiment,
   setPrismEnabled, usePrismAvailable, usePrismPhase,

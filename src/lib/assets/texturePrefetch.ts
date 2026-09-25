@@ -1,4 +1,4 @@
-import { Cache } from 'three';
+import { threeCache } from './threeCache';
 
 /**
  * ImageLoader's cache needs a decoded image, not an ArrayBuffer. Decode the
@@ -15,6 +15,8 @@ export async function cacheTextureBytes(
   if (signal?.aborted || typeof Image === 'undefined' || typeof URL.createObjectURL !== 'function' ||
       !contentType?.toLowerCase().startsWith('image/')) return false;
 
+  // Loaded alongside the decode; the entry is added before this resolves.
+  const cached = threeCache();
   const image = new Image();
   image.decoding = 'async';
   const objectUrl = URL.createObjectURL(new Blob([buffer], { type: contentType }));
@@ -26,9 +28,15 @@ export async function cacheTextureBytes(
       image.onload = image.onerror = null;
       signal?.removeEventListener('abort', abort);
       URL.revokeObjectURL(objectUrl);
-      if (decoded) Cache.add(url, image);
-      else image.src = '';
-      resolve(decoded);
+      if (!decoded) {
+        image.src = '';
+        resolve(false);
+        return;
+      }
+      void cached.then(cache => {
+        cache.add(url, image);
+        resolve(true);
+      }, () => resolve(false));
     };
     const abort = () => finish(false);
     image.onload = () => {

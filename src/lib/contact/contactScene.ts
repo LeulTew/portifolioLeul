@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { CONTACT_REVEAL_START } from '@/lib/camera/contactFlight';
+import { CONTACT_REVEAL_START } from '@/lib/camera/contactTiming';
 
 export type ContactMode = 'outside' | 'departing' | 'parked' | 'returning';
 
