@@ -367,7 +367,7 @@ export function useProjectsPlayback(
     window.addEventListener('keydown', forwardReturnKey, { passive: true });
     // While engaged, scroll keys are requests to the TV; parked after it, the return keys are this chapter's.
     const releaseKeys = claimScrollKeys(event => active ||
-      (side === 'after' && (event.key === 'ArrowUp' || event.key === 'PageUp' || event.key === 'Home')));
+      (side === 'after' && (event.key === 'ArrowUp' || event.key === 'PageUp')));
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (navigating) return;
       wave = null;

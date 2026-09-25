@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Loader } from './components/Loader';
 import { Navigation } from './components/Navigation';
@@ -21,7 +21,7 @@ import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScr
 import { createTrackFocusRecovery } from './lib/scroll/preserveTrackFocus';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
 import { setCameraFreezes, setWorldOcclusion } from './lib/camera/cameraHold';
-import { RenderGovernor } from './components/3d/RenderGovernor';
+import { WorldCanvas } from './components/3d/WorldCanvas';
 import { ContextLossGuard } from './components/3d/ContextLossGuard';
 import { releaseCriticalAssets } from './lib/assets/criticalAssets';
 import { isWebGLAvailable } from './lib/render/webglSupport';
@@ -36,6 +36,7 @@ import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { reconcileScrollLayer } from './lib/scroll/reconcileScrollLayer';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
 import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
+import { installStoryKeys } from './lib/scroll/storyKeys';
 import { useResizeAnchor } from './lib/scroll/resizeAnchor';
 import { AvatarEncounter } from './components/avatar/AvatarEncounter';
 import { TVControls } from './components/tv/TVControls';
@@ -516,6 +517,12 @@ function App() {
   useEffect(() => (show3D && scrollElement ? installKeyboardScroll(scrollElement) : undefined),
     [show3D, scrollElement]);
 
+  // Home and End go to the start and the end of the story, as the navbar's Home and Contact do.
+  useEffect(() => {
+    if (show3D && !scrollElement) return;
+    return installStoryKeys({ track: show3D ? scrollElement : null, navigate: scrollToSection });
+  }, [show3D, scrollElement, scrollToSection]);
+
   /*
    * One definition, rendered either inside the canvas's scroll layer or
    * straight into the document. Written once so the two paths cannot drift
@@ -563,8 +570,8 @@ function App() {
           setWebglRuntimeError(true);
         }}
       >
-          <Canvas
-            dpr={gpuConfig.dpr}
+          <WorldCanvas
+            tier={gpuConfig}
             onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); }}
             camera={{
               position: [0, 0, 10],
@@ -599,19 +606,13 @@ function App() {
               </ScrollControls>
               <Preload all />
               {/*
-                Owns the render call, so frames behind an opaque section -- and
-                frames above the tier's redraw ceiling -- are never drawn.
-                Mounted last so it sits above every other frame subscriber.
-              */}
-              <RenderGovernor maxFps={gpuConfig.maxFps} />
-              {/*
                 A lost context throws nothing, so the error boundary above
                 cannot see it. Without this the backdrop simply stops drawing
                 and the reader is left with a site whose world is missing.
               */}
               <ContextLossGuard onUnrecoverable={handleContextUnrecoverable} />
             </ThemeContext.Provider>
-          </Canvas>
+          </WorldCanvas>
         
 
 

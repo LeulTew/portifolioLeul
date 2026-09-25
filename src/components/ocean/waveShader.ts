@@ -89,6 +89,28 @@ export const DEFAULT_WAVE_SETTINGS: WaveSettings = {
   waveReach: DEFAULT_OCEAN_GEOMETRY.detailRadius,
 };
 
+/** How far the shoaling peak raises a wave, as a share of its deep-water height. */
+export const SHOALING_GAIN = 1.35;
+
+/**
+ * The crossing swells' heights, as shares of the amplitude. The first two
+ * carry the shape, the last two are chop.
+ */
+export const SWELL_HEIGHTS = [1, 0.62, 0.3, 0.15] as const;
+
+/**
+ * The highest a crest can stand above the rest surface, in world units: every
+ * swell at its peak at once, at the shoaling peak. They rarely align, so the
+ * sea stays well under it; a bound that has to hold on every frame, like the
+ * one that skips the reflection for a view above the sea, needs exactly this.
+ */
+export function maxWaveHeight({ amplitude }: Pick<WaveSettings, 'amplitude'>): number {
+  return amplitude * (1 + SHOALING_GAIN) * SWELL_HEIGHTS.reduce((sum, height) => sum + height, 0);
+}
+
+/** A number as a GLSL float literal. */
+const glsl = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
+
 /**
  * Declarations and helpers, injected ahead of the vertex shader's main.
  *
@@ -173,7 +195,7 @@ const VERTEX_BODY = /* glsl */ `
      * shards of sea sitting on the coast.
      */
     float unbroken = smoothstep( 0.0, 0.30, depth );
-    float shoaling = 1.0 + 1.35 * exp( -pow( ( depth - 0.44 ) / 0.20, 2.0 ) );
+    float shoaling = 1.0 + ${glsl(SHOALING_GAIN)} * exp( -pow( ( depth - 0.44 ) / 0.20, 2.0 ) );
 
     /*
      * The swell only exists where the surface can hold it.
@@ -216,16 +238,16 @@ const VERTEX_BODY = /* glsl */ `
     // two are chop, which keeps the surface from reading as a repeating tile.
     addWave( waveOffset, waveNormal, steepness, wavePosition.xz, time,
       normalize( mix( vec2( 0.86, 0.51 ), inbound, turn ) ),
-      0.052 / bunching, amp * 1.0, 1.05, q );
+      0.052 / bunching, amp * ${glsl(SWELL_HEIGHTS[0])}, 1.05, q );
     addWave( waveOffset, waveNormal, steepness, wavePosition.xz, time,
       normalize( mix( vec2( -0.36, 0.93 ), inbound, turn ) ),
-      0.081 / bunching, amp * 0.62, 1.32, q * 0.9 );
+      0.081 / bunching, amp * ${glsl(SWELL_HEIGHTS[1])}, 1.32, q * 0.9 );
     addWave( waveOffset, waveNormal, steepness, wavePosition.xz, time,
       normalize( mix( vec2( 0.62, -0.78 ), inbound, turn * 0.55 ) ),
-      0.164 / bunching, amp * 0.3, 1.9, q * 0.7 );
+      0.164 / bunching, amp * ${glsl(SWELL_HEIGHTS[2])}, 1.9, q * 0.7 );
     addWave( waveOffset, waveNormal, steepness, wavePosition.xz, time,
       normalize( mix( vec2( -0.95, -0.31 ), inbound, turn * 0.35 ) ),
-      0.283 / bunching, amp * 0.15, 2.5, q * 0.55 );
+      0.283 / bunching, amp * ${glsl(SWELL_HEIGHTS[3])}, 2.5, q * 0.55 );
 
     wavePosition.xyz += waveOffset;
 

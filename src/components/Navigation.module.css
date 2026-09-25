@@ -10,6 +10,13 @@
   border: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  /*
+   * The bar is a full-width, transparent box, and on a 4K screen its padding
+   * band lay over the TV's category tabs: clicks in the middle of a tab landed
+   * on nothing visible (round 8, D-HIT-001). Only what can be seen takes the
+   * pointer; wheel and clicks elsewhere reach the page beneath.
+   */
+  pointer-events: none;
 }
 
 .nav {
@@ -27,6 +34,7 @@
   font-weight: 700;
   color: rgb(var(--text-color));
   cursor: pointer;
+  pointer-events: auto;
   -webkit-user-select: none;
   user-select: none;
   letter-spacing: -0.05em;
@@ -50,6 +58,7 @@
   display: inline-flex;
   align-items: center;
   padding: 1px;
+  pointer-events: auto;
   background: rgba(var(--text-color), 0.14);
   clip-path: chamferPath;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);

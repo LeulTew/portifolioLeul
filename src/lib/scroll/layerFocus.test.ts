@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { observeChromeInset } from './chromeInset';
 import { installDocumentFocus, installLayerFocus, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
+import { cancelSectionLanding } from './sectionLanding';
 
 type Box = { top: number; bottom: number };
 const boxes = new Map<Element, Box>();
@@ -168,8 +169,37 @@ describe('keyboard focus in the scroll layer', () => {
     tab();
     expect(document.activeElement).toBe(byId('message'));
     expect(navigate).not.toHaveBeenCalled();
-    // 110 - 132 = -22px, in track pixels.
-    expect(byId('track').scrollTop).toBeCloseTo(1000 - (22 * 7200) / 6200, 5);
+    // 110 - (132 + the 12px ring gap) = -34px, in track pixels.
+    expect(byId('track').scrollTop).toBeCloseTo(1000 - (34 * 7200) / 6200, 5);
+  });
+
+  it('reveals the field native validation focuses with its label, clear of the navbar', () => {
+    // Round 8 (D-A11Y-002): at 900x560 a blank Send left Name half under the bar.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    const label = document.createElement('label');
+    label.htmlFor = 'message';
+    byId('message').before(label);
+    boxes.set(label, { top: 20, bottom: 40 });
+    place('contact', 0, 1000); place('message', 44, 120);
+    rendered = 1000;
+    // The browser fires invalid, then focuses the first invalid control.
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    flushFrames();
+    expect(navigate).not.toHaveBeenCalled();
+    // The label's top, 20, to the 96px reveal margin (below the bar and its gap here) = -76px, in track pixels.
+    expect(byId('track').scrollTop).toBeCloseTo(1000 - (76 * 7200) / 6200, 5);
+  });
+
+  it('leaves a field that is invalid but not focused where it is', () => {
+    place('contact', 0, 1000); place('email', 40, 52); place('message', 900, 120);
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('email').focus();
+    flushFrames();
+    expect(byId('track').scrollTop).toBe(0);
   });
 
   it('holds the html layer at zero when the browser reveals focus by scrolling it', () => {
@@ -251,7 +281,7 @@ describe('keyboard focus in the scroll layer', () => {
   });
 });
 
-describe('Tab past a chapter whose reader is not in place', () => {
+describe('Tab through the story, chapter by chapter', () => {
   let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
   let release: () => void;
 
@@ -259,78 +289,133 @@ describe('Tab past a chapter whose reader is not in place', () => {
     document.body.innerHTML = `
       <header><button id="logo">LT</button><button id="theme">Theme</button></header>
       <div id="track"><main id="main">
-        <section id="home"><button id="cta">Explore</button></section>
+        <section id="home"><h1 id="title" tabindex="-1" data-section-landing="home" data-tab-entry="">Leul</h1>
+          <button id="cta">Explore</button></section>
         <section id="about" tabindex="-1" data-section-landing="about"><p>Statements</p></section>
+        <section id="skills"></section>
         <section id="projects"></section>
-        <section id="contact"><a id="email" href="mailto:hello@example.com">Email</a></section>
+        <section id="contact"><div id="connect" tabindex="-1" data-section-landing="contact" data-tab-entry="">Connect</div>
+          <a id="email" href="mailto:hello@example.com">Email</a></section>
       </main></div>
-      <div id="stage" inert><div id="reader" tabindex="-1" data-section-landing="projects" data-tab-entry="">
-        <button id="details">Details</button></div><button id="scene-next">Contact</button></div>`;
+      <section id="skills-stage" aria-hidden="true" data-section-owner="skills">
+        <h2 id="skills-heading" tabindex="-1" data-section-landing="skills" data-tab-entry="">Skills</h2>
+        <button id="skill-next">Next skill</button></section>
+      <div id="stage" inert data-section-owner="projects">
+        <div id="reader" tabindex="-1" data-section-landing="projects" data-tab-entry=""><button id="details">Details</button></div>
+        <button id="scene-next" data-section-landing="projects">Contact</button></div>`;
     navigate = vi.fn<(section: string) => void>();
     scrollable(byId('track'), { scrollHeight: 8000, clientHeight: 800 });
     vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
-    place('home', 0, 900); place('cta', 600);
-    place('about', 900, 2000); place('projects', 2900, 1500); place('contact', 4400, 900); place('email', 4600);
+    view('home');
     release = installLayerFocus({ track: byId('track'), main: () => byId('main'), navigate });
   });
-  afterEach(() => release());
+  afterEach(() => {
+    release();
+    cancelSectionLanding();
+  });
 
-  /** The reader the navigation brings in takes focus once its chapter is live. */
-  const goLive = () => {
-    byId('stage').removeAttribute('inert');
+  const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'];
+  const HEIGHTS = [900, 2000, 1500, 1500, 900];
+  /** Lays the story out with `section` under the reader, as drei's layer would. */
+  function view(section: string) {
+    let top = 0;
+    const tops = SECTIONS.map((_, index) => { const at = top; top += HEIGHTS[index]; return at; });
+    const offset = tops[SECTIONS.indexOf(section)];
+    SECTIONS.forEach((id, index) => place(id, tops[index] - offset, HEIGHTS[index]));
+    place('cta', 600 - offset); place('email', tops[4] + 200 - offset);
+  }
+  /** Which chapter holds the view: its reader live, everything else inert or hidden. */
+  function live(section: 'home' | 'skills' | 'projects' | 'contact') {
+    view(section);
+    byId('main').toggleAttribute('inert', section === 'skills' || section === 'projects');
+    if (section === 'skills') byId('skills-stage').removeAttribute('aria-hidden');
+    else byId('skills-stage').setAttribute('aria-hidden', 'true');
+    byId('stage').toggleAttribute('inert', section !== 'projects');
     flushFrames();
-  };
+  }
 
-  it('visits Projects between Home and Contact, by navigating there', () => {
-    // Round 7 (D-A11Y-001): Tab went from Home straight to Contact past the inert TV reader.
+  it('visits every chapter with controls in story order, forward', () => {
+    // Round 7 (D-A11Y-001): Tab went from Home straight to Contact; round 8: past Skills entirely.
     byId('cta').focus();
     expect(tab().defaultPrevented).toBe(true);
-    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
-    expect(document.activeElement).toBe(byId('cta'));
-    goLive();
+    expect(navigate).toHaveBeenLastCalledWith('skills');
+    live('skills');
+    expect(document.activeElement).toBe(byId('skills-heading'));
+    tab();
+    expect(document.activeElement).toBe(byId('skill-next'));
+    // Past a portalled reader's last stop the document ends; the story does not.
+    expect(tab().defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenLastCalledWith('projects');
+    live('projects');
     expect(document.activeElement).toBe(byId('reader'));
+    tab();
+    tab();
+    expect(document.activeElement).toBe(byId('scene-next'));
+    tab();
+    expect(navigate).toHaveBeenLastCalledWith('contact');
+    live('contact');
+    expect(document.activeElement).toBe(byId('connect'));
+    tab();
+    expect(document.activeElement).toBe(byId('email'));
+    expect(navigate).toHaveBeenCalledTimes(3);
+    // And from Contact, the last chapter, Tab leaves for the browser.
+    expect(tab().defaultPrevented).toBe(false);
   });
 
-  it('visits it on the way back from Contact, and from a section landing', () => {
+  it('mirrors the way back with Shift+Tab', () => {
+    live('contact');
     byId('email').focus();
     tab(true);
-    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
-    goLive();
-    expect(document.activeElement).toBe(byId('reader'));
-
-    byId('stage').setAttribute('inert', '');
-    byId('about').focus();
-    tab();
     expect(navigate).toHaveBeenLastCalledWith('projects');
+    live('projects');
+    expect(document.activeElement).toBe(byId('reader'));
+    tab(true);
+    expect(navigate).toHaveBeenLastCalledWith('skills');
+    live('skills');
+    expect(document.activeElement).toBe(byId('skills-heading'));
+    // Home's controls sit under the inert story while Skills holds the view: visited by navigating.
+    tab(true);
+    expect(navigate).toHaveBeenLastCalledWith('home');
+    live('home');
+    expect(document.activeElement).toBe(byId('title'));
+    tab();
+    expect(document.activeElement).toBe(byId('cta'));
   });
 
-  it('counts the navbar as the chapter in view when Tab leaves it', () => {
-    // Contact fills the window: the next stop is Contact's own, so nothing is passed.
-    place('home', -4400, 900); place('about', -3500, 2000); place('projects', -1500, 1500); place('contact', 0, 900);
-    byId('theme').focus();
-    byId('cta').setAttribute('data-no-box', '');
+  it('starts from where the reader is, not from focus the wheel left behind', () => {
+    byId('cta').focus();
+    view('contact');
     tab();
     expect(navigate).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(byId('email'));
   });
 
-  it('does not send Tab back into the chapter it is leaving', () => {
-    byId('stage').removeAttribute('inert');
-    byId('main').setAttribute('inert', '');
-    place('home', -2900, 900); place('about', -2000, 2000); place('projects', 0, 1500); place('contact', 1500, 900);
-    byId('details').focus();
-    tab(true);
+  it('moves within the chapter in view without navigating, from the navbar too', () => {
+    live('skills');
+    byId('theme').focus();
+    tab();
     expect(navigate).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(byId('theme'));
+    expect(document.activeElement).toBe(byId('skill-next'));
+    view('contact');
+    byId('main').removeAttribute('inert');
+    byId('skills-stage').setAttribute('aria-hidden', 'true');
+    byId('theme').focus();
+    byId('cta').setAttribute('data-no-box', '');
+    byId('title').setAttribute('data-no-box', '');
+    tab();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('email'));
   });
 
   it('leaves a reader that is in place to the ordinary order', () => {
     byId('projects').append(byId('reader'));
+    byId('skills').append(byId('skills-stage'));
     byId('stage').removeAttribute('inert');
+    byId('skills-stage').removeAttribute('aria-hidden');
     byId('cta').focus();
     tab();
     expect(navigate).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(byId('details'));
+    expect(document.activeElement).toBe(byId('skill-next'));
   });
 });
 
@@ -411,6 +496,26 @@ describe('keyboard focus in the no-WebGL document', () => {
   it('ignores Tab that leaves the content', () => {
     byId('cta').focus();
     tabTo('logo', true);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows the label of the field native validation focuses, below the bar', () => {
+    // Round 8 (D-A11Y-002): the browser aligns the field with the scroll padding; its label stayed under the bar.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    const label = document.createElement('label');
+    label.htmlFor = 'message';
+    byId('message').before(label);
+    boxes.set(label, { top: 60, bottom: 80 });
+    place('message', 82, 120);
+    const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    flushFrames();
+    // The label's top, 60, to below the bar and the ring's room, 82.
+    expect(scrolled).toHaveBeenCalledExactlyOnceWith({ top: -22, behavior: 'auto' });
     expect(navigate).not.toHaveBeenCalled();
   });
 

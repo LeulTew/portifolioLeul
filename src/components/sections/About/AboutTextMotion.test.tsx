@@ -165,7 +165,7 @@ describe('About editorial text motion', () => {
     scrollport.scrollBy = vi.fn();
     Object.defineProperty(scrollport, 'clientHeight', { value: 720 });
     const find = vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scrollport);
-    const copy = within(left).getByText('KEEP IT SIMPLE');
+    const copy = within(left).getByText('START WITH');
     const event = new WheelEvent('wheel', { deltaY: 80, bubbles: true, cancelable: true });
     fireEvent(copy, event);
     expect(scrollport.scrollBy).toHaveBeenCalledExactlyOnceWith({ top: 80, behavior: 'auto' });
@@ -187,19 +187,26 @@ describe('About editorial text motion', () => {
     const { left, right } = mount();
     const leftHeading = within(left).getByRole('heading', { level: 3 });
     const rightHeading = within(right).getByRole('heading', { level: 3 });
-    expect(leftHeading).toHaveAccessibleName('KEEP IT SIMPLE BUT SIGNIFICANT');
-    expect(rightHeading).toHaveAccessibleName('SCALABLE SYSTEMS CRAFTED TO EMPOWER');
-    expect(within(left).getByText('KEEP IT SIMPLE')).toHaveClass(styles.statementHinge);
-    expect(within(left).getByText('BUT SIGNIFICANT')).toHaveClass(styles.statementInk);
+    // Round 8 (D-BRAND-001): owner-specific choices, each named by the work that shows it.
+    expect(leftHeading).toHaveAccessibleName('START WITH WHO USES IT');
+    expect(rightHeading).toHaveAccessibleName('FROM MODEL TO INTERFACE');
+    expect(within(left).getByText('START WITH')).toHaveClass(styles.statementHinge);
+    expect(within(left).getByText('WHO USES IT')).toHaveClass(styles.statementInk);
+    for (const work of ['Amharic IR Improved', 'EthioDriveMaster', 'Mizan']) {
+      expect(projectsData.some(project => project.title === work)).toBe(true);
+    }
+    expect(within(left).getByText('AMHARIC SEARCH, DRIVING-TEST PRACTICE, A LEDGER FOR EVERYDAY LENDING')).toBeInTheDocument();
     expect([...rightHeading.querySelectorAll(`.${styles.leadWord}`)].map(word => word.textContent))
-      .toEqual(['SCALABLE', 'SYSTEMS']);
-    expect(within(right).getByText('CRAFTED TO EMPOWER')).toHaveClass(styles.statementSupport);
+      .toEqual(['FROM', 'MODEL']);
+    expect(within(right).getByText('TO INTERFACE')).toHaveClass(styles.statementSupport);
     expect([...right.querySelectorAll(`.${styles.metricValue}`)].map(value => value.textContent))
       .toEqual([
         String(projectsData.length),
         String(cvData.skills.reduce((total, category) => total + category.items.length, 0)),
-        'BSc',
+        '3.92',
       ]);
+    expect(cvData.education[0].details).toContain('GPA: 3.92 / 4.00');
+    expect(within(right).getByText('GPA, BSc in Computer Science (HiLCoE, 2025)')).toBeInTheDocument();
     expect(within(right).getByText('Projects to Explore Across Web, Mobile, AI & Graphics')).toBeInTheDocument();
     expect(within(right).getByText(`Skills Across ${cvData.skills.length} Engineering & Design Categories`)).toBeInTheDocument();
     for (const column of [left, right]) {

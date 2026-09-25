@@ -8,11 +8,14 @@
  * D-A11Y-001). Those keys are forwarded to the track at the browser's own
  * distances, as the body-level surfaces already forward the wheel.
  *
- * Passive, and it cancels nothing. Keys with focus inside the track stay the
- * browser's, and so do keys a control uses itself; a chapter that gives keys
- * a meaning of its own claims them while it does.
+ * Passive, and it cancels nothing. Which keys scroll, and when a control keeps
+ * a key for itself, is `scrollKeyIntent`'s call, shared with the gesture store
+ * so the scroll and the chapter request can never disagree. Keys with focus
+ * inside the track or another scroller stay the browser's, and a chapter that
+ * gives keys a meaning of its own claims them while it does.
  */
 import { findScrollContainer, scrollContainerBy } from './scrollContainer';
+import { scrollKeyIntent } from './scrollKeys';
 
 type Claim = (event: KeyboardEvent) => boolean;
 const claims = new Set<Claim>();
@@ -23,50 +26,41 @@ export function claimScrollKeys(claim: Claim): () => void {
   return () => { claims.delete(claim); };
 }
 
+/** Whether a chapter is keeping this key for itself. */
+export function isScrollKeyClaimed(event: KeyboardEvent): boolean {
+  for (const claim of claims) if (claim(event)) return true;
+  return false;
+}
+
 const ARROW_PX = 40;
 /** A page keeps an eighth of the view for context, as the browsers' pages do. */
 const PAGE_SHARE = 0.875;
-
-/** Controls that give these keys a meaning of their own. */
-const KEYED_CONTROLS = [
-  'input', 'textarea', 'select', '[contenteditable]:not([contenteditable="false"])',
-  ...['slider', 'spinbutton', 'listbox', 'menu', 'menubar', 'tablist', 'radiogroup', 'grid', 'tree', 'treegrid', 'combobox']
-    .map(role => `[role="${role}"]`),
-  '[data-projects-display]', '[data-projects-tabs]',
-].join(',');
-const SPACE_ACTIVATES = [
-  'button', 'summary',
-  ...['button', 'checkbox', 'switch', 'radio', 'tab', 'menuitem', 'option'].map(role => `[role="${role}"]`),
-].join(',');
 
 function scrolls(element: HTMLElement): boolean {
   const overflow = getComputedStyle(element).overflowY;
   return /auto|scroll|overlay/.test(overflow) && element.scrollHeight > element.clientHeight + 1;
 }
 
-/** How far the browser would move the track for this key, or 0 when the key is not the track's. */
+/** Whether focus sits in a scroller of its own, other than `track`, which the browser scrolls for the key. */
+export function inOwnScroller(target: EventTarget | null, track: HTMLElement | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const scroller = scrolls(target) ? target : findScrollContainer(target);
+  return !!scroller && scroller !== track;
+}
+
+/**
+ * How far the browser would move the track for this key, or 0 when the key is
+ * not the track's. Home and End are the story's, not the track's: see `storyKeys`.
+ */
 export function keyboardScrollDelta(event: KeyboardEvent, track: HTMLElement): number {
-  if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return 0;
-  const space = event.key === ' ' || event.key === 'Spacebar';
-  if (event.shiftKey && !space) return 0;
+  const intent = scrollKeyIntent(event);
+  if (!intent || intent.extent === 'document') return 0;
   const target = event.target;
   if (target instanceof Node && track.contains(target)) return 0;
-  if (target instanceof HTMLElement) {
-    if (target.closest(KEYED_CONTROLS) || (space && target.closest(SPACE_ACTIVATES))) return 0;
-    const scroller = scrolls(target) ? target : findScrollContainer(target);
-    if (scroller && scroller !== track) return 0;
-  }
-  const page = track.clientHeight * PAGE_SHARE;
-  switch (event.key) {
-    case 'ArrowDown': return ARROW_PX;
-    case 'ArrowUp': return -ARROW_PX;
-    case 'PageDown': return page;
-    case 'PageUp': return -page;
-    case ' ': case 'Spacebar': return event.shiftKey ? -page : page;
-    case 'Home': return -track.scrollTop;
-    case 'End': return track.scrollHeight - track.clientHeight - track.scrollTop;
-    default: return 0;
-  }
+  if (inOwnScroller(target, track)) return 0;
+  const sign = intent.direction === 'down' ? 1 : -1;
+  if (intent.extent === 'line') return sign * ARROW_PX;
+  return sign * track.clientHeight * PAGE_SHARE;
 }
 
 export function installKeyboardScroll(track: HTMLElement): () => void {
@@ -74,8 +68,7 @@ export function installKeyboardScroll(track: HTMLElement): () => void {
   if (!view) return () => {};
   const forward = (event: KeyboardEvent) => {
     const delta = keyboardScrollDelta(event, track);
-    if (!delta) return;
-    for (const claim of claims) if (claim(event)) return;
+    if (!delta || isScrollKeyClaimed(event)) return;
     scrollContainerBy(track, delta);
   };
   view.addEventListener('keydown', forward, { passive: true });

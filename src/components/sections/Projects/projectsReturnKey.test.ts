@@ -23,13 +23,14 @@ const delta = (target: HTMLElement, scroller: HTMLElement, key: string, options:
 };
 
 describe('Projects-only keyboard/native scrollport bridge', () => {
-  it('has an explicit, bounded ArrowUp/PageUp/Home distance policy without touching focus', () => {
+  it('has an explicit, bounded ArrowUp/PageUp distance policy without touching focus', () => {
     const { navbar, scroller } = setup();
     navbar.focus();
     expect(delta(navbar, scroller, 'ArrowUp')).toBe(-40);
     expect(delta(navbar, scroller, 'PageUp')).toBe(-810);
-    expect(delta(navbar, scroller, 'Home')).toBe(-2000);
     expect(delta(navbar, scroller, 'ArrowDown')).toBe(0);
+    // Home goes to the start of the story rather than scrolling the return (round 8, D-FLAT-002).
+    expect(delta(navbar, scroller, 'Home')).toBe(0);
     expect(navbar).toHaveFocus();
   });
 
@@ -39,7 +40,6 @@ describe('Projects-only keyboard/native scrollport bridge', () => {
     scroller.append(link);
     expect(delta(link, scroller, 'ArrowUp')).toBe(0);
     expect(delta(link, scroller, 'PageUp')).toBe(0);
-    expect(delta(link, scroller, 'Home')).toBe(0);
   });
 
   it.each(['input', 'textarea', 'select', '[contenteditable]', '[data-projects-display]', '[data-projects-tabs]', '[role="slider"]'])(
@@ -59,7 +59,7 @@ describe('Projects-only keyboard/native scrollport bridge', () => {
   it('does not reinterpret modified browser or platform shortcuts', () => {
     const { navbar, scroller } = setup();
     for (const options of [{ ctrlKey: true }, { altKey: true }, { metaKey: true }, { shiftKey: true }]) {
-      expect(delta(navbar, scroller, 'Home', options)).toBe(0);
+      expect(delta(navbar, scroller, 'ArrowUp', options)).toBe(0);
     }
   });
 });

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { Water } from 'three/examples/jsm/objects/Water.js';
+import { DEFAULT_WAVE_SETTINGS, maxWaveHeight } from '@/components/ocean/waveShader';
+import { CONTACT_SKY_ORIENTATION, CONTACT_SKY_POSITION } from '@/lib/camera/contactFlight';
 import { OwnedWater } from './OwnedWater';
 
 function reflectionHarness() {
@@ -95,10 +97,10 @@ describe('owned r161 water reflection', () => {
     harness.previous.dispose();
   });
 
-  it('skips the reflection for a view that lies wholly above the sea, and resumes when the sea is back in view', () => {
+  it('skips the reflection for a view that lies wholly above the crests, and resumes when the sea is back in view', () => {
     // Round 7 (TECH-009): parked Contact looks at the sky, yet the pass redrew the scene every frame.
     const geometry = new THREE.PlaneGeometry();
-    const water = new OwnedWater(geometry);
+    const water = new OwnedWater(geometry, { crestHeight: maxWaveHeight(DEFAULT_WAVE_SETTINGS) });
     const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 2000);
     camera.position.set(0, 60, 0);
     camera.rotation.set(THREE.MathUtils.degToRad(40), 0, 0);
@@ -108,6 +110,45 @@ describe('owned r161 water reflection', () => {
     camera.rotation.set(THREE.MathUtils.degToRad(-10), 0, 0);
     reflect(water, camera, harness);
     expect(harness.renderer.render).toHaveBeenCalledOnce();
+    water.dispose();
+    geometry.dispose();
+    harness.previous.dispose();
+  });
+
+  it('reflects a view that sees only the tallest crests, and any view when no bound is given', () => {
+    // Round 8 (TECH-016): a margin of 4 sat below the 4.62 units the summed, shoaled swell can reach.
+    const crest = maxWaveHeight(DEFAULT_WAVE_SETTINGS);
+    expect(crest).toBeCloseTo(0.95 * 2.35 * 2.07, 10);
+    const geometry = new THREE.PlaneGeometry();
+    const bounded = new OwnedWater(geometry, { crestHeight: crest });
+    const unbounded = new OwnedWater(geometry);
+    const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 100);
+    // Rest plane at -4: the view's lowest point sits between -4 + 4 and -4 + crest.
+    camera.position.set(0, -4 + (4 + crest) / 2, 0);
+    camera.rotation.set(THREE.MathUtils.degToRad(40), 0, 0);
+    const seen = reflectionHarness();
+    reflect(bounded, camera, seen);
+    expect(seen.renderer.render).toHaveBeenCalledOnce();
+    camera.position.set(0, 60, 0);
+    const sky = reflectionHarness();
+    reflect(unbounded, camera, sky);
+    expect(sky.renderer.render).toHaveBeenCalledOnce();
+    bounded.dispose();
+    unbounded.dispose();
+    geometry.dispose();
+    seen.previous.dispose();
+    sky.previous.dispose();
+  });
+
+  it.each([4 / 3, 16 / 10, 16 / 9, 21 / 9, 32 / 9])('still skips the reflection for parked Contact at aspect %f', aspect => {
+    const geometry = new THREE.PlaneGeometry();
+    const water = new OwnedWater(geometry, { crestHeight: maxWaveHeight(DEFAULT_WAVE_SETTINGS) });
+    const camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
+    camera.position.copy(CONTACT_SKY_POSITION);
+    camera.quaternion.copy(CONTACT_SKY_ORIENTATION);
+    const harness = reflectionHarness();
+    reflect(water, camera, harness);
+    expect(harness.renderer.render).not.toHaveBeenCalled();
     water.dispose();
     geometry.dispose();
     harness.previous.dispose();

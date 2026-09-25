@@ -34,12 +34,15 @@ import * as THREE from 'three';
 import type { WaterOptions } from 'three/examples/jsm/objects/Water.js';
 import { viewClearsPlane } from '@/lib/render/viewClearsPlane';
 
-/**
- * Height above the rest surface that wave crests can reach, in world units.
- * The swell's amplitude is under one unit; shoaling and summed waves stay
- * well inside four.
- */
-const CREST_MARGIN = 4;
+export interface OwnedWaterOptions extends WaterOptions {
+  /**
+   * The most a shader can raise the surface above its rest plane, in world
+   * units. A view that stays above that height cannot see the sea and skips
+   * the reflection pass; without a bound, every view the upstream checks
+   * pass is reflected.
+   */
+  crestHeight?: number;
+}
 
 const vertexShader = /* glsl */`
   uniform mat4 textureMatrix;
@@ -144,7 +147,7 @@ export class OwnedWater extends THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMat
   readonly reflectionTarget: THREE.WebGLRenderTarget;
   private disposed = false;
 
-  constructor(geometry: THREE.BufferGeometry, options: WaterOptions = {}) {
+  constructor(geometry: THREE.BufferGeometry, options: OwnedWaterOptions = {}) {
     const textureMatrix = new THREE.Matrix4();
     const eye = options.eye ?? new THREE.Vector3();
     const renderTarget = new THREE.WebGLRenderTarget(options.textureWidth ?? 512, options.textureHeight ?? 512);
@@ -194,6 +197,7 @@ export class OwnedWater extends THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMat
     const q = new THREE.Vector4();
     const mirrorCamera = new THREE.PerspectiveCamera();
     const clipBias = options.clipBias ?? 0;
+    const crestHeight = options.crestHeight;
 
     this.onBeforeRender = (renderer, scene, camera) => {
       if (this.disposed) return;
@@ -205,7 +209,8 @@ export class OwnedWater extends THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMat
       if (view.dot(normal) > 0) return;
       // A view entirely above the sea, like Contact's sky, cannot show a reflection:
       // the pass redrew the whole scene for it on every frame (round 7, TECH-009).
-      if (normal.y > 0.999 && viewClearsPlane(camera, mirrorWorldPosition.y + CREST_MARGIN)) return;
+      if (crestHeight !== undefined && normal.y > 0.999 &&
+        viewClearsPlane(camera, mirrorWorldPosition.y + crestHeight)) return;
 
       view.reflect(normal).negate().add(mirrorWorldPosition);
       rotationMatrix.extractRotation(camera.matrixWorld);

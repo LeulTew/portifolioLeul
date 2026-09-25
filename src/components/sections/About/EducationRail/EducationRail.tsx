@@ -133,6 +133,7 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
       ref={stageRef}
       className={styles.stage}
       data-testid="education-stage"
+      data-section-owner="about"
       data-phase={phase}
       data-active-record={active}
       aria-labelledby={headingId}

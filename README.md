@@ -87,27 +87,52 @@ used without a parent unmount callback.
 
 ### Performance budget
 
-`bun run build && bun run perf:budget` serves `dist`, drives a headless Chrome
-over the DevTools protocol through the standard 80-second wheel journey at 4x
-CPU throttling, parks on Contact for ten seconds, and records Long Animation
-Frames. It fails when the median of three runs exceeds the gate in
-`scripts/perf-budget.json`, reports the tighter target beside it, names the
-chapters the long frames fell in, and writes a report with the build's asset
-names, the browser version, the WebGL renderer and the machine's cores and
-memory to `perf-reports/` (ignored by git). Runs are warm, like a returning
-visit, unless `--cold` is passed; `--headed`, `--chrome <path>` and
-`--url <origin>` cover other browsers and servers.
+`bun run build && bun run perf:budget` serves `dist` with an owned `vite
+preview` -- accepted only while it serves this build's `dist/index.html`, on a
+port checked free first -- and drives a headless Chrome over the DevTools
+protocol with the mouse wheel from Home to a usable Contact at 4x CPU
+throttling, parks on Contact for ten seconds and types into its form. A sample
+counts only once it has passed Home, About, all six Skills chapters, the TV's
+reader and a usable Contact, in order, with no uncaught error, console error or
+failed request; otherwise the run fails whatever its figures. The gates in
+`scripts/perf-budget.json` apply to the median of three samples: Long Animation
+Frames (count, blocking time, worst frame), every frame's interval (p95, and
+the share that missed a 60 Hz refresh), parked Contact, and the slowest typing
+event (Event Timing). A tighter target is reported beside each gate.
 
-The gate was set on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti through
-ANGLE/D3D11, Chrome 153). CPU throttling slows the main thread, not the GPU, so
-it is a proxy for weak hardware rather than a measurement of it; a different
-machine should record its own baseline instead of loosening these numbers.
-Parked Contact draws nothing once its sky has settled, so its gate is close to
-zero; the journey's figures vary between runs, most of the spread in About.
-At the time of writing the journey meets its gate but not its target: medians
-around 74 long frames and 1.5s of blocking time over the 80 seconds, most of it
-in About, where a trace attributes the main thread chiefly to style
-recalculation and paint.
+Samples are returning visits by default: one profile, warmed by an unmeasured
+visit. `--cold` gives each sample a fresh Chrome and profile, throttles before
+navigation and also gates the startup (time until the hero settles, bytes
+transferred, blocking during load); cold samples have their own allowance for
+the journey's worst frame, where a first-use shader compile lands. `--headed`,
+`--chrome <path>`, `--url <origin>`, `--port` and `--runs` cover other browsers,
+servers and sample counts. Every process, profile and connection is released
+on success, failure or Ctrl+C. The report in `perf-reports/` (ignored by git)
+records the commit, the dist hash, the browser, WebGL renderer, cores and
+memory, each sample's cache state, and the chapter -- and world quality level --
+each long frame fell in, with the script behind any frame over 150ms.
+
+The gates were calibrated on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti
+through ANGLE/D3D11, Chrome 153): returning-visit medians of 43 long frames,
+0.8s of blocking and a 279ms worst frame over a 42-second journey; cold medians
+of an 11.4-second throttled startup, 6.1 MB transferred and 3.0s of blocking
+during load. CPU throttling slows the main thread, not the GPU, so it is a
+proxy for weak hardware rather than a measurement of it; another machine should
+record its own baseline instead of loosening these numbers. Under the throttle
+the world lowers its own quality (below), and the report shows when.
+
+### Adaptive world quality
+
+The GPU tier is read once, at load. While the page runs, the frame gate reports
+every frame the world draws to a pressure gauge (`src/lib/render/worldQuality.ts`).
+When a third of two seconds of drawn frames arrive more than half a budget
+late, the world steps down -- first to 30 redraws a second, then to one device
+pixel per CSS pixel -- and after ten calm seconds it tries the step back up,
+waiting twice as long after each try that fails, up to 160 seconds. Frames the
+world does not draw (covered, hidden or still), stalls over a quarter of a
+second and the first three seconds are not judged. The page itself keeps the
+display's rate throughout; the canvas publishes `data-world-rate` and
+`data-world-quality`.
 
 ### Island outline and scene edge continuation
 
@@ -397,6 +422,25 @@ Configure the template in the owning EmailJS account:
 - Inspect the matching Email History entry and actual recipient inbox/spam
   folder for an explicitly authorized diagnostic message. A successful HTTP
   response alone cannot establish inbox delivery.
+
+**Abuse controls are the provider's, not the page's.** The service, template
+and public key are public by design, so anyone can call EmailJS with them from
+outside this page; the form's limits, duplicate guard and cooldown constrain
+only this interface. The accepted residual risk is unsolicited mail to the
+fixed portfolio inbox, bounded by the provider. The owner verifies, in the
+EmailJS dashboard, and re-checks after any account change:
+
+- [ ] **To Email** is fixed to the portfolio inbox (no template variable).
+- [ ] **Security → Allowed origins** lists only the production origin (and a
+      local origin only while testing).
+- [ ] A **CAPTCHA** or equivalent challenge is enabled for the template, if the
+      plan offers it.
+- [ ] **Rate limit** per sender is set as low as a genuine visitor needs.
+- [ ] Monthly **quota** usage is monitored, with an alert before it runs out.
+
+If abuse outgrows these, the supported step is a server-owned endpoint that
+holds the credentials and enforces its own limits; client-side guards are not
+enforcement.
 
 The **Submitted** confirmation appears only after EmailJS accepts the request
 and explicitly distinguishes acceptance from inbox delivery. Invalid fields are

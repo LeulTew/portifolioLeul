@@ -12,6 +12,7 @@ import {
   finishProjectsSkillsReturn, isProjectsReturnOwed, publishSkillsProjectsHandoff,
 } from '@/lib/projects/projectsScene';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
+import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { createSkillsTimeline } from './skillsTimeline';
 import { SKILLS_STAGE_QUERY } from './skillsData';
@@ -201,10 +202,9 @@ export function useSkillsPlayback(
           if (onNavigate) onNavigate('projects', { immediate: true });
           else alignAfterRelease(direction, control);
         } else alignAfterRelease(direction, control);
+        // Focus that was on the reader, or lost with it, continues where the reader has been carried.
         if (ownedFocus && (document.activeElement === document.body || panel.contains(document.activeElement))) {
-          document.querySelector<HTMLButtonElement>(
-            `button[data-ink-control="${destination}"]:not([tabindex="-1"])`,
-          )?.focus({ preventScroll: true });
+          landSectionFocus(destination);
         }
       };
       if (direction < 0 && current === 0) run(score.timeline, 0, released);
@@ -352,9 +352,11 @@ export function useSkillsPlayback(
         immediateEntry = directlyRequested;
         navigation = directlyRequested ? null : target;
         if (ownedFocus) {
+          // Held on the navbar's entry while the destination settles, then landed in it.
           document.querySelector<HTMLButtonElement>(
             `button[data-ink-control="${target}"]:not([tabindex="-1"])`,
           )?.focus({ preventScroll: true });
+          landSectionFocus(target);
         }
         // Claim only after all previous owners have restored their covers.
         queueMicrotask(() => { if (alive) apply(); });

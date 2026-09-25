@@ -17,14 +17,14 @@ describe('global document styles', () => {
     expect(behaviours.filter(value => value !== 'auto')).toEqual([]);
   });
 
-  it('draws no focus ring on a landing that navigation hands focus to, and keeps one on a reader that has a role', () => {
+  it('draws no focus ring on a landing that navigation hands focus to, and keeps one on a control or reader', () => {
     const landings: string[] = [];
     css.walkRules(rule => {
       rule.walkDecls('outline', declaration => {
         if (declaration.value === 'none') landings.push(...rule.selectors);
       });
     });
-    expect(landings).toEqual(['[data-section-landing]:not([role]):focus']);
+    expect(landings).toEqual(['[data-section-landing]:not(button, a, [role]):focus']);
   });
 
   it('holds the footer scroll cue still under reduced motion', () => {

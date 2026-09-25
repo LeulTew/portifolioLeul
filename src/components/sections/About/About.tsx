@@ -42,6 +42,10 @@ import {
   type PhaseState,
 } from '@/lib/motion/triggeredPhase';
 
+/** The degree the About metrics cite, and its grade as the education record gives it. */
+const DEGREE = cvData.education[0];
+const DEGREE_GPA = /GPA:\s*([\d.]+)/.exec(DEGREE.details.join(' '))?.[1];
+
 function TransitionMaskedOverlay() {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -637,19 +641,19 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
               <div className={styles.statementCopy} data-statement-copy="">
                 <h3 className={styles.statementText}>
                   <span className={`${styles.statementLine} ${styles.lineFirst} ${styles.statementHinge}`}>
-                    KEEP IT SIMPLE
+                    START WITH
                   </span>{' '}
                   <span
                     className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight} ${styles.statementInk}`}
                   >
-                    BUT SIGNIFICANT
+                    WHO USES IT
                   </span>
                 </h3>
 
                 <div className={styles.subStatement}>
                   <span className={styles.subStatementBar} />
                   <span className={styles.subStatementText}>
-                    CREATIVE ENGINEERING &amp; FULL-STACK SYSTEMS
+                    AMHARIC SEARCH, DRIVING-TEST PRACTICE, A LEDGER FOR EVERYDAY LENDING
                   </span>
                 </div>
               </div>
@@ -663,13 +667,13 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
               <div className={styles.statementCopy} data-statement-copy="">
                 <h3 className={styles.statementText}>
                   <span className={`${styles.statementLine} ${styles.lineFirst}`}>
-                    <span className={styles.leadWord}>SCALABLE</span>{' '}
-                    <span className={styles.leadWord}>SYSTEMS</span>
+                    <span className={styles.leadWord}>FROM</span>{' '}
+                    <span className={styles.leadWord}>MODEL</span>
                   </span>{' '}
                   <span
                     className={`${styles.statementLine} ${styles.lineSecond} ${styles.statementHighlight} ${styles.statementSupport}`}
                   >
-                    CRAFTED TO EMPOWER
+                    TO INTERFACE
                   </span>
                 </h3>
 
@@ -689,9 +693,11 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
                     </span>
                   </div>
                   <div className={styles.metricItem}>
-                    <span className={styles.metricValue}>BSc</span>
+                    <span className={styles.metricValue}>{DEGREE_GPA ?? 'BSc'}</span>
                     <span className={styles.metricLabel}>
-                      Computer Science Graduate (HiLCoE)
+                      {DEGREE_GPA
+                        ? `GPA, ${DEGREE.degree} (HiLCoE, ${DEGREE.period.slice(-4)})`
+                        : 'Computer Science Graduate (HiLCoE)'}
                     </span>
                   </div>
                 </div>

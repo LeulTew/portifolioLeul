@@ -3,6 +3,7 @@ import { isWithinHold } from '@/lib/camera/holdRange';
 import { getScrollProgress } from '@/lib/scroll/scrollProgress';
 import { getProjectsView } from '@/lib/projects/projectsScene';
 import { getContactView } from '@/lib/contact/contactScene';
+import { observeWorldFrame, pauseWorldQuality } from './worldQuality';
 
 /**
  * One decision per frame, shared by everything that would spend time on it:
@@ -54,8 +55,8 @@ let minInterval = 0;
 const INTERVAL_SLACK = 0.001;
 
 /**
- * Sets the redraw budget. Called once from the render governor, which owns the
- * GPU tier reading.
+ * Sets the redraw budget. Called from the render governor, which owns the GPU
+ * tier reading and applies the world quality (see `worldQuality`).
  */
 export function setFrameBudget(secondsBetweenDraws: number): void {
   const interval = Number.isFinite(secondsBetweenDraws) && secondsBetweenDraws > 0
@@ -117,6 +118,8 @@ export function isFrameDrawn(time: number): boolean {
     // Hidden or held time is not animation time, nor a backlog of missed draws.
     lastDrawnAt = nextDrawAt = Number.NEGATIVE_INFINITY;
     elapsedBetweenDraws = Number.NaN;
+    // Nor evidence of how well the world draws.
+    pauseWorldQuality();
     decision = false;
     return decision;
   }
@@ -135,6 +138,7 @@ export function isFrameDrawn(time: number): boolean {
 
   elapsedBetweenDraws = time - lastDrawnAt;
   lastDrawnAt = time;
+  if (Number.isFinite(elapsedBetweenDraws)) observeWorldFrame(elapsedBetweenDraws, minInterval);
   if (minInterval > 0) {
     if (!Number.isFinite(nextDrawAt)) nextDrawAt = time;
     const intervals = Math.max(1, Math.floor((time + INTERVAL_SLACK - nextDrawAt) / minInterval) + 1);
