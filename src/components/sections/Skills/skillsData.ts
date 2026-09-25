@@ -72,7 +72,7 @@ const presentations = new Map<string, Presentation>([
     camera: { x: -24, y: 2, scale: 1.04, roll: 5 },
     proof: {
       label: "Ignition's PostgreSQL goal schema",
-      claim: 'Goals with JSON steps and creation timestamps, indexed on creation time.',
+      claim: 'Each goal keeps its steps in one JSON column, so a goal and its plan return in one row.',
       url: 'https://github.com/LeulTew/Ignition/blob/dc5c5380ef1225ef11703da2858c03fbad269305/frontend/prisma/schema.prisma#L5-L18',
       project: 'Ignition',
     },
@@ -101,10 +101,10 @@ const presentations = new Map<string, Presentation>([
     composition: 'visual-left',
     camera: { x: -24, y: 0, scale: 1.09, roll: 2 },
     proof: {
-      label: "Amharic IR's credited team",
-      claim: 'The README credits Leul Tewodros Agonafer and five co-authors.',
-      url: 'https://github.com/LeulTew/amharic-ir-improved/blob/4096030543826b66370f9cc9ff35b6762b8e832c/README.md#L120-L127',
-      project: 'Amharic IR Improved',
+      label: "Portfolio Leul's scroll contract",
+      claim: 'Every rule the chapters follow names the reproducible defect that made it a rule.',
+      url: 'https://github.com/LeulTew/portifolioLeul/blob/f5fa795cd7bac7b85e870d04948494156c47cae6/.claude/rules/scroll-choreography.md#L1-L14',
+      project: 'Portfolio Leul',
     },
   }],
 ]);

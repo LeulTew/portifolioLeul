@@ -12,6 +12,7 @@
  */
 import { chromeClearance } from './chromeInset';
 import { landSectionFocus } from './sectionLanding';
+import { subscribeSectionNavigation } from './sectionNavigation';
 import { viewOwner } from './viewOwner';
 
 const TABBABLE = [
@@ -125,6 +126,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   const view = root.defaultView;
   if (!view) return () => {};
   let frame = 0;
+  /** True while this module's own navigation is being published. */
+  let issuing = false;
 
   const nudge = (element: HTMLElement) => {
     const content = main();
@@ -156,10 +159,23 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     if (inPlace && (offscreen || content.closest('[inert]'))) return;
     view.cancelAnimationFrame(frame);
     if (section.id && offscreen) {
-      navigate(section.id);
-      frame = view.requestAnimationFrame(() => { frame = view.requestAnimationFrame(() => nudge(element)); });
+      issuing = true;
+      try {
+        navigate(section.id);
+      } finally {
+        issuing = false;
+      }
+      // Still the reader's focus two frames on, and no newer navigation between: a later choice
+      // owns the view, and this nudge must not scroll back over it (round 12, TECH-038).
+      frame = view.requestAnimationFrame(() => {
+        frame = view.requestAnimationFrame(() => { if (root.activeElement === element) nudge(element); });
+      });
     } else nudge(element);
   };
+  /** A navigation this module did not issue cancels its queued nudge. */
+  const stopNavigation = subscribeSectionNavigation(() => {
+    if (!issuing) view.cancelAnimationFrame(frame);
+  });
 
   const hold = (event: Event) => {
     const box = event.target;
@@ -218,6 +234,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     root.removeEventListener('keydown', tab);
     root.removeEventListener('invalid', invalid, true);
     root.removeEventListener(REVEAL_REQUEST, requested, true);
+    stopNavigation();
     view.cancelAnimationFrame(frame);
   };
 }

@@ -2,7 +2,7 @@ import { getGpuTier } from '@/lib/gateways/gpuTier';
 import terrainBake from '@/lib/scene/terrain-outline-bake.json';
 import { AssetBuffer } from './assetBuffer';
 import { cacheTextureBytes } from './texturePrefetch';
-import { removeFromThreeCache as removeFromCache, threeCache } from './threeCache';
+import { removeFromThreeCache as removeFromCache, threeCache, untilAborted } from './threeCache';
 
 /**
  * The assets the first view cannot open without, fetched up front with real
@@ -401,7 +401,10 @@ async function runLoad(
             if (!isBinaryGltf(buffer)) {
               throw new Error(`${asset.url} is not a binary glTF`);
             }
-            (await (cached ?? threeCache())).add(asset.url, buffer);
+            const entries = await untilAborted(cached ?? threeCache(), requestSignal);
+            // Past its deadline while the cache loaded: the run moves on without these bytes.
+            if (requestSignal?.aborted) throw requestSignal.reason;
+            entries.add(asset.url, buffer);
           } else if (bytes && asset.kind === 'texture') {
             await cacheTextureBytes(asset.url, bytes.finish(), contentType, signal);
           }
@@ -416,7 +419,10 @@ async function runLoad(
             if (!isBinaryGltf(buffer)) {
               throw new Error(`${asset.url} is not a binary glTF`);
             }
-            (await (cached ?? threeCache())).add(asset.url, buffer);
+            const entries = await untilAborted(cached ?? threeCache(), requestSignal);
+            // Past its deadline while the cache loaded: the run moves on without these bytes.
+            if (requestSignal?.aborted) throw requestSignal.reason;
+            entries.add(asset.url, buffer);
           } else if (asset.kind === 'texture') {
             await cacheTextureBytes(asset.url, buffer, contentType, signal);
           }

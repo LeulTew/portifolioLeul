@@ -79,6 +79,35 @@ describe('decoded texture prefetch ownership', () => {
     expect(revoke).toHaveBeenCalledOnce();
   });
 
+  it('keeps an abort that lands after the decode, before the cache is ready, from publishing', async () => {
+    // Round 12 (TECH-037): cancellation was released at decode, and the image was cached later anyway.
+    vi.resetModules();
+    let release!: () => void;
+    vi.doMock('./threeCache', async () => {
+      const actual = await vi.importActual<typeof import('./threeCache')>('./threeCache');
+      const gate = new Promise<void>(resolve => { release = resolve; });
+      return { ...actual, threeCache: () => gate.then(() => Cache) };
+    });
+    try {
+      const { cacheTextureBytes: late } = await import('./texturePrefetch');
+      const controller = new AbortController();
+      const pending = late(url, new ArrayBuffer(8), 'image/jpeg', controller.signal);
+      images[0].onload!(new Event('load'));
+      await Promise.resolve();
+      await Promise.resolve();
+      controller.abort();
+      expect(await pending).toBe(false);
+      release();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(Cache.get(url)).toBeUndefined();
+      expect(images[0].src).toBe('');
+    } finally {
+      vi.doUnmock('./threeCache');
+      vi.resetModules();
+    }
+  });
+
   it('does not create images when cancelled before subscribing or when the response is not an image', async () => {
     const controller = new AbortController();
     controller.abort();

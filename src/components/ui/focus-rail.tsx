@@ -16,6 +16,8 @@ export type FocusRailItem = {
   demoUrl?: string;
   repoUrl?: string;
   meta?: string;
+  /** The project in one line, shown under its name. */
+  summary?: string;
   /** Consecutive items with the same group are listed under it in the picker. */
   group?: string;
 };
@@ -348,6 +350,8 @@ export function FocusRail({
                     <h2 className={cn("text-3xl font-bold tracking-tight md:text-5xl", styles.title)}>
                       {activeItem.title}
                     </h2>
+                    {/* What the project is, in a line, with its name: the compact first viewport's purpose. */}
+                    {activeItem.summary && <p className={styles.summary}>{activeItem.summary}</p>}
                     
                     {/* Collapse the paint, not the normal-flow space (§7).
                         Contact's intersection controls this exit. Animating

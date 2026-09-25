@@ -185,9 +185,18 @@ function App() {
    * load.
    */
   useEffect(() => {
-    const stalled = setTimeout(handleLoaded, LOADER_FAILSAFE_MS);
+    const stalled = setTimeout(() => {
+      handleLoaded();
+      // The story is the spatial stage's HTML layer. A stage whose module never arrived would
+      // leave only the navbar once the loader lifts, so the page is the flat one instead; a late
+      // arrival is then never rendered (round 12, TECH-035).
+      if (canRender3D && !scrollElementRef.current) {
+        console.warn('The 3D scene did not load in time; showing the page without it.');
+        setWebglRuntimeError(true);
+      }
+    }, LOADER_FAILSAFE_MS);
     return () => clearTimeout(stalled);
-  }, [handleLoaded]);
+  }, [handleLoaded, canRender3D]);
 
   /*
    * The prefetched model bytes have done their job -- but only once the scene

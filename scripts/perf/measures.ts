@@ -289,31 +289,35 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
   } else if (sections.at(-1) !== 'contact') {
     failures.push(`the journey ended on ${sections.at(-1)}, not Contact`);
   }
-  const beats = collapse(journey.map(checkpoint => checkpoint.about ?? ''));
+  // Every receipt counts only on its own chapter's leg: About's beats and Education's records while
+  // About is the chapter on screen, Skills' chapters while Skills is (round 12, TECH-039).
+  const on = (section: string) => journey.filter(checkpoint => checkpoint.section === section);
+  const beats = collapse(on('about').map(checkpoint => checkpoint.about ?? ''));
   let beat = 0;
   for (const seen of beats) if (seen === ABOUT_BEATS[beat]) beat++;
   if (beat < ABOUT_BEATS.length) {
     failures.push(`About never reached its ${ABOUT_BEATS[beat]} beat (saw ${beats.join(' > ') || 'nothing'})`);
   }
   if (educationRecords < 1) failures.push('the page shows no Education records');
-  const records = collapse(journey.map(checkpoint => checkpoint.record ?? '').filter(Boolean));
+  const records = collapse(on('about').map(checkpoint => checkpoint.record ?? '').filter(Boolean));
   const expectedRecords = Array.from({ length: educationRecords }, (_, index) => String(index));
   if (educationRecords >= 1 && records.join() !== expectedRecords.join()) {
     failures.push(`Education settled on ${records.join(' > ') || 'no record'}, not ${expectedRecords.join(' > ')}`);
   }
-  const lastRecord = journey.reduce((last, checkpoint, index) => (checkpoint.record ? index : last), -1);
-  const firstSkill = journey.findIndex(checkpoint => checkpoint.skills === 'reading');
+  const readingSkills = (checkpoint: Checkpoint) => checkpoint.section === 'skills' && checkpoint.skills === 'reading';
+  const lastRecord = journey.reduce((last, checkpoint, index) => (checkpoint.section === 'about' && checkpoint.record ? index : last), -1);
+  const firstSkill = journey.findIndex(readingSkills);
   if (lastRecord >= 0 && firstSkill >= 0 && lastRecord > firstSkill) {
     failures.push('Education was still being read after Skills began');
   }
   if (skillChapters < 1) failures.push('the page shows no Skills chapters');
-  const reads = collapse(journey.filter(checkpoint => checkpoint.skills === 'reading').map(checkpoint => checkpoint.skill));
+  const reads = collapse(on('skills').filter(checkpoint => checkpoint.skills === 'reading').map(checkpoint => checkpoint.skill));
   const expected = Array.from({ length: skillChapters }, (_, index) => String(index));
   if (skillChapters >= 1 && reads.join() !== expected.join()) {
     failures.push(`Skills read ${reads.join(' > ') || 'no chapter'}, not ${expected.join(' > ')}`);
   }
   // The reader is read on the Projects leg: after the last Skills chapter, before Contact.
-  const lastSkill = journey.reduce((last, checkpoint, index) => (checkpoint.skills === 'reading' ? index : last), -1);
+  const lastSkill = journey.reduce((last, checkpoint, index) => (readingSkills(checkpoint) ? index : last), -1);
   const contactAt = journey.findIndex(checkpoint => checkpoint.section === 'contact');
   const read = journey.some((checkpoint, index) => checkpoint.tv === 'reading' && checkpoint.section === 'projects'
     && index > lastSkill && (contactAt < 0 || index < contactAt));

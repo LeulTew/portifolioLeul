@@ -72,6 +72,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
       filteredProjects.map((project) => ({
     id: project.id,
     title: project.title,
+    summary: project.description,
     description: (
       <div className="flex flex-col gap-3 text-left">
         <ProjectVisualNote project={project} />

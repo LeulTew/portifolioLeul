@@ -543,11 +543,14 @@
     justify-content: flex-start;
   }
 
+  /* One reading measure at every width: the viewport gutter is the section's, not subtracted from it (round 12, D-UI-004). */
   .content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
     column-gap: 2rem;
+    max-width: min(75rem, 100%);
+    padding-left: 0;
   }
 
   .header {
@@ -560,6 +563,7 @@
   .title {
     margin-top: 0 !important;
     padding-bottom: 0.4rem;
+    white-space: nowrap;
   }
 
   .filterContainer {

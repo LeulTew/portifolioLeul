@@ -97,7 +97,7 @@ describe('the journey a sample must have travelled', () => {
     const early = completeJourney(chapters(6), []).map(checkpoint => (checkpoint.about === 'education' ? { ...checkpoint, about: 'green' } : checkpoint));
     expect(check(early)[0]).toBe('About never reached its education beat (saw statements > green)');
     const unwritten = completeJourney().filter(checkpoint => checkpoint.about !== 'statements');
-    expect(check(unwritten)[0]).toBe('About never reached its statements beat (saw green > education > green)');
+    expect(check(unwritten)[0]).toBe('About never reached its statements beat (saw green > education)');
   });
 
   it('rejects one that entered Education without settling on each record in order, before Skills', () => {
@@ -132,6 +132,19 @@ describe('the journey a sample must have travelled', () => {
     const misplaced = completeJourney().map(checkpoint => (checkpoint.tv === 'reading' ? { ...checkpoint, tv: 'framed' } : checkpoint));
     misplaced.splice(1, 0, at('journey', 'home', { tv: 'reading' }));
     expect(check(misplaced)).toEqual(['the TV never reached its reader on the way from Skills to Contact']);
+  });
+  it("counts each chapter's receipts only on its own leg", () => {
+    // Round 12 (TECH-039): About's beats emitted during Home, and Skills reads during About, both passed.
+    const early = completeJourney().map(checkpoint => (checkpoint.section === 'about' ? { ...checkpoint, about: '', record: '' } : checkpoint));
+    early.splice(1, 0, ...['statements', 'green', 'education'].map(about => at('journey', 'home', { about })),
+      ...chapters(3).map(record => at('journey', 'home', { about: 'education', record })));
+    expect(check(early)).toEqual([
+      'About never reached its statements beat (saw nothing)', 'Education settled on no record, not 0 > 1 > 2',
+    ]);
+    const misplaced = completeJourney([]);
+    const about = misplaced.findIndex(checkpoint => checkpoint.about === 'education');
+    misplaced.splice(about + 1, 0, ...chapters(6).map(skill => at('journey', 'about', { skills: 'reading', skill })));
+    expect(check(misplaced)).toContain('Skills read no chapter, not 0 > 1 > 2 > 3 > 4 > 5');
   });
   it('counts only what happened while the journey was measured', () => {
     const outside = completeJourney().map(checkpoint => ({ ...checkpoint, phase: 'settle' as const }));

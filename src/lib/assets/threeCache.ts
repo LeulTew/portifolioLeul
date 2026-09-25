@@ -13,6 +13,25 @@ import type { Cache as ThreeCache } from 'three';
 let cache: Promise<typeof ThreeCache> | null = null;
 let loaded: typeof ThreeCache | null = null;
 
+/**
+ * Waits for `promise`, or rejects with the signal's reason the moment it
+ * aborts: a model handoff waiting on the cache stays inside its own prefetch
+ * deadline, while the shared import itself runs on for other consumers
+ * (round 12, TECH-036).
+ */
+export function untilAborted<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    promise.then(
+      value => { signal.removeEventListener('abort', abort); resolve(value); },
+      error => { signal.removeEventListener('abort', abort); reject(error); },
+    );
+  });
+}
+
 export function threeCache(): Promise<typeof ThreeCache> {
   cache ??= import('three').then(three => {
     three.Cache.enabled = true;
