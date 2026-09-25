@@ -129,18 +129,33 @@ describe('MagneticButton', () => {
     expect(screen.getByText(/glass dark/i)).toBeDefined();
   });
 
-  it('pauses tracer motion only under an inert or chapter-covered background', () => {
+  it('runs the tracer only under a resting pointer, and never under an inert or chapter-covered background', () => {
+    const css = postcss.parse(readFileSync(join(__dirname, 'MagneticButton.module.css'), 'utf8'));
     const selectors: string[] = [];
-    postcss.parse(readFileSync(join(__dirname, 'MagneticButton.module.css'), 'utf8'))
-      .walkRules(rule => {
-        rule.walkDecls('animation-play-state', declaration => {
-          if (declaration.value === 'paused') selectors.push(...rule.selectors);
-        });
+    css.walkRules(rule => {
+      rule.walkDecls('animation-play-state', declaration => {
+        if (declaration.value === 'paused') selectors.push(...rule.selectors);
       });
+    });
     expect(selectors).toEqual([
-      ':global(main[inert]) .tracerBeam',
-      ':global([data-education-covered]) .tracerBeam',
-      ':global([data-skills-covered]) .tracerBeam',
+      ':global(main[inert]) .magneticWrapper:hover .tracerBeam',
+      ':global([data-education-covered]) .magneticWrapper:hover .tracerBeam',
+      ':global([data-skills-covered]) .magneticWrapper:hover .tracerBeam',
     ]);
+    const declarations = (selector: string, media?: string) => {
+      const values: Record<string, string> = {};
+      css.walkRules(rule => {
+        const parent = rule.parent?.type === 'atrule' ? (rule.parent as postcss.AtRule).params : undefined;
+        if (!rule.selectors.includes(selector) || parent !== media) return;
+        rule.walkDecls(declaration => { values[declaration.prop] = declaration.value; });
+      });
+      return values;
+    };
+    // Round 7 (D-MOTION-001): the idle tracer looped forever, and still travelled under reduced motion.
+    expect(declarations('.tracerBeam').animation).toBe('traceBorder 3s linear infinite paused');
+    expect(declarations('.magneticWrapper:hover .tracerBeam')['animation-play-state']).toBe('running');
+    expect(declarations('.tracerBeam', '(prefers-reduced-motion: reduce)')).toEqual({
+      animation: 'none', 'stroke-dasharray': 'none',
+    });
   });
 });

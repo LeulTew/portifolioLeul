@@ -176,6 +176,14 @@
   }
 }
 
+/* The scroll cue holds still: a lit third of the line says "continue" without travelling. */
+@media (prefers-reduced-motion: reduce) {
+  .scrollLine::after {
+    animation: none;
+    transform: scaleX(0.34);
+  }
+}
+
 /* First section styling */
 .firstSection {
   min-height: 100vh;
