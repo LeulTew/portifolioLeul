@@ -21,29 +21,34 @@ export async function cacheTextureBytes(
   image.decoding = 'async';
   const objectUrl = URL.createObjectURL(new Blob([buffer], { type: contentType }));
   return new Promise<boolean>(resolve => {
-    let finished = false;
-    const finish = (decoded: boolean) => {
-      if (finished) return;
-      finished = true;
+    let settled = false;
+    // Cancellation owns the texture until it is published, not only until it decodes: an
+    // abort while the cache is still loading must not let the image in later (round 12, TECH-037).
+    const settle = (published: boolean) => {
+      if (settled) return;
+      settled = true;
       image.onload = image.onerror = null;
       signal?.removeEventListener('abort', abort);
       URL.revokeObjectURL(objectUrl);
-      if (!decoded) {
-        image.src = '';
-        resolve(false);
-        return;
-      }
+      if (!published) image.src = '';
+      resolve(published);
+    };
+    const abort = () => settle(false);
+    const publish = () => {
       void cached.then(cache => {
+        if (settled || signal?.aborted) {
+          settle(false);
+          return;
+        }
         cache.add(url, image);
-        resolve(true);
-      }, () => resolve(false));
+        settle(true);
+      }, () => settle(false));
     };
-    const abort = () => finish(false);
     image.onload = () => {
-      if (typeof image.decode === 'function') image.decode().then(() => finish(true), () => finish(false));
-      else finish(true);
+      if (typeof image.decode === 'function') image.decode().then(publish, () => settle(false));
+      else publish();
     };
-    image.onerror = () => finish(false);
+    image.onerror = () => settle(false);
     signal?.addEventListener('abort', abort, { once: true });
     image.src = objectUrl;
   });

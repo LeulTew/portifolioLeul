@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import { observeChromeInset } from './chromeInset';
 import { installDocumentFocus, installLayerFocus, requestReveal, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
 import { cancelSectionLanding } from './sectionLanding';
+import { publishSectionNavigation } from './sectionNavigation';
 import { claimView } from './viewOwner';
 
 type Box = { top: number; bottom: number };
@@ -138,6 +139,26 @@ describe('keyboard focus in the scroll layer', () => {
     flushFrames();
     // 36px past the 704px reveal line, in track pixels: 36 * 7200 / 6200.
     expect(byId('track').scrollTop).toBeCloseTo(4000 + (36 * 7200) / 6200, 5);
+  });
+
+  it('drops a queued nudge once a newer navigation or focus move owns the view', () => {
+    // Round 12 (TECH-038): the old nudge scrolled back toward Contact over a newer Home choice.
+    byId('cta').focus();
+    tab();
+    place('contact', 80, 1000); place('email', 700);
+    rendered = 4000;
+    publishSectionNavigation('home', { source: 'navbar' });
+    flushFrames();
+    expect(byId('track').scrollTop).toBe(0);
+
+    byId('track').scrollTop = 0;
+    place('contact', 4800, 1000); place('email', 5000);
+    byId('cta').focus();
+    tab();
+    place('contact', 80, 1000); place('email', 700);
+    byId('cta').focus();
+    flushFrames();
+    expect(byId('track').scrollTop).toBe(0);
   });
 
   it('nudges within the chapter already on screen instead of navigating again', () => {
