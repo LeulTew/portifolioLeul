@@ -92,9 +92,12 @@ preview` -- accepted only while it serves this build's `dist/index.html`, on a
 port checked free first -- and drives a headless Chrome over the DevTools
 protocol with the mouse wheel from Home to a usable Contact at 4x CPU
 throttling, parks on Contact for ten seconds and types into its form. A sample
-counts only once it has passed Home, About, all six Skills chapters, the TV's
-reader and a usable Contact, in order, with no uncaught error, console error or
-failed request; otherwise the run fails whatever its figures. The gates in
+counts only once it has passed Home, About (its statements, green rise and
+Education, in turn), all six Skills chapters one after another, the TV's reader
+and a usable Contact, in order, with no uncaught error, console error or
+failed request; otherwise the run fails whatever its figures. Each sample's
+report keeps the path it travelled and every checkpoint behind it, and a
+browser or profile that would not close counts against its sample. The gates in
 `scripts/perf-budget.json` apply to the median of three samples: Long Animation
 Frames (count, blocking time, worst frame), every frame's interval (p95, and
 the share that missed a 60 Hz refresh), parked Contact, and the slowest typing
@@ -436,8 +439,10 @@ EmailJS dashboard, and re-checks after any account change:
 - [ ] **To Email** is fixed to the portfolio inbox (no template variable).
 - [ ] **Security → Allowed origins** lists only the production origin (and a
       local origin only while testing).
-- [ ] A **CAPTCHA** or equivalent challenge is enabled for the template, if the
-      plan offers it.
+- [ ] **CAPTCHA stays off.** The page sends no challenge token and its CSP
+      allows no challenge script, so enabling EmailJS's CAPTCHA would reject
+      every genuine message. Adding one is a code change (widget, token field,
+      CSP entries), not a dashboard toggle.
 - [ ] **Rate limit** per sender is set as low as a genuine visitor needs.
 - [ ] Monthly **quota** usage is monitored, with an alert before it runs out.
 

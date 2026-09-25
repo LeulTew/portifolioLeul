@@ -27,10 +27,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
-  Scope, assertPortFree, awaitOwnedPreview, createCdp, delay, openSocket, ownProcess, until, type Cdp,
+  Scope, assertPortFree, awaitOwnedPreview, createCdp, delay, openSocket, ownProcess, scoped, until, type Cdp,
 } from './perf/harness';
 import {
-  PAGE_PROBE, UsageError, checkJourney, judge, parseOptions, summariseFrames, summariseIntervals,
+  PAGE_PROBE, UsageError, checkJourney, journeyPath, judge, parseOptions, summariseFrames, summariseIntervals,
   type BudgetConfig, type PageTrace, type Phase, type Sample,
 } from './perf/measures';
 
@@ -280,6 +280,8 @@ async function travel(page: Page, origin: string, config: BudgetConfig, { cold, 
   const events = trace.events.filter(event => event.phase === 'interaction');
   return {
     cache,
+    path: journeyPath(trace.checkpoints),
+    checkpoints: trace.checkpoints,
     startup: {
       readyMs: readyAt, fcpMs: trace.fcp, lcpMs: trace.lcp, transferKb,
       longFrames: load.longFrames, blockingMs: load.blockingMs,
@@ -295,6 +297,8 @@ function failedSample(cache: string, error: unknown): Sample {
   const none = { longFrames: NaN, blockingMs: NaN, worstFrameMs: NaN, worstContext: '', contexts: {} };
   return {
     cache,
+    path: [],
+    checkpoints: [],
     startup: { readyMs: null, fcpMs: null, lcpMs: null, transferKb: NaN, longFrames: NaN, blockingMs: NaN },
     journey: { ...none, frames: 0, p50FrameMs: NaN, p95FrameMs: NaN, p99FrameMs: NaN, missedFramePercent: NaN, seconds: NaN },
     parkedContact: none,
@@ -313,6 +317,7 @@ function describeSample(sample: Sample): string {
       + ` frames p95 ${journey.p95FrameMs}ms, ${journey.missedFramePercent}% missed${worst ? ` [${worst}]` : ''}`,
     `  parked Contact: ${parkedContact.longFrames} long frames, ${parkedContact.blockingMs}ms blocking; typing: worst event ${interaction.worstEventMs}ms`,
     `  startup: ready ${startup.readyMs}ms, LCP ${startup.lcpMs}ms, ${startup.transferKb} KB, ${startup.blockingMs}ms blocking`,
+    ...sample.failures.length && sample.path.length ? [`  path: ${sample.path.join(' > ')}`] : [],
     ...sample.failures.map(failure => `  FAILED: ${failure}`),
   ].join('\n');
 }
@@ -364,17 +369,20 @@ async function main() {
     if (options.cold) {
       for (let index = 1; index <= options.runs; index++) {
         // Each cold sample owns its Chrome and profile; Ctrl+C closes them through the run's scope.
-        const own = new Scope();
-        scope.defer(`sample ${index}`, () => own.close());
         const cache = 'fresh profile: empty HTTP, shader and storage caches';
         await run(index, cache, async () => {
-          const cdp = await launchChrome(own, chrome);
-          const page = await openPage(cdp, config.viewport);
-          const sample = await takeSample(page, origin, config, { cold: true, cache, errorsFrom: 0 });
-          await record(cdp, page);
+          const { outcome, cleanup } = await scoped(scope, `sample ${index}`, async own => {
+            const cdp = await launchChrome(own, chrome);
+            const page = await openPage(cdp, config.viewport);
+            const sample = await takeSample(page, origin, config, { cold: true, cache, errorsFrom: 0 });
+            await record(cdp, page);
+            return sample;
+          });
+          const sample = outcome.status === 'fulfilled' ? outcome.value : failedSample(cache, outcome.reason);
+          // A Chrome or profile that outlived its sample shares the machine with the next one.
+          sample.failures.push(...cleanup.map(error => `cleanup: ${error.message}`));
           return sample;
         });
-        for (const error of await own.close()) console.error(`cleanup: ${error.message}`);
       }
     } else {
       const cdp = await launchChrome(scope, chrome);

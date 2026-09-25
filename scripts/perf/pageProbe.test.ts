@@ -58,6 +58,22 @@ describe('the in-page probe', () => {
     expect(probe().checkpoints.at(-1)).toMatchObject({ tv: 'reading', quality: '1' });
   });
 
+  it('reads About\'s furthest beat: statements, its green rise, then Education', () => {
+    document.body.insertAdjacentHTML('beforeend', '<section id="about"></section>');
+    const about = document.querySelector('#about')!;
+    probe().enter('journey');
+    const beats = () => probe().checkpoints.filter(checkpoint => checkpoint.phase === 'journey').map(checkpoint => checkpoint.about);
+    about.setAttribute('data-statements-present', 'true');
+    vi.advanceTimersByTime(100);
+    about.setAttribute('data-bg-settled', 'true');
+    vi.advanceTimersByTime(100);
+    about.setAttribute('data-education-active', 'true');
+    vi.advanceTimersByTime(100);
+    about.removeAttribute('data-education-active');
+    vi.advanceTimersByTime(100);
+    expect(beats()).toEqual(['', 'statements', 'green', 'education', 'green']);
+  });
+
   it('adds no observer that every attribute write on the page would have to consult', () => {
     const observe = vi.spyOn(MutationObserver.prototype, 'observe');
     delete (window as unknown as { __budget?: Probe }).__budget;

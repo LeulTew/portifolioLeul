@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  STORY, budgetsFor, checkJourney, judge, parseOptions, percentile, summariseFrames, summariseIntervals,
-  type BudgetConfig, type Checkpoint, type Sample,
+  ABOUT_BEATS, STORY, budgetsFor, checkJourney, journeyPath, judge, parseOptions, percentile, summariseFrames,
+  summariseIntervals, type BudgetConfig, type Checkpoint, type Sample,
 } from './measures';
 
 describe('options', () => {
@@ -35,16 +35,21 @@ describe('options', () => {
 });
 
 const at = (phase: Checkpoint['phase'], section: string, extra: Partial<Checkpoint> = {}): Checkpoint =>
-  ({ t: 0, phase, section, skills: 'outside', skill: '0', tv: 'outside', quality: '0', ...extra });
+  ({ t: 0, phase, section, skills: 'outside', skill: '0', tv: 'outside', quality: '0', about: '', ...extra });
+
+const chapters = (count: number) => Array.from({ length: count }, (_, index) => String(index));
 
 /** A forward journey through the whole story, as the probe records one. */
-function completeJourney(chapters = 6): Checkpoint[] {
+function completeJourney(read = chapters(6)): Checkpoint[] {
   return [
     at('load', 'home'),
     at('journey', 'home'),
+    at('journey', 'about', { about: 'statements' }),
     at('journey', 'about'),
-    at('journey', 'skills', { skills: 'entering' }),
-    ...Array.from({ length: chapters }, (_, skill) => at('journey', 'skills', { skills: 'reading', skill: String(skill) })),
+    at('journey', 'about', { about: 'green' }),
+    at('journey', 'about', { about: 'education' }),
+    at('journey', 'skills', { skills: 'entering', about: 'green' }),
+    ...read.map(skill => at('journey', 'skills', { skills: 'reading', skill, about: 'green' })),
     at('journey', 'skills', { skills: 'leaving', tv: 'withdrawing' }),
     at('journey', 'projects', { tv: 'approaching' }),
     at('journey', 'projects', { tv: 'reading' }),
@@ -56,6 +61,7 @@ function completeJourney(chapters = 6): Checkpoint[] {
 describe('the journey a sample must have travelled', () => {
   it('accepts the whole story, Home to Contact', () => {
     expect(STORY).toEqual(['home', 'about', 'skills', 'projects', 'contact']);
+    expect(ABOUT_BEATS).toEqual(['statements', 'green', 'education']);
     expect(checkJourney(completeJourney(), 6)).toEqual([]);
   });
 
@@ -63,7 +69,8 @@ describe('the journey a sample must have travelled', () => {
     // Round 8 (TECH-002): wheeling a Home that ignored every notch passed all six gates.
     const failures = checkJourney([at('load', 'home'), at('journey', 'home')], 6);
     expect(failures).toContain('the journey never reached about (passed home)');
-    expect(failures).toContain('Skills settled on 0 of 6 chapters');
+    expect(failures).toContain('About never reached its statements beat (saw nothing)');
+    expect(failures).toContain('Skills read no chapter, not 0 > 1 > 2 > 3 > 4 > 5');
     expect(failures).toContain('the TV never reached its reader');
   });
 
@@ -74,8 +81,22 @@ describe('the journey a sample must have travelled', () => {
     expect(checkJourney(bounced, 6)).toEqual(['the journey ended on projects, not Contact']);
   });
 
-  it('rejects one that skipped Skills chapters or never read the TV', () => {
-    expect(checkJourney(completeJourney(4), 6)).toEqual(['Skills settled on 4 of 6 chapters']);
+  it('rejects one that passed through About without its green rise or Education', () => {
+    // Round 9 (TECH-022): About is the costliest chapter; a journey that skipped its beats measured less.
+    const flat = completeJourney().map(checkpoint => ({ ...checkpoint, about: '' }));
+    expect(checkJourney(flat, 6)).toEqual(['About never reached its statements beat (saw nothing)']);
+    const early = completeJourney().map(checkpoint => (checkpoint.about === 'education' ? { ...checkpoint, about: 'green' } : checkpoint));
+    expect(checkJourney(early, 6)).toEqual(['About never reached its education beat (saw statements > green)']);
+    const unwritten = completeJourney().filter(checkpoint => checkpoint.about !== 'statements');
+    expect(checkJourney(unwritten, 6)[0]).toBe('About never reached its statements beat (saw green > education > green)');
+  });
+
+  it('rejects one that skipped, repeated or reordered Skills chapters, or never read the TV', () => {
+    expect(checkJourney(completeJourney(chapters(4)), 6)).toEqual(['Skills read 0 > 1 > 2 > 3, not 0 > 1 > 2 > 3 > 4 > 5']);
+    // The set of chapters read is complete in both; the order is not.
+    expect(checkJourney(completeJourney(['0', '2', '1', '3', '4', '5']), 6))
+      .toEqual(['Skills read 0 > 2 > 1 > 3 > 4 > 5, not 0 > 1 > 2 > 3 > 4 > 5']);
+    expect(checkJourney(completeJourney(['0', '1', '0', '1', '2', '3', '4', '5']), 6)).toHaveLength(1);
     const dark = completeJourney().map(checkpoint => (checkpoint.tv === 'reading' ? { ...checkpoint, tv: 'framed' } : checkpoint));
     expect(checkJourney(dark, 6)).toEqual(['the TV never reached its reader']);
     expect(checkJourney(completeJourney(), 0)).toContain('the page shows no Skills chapters');
@@ -84,6 +105,14 @@ describe('the journey a sample must have travelled', () => {
   it('counts only what happened while the journey was measured', () => {
     const outside = completeJourney().map(checkpoint => ({ ...checkpoint, phase: 'settle' as const }));
     expect(checkJourney(outside, 6)[0]).toBe('the journey never reached home (passed nothing)');
+  });
+
+  it('reads the path a sample travelled back for its report', () => {
+    expect(journeyPath(completeJourney(chapters(2)))).toEqual([
+      'home', 'about:statements', 'about', 'about:green', 'about:education', 'skills',
+      'skills:skill-0', 'skills:skill-1', 'skills:tv-withdrawing', 'projects:tv-approaching',
+      'projects:tv-reading', 'projects:tv-departing', 'contact',
+    ]);
   });
 });
 
@@ -136,6 +165,8 @@ function sample(overrides: { longFrames?: number; failures?: string[]; readyMs?:
   const frames = { longFrames: overrides.longFrames ?? 40, blockingMs: 800, worstFrameMs: 150, worstContext: 'about', contexts: {} };
   return {
     cache: 'test',
+    path: [],
+    checkpoints: [],
     startup: { readyMs: overrides.readyMs === undefined ? 9000 : overrides.readyMs, fcpMs: 800, lcpMs: 1200, transferKb: 4000, longFrames: 5, blockingMs: 300 },
     journey: { ...frames, frames: 3000, p50FrameMs: 16.7, p95FrameMs: 20, p99FrameMs: 40, missedFramePercent: 2, seconds: 70 },
     parkedContact: { longFrames: 0, blockingMs: 0, worstFrameMs: 0, worstContext: '', contexts: {} },
