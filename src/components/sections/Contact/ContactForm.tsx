@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, type FormEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, type FormEvent } from 'react';
 import { ArrowUpRight, Loader2 } from 'lucide-react';
 import { ControlButton } from '../../ui/ControlButton';
 import styles from './ContactForm.module.css';
@@ -8,6 +8,7 @@ import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { CONTACT_PAPER_PLANE, useContactSendFlight } from './contactSendFlight';
 import { CONTACT_DELIVERY_MESSAGES } from './contactDelivery';
 import { CONTACT_COUNT_FROM, CONTACT_LIMITS, contactEmailDraft } from './contactLimits';
+import { requestReveal } from '@/lib/scroll/layerFocus';
 
 export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean }) {
   const {
@@ -25,6 +26,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
   const nameField = useRef<HTMLInputElement>(null);
   const submitButton = useRef<HTMLButtonElement>(null);
   const anotherButton = useRef<HTMLButtonElement>(null);
+  const errorNotice = useRef<HTMLParagraphElement>(null);
   const headingId = useId();
   const focusNewDraft = useRef(false);
   const accepted = submitStatus === 'success';
@@ -58,6 +60,11 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
       submitButton.current?.focus({ preventScroll: true });
     }
   }, [accepted, retired, submitStatus, isSubmitting]);
+
+  // A failed send shows its notice and the draft link whole, not cut off by the window's edge.
+  useEffect(() => {
+    if (submitStatus === 'error' && !isSubmitting && errorNotice.current) requestReveal(errorNotice.current);
+  }, [submitStatus, submitError, isSubmitting]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     // The stable stage outlives both the disabled button and the departing sheet.
@@ -163,7 +170,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
           </div>
 
           {submitStatus === 'error' && (
-            <p role="alert" className={`${styles.message} ${styles.error}`}>
+            <p ref={errorNotice} role="alert" className={`${styles.message} ${styles.error}`}>
               <span>{CONTACT_DELIVERY_MESSAGES[submitError ?? 'network']}</span>{' '}
               <a
                 className={styles.fallbackLink}
