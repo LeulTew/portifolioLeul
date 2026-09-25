@@ -162,6 +162,38 @@ describe('chrome painted through the actual chapter background', () => {
     expect(measure).toHaveBeenCalledTimes(2);
   });
 
+  it('never reads the document scroll for a surface the document scroll cannot move', () => {
+    // Round 8 trace: reading scrollX/scrollY on every cached update forced 488 style recalculations.
+    const { ground, education } = scene();
+    const section = ground.parentElement!;
+    const layer = document.createElement('div');
+    layer.style.transform = 'translate3d(0px, -400px, 0px)';
+    section.before(layer);
+    layer.append(section);
+    try {
+      vi.spyOn(ground, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 100, window.innerWidth, 400));
+      const scrollX = vi.spyOn(window, 'scrollX', 'get');
+      const scrollY = vi.spyOn(window, 'scrollY', 'get');
+      updateChapterInk();
+      updateChapterInk();
+      layer.style.transform = 'translate3d(0px, -420px, 0px)';
+      updateChapterInk();
+      expect(ink.style.getPropertyValue('--chapter-ink-clip')).toBe(`inset(80px 0px ${window.innerHeight - 480}px 0px)`);
+
+      education.dataset.visible = 'true';
+      education.style.position = 'fixed';
+      vi.spyOn(education, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, window.innerWidth, window.innerHeight));
+      updateChapterInk();
+      updateChapterInk();
+      expect(scrollX).not.toHaveBeenCalled();
+      expect(scrollY).not.toHaveBeenCalled();
+    } finally {
+      // Hand React back the tree it rendered, so it can unmount it.
+      layer.before(section);
+      layer.remove();
+    }
+  });
+
   it('re-measures a reparented surface and never caches one that transitions its geometry', () => {
     const { about, ground } = scene();
     const measure = vi.spyOn(ground, 'getBoundingClientRect').mockReturnValue(

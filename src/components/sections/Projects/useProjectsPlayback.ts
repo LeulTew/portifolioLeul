@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { writeAttribute, writeStyleProperty } from '@/lib/dom/cachedElement';
+import { writeAttribute, writeStyleProperty, cachedElement } from '@/lib/dom/cachedElement';
+import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import { phaseFrameDelta } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
@@ -75,6 +76,11 @@ export function useProjectsPlayback(
       .filter((element): element is HTMLElement => element !== null);
     const skills = document.getElementById('skills');
     const unregister = registerProjectsSurface(screen);
+    // Follows drei's translated layer between layout changes: a rect per scroll publication
+    // forced 672ms of layout in a cold 70s journey at 4x CPU (round 8 profile).
+    const railPosition = createTranslatedPositionReader(rail, cachedElement(() => translatedLayerOf(rail)));
+    const railLayout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => railPosition.refresh());
+    railLayout?.observe(main ?? rail);
     let state: ProjectsPhase = 'outside';
     let active = false;
     let side: 'before' | 'after' = rail.getBoundingClientRect().bottom <= 0 ? 'after' : 'before';
@@ -284,11 +290,11 @@ export function useProjectsPlayback(
     function apply() {
       if (!alive || document.hidden || !rail?.isConnected || active || bypass ||
           previous.some(hasChapterOwnership)) return;
-      const rect = rail.getBoundingClientRect();
-      if (rect.height <= 0) return;
+      const { top, height } = railPosition.readRect();
+      if (height <= 0) return;
       if (side === 'after') {
-        if (wave === 'up' && rect.bottom >= window.innerHeight - 96) enter('contact');
-      } else if (rect.top <= 96 && wave !== 'up') {
+        if (wave === 'up' && top + height >= window.innerHeight - 96) enter('contact');
+      } else if (top <= 96 && wave !== 'up') {
         if (skills?.dataset.staged === 'true' && skills.dataset.skillsReleased !== 'true') return;
         enter('skills');
       }
@@ -414,8 +420,12 @@ export function useProjectsPlayback(
       attributeFilter: [...CHAPTER_OWNERSHIP_ATTRIBUTES, 'data-skills-released'],
     }));
     const unsubscribeScroll = subscribeScrollProgress(apply);
+    const resized = () => {
+      railPosition.refresh();
+      apply();
+    };
     window.addEventListener('scroll', apply, { passive: true });
-    window.addEventListener('resize', apply);
+    window.addEventListener('resize', resized);
     document.addEventListener('visibilitychange', visibility);
     if (resumeRef.current && rail.getBoundingClientRect().top <= 96) ready();
     else apply();
@@ -435,12 +445,13 @@ export function useProjectsPlayback(
       unsubscribeContactPose();
       unsubscribeScroll();
       observer.disconnect();
+      railLayout?.disconnect();
       window.removeEventListener('keydown', forwardReturnKey);
       releaseKeys();
       window.removeEventListener('focusin', focusEditing);
       window.removeEventListener('input', focusEditing);
       window.removeEventListener('scroll', apply);
-      window.removeEventListener('resize', apply);
+      window.removeEventListener('resize', resized);
       document.removeEventListener('visibilitychange', visibility);
     };
   }, [host, stage, surface, enabled, onNavigate]);
