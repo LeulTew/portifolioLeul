@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TVProjects } from './TVProjects';
 import { PROJECT_CATEGORIES } from './projectCategories';
-import { projectsData } from '@/data/projects';
+import { IMAGE_KIND_LABEL, projectsData } from '@/data/projects';
 import { setProjectsView, setTVScreenReady } from '@/lib/projects/projectsScene';
 import { TV_READER_SURFACE } from '@/lib/tv/tvHardware';
 
@@ -52,21 +52,22 @@ describe('the semantic TV project reader', () => {
     fireEvent.pointerLeave(frame);
     expect(frame).not.toHaveAttribute('data-inspecting');
   });
-  it.each(['Luna', 'Portfolio Leul'])('keeps the %s visual provenance adjacent to the image and available in Details', title => {
+  it.each(['Luna', 'Portfolio Leul'])('keeps the %s visual provenance on the image and available in Details', title => {
     render(<TVProjects />);
     const project = projectsData.find(item => item.title === title)!;
+    const provenance = IMAGE_KIND_LABEL[project.imageKind] + (project.imageNote ? ` · ${project.imageNote}` : '');
     fireEvent.change(screen.getByRole('combobox', { name: 'Choose a project' }), {
       target: { value: String(project.id) },
     });
     const image = screen.getByRole('img', { name: project.imageAlt });
     expect(image).toHaveAttribute('src', project.image);
-    expect(image.closest('[data-broadcast-image]')).toContainElement(screen.getByText(project.imageNote!));
+    expect(image.closest('[data-broadcast-image]')).toContainElement(screen.getByText(provenance));
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
-    expect(screen.getByLabelText(`${title} details`)).toContainElement(screen.getByText(project.imageNote!));
-    expect(screen.getAllByText(project.imageNote!)).toHaveLength(1);
+    expect(screen.getByLabelText(`${title} details`)).toContainElement(screen.getByText(provenance));
+    expect(screen.getAllByText(provenance)).toHaveLength(1);
     // Adjacency is what applies the focus-ring clearance in ProjectEvidence.module.css.
     expect(screen.getByRole('link', { name: `Open ${title} portfolio image at full size (new tab)` })
-      .nextElementSibling).toBe(screen.getByText(project.imageNote!));
+      .nextElementSibling).toBe(screen.getByText(provenance));
   });
 
   it('jumps straight to any current-category project and keeps native picker input isolated', () => {

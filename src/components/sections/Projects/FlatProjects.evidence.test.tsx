@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { projectsData } from '@/data/projects';
+import { IMAGE_KIND_LABEL, projectsData } from '@/data/projects';
 import type { FocusRailItem } from '@/components/ui/focus-rail';
 import { FlatProjects } from './FlatProjects';
 
@@ -29,6 +29,7 @@ describe('flat project evidence parity', () => {
     for (const [index, project] of projectsData.entries()) {
       const article = articles[index];
       expect(article).toHaveAccessibleName(project.title);
+      expect(article).toHaveTextContent(IMAGE_KIND_LABEL[project.imageKind]);
       if (project.imageNote) expect(article).toHaveTextContent(project.imageNote);
       for (const line of (project.longDescription || project.description).split('\n').filter(line => line.trim())) {
         expect(article).toHaveTextContent(line.replace(/\*\*/g, ''));

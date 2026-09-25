@@ -21,6 +21,7 @@ import { claimScrollKeys } from '@/lib/scroll/keyboardScroll';
 import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import { isProjectsReadingTarget } from './projectsInput';
 import { projectsReturnKeyDelta } from './projectsReturnKey';
+import { PROJECTS_ENTRY_EDGE, projectsEntry, projectsStep } from './projectsTransitions';
 import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
 import {
   beginContactFlight, getContactView, hasContactCamera, isContactPoseCommitted,
@@ -272,32 +273,24 @@ export function useProjectsPlayback(
     };
     requestRef.current = direction => {
       if (document.hidden || flight || contactComplete || !active) return;
-      if (state === 'framed') {
-        if (direction > 0) run('approach', 1, 'approaching', () => settled('reading'));
-        else run('turn', 0, 'unturning', () => settled('revealed'));
-      } else if (state === 'reading') {
-        if (direction < 0) run('approach', 0, 'retreating', () => settled('framed'));
-        else {
-          beginContactFlight(1);
-          run('approach', 0, 'departing', () => leave('contact'));
-        }
-      } else if (state === 'revealed') {
-        if (direction < 0) leave('skills');
-        else run('turn', 1, 'turning', () => settled('framed'));
-      }
+      const next = projectsStep(state, direction);
+      if (!next) return;
+      if (next.kind === 'leave') leave(next.to);
+      else if (next.kind === 'depart') {
+        beginContactFlight(1);
+        run('approach', 0, 'departing', () => leave('contact'));
+      } else run(next.axis, next.to, next.via, () => settled(next.rest));
     };
 
     function apply() {
       if (!alive || document.hidden || !rail?.isConnected || active || bypass ||
           previous.some(hasChapterOwnership)) return;
       const { top, height } = railPosition.readRect();
-      if (height <= 0) return;
-      if (side === 'after') {
-        if (wave === 'up' && top + height >= window.innerHeight - 96) enter('contact');
-      } else if (top <= 96 && wave !== 'up') {
-        if (skills?.dataset.staged === 'true' && skills.dataset.skillsReleased !== 'true') return;
-        enter('skills');
-      }
+      const from = projectsEntry({
+        side, wave, top, height, viewportHeight: () => window.innerHeight,
+        skillsHolding: skills?.dataset.staged === 'true' && skills.dataset.skillsReleased !== 'true',
+      });
+      if (from) enter(from);
     }
 
     const unsubscribeHandoff = subscribeSkillsProjectsHandoff(next => {
@@ -427,7 +420,7 @@ export function useProjectsPlayback(
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', resized);
     document.addEventListener('visibilitychange', visibility);
-    if (resumeRef.current && rail.getBoundingClientRect().top <= 96) ready();
+    if (resumeRef.current && rail.getBoundingClientRect().top <= PROJECTS_ENTRY_EDGE) ready();
     else apply();
 
     return () => {

@@ -321,7 +321,7 @@ describe('the original-avatar encounter overlay', () => {
     ['End', 'contact', { source: 'navbar', edge: 'end' }],
   ] as const)('does not cancel %s, which ends the encounter by navigating rather than as a scroll gesture', (key, section, options) => {
     // Round 8 (D-FLAT-002): Home and End go to the ends of the story (storyKeys), which publishes navigation.
-    const { root, back, scroller } = setup();
+    const { back, scroller } = setup();
     open();
     const bubble = vi.fn();
     scroller.addEventListener('keydown', bubble);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { projectsData } from "./projects";
+import { IMAGE_KIND_LABEL, projectsData } from "./projects";
 import { PROJECT_CATEGORIES } from "@/components/sections/Projects/projectCategories";
 import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
@@ -38,12 +38,16 @@ describe("projectsData", () => {
     }
   });
 
-  it("distinguishes original artwork from a genuine local interface capture", () => {
+  it("says what every preview image is, and tells artwork from a genuine interface capture", () => {
+    // Round 8 (D-BRAND-002): captures, mockups and artwork sat in one hierarchy, unlabelled.
+    for (const project of projectsData) {
+      expect(Object.keys(IMAGE_KIND_LABEL), project.title).toContain(project.imageKind);
+    }
     const luna = projectsData.find(project => project.title === "Luna")!;
     const portfolio = projectsData.find(project => project.id === 4)!;
     expect(luna.imageAlt).toMatch(/artwork, not an interface screenshot/i);
-    expect(luna.imageNote).toMatch(/not an interface screenshot/i);
-    expect(portfolio.imageNote).toBe("Local desktop interface capture.");
+    expect(luna.imageKind).toBe("artwork");
+    expect(portfolio.imageKind).toBe("interface");
     for (const project of [luna, portfolio]) {
       expect(statSync(resolve("public", ...project.image.split("/").filter(Boolean))).size)
         .toBeLessThanOrEqual(220_000);
