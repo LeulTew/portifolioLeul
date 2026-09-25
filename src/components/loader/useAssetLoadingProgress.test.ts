@@ -7,10 +7,16 @@ import { useAssetLoadingProgress } from './useAssetLoadingProgress';
 /** Lets each test drive the download by hand. */
 let publish: ((progress: AssetProgress) => void) | null = null;
 let resolveLoad: (() => void) | null = null;
+let requested: { assets?: readonly { url: string }[] } | undefined;
+const { DOM_ONLY } = vi.hoisted(() => ({
+  DOM_ONLY: [{ url: '/images/leul-portrait.webp', bytes: 1, kind: 'media' }] as const,
+}));
 
 vi.mock('@/lib/assets/criticalAssets', () => ({
-  loadCriticalAssets: (onProgress: (progress: AssetProgress) => void) => {
+  DOM_CRITICAL_ASSETS: DOM_ONLY,
+  loadCriticalAssets: (onProgress: (progress: AssetProgress) => void, options?: { assets?: readonly { url: string }[] }) => {
     publish = onProgress;
+    requested = options;
     return new Promise<void>((resolve) => {
       resolveLoad = resolve;
     });
@@ -61,6 +67,17 @@ describe('useAssetLoadingProgress', () => {
 
     expect(result.current.progress).toBe(0);
     expect(result.current.isReady).toBe(false);
+  });
+
+  it('waits only for the DOM critical assets when no scene will consume the models', () => {
+    // Round 7 (TECH-007): the no-WebGL page downloaded ~5MB of models it never uses before opening.
+    renderHook(() => useAssetLoadingProgress({ minDurationMs: 100, scene: false }));
+    expect(requested?.assets).toBe(DOM_ONLY);
+  });
+
+  it('waits for the shared scene manifest by default', () => {
+    renderHook(() => useAssetLoadingProgress({ minDurationMs: 100 }));
+    expect(requested?.assets).toBeUndefined();
   });
 
   it('does not open the page before a single byte has arrived', () => {

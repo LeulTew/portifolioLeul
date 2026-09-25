@@ -178,6 +178,8 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
       className={styles.skills}
       data-staged={staged}
       aria-label="Skills"
+      tabIndex={-1}
+      data-section-landing="skills"
       style={{ '--skill-count': SKILL_CHAPTERS.length } as CSSProperties}
     >
       {staged ? createPortal(stage, document.body) : stage}

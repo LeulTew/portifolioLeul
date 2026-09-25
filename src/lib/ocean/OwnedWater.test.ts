@@ -95,6 +95,24 @@ describe('owned r161 water reflection', () => {
     harness.previous.dispose();
   });
 
+  it('skips the reflection for a view that lies wholly above the sea, and resumes when the sea is back in view', () => {
+    // Round 7 (TECH-009): parked Contact looks at the sky, yet the pass redrew the scene every frame.
+    const geometry = new THREE.PlaneGeometry();
+    const water = new OwnedWater(geometry);
+    const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 2000);
+    camera.position.set(0, 60, 0);
+    camera.rotation.set(THREE.MathUtils.degToRad(40), 0, 0);
+    const harness = reflectionHarness();
+    reflect(water, camera, harness);
+    expect(harness.renderer.render).not.toHaveBeenCalled();
+    camera.rotation.set(THREE.MathUtils.degToRad(-10), 0, 0);
+    reflect(water, camera, harness);
+    expect(harness.renderer.render).toHaveBeenCalledOnce();
+    water.dispose();
+    geometry.dispose();
+    harness.previous.dispose();
+  });
+
   it('restores the renderer and surface even when the reflection render throws', () => {
     const geometry = new THREE.PlaneGeometry();
     const water = new OwnedWater(geometry);

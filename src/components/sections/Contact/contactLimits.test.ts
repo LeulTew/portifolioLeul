@@ -1,6 +1,6 @@
 import {
   CONTACT_LIMITS,
-  CONTACT_MAILTO_BODY_BUDGET,
+  CONTACT_MAILTO_BUDGET,
   contactEmailDraft,
   exceedsContactLimits,
 } from './contactLimits';
@@ -22,16 +22,31 @@ it('keeps a short draft whole in the email-app fallback', () => {
     `&body=${encodeURIComponent('Name:  Ada \nEmail: ada@example.com\n\nHello & welcome')}`);
 });
 
-it('trims a long non-Latin draft to the mailto budget without splitting a character', () => {
+it('trims a long non-Latin draft to the whole-URL budget without splitting a character', () => {
   const message = 'ሰላም 👋 '.repeat(800);
   const draft = { name: 'አበበ', email: 'abebe@example.com', message };
-  const encoded = encodedBody(contactEmailDraft('leul@example.com', draft));
-  expect(encoded.length).toBeLessThanOrEqual(CONTACT_MAILTO_BODY_BUDGET);
+  const url = contactEmailDraft('leul@example.com', draft);
+  expect(url.length).toBeLessThanOrEqual(CONTACT_MAILTO_BUDGET);
   // A split surrogate pair would make this throw.
-  const decoded = decodeURIComponent(encoded);
+  const decoded = decodeURIComponent(encodedBody(url));
   expect(decoded.endsWith(NOTE)).toBe(true);
   const header = `Name: ${draft.name}\nEmail: ${draft.email}\n\n`;
   const kept = decoded.slice(header.length, decoded.length - NOTE.length);
   expect(kept.length).toBeGreaterThan(0);
   expect(message.startsWith(kept)).toBe(true);
+});
+
+it.each([
+  ['a 120-character CJK name', '汉'.repeat(CONTACT_LIMITS.name)],
+  ['a 120-character emoji name', '🧑🏾‍💻'.repeat(Math.floor(CONTACT_LIMITS.name / 7))],
+])('keeps the complete URL in budget for %s at every field limit', (_label, name) => {
+  // Round 7 (TECH-011): the body alone was bounded, so the subject and headers pushed this to 2,948 characters.
+  const draft = { name, email: `${'r'.repeat(CONTACT_LIMITS.email - 12)}@example.com`, message: '文'.repeat(CONTACT_LIMITS.message) };
+  expect(exceedsContactLimits(draft)).toBe(false);
+  const url = contactEmailDraft('leul@example.com', draft);
+  expect(url.length).toBeLessThanOrEqual(CONTACT_MAILTO_BUDGET);
+  expect(url).toContain(`subject=${encodeURIComponent('Portfolio message')}&`);
+  const decoded = decodeURIComponent(encodedBody(url));
+  expect(decoded.startsWith('Name: ')).toBe(true);
+  expect(decoded.endsWith(NOTE)).toBe(true);
 });

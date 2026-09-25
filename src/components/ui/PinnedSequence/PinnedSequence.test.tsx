@@ -132,6 +132,59 @@ describe('PinnedSequence observed entry after a settled navigation', () => {
   });
 });
 
+describe('PinnedSequence inside the 3D layer', () => {
+  let resized: ResizeObserverCallback | null = null;
+  beforeEach(() => {
+    resetScrollProgress();
+    setProjectsView(false, 0, 0);
+    vi.stubGlobal('innerHeight', 900);
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: ResizeObserverCallback) { resized = callback; }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resized = null;
+  });
+
+  it('follows the layer translation between layout changes instead of reading the spacer each publication', () => {
+    // Round 8: reading the rect per publication forced 474ms of layout in a 70s journey at 4x CPU.
+    render(<div id="layer" style={{ transform: 'translate3d(0px, 0px, 0px)' }}>
+      <main><section id="about"><PinnedSequence layers={LAYERS}><p>held</p></PinnedSequence></section></main>
+    </div>);
+    const layer = document.getElementById('layer')!;
+    const spacer = screen.getByTestId('pinned-sequence');
+    const overlay = screen.getByTestId('pinned-sequence-overlay');
+    let laidOutTop = 1215, reads = 0;
+    const translation = () => Number(/,\s*([-\d.]+)px/.exec(layer.style.transform)?.[1] ?? 0);
+    spacer.getBoundingClientRect = () => {
+      reads += 1;
+      return DOMRect.fromRect({ y: laidOutTop + translation(), width: 1440, height: 2700 });
+    };
+    act(() => setScrollProgress(0, true));
+    reads = 0;
+    layer.style.transform = 'translate3d(0px, -2115px, 0px)';
+    act(() => setScrollProgress(0.2, true));
+    expect(overlay.style.getPropertyValue('--seq')).toBe('0.500');
+    layer.style.transform = 'translate3d(0px, -3015px, 0px)';
+    act(() => setScrollProgress(0.25, true));
+    expect(overlay.style.getPropertyValue('--seq')).toBe('1.000');
+    expect(reads).toBe(0);
+
+    // A layout change moves the spacer within the layer: measured once, then followed again.
+    laidOutTop = 1515;
+    act(() => resized?.([], {} as ResizeObserver));
+    expect(reads).toBe(1);
+    layer.style.transform = 'translate3d(0px, -2415px, 0px)';
+    act(() => setScrollProgress(0.21, true));
+    expect(overlay.style.getPropertyValue('--seq')).toBe('0.500');
+    expect(reads).toBe(1);
+  });
+});
+
 describe('PinnedSequence world coverage', () => {
   beforeEach(() => {
     setProjectsView(false, 0, 0);

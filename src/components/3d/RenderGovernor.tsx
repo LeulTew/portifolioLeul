@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { isFrameDrawn, resetFrameGate, setFrameBudget } from '@/lib/render/frameGate';
+import { invalidateStillWorld, isFrameDrawn, resetFrameGate, setFrameBudget } from '@/lib/render/frameGate';
 
 /**
  * Takes ownership of the render call, so frames the gate has ruled out are
@@ -36,6 +36,23 @@ export function RenderGovernor({ maxFps = 60 }: RenderGovernorProps = {}) {
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
+
+  // A still world keeps its last image only while that image is still the right one.
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const wake = () => invalidateStillWorld();
+    const theme = new MutationObserver(wake);
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    window.addEventListener('resize', wake);
+    document.addEventListener('visibilitychange', wake);
+    canvas.addEventListener('webglcontextrestored', wake);
+    return () => {
+      theme.disconnect();
+      window.removeEventListener('resize', wake);
+      document.removeEventListener('visibilitychange', wake);
+      canvas.removeEventListener('webglcontextrestored', wake);
+    };
+  }, [gl]);
 
   useFrame((state) => {
     if (!isFrameDrawn(state.clock.elapsedTime)) return;

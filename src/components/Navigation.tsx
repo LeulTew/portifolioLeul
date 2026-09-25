@@ -1,10 +1,12 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Sun, Moon, Volume2, VolumeX } from 'lucide-react';
 import styles from './Navigation.module.css';
 import { ThemeContext } from './sections/theme/ThemeContext';
 import { soundFx } from '@/lib/gateways/soundFx';
 import { useActiveSection } from '@/lib/scroll/useActiveSection';
+import { observeChromeInset } from '@/lib/scroll/chromeInset';
+import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { ChapterInkLayer, InkLabel } from './ui/ChapterInkLayer/ChapterInkLayer';
 
@@ -32,6 +34,10 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   const activeSection = pinnedSection ?? trackedSection;
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => soundFx.getSoundEnabled());
   const [focusedControl, setFocusedControl] = useState<string | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  // Keyboard reveals land controls below the navbar, not under it.
+  useEffect(() => headerRef.current ? observeChromeInset(headerRef.current) : undefined, []);
 
   const themeContext = useContext(ThemeContext);
   const theme = themeContext?.theme || 'light';
@@ -45,6 +51,8 @@ export function Navigation({ scrollToSection }: NavigationProps) {
   const handleNavClick = (id: string, index: number = 0) => {
     soundFx.playTabHum(index);
     scrollToSection(id, { source: 'navbar' });
+    // Focus follows, as it would through an in-page link, so Tab and scroll keys continue from there.
+    landSectionFocus(id);
     // Show the destination immediately, then hand back to live tracking once
     // the smooth scroll has actually arrived.
     setPinnedSection(id);
@@ -73,6 +81,7 @@ export function Navigation({ scrollToSection }: NavigationProps) {
 
   const paint = (painted: boolean) => (
     <header
+      ref={painted ? undefined : headerRef}
       className={`${styles.header} ${painted ? styles.painted : ''}`}
       onFocusCapture={painted ? undefined : event => {
         const button = event.target;

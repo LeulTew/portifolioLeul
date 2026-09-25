@@ -10,6 +10,7 @@ import { KineticHeading } from '../../ui/KineticText';
 import { FocusScrim } from '../../ui/FocusScrim';
 import { StripReveal } from '../../ui/StripReveal';
 import { useViewportShareEffect } from '@/lib/scroll/viewportCoverage';
+import { subscribeSectionNavigation } from '@/lib/scroll/sectionNavigation';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import {
   advancePhase,
@@ -139,6 +140,21 @@ export function FlatProjects({ theme }: { theme?: string }) {
     }
   });
 
+  // Navbar and keyboard arrivals land settled, as every chapter does for navbar intent:
+  // focus would otherwise reach the reader while it is still fading in.
+  useEffect(() => subscribeSectionNavigation((target, options) => {
+    if (options?.source !== 'navbar' || target !== 'projects') return;
+    cancelAnimationFrame(focusFrame.current);
+    focusFrame.current = 0;
+    focusLastTime.current = null;
+    focusActive.current = true;
+    focusPhase.current = { t: 1, heading: 1 };
+    const content = contentRef.current;
+    if (!content) return;
+    content.style.opacity = '1.000';
+    content.style.transform = reducedMotion ? 'none' : 'scale(1.0000)';
+  }), [reducedMotion]);
+
   return (
     <section ref={setSectionElement} className={styles.projects} id="projects">
       {/* Carries its own imagery, so the world stays faintly behind it. */}
@@ -152,7 +168,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
           willChange: reducedMotion ? 'auto' : 'opacity, transform',
         }}
       >
-        <header className={styles.header}>
+        <header className={styles.header} tabIndex={-1} data-section-landing="projects">
           <KineticHeading 
             text="Featured Projects" 
             as="h2" 

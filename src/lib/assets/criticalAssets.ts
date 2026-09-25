@@ -66,6 +66,11 @@ export const CRITICAL_MODELS: readonly string[] = CRITICAL_ASSETS.filter(
   (asset) => asset.kind === 'model'
 ).map((asset) => asset.url);
 
+/** What the page itself paints before it opens; all a page without WebGL waits for. */
+export const DOM_CRITICAL_ASSETS: readonly CriticalAsset[] = CRITICAL_ASSETS.filter(
+  (asset) => asset.kind === 'media'
+);
+
 const SOFTWARE_MODELS: Readonly<Record<string, CriticalAsset>> = {
   '/models/terrain-opt.glb': { url: '/models/terrain-software.glb', bytes: terrainBake.variants[1].bytes, kind: 'model' },
   '/models/me-animated-lite.glb': { url: '/models/me-animated-software.glb', bytes: 336_260, kind: 'model' },

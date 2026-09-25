@@ -142,7 +142,7 @@
   filter: drop-shadow(0 0 6px rgba(0, 255, 157, 0.8));
 }
 
-/* Animated Neon Tracer Beam */
+/* Animated Neon Tracer Beam: travels only while the pointer rests on the button. */
 .tracerBeam {
   width: calc(100% - 2px);
   height: calc(100% - 2px);
@@ -151,19 +151,28 @@
   stroke-width: 2.5;
   stroke-dasharray: 45 180;
   stroke-dashoffset: 0;
-  animation: traceBorder 3s linear infinite;
+  animation: traceBorder 3s linear infinite paused;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .magneticWrapper:hover .tracerBeam {
   opacity: 1;
+  animation-play-state: running;
 }
 
-:global(main[inert]) .tracerBeam,
-:global([data-education-covered]) .tracerBeam,
-:global([data-skills-covered]) .tracerBeam {
+:global(main[inert]) .magneticWrapper:hover .tracerBeam,
+:global([data-education-covered]) .magneticWrapper:hover .tracerBeam,
+:global([data-skills-covered]) .magneticWrapper:hover .tracerBeam {
   animation-play-state: paused;
+}
+
+/* Reduced motion: hover lights the whole outline instead of sending a beam around it. */
+@media (prefers-reduced-motion: reduce) {
+  .tracerBeam {
+    animation: none;
+    stroke-dasharray: none;
+  }
 }
 
 @keyframes traceBorder {

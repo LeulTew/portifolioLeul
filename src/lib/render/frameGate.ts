@@ -2,6 +2,7 @@ import { getWorldOcclusion, getOverlayOcclusion } from '@/lib/camera/cameraHold'
 import { isWithinHold } from '@/lib/camera/holdRange';
 import { getScrollProgress } from '@/lib/scroll/scrollProgress';
 import { getProjectsView } from '@/lib/projects/projectsScene';
+import { getContactView } from '@/lib/contact/contactScene';
 
 /**
  * One decision per frame, shared by everything that would spend time on it:
@@ -71,6 +72,36 @@ export function isWorldOccluded(): boolean {
 }
 
 /**
+ * Parked Contact shows a still sky. The camera rests on its pose, the grade
+ * and the clouds are applied in one step, and the motion left is dust a few
+ * pixels across: between two frames three seconds apart, 0.1% of the pixels
+ * differed. Round 7 measured it redrawn anyway, reflection pass and all, on
+ * every frame -- 73 long frames in 38 seconds at 4x CPU (D-PERF-001).
+ *
+ * So once parked Contact has drawn for a moment, the canvas keeps that image
+ * until something changes what it would show: the theme, the window size, a
+ * restored context, or the camera leaving. `invalidateStillWorld` is how those
+ * report in.
+ */
+const STILL_SETTLE_SECONDS = 0.5;
+
+/** Elapsed time at which the world was first seen parked, or NaN. */
+let stillSince = Number.NaN;
+
+export function invalidateStillWorld(): void {
+  stillSince = Number.NaN;
+}
+
+function isWorldStill(time: number): boolean {
+  if (getContactView().mode !== 'parked' || !Number.isFinite(time)) {
+    stillSince = Number.NaN;
+    return false;
+  }
+  if (!Number.isFinite(stillSince) || time < stillSince) stillSince = time;
+  return time - stillSince >= STILL_SETTLE_SECONDS;
+}
+
+/**
  * Whether the frame at `time` will be drawn.
  *
  * Idempotent within a frame: the first caller decides and every later caller
@@ -82,8 +113,8 @@ export function isFrameDrawn(time: number): boolean {
 
   decidedAt = time;
 
-  if ((typeof document !== 'undefined' && document.hidden) || isWorldOccluded()) {
-    // Hidden time is not animation time, nor a backlog of missed draws.
+  if ((typeof document !== 'undefined' && document.hidden) || isWorldOccluded() || isWorldStill(time)) {
+    // Hidden or held time is not animation time, nor a backlog of missed draws.
     lastDrawnAt = nextDrawAt = Number.NEGATIVE_INFINITY;
     elapsedBetweenDraws = Number.NaN;
     decision = false;
@@ -129,4 +160,5 @@ export function resetFrameGate(): void {
   nextDrawAt = Number.NEGATIVE_INFINITY;
   elapsedBetweenDraws = Number.NaN;
   minInterval = 0;
+  stillSince = Number.NaN;
 }

@@ -584,7 +584,8 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
    * the entrance in reverse, for free.
    */
   return (
-    <section ref={containerRef} className={styles.about} id="about">
+    <section ref={containerRef} className={styles.about} id="about" aria-label="About"
+      tabIndex={-1} data-section-landing="about">
       {/* Mostly copy, and long: close the world out entirely. */}
       <FocusScrim variant="solid" />
       <div className={styles.content}>

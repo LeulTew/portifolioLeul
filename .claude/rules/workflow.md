@@ -24,6 +24,7 @@ Use prefix-based commit messages: `<prefix>(<scope>): <description>`
   - `bun run build` (Vite production bundle compilation)
   - `bun run lint` (ESLint verification)
   - `bun run typecheck` (app and tooling configs; bare `tsc --noEmit` reads the empty solution tsconfig and checks nothing)
+  - `bun run perf:budget` after `bun run build` for any change to per-frame work, rendering, scroll choreography or loading (median of three 4x-throttled journeys plus parked Contact against `scripts/perf-budget.json`; see README > Performance budget)
 - Verify locally with Bun before completing any task, issue, or PR.
 - Never run destructive git commands like `git reset --hard` without explicit user instruction.
 

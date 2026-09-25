@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 
 describe('scroll entrance property ownership', () => {
   it.each([
-    ':global(main[inert]) .tracerBeam',
-    ':global([data-education-covered]) .tracerBeam',
-    ':global([data-skills-covered]) .tracerBeam',
+    ':global(main[inert]) .magneticWrapper:hover .tracerBeam',
+    ':global([data-education-covered]) .magneticWrapper:hover .tracerBeam',
+    ':global([data-skills-covered]) .magneticWrapper:hover .tracerBeam',
   ])('pauses covered button tracers through %s', selector => {
     const css = postcss.parse(readFileSync(join(__dirname, '..', 'ui', 'MagneticButton.module.css'), 'utf8'));
     const states: string[] = [];

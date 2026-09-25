@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Navigation } from './Navigation';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -56,6 +56,35 @@ describe('Navigation', () => {
     );
     fireEvent.click(screen.getByText('About'));
     expect(mockScrollToSection).toHaveBeenCalledWith('about', { source: 'navbar' });
+  });
+
+  it('keeps keyboard reveals below itself while it is mounted', () => {
+    // Round 8: a Tab into the flat contact form parked the name field under the pill.
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const height = this.tagName === 'HEADER' ? 70 : 0;
+      return { top: 0, bottom: height, height, left: 0, right: 0, width: 0, x: 0, y: 0, toJSON() {} } as DOMRect;
+    });
+    const { unmount } = render(<Navigation scrollToSection={mockScrollToSection} />);
+    expect(document.documentElement.style.scrollPaddingTop).toBe('70px');
+    unmount();
+    expect(document.documentElement.style.scrollPaddingTop).toBe('');
+    rect.mockRestore();
+  });
+
+  it('hands focus to the destination, as an in-page link would', async () => {
+    // Round 7 (D-A11Y-001): focus stayed on the navbar, so Tab went back through Home.
+    const landing = document.createElement('section');
+    landing.id = 'contact';
+    landing.tabIndex = -1;
+    landing.dataset.sectionLanding = 'contact';
+    vi.spyOn(landing, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+    document.body.append(landing);
+    render(<Navigation scrollToSection={mockScrollToSection} />);
+    const link = screen.getByRole('button', { name: 'Contact' });
+    link.focus();
+    fireEvent.click(link);
+    expect(mockScrollToSection).toHaveBeenCalledWith('contact', { source: 'navbar' });
+    await waitFor(() => expect(landing).toHaveFocus());
   });
 
   it('toggles theme', () => {

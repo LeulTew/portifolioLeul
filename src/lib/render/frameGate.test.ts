@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { drawnFrameDelta, isFrameDrawn, isWorldOccluded, resetFrameGate, setFrameBudget } from './frameGate';
+import {
+  drawnFrameDelta, invalidateStillWorld, isFrameDrawn, isWorldOccluded, resetFrameGate, setFrameBudget,
+} from './frameGate';
 import { setWorldOcclusion, setOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 import { setProjectsView } from '@/lib/projects/projectsScene';
 import { setScrollProgress, resetScrollProgress } from '@/lib/scroll/scrollProgress';
+import { beginContactFlight, parkContactSky, releaseContactSky } from '@/lib/contact/contactScene';
 
 describe('frameGate', () => {
   beforeEach(() => {
@@ -197,6 +200,42 @@ describe('frameGate', () => {
 
       setScrollProgress(0.6);
       expect(isFrameDrawn(5.001)).toBe(true);
+    });
+  });
+
+  describe('at parked Contact', () => {
+    afterEach(() => releaseContactSky());
+
+    it('draws for a moment after parking, then keeps the still image', () => {
+      // Round 7 (D-PERF-001): the unchanged sky was redrawn every frame, reflection pass and all.
+      parkContactSky();
+      expect(isFrameDrawn(10)).toBe(true);
+      expect(isFrameDrawn(10.25)).toBe(true);
+      expect(isFrameDrawn(10.49)).toBe(true);
+      expect(isFrameDrawn(10.5)).toBe(false);
+      expect(isFrameDrawn(30)).toBe(false);
+    });
+
+    it('draws again for whatever changes the image, and for leaving', () => {
+      parkContactSky();
+      isFrameDrawn(10);
+      expect(isFrameDrawn(11)).toBe(false);
+      invalidateStillWorld();
+      expect(isFrameDrawn(11.016)).toBe(true);
+      expect(isFrameDrawn(11.4)).toBe(true);
+      expect(isFrameDrawn(11.6)).toBe(false);
+
+      beginContactFlight(-1);
+      expect(isFrameDrawn(12)).toBe(true);
+      expect(isFrameDrawn(15)).toBe(true);
+    });
+
+    it('resumes on a frame delta rather than the time spent still', () => {
+      parkContactSky();
+      isFrameDrawn(10);
+      isFrameDrawn(11);
+      releaseContactSky();
+      expect(drawnFrameDelta(11.016, 0.016)).toBeCloseTo(0.016, 6);
     });
   });
 

@@ -10,13 +10,15 @@
  * without the browser's reveal, and the page is brought to the control through
  * section navigation, which settles the chapters in between like the navbar.
  */
+import { chromeInsetTop } from './chromeInset';
+import { landSectionFocus } from './sectionLanding';
 
 const TABBABLE = [
   'a[href]', 'area[href]', 'button', 'input:not([type="hidden"])', 'select', 'textarea', 'iframe',
   'audio[controls]', 'video[controls]', 'summary', '[tabindex]', '[contenteditable]:not([contenteditable="false"])',
 ].join(',');
 
-/** A reveal leaves this much room between the control and the window's edge. */
+/** A reveal leaves this much room between the control and the window's edge, and clears the navbar. */
 const REVEAL_MARGIN_PX = 96;
 
 function isTabbable(element: HTMLElement): boolean {
@@ -66,13 +68,17 @@ export function sequentialNeighbour(active: HTMLElement, backward: boolean, root
 
 /**
  * Whether this module reproduces the browser's order exactly. Positive
- * tabindex, radio groups (one stop per group) and shadow roots follow rules it
- * does not model, so Tab is left native there; `hold` still keeps the layer aligned.
+ * tabindex, radio groups (one stop per group) and shadow trees -- focus inside
+ * one, or a Tab that would enter one -- follow rules it does not model, so Tab
+ * is left native there; `hold` still keeps the layer aligned. Closed shadow
+ * roots are invisible to the page and cannot be detected.
  */
 export function reproducesNativeOrder(active: HTMLElement, stops: HTMLElement[]): boolean {
   // Focus inside a shadow tree is retargeted to its host at the document level.
   if (active.shadowRoot?.activeElement || active.getRootNode() !== active.ownerDocument) return false;
-  return !stops.some(stop => stop.tabIndex > 0 || (stop instanceof HTMLInputElement && stop.type === 'radio'));
+  if (stops.some(stop => stop.tabIndex > 0 || (stop instanceof HTMLInputElement && stop.type === 'radio'))) return false;
+  for (const element of active.ownerDocument.querySelectorAll('*')) if (element.shadowRoot) return false;
+  return true;
 }
 
 export interface LayerFocusOptions {
@@ -97,8 +103,9 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const height = track.clientHeight || view.innerHeight;
     const box = element.getBoundingClientRect();
     const margin = Math.min(REVEAL_MARGIN_PX, height * 0.12);
+    const top = Math.max(margin, chromeInsetTop());
     let shift = box.bottom > height - margin ? box.bottom - (height - margin) : 0;
-    if (box.top - shift < margin) shift = box.top - margin;
+    if (box.top - shift < top) shift = box.top - top;
     if (Math.abs(shift) < 1) return;
     const trackRange = Math.max(track.scrollHeight - track.clientHeight, 1);
     const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
@@ -111,7 +118,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     if (!(element instanceof HTMLElement) || !content || element === content || !content.contains(element)) return;
     const height = track.clientHeight || view.innerHeight;
     const box = element.getBoundingClientRect();
-    if (box.top >= 0 && box.bottom <= height) return;
+    if (box.top >= chromeInsetTop() && box.bottom <= height) return;
     let section: HTMLElement = element;
     while (section.parentElement && section.parentElement !== content) section = section.parentElement;
     const area = section.getBoundingClientRect();
@@ -143,6 +150,13 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const next = sequentialNeighbour(active, event.shiftKey, root, stops);
     if (!next) return;
     event.preventDefault();
+    const content = main();
+    const entry = content ? passedEntry(content, active, next, event.shiftKey, view) : null;
+    if (entry) {
+      navigate(entry);
+      landSectionFocus(entry, root);
+      return;
+    }
     next.focus({ preventScroll: true });
     reveal(next);
   };
@@ -152,6 +166,126 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   return () => {
     track.removeEventListener('scroll', hold, { capture: true });
     root.removeEventListener('keydown', tab);
+    view.cancelAnimationFrame(frame);
+  };
+}
+
+/** The direct child of `content` that holds `element`: its section. */
+function sectionOf(content: HTMLElement, element: Element): HTMLElement | null {
+  let section: Element = element;
+  while (section.parentElement && section.parentElement !== content) section = section.parentElement;
+  return section.parentElement === content && section instanceof HTMLElement ? section : null;
+}
+
+/**
+ * Where a stop sits in the story: its own section, or the section whose
+ * reader holds it outside the content (the staged TV is portalled to the
+ * body). The navbar and other chrome are where the reader is when Tab leaves
+ * them, and where they sit in the document when Tab arrives at them.
+ */
+function placeOf(content: HTMLElement, element: HTMLElement, view: Window, leaving: boolean): number {
+  const sections = [...content.children];
+  const section = sectionOf(content, element);
+  if (section) return sections.indexOf(section);
+  const root = content.ownerDocument;
+  for (let node = element.parentElement; node && node !== root.body && !node.contains(content); node = node.parentElement) {
+    const owner = node.querySelector<HTMLElement>('[data-section-landing]')?.dataset.sectionLanding;
+    const reader = owner ? root.getElementById(owner) : null;
+    if (reader?.parentElement === content) return sections.indexOf(reader);
+  }
+  if (leaving) {
+    const inView = sectionInView(content, view);
+    return inView ? sections.indexOf(inView) : -1;
+  }
+  return content.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING ? -1 : sections.length;
+}
+
+/**
+ * The section a Tab from `from` to `to` passes over whose reader cannot take
+ * focus in its place. The staged TV reader is inert until the TV is on
+ * screen, so Tab went from Home straight to Contact and Projects was never
+ * visited (round 7, D-A11Y-001). Such a reader marks itself `data-tab-entry`
+ * with its section's landing, and Tab visits the section by navigating there.
+ */
+function passedEntry(content: HTMLElement, from: HTMLElement, to: HTMLElement, backward: boolean, view: Window): string | null {
+  const first = placeOf(content, from, view, true);
+  const last = placeOf(content, to, view, false);
+  // Only a move that travels through the story in its own direction passes anything.
+  if (first < 0 && backward) return null;
+  if (backward ? last >= first : last <= first) return null;
+  const sections = [...content.children];
+  const passed = backward ? sections.slice(Math.max(last + 1, 0), first).reverse() : sections.slice(first + 1, last);
+  for (const section of passed) {
+    if (!section.id) continue;
+    const entry = content.ownerDocument.querySelector(`[data-tab-entry][data-section-landing="${section.id}"]`);
+    if (entry && !section.contains(entry)) return section.id;
+  }
+  return null;
+}
+
+/** The section under the middle of the window. */
+function sectionInView(content: HTMLElement, view: Window): HTMLElement | null {
+  const middle = view.innerHeight / 2;
+  for (const child of content.children) {
+    const box = child.getBoundingClientRect();
+    if (child instanceof HTMLElement && box.top <= middle && box.bottom >= middle) return child;
+  }
+  return null;
+}
+
+/**
+ * Keyboard focus in the no-WebGL page, which scrolls the document itself.
+ *
+ * The browser reveals the control, but cannot release a chapter still holding
+ * the view: a Tab past About left its pinned overlay painted over everything
+ * after it, and later sections never ran their entrances (round 7, D-FLAT-001).
+ * Focus entering another section navigates there with navbar intent, which
+ * settles the chapters in between, and then keeps the control in view.
+ */
+export function installDocumentFocus({ main, navigate }: {
+  main: () => HTMLElement | null;
+  navigate: (section: string) => void;
+}): () => void {
+  if (typeof document === 'undefined') return () => {};
+  const root = document;
+  const view = window;
+  let keyboard = false;
+  let from: string | null = null;
+  let frame = 0;
+
+  const key = (event: KeyboardEvent) => {
+    if (event.key !== 'Tab') return;
+    keyboard = true;
+    const content = main();
+    const active = root.activeElement;
+    const owner = content && active instanceof HTMLElement && content.contains(active) ? sectionOf(content, active) : null;
+    from = (owner ?? (content ? sectionInView(content, view) : null))?.id ?? null;
+  };
+  const pointer = () => { keyboard = false; };
+  const follow = (event: FocusEvent) => {
+    if (!keyboard) return;
+    keyboard = false;
+    const content = main();
+    const element = event.target;
+    if (!(element instanceof HTMLElement) || !content?.contains(element)) return;
+    const section = sectionOf(content, element);
+    if (!section?.id || section.id === from) return;
+    navigate(section.id);
+    view.cancelAnimationFrame(frame);
+    frame = view.requestAnimationFrame(() => {
+      frame = view.requestAnimationFrame(() => {
+        if (root.activeElement === element) element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+    });
+  };
+
+  root.addEventListener('keydown', key, { capture: true, passive: true });
+  root.addEventListener('pointerdown', pointer, { capture: true, passive: true });
+  root.addEventListener('focusin', follow, true);
+  return () => {
+    root.removeEventListener('keydown', key, { capture: true });
+    root.removeEventListener('pointerdown', pointer, { capture: true });
+    root.removeEventListener('focusin', follow, true);
     view.cancelAnimationFrame(frame);
   };
 }

@@ -21,13 +21,25 @@ const properties = [
 /*
  * The ink updates from scroll, mutation and resize paths, several times a
  * frame, after others have written styles, so a fresh rect per update forced
- * a layout each time. A covering surface moves only with its own attributes
- * (the Education release is an inline property), with the scrolling layer's
- * translation, or with layout, which `layoutEpoch` counts.
+ * a layout each time. A cached rect is trusted only in a coordinate system it
+ * can prove: the scrolling layer's translation (applied as a shift), the same
+ * document scroll offset for a surface the document's scroll moves, the same
+ * parent and attributes, and no CSS transition or animation that could move
+ * the surface between updates. Layout changes bump `layoutEpoch`.
+ *
+ * The document scroll offset is read only for a surface it can move: one in
+ * the document's flow with no translated layer, as on the no-WebGL page.
+ * Reading `scrollX` forces style and layout, and doing it on every update
+ * forced 488 recalculations in 24 seconds of the 3D journey (round 8 trace),
+ * where the document never scrolls and fixed surfaces never follow it.
  */
-interface CoverMeasurement { key: string; epoch: number; layer: HTMLElement | null; layerY: number; rect: DOMRect }
+interface CoverMeasurement {
+  key: string; epoch: number; parent: Element | null; layer: HTMLElement | null;
+  layerY: number; scrolls: boolean; scrollX: number; scrollY: number; rect: DOMRect;
+}
 const measurements = new WeakMap<HTMLElement, CoverMeasurement>();
 let layoutEpoch = 0;
+const GEOMETRY = /^(all|transform|translate|scale|rotate|inset|top|right|bottom|left|width|height|margin.*|padding.*)$/;
 
 function attributeKey(element: HTMLElement): string {
   let key = '';
@@ -35,17 +47,35 @@ function attributeKey(element: HTMLElement): string {
   return key;
 }
 
+/** Read right after a measurement, while style is fresh. */
+function movesByItself(style: CSSStyleDeclaration): boolean {
+  if (style.animationName.split(',').some(name => !['', 'none'].includes(name.trim()))) return true;
+  const properties = style.transitionProperty.split(',').map(property => property.trim());
+  const durations = style.transitionDuration.split(',').map(duration => Number.parseFloat(duration) || 0);
+  return properties.some((property, index) =>
+    GEOMETRY.test(property) && (durations[index % durations.length] ?? 0) > 0);
+}
+
 function coverRect(element: HTMLElement): DOMRect {
   const layer = translatedLayerOf(element);
   const layerY = layer ? translatedY(layer.style.transform) : 0;
   const key = attributeKey(element);
   const last = measurements.get(element);
-  if (last && layerY !== null && last.key === key && last.epoch === layoutEpoch && last.layer === layer) {
+  if (last && layerY !== null && last.key === key && last.epoch === layoutEpoch && last.layer === layer &&
+      last.parent === element.parentElement &&
+      (!last.scrolls || (last.scrollX === window.scrollX && last.scrollY === window.scrollY))) {
     const shift = layerY - last.layerY;
     return shift === 0 ? last.rect : new DOMRect(last.rect.x, last.rect.y + shift, last.rect.width, last.rect.height);
   }
   const rect = element.getBoundingClientRect();
-  if (layerY !== null) measurements.set(element, { key, epoch: layoutEpoch, layer, layerY, rect });
+  const style = getComputedStyle(element);
+  if (layerY !== null && !movesByItself(style)) {
+    const scrolls = !layer && style.position !== 'fixed';
+    measurements.set(element, {
+      key, epoch: layoutEpoch, parent: element.parentElement, layer, layerY, scrolls,
+      scrollX: scrolls ? window.scrollX : 0, scrollY: scrolls ? window.scrollY : 0, rect,
+    });
+  } else measurements.delete(element);
   return rect;
 }
 
@@ -176,14 +206,19 @@ export function useChapterInk(): void {
     discovery.observe(document.body, { childList: true, subtree: true });
     update();
     const unsubscribe = subscribeScrollProgress(update);
-    document.addEventListener('scroll', update, { passive: true, capture: true });
+    // The document's own scroll, in the no-WebGL page. drei's track and inner scrollers move no cover:
+    // the 3D layer follows scroll progress, which publishes after drei has moved it.
+    const scrolled = (event: Event) => {
+      if (event.target === document) update();
+    };
+    document.addEventListener('scroll', scrolled, { passive: true, capture: true });
     window.addEventListener('resize', resize);
     return () => {
       unsubscribe();
       observer.disconnect();
       discovery.disconnect();
       layout?.disconnect();
-      document.removeEventListener('scroll', update, { capture: true });
+      document.removeEventListener('scroll', scrolled, { capture: true });
       window.removeEventListener('resize', resize);
       for (const layer of inkLayers) for (const property of properties) layer.style.removeProperty(property);
       painted = null;

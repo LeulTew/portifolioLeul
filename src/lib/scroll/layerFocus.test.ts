@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installLayerFocus, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { observeChromeInset } from './chromeInset';
+import { installDocumentFocus, installLayerFocus, sequentialNeighbour, sequentialOrder, tabbableElements } from './layerFocus';
 
 type Box = { top: number; bottom: number };
 const boxes = new Map<Element, Box>();
@@ -155,6 +156,22 @@ describe('keyboard focus in the scroll layer', () => {
     expect(byId('track').scrollTop).toBe(0);
   });
 
+  it('brings a control out from under the navbar', () => {
+    // 4K: a 96px reveal margin sat inside the 102px navbar pill.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 132 });
+    onTestFinished(observeChromeInset(header));
+    place('contact', 0, 1000); place('email', 200); place('message', 110, 40);
+    rendered = 1000;
+    byId('email').focus();
+    tab();
+    expect(document.activeElement).toBe(byId('message'));
+    expect(navigate).not.toHaveBeenCalled();
+    // 110 - 132 = -22px, in track pixels.
+    expect(byId('track').scrollTop).toBeCloseTo(1000 - (22 * 7200) / 6200, 5);
+  });
+
   it('holds the html layer at zero when the browser reveals focus by scrolling it', () => {
     byId('email').focus();
     byId('layer').scrollTop = 13995;
@@ -214,6 +231,16 @@ describe('keyboard focus in the scroll layer', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('leaves Tab native when it could enter a shadow tree the document query cannot see', () => {
+    // Round 7 (TECH-005): button, host with a shadow button, button -- the shadow control was skipped.
+    const host = document.createElement('div');
+    byId('home').insertBefore(host, null);
+    host.attachShadow({ mode: 'open' }).appendChild(document.createElement('button'));
+    byId('cta').focus();
+    expect(tab().defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(byId('cta'));
+  });
+
   it('stops listening once released', () => {
     release();
     byId('cta').focus();
@@ -221,5 +248,176 @@ describe('keyboard focus in the scroll layer', () => {
     byId('layer').scrollTop = 500;
     byId('layer').dispatchEvent(new Event('scroll'));
     expect(byId('layer').scrollTop).toBe(500);
+  });
+});
+
+describe('Tab past a chapter whose reader is not in place', () => {
+  let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
+  let release: () => void;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <header><button id="logo">LT</button><button id="theme">Theme</button></header>
+      <div id="track"><main id="main">
+        <section id="home"><button id="cta">Explore</button></section>
+        <section id="about" tabindex="-1" data-section-landing="about"><p>Statements</p></section>
+        <section id="projects"></section>
+        <section id="contact"><a id="email" href="mailto:hello@example.com">Email</a></section>
+      </main></div>
+      <div id="stage" inert><div id="reader" tabindex="-1" data-section-landing="projects" data-tab-entry="">
+        <button id="details">Details</button></div><button id="scene-next">Contact</button></div>`;
+    navigate = vi.fn<(section: string) => void>();
+    scrollable(byId('track'), { scrollHeight: 8000, clientHeight: 800 });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    place('home', 0, 900); place('cta', 600);
+    place('about', 900, 2000); place('projects', 2900, 1500); place('contact', 4400, 900); place('email', 4600);
+    release = installLayerFocus({ track: byId('track'), main: () => byId('main'), navigate });
+  });
+  afterEach(() => release());
+
+  /** The reader the navigation brings in takes focus once its chapter is live. */
+  const goLive = () => {
+    byId('stage').removeAttribute('inert');
+    flushFrames();
+  };
+
+  it('visits Projects between Home and Contact, by navigating there', () => {
+    // Round 7 (D-A11Y-001): Tab went from Home straight to Contact past the inert TV reader.
+    byId('cta').focus();
+    expect(tab().defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
+    expect(document.activeElement).toBe(byId('cta'));
+    goLive();
+    expect(document.activeElement).toBe(byId('reader'));
+  });
+
+  it('visits it on the way back from Contact, and from a section landing', () => {
+    byId('email').focus();
+    tab(true);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('projects');
+    goLive();
+    expect(document.activeElement).toBe(byId('reader'));
+
+    byId('stage').setAttribute('inert', '');
+    byId('about').focus();
+    tab();
+    expect(navigate).toHaveBeenLastCalledWith('projects');
+  });
+
+  it('counts the navbar as the chapter in view when Tab leaves it', () => {
+    // Contact fills the window: the next stop is Contact's own, so nothing is passed.
+    place('home', -4400, 900); place('about', -3500, 2000); place('projects', -1500, 1500); place('contact', 0, 900);
+    byId('theme').focus();
+    byId('cta').setAttribute('data-no-box', '');
+    tab();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('email'));
+  });
+
+  it('does not send Tab back into the chapter it is leaving', () => {
+    byId('stage').removeAttribute('inert');
+    byId('main').setAttribute('inert', '');
+    place('home', -2900, 900); place('about', -2000, 2000); place('projects', 0, 1500); place('contact', 1500, 900);
+    byId('details').focus();
+    tab(true);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('theme'));
+  });
+
+  it('leaves a reader that is in place to the ordinary order', () => {
+    byId('projects').append(byId('reader'));
+    byId('stage').removeAttribute('inert');
+    byId('cta').focus();
+    tab();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId('details'));
+  });
+});
+
+describe('keyboard focus in the no-WebGL document', () => {
+  let navigate: ReturnType<typeof vi.fn<(section: string) => void>>;
+  let revealed: Element[];
+  let release: () => void;
+
+  /** What the browser does for Tab here: the key, then focus lands on the next stop. */
+  const tabTo = (id: string, shift = false) => {
+    tab(shift);
+    byId(id).focus();
+  };
+
+  beforeEach(() => {
+    navigate = vi.fn<(section: string) => void>();
+    revealed = [];
+    // The test DOM has no layout, so no reveal of its own.
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(this: HTMLElement) { revealed.push(this); },
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    place('home', 0, 900); place('about', 900, 3900); place('contact', 4800, 1000);
+    release = installDocumentFocus({ main: () => byId('main'), navigate });
+  });
+  afterEach(() => {
+    release();
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+  });
+
+  it('settles the chapter Tab carries focus into, then keeps the control in view', () => {
+    // Round 7 (D-FLAT-001): About's pinned overlay stayed painted over the stops after it.
+    byId('cta').focus();
+    tabTo('email');
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('contact');
+    expect(revealed).toEqual([]);
+    flushFrames();
+    expect(revealed).toEqual([byId('email')]);
+  });
+
+  it('settles the chapter Shift+Tab carries focus back into', () => {
+    byId('email').focus();
+    tabTo('cta', true);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('home');
+  });
+
+  it('leaves focus moving within a chapter to the browser', () => {
+    byId('email').focus();
+    tabTo('message');
+    flushFrames();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(revealed).toEqual([]);
+  });
+
+  it('measures from the chapter in view when Tab starts outside the content', () => {
+    place('home', -4800, 900); place('about', -3900, 3900); place('contact', 0, 1000);
+    byId('logo').focus();
+    tabTo('email');
+    expect(navigate).not.toHaveBeenCalled();
+    byId('logo').focus();
+    tabTo('cta');
+    expect(navigate).toHaveBeenCalledExactlyOnceWith('home');
+  });
+
+  it('leaves pointer focus and focus it did not see a key for alone', () => {
+    byId('cta').focus();
+    tab();
+    byId('email').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    byId('email').focus();
+    byId('cta').focus();
+    byId('email').focus();
+    flushFrames();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(revealed).toEqual([]);
+  });
+
+  it('ignores Tab that leaves the content', () => {
+    byId('cta').focus();
+    tabTo('logo', true);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('stops listening once released', () => {
+    release();
+    byId('cta').focus();
+    tabTo('email');
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

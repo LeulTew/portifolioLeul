@@ -88,6 +88,14 @@ html {
 }
 
 /*
+ * A heading that navigation hands focus to (see `sectionLanding`) is a starting
+ * point for Tab and the scroll keys, not a control: it draws no focus ring.
+ */
+[data-section-landing]:not([role]):focus {
+  outline: none;
+}
+
+/*
  * A 4K canvas at 100% scaling. The scene scales with the viewport but the
  * rem-sized interface did not, so navigation, copy and actions read as a 1440
  * layout floating in a much larger world. Pixel and container-sized readers

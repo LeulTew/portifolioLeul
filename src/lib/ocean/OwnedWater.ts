@@ -1,6 +1,7 @@
 /*
- * Water from three.js r161, with explicit render-target ownership and
- * exception-safe renderer restoration. Shader and reflection math are unchanged.
+ * Water from three.js r161, with explicit render-target ownership,
+ * exception-safe renderer restoration, and no reflection pass for a view that
+ * cannot see the sea. Shader and reflection math are unchanged.
  * https://github.com/mrdoob/three.js/blob/r161/examples/jsm/objects/Water.js
  *
  * The MIT License
@@ -31,6 +32,14 @@
 
 import * as THREE from 'three';
 import type { WaterOptions } from 'three/examples/jsm/objects/Water.js';
+import { viewClearsPlane } from '@/lib/render/viewClearsPlane';
+
+/**
+ * Height above the rest surface that wave crests can reach, in world units.
+ * The swell's amplitude is under one unit; shoaling and summed waves stay
+ * well inside four.
+ */
+const CREST_MARGIN = 4;
 
 const vertexShader = /* glsl */`
   uniform mat4 textureMatrix;
@@ -194,6 +203,9 @@ export class OwnedWater extends THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMat
       normal.set(0, 0, 1).applyMatrix4(rotationMatrix);
       view.subVectors(mirrorWorldPosition, cameraWorldPosition);
       if (view.dot(normal) > 0) return;
+      // A view entirely above the sea, like Contact's sky, cannot show a reflection:
+      // the pass redrew the whole scene for it on every frame (round 7, TECH-009).
+      if (normal.y > 0.999 && viewClearsPlane(camera, mirrorWorldPosition.y + CREST_MARGIN)) return;
 
       view.reflect(normal).negate().add(mirrorWorldPosition);
       rotationMatrix.extractRotation(camera.matrixWorld);

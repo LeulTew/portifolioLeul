@@ -85,6 +85,30 @@ the same byte-progress signal as a static fill, with a short opacity exit instea
 of a wave or zoom. Completion stops the drawing loop even when the loader is
 used without a parent unmount callback.
 
+### Performance budget
+
+`bun run build && bun run perf:budget` serves `dist`, drives a headless Chrome
+over the DevTools protocol through the standard 80-second wheel journey at 4x
+CPU throttling, parks on Contact for ten seconds, and records Long Animation
+Frames. It fails when the median of three runs exceeds the gate in
+`scripts/perf-budget.json`, reports the tighter target beside it, names the
+chapters the long frames fell in, and writes a report with the build's asset
+names, the browser version, the WebGL renderer and the machine's cores and
+memory to `perf-reports/` (ignored by git). Runs are warm, like a returning
+visit, unless `--cold` is passed; `--headed`, `--chrome <path>` and
+`--url <origin>` cover other browsers and servers.
+
+The gate was set on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti through
+ANGLE/D3D11, Chrome 153). CPU throttling slows the main thread, not the GPU, so
+it is a proxy for weak hardware rather than a measurement of it; a different
+machine should record its own baseline instead of loosening these numbers.
+Parked Contact draws nothing once its sky has settled, so its gate is close to
+zero; the journey's figures vary between runs, most of the spread in About.
+At the time of writing the journey meets its gate but not its target: medians
+around 74 long frames and 1.5s of blocking time over the 80 seconds, most of it
+in About, where a trace attributes the main thread chiefly to style
+recalculation and paint.
+
 ### Island outline and scene edge continuation
 
 The source terrain is a tilted 60-unit heightfield tile. `bun run bake:island`
