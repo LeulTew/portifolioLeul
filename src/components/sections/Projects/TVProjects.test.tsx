@@ -258,13 +258,13 @@ describe('the semantic TV project reader', () => {
 
   it('reports a failed image while keeping its full details and links usable', () => {
     render(<TVProjects />);
-    fireEvent.error(screen.getByRole('img', { name: `${projectsData[0].title} preview` }));
+    fireEvent.error(screen.getByRole('img', { name: projectsData[0].imageAlt ?? `${projectsData[0].title} preview` }));
     expect(screen.getByText(/Preview unavailable/)).toBeVisible();
     expect(screen.getAllByRole('link')[0]).toHaveAttribute('href', projectsData[0].demoUrl);
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     expect(screen.getByLabelText(`${projectsData[0].title} details`)).toHaveTextContent(projectsData[0].tech);
     fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
-    expect(screen.getByRole('img', { name: `${projectsData[1].title} preview` })).toBeVisible();
+    expect(screen.getByRole('img', { name: projectsData[1].imageAlt ?? `${projectsData[1].title} preview` })).toBeVisible();
   });
 
   it('has no autoplay and keeps expanded Details isolated from vertical page browsing', () => {

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { useActiveSection } from '@/lib/scroll/useActiveSection';
 import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
-import { projectsData } from '../../../data/projects';
+import { projectTier, projectsData } from '../../../data/projects';
 import { ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
@@ -95,7 +95,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
     imageAlt: project.imageAlt,
     demoUrl: project.demoUrl,
     repoUrl: project.githubUrl,
-    meta: project.categories.join(' • '),
+    meta: [projectTier(project), ...project.categories].join(' • '),
       })),
     [filteredProjects]
   );

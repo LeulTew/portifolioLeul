@@ -13,7 +13,7 @@ import { registerTVReader, setTVPagingAvailable, useTVState } from '@/lib/tv/tvS
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { useOverflowHint } from '@/lib/dom/overflowHint';
-import { projectsData, type Project } from '@/data/projects';
+import { isFeaturedProject, projectTier, projectsData, type Project } from '@/data/projects';
 import { useProjectsFits, useProjectsPlayback } from './useProjectsPlayback';
 import { PROJECT_CATEGORIES } from './projectCategories';
 import { isProjectsReadingTarget } from './projectsInput';
@@ -100,6 +100,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   const expanded = enlarged && reading;
   const filtered = useMemo(() => category === 'All'
     ? projectsData : projectsData.filter(project => project.categories.includes(category)), [category]);
+  const pickerItems = useMemo(() => filtered.map(item => ({ id: item.id, title: item.title, group: projectTier(item) })),
+    [filtered]);
   const project = filtered[index % Math.max(filtered.length, 1)];
   const activeTab = PROJECT_CATEGORIES.findIndex(value => value === category);
   const backLabel = phase === 'revealed' ? 'Back to Skills' : 'Back to the scene';
@@ -251,7 +253,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
         >
           <div className={styles.displayHeader} data-projects-header="">
             <h2 id="projects-heading">Projects</h2>
-            <IndexPicker items={filtered} index={index} label="Choose a project"
+            <IndexPicker items={pickerItems} index={index} label="Choose a project"
               disabled={!interactive} className={styles.position}
               onSelect={selected => {
                 setSelection(previous => ({ ...previous, index: selected }));
@@ -273,6 +275,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                 tabIndex={interactive ? 0 : -1}
                 aria-label={`${project.title} ${details ? 'details' : 'summary'}`}
               >
+                <p className={styles.tier} data-project-tier={isFeaturedProject(project) ? 'selected' : 'archive'}
+                  data-broadcast-copy="">{projectTier(project)}</p>
                 <h3 data-broadcast-title="">{project.title}</h3>
                 {details ? <>
                   <ProjectDescription project={project} />

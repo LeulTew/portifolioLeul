@@ -359,6 +359,20 @@
   line-height: 1.5;
 }
 
+/* Which tier the project sits in: the lead set in the accent, the archive quieter. */
+.copy .tier {
+  margin: 0 0 0.35em;
+  font-size: clamp(11px, 1.35cqw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.copy .tier[data-project-tier='selected'] {
+  color: var(--project-accent);
+}
+
 .copy .summary {
   max-width: 34ch;
   color: var(--project-ink);

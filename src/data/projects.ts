@@ -39,7 +39,7 @@ export interface Project {
   evidence?: ProjectEvidence;
 }
 
-export const projectsData: Project[] = [
+const projectRecords: Project[] = [
   {
     id: 36,
     title: "Mizan",
@@ -497,4 +497,25 @@ export const projectsData: Project[] = [
     githubUrl: "https://github.com/LeulTew/Celestial-Bodies-Database",
     categories: ["AI/DataScience"]
   },
+];
+
+/**
+ * The lead set: the strongest inspectable work, shown first and named as
+ * such, with everything else an archive after it (round 10, D-BRAND-002).
+ * Each is a genuine interface capture of a project with its own live demo or
+ * source, most with a real task on screen; staged mockups and artwork stay in
+ * the archive, labelled.
+ */
+export const FEATURED_PROJECT_IDS: readonly number[] = [23, 4, 31, 25, 21, 24];
+
+export function isFeaturedProject(project: Pick<Project, 'id'>): boolean {
+  return FEATURED_PROJECT_IDS.includes(project.id);
+}
+
+/** The tier a project is presented in. */
+export const projectTier = (project: Pick<Project, 'id'>) => (isFeaturedProject(project) ? 'Selected work' : 'Archive');
+
+export const projectsData: Project[] = [
+  ...FEATURED_PROJECT_IDS.map(id => projectRecords.find(project => project.id === id)!),
+  ...projectRecords.filter(project => !isFeaturedProject(project)),
 ];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { IMAGE_KIND_LABEL, projectsData } from "./projects";
+import { FEATURED_PROJECT_IDS, IMAGE_KIND_LABEL, projectTier, projectsData } from "./projects";
 import { PROJECT_CATEGORIES } from "@/components/sections/Projects/projectCategories";
 import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
@@ -74,6 +74,19 @@ describe("projectsData", () => {
     }
   });
 
+  it("leads with a small set of genuine, inspectable work and keeps the rest as a labelled archive", () => {
+    // Round 10 (D-BRAND-002): 36 records of uneven evidence shared one primary role, led by an empty ledger.
+    expect(FEATURED_PROJECT_IDS.length).toBeGreaterThanOrEqual(4);
+    expect(FEATURED_PROJECT_IDS.length).toBeLessThanOrEqual(8);
+    expect(projectsData.slice(0, FEATURED_PROJECT_IDS.length).map(project => project.id)).toEqual([...FEATURED_PROJECT_IDS]);
+    for (const project of projectsData.slice(0, FEATURED_PROJECT_IDS.length)) {
+      expect(project.imageKind, project.title).toBe("interface");
+      expect(Boolean(project.demoUrl || project.githubUrl), project.title).toBe(true);
+      expect(projectTier(project)).toBe("Selected work");
+    }
+    expect(projectsData.slice(FEATURED_PROJECT_IDS.length).every(project => projectTier(project) === "Archive")).toBe(true);
+  });
+
   it("describes what each project's own source shows, without borrowed features or superlatives", () => {
     // Round 10 audit: seven descriptions claimed features their repositories and demos do not have.
     const byTitle = (title: string) => projectsData.find(project => project.title === title)!;
@@ -100,7 +113,7 @@ describe("projectsData", () => {
 
   it("adds inspection notes only to the researched projects", () => {
     expect(projectsData.filter(project => project.evidence).map(project => project.title))
-      .toEqual(["Mizan", "Ignition", "ProtoChem 3D", "Amharic IR Improved", "Portfolio Leul"]);
+      .toEqual(["Ignition", "Portfolio Leul", "ProtoChem 3D", "Mizan", "Amharic IR Improved"]);
     for (const project of projectsData.filter(project => project.evidence)) {
       expect(project.evidence!.inspect.length).toBeGreaterThan(0);
       expect(project.evidence!.access?.length).toBeGreaterThan(0);
