@@ -559,6 +559,46 @@ describe('the completed-beat TV chapter', () => {
     expect(window.scrollBy).not.toHaveBeenCalled();
   });
 
+  it('lifts the reader out of the screen and returns it by the same button, Esc, a click beside it, or leaving', async () => {
+    // Round 9 (D-UI-001): a short window fits the whole cabinet, leaving a small screen to read.
+    mount();
+    await navbar('projects');
+    await clock.run(CRT_POWER_ON_MS);
+    act(() => setTVExposure(true, 'all'));
+    expect(phase()).toBe('reading');
+    const enlarge = screen.getByRole('button', { name: 'Enlarge the screen' });
+    expect(enlarge).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('button', { name: 'Next project' })).not.toBeInTheDocument();
+
+    fireEvent.click(enlarge);
+    expect(stage()).toHaveAttribute('data-reading', 'expanded');
+    expect(enlarge).toHaveAttribute('aria-pressed', 'true');
+    expect(stage()).toHaveTextContent('Esc returns the screen to the TV');
+    // The cabinet's keys are behind the scrim, so the reader's own paging takes over.
+    const first = document.querySelector('[data-project-id]')!.getAttribute('data-project-id');
+    fireEvent.click(screen.getByRole('button', { name: 'Next project' }));
+    expect(document.querySelector('[data-project-id]')).not.toHaveAttribute('data-project-id', first);
+    expect(stage()).toHaveAttribute('data-reading', 'expanded');
+
+    fireEvent.keyDown(screen.getByRole('tabpanel'), { key: 'Escape' });
+    expect(stage()).not.toHaveAttribute('data-reading');
+    expect(enlarge).toHaveFocus();
+
+    fireEvent.click(enlarge);
+    fireEvent.click(document.querySelector('[data-reader-scrim]')!);
+    expect(stage()).not.toHaveAttribute('data-reading');
+
+    fireEvent.click(enlarge);
+    fireEvent.click(enlarge);
+    expect(stage()).not.toHaveAttribute('data-reading');
+
+    fireEvent.click(enlarge);
+    fireEvent.click(screen.getByRole('button', { name: /^Back to/ }));
+    expect(phase()).not.toBe('reading');
+    expect(stage()).not.toHaveAttribute('data-reading');
+    expect(document.querySelector('[data-reader-scrim]')).toBeNull();
+  });
+
   it('hands control-initiated approach focus to the reader and restores reverse control focus', async () => {
     mount();
     handoff();

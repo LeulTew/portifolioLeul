@@ -269,6 +269,13 @@ categories, keyboard browsing and project selection stay intact. Conventional
 project paging remains the fallback when physical 48px targets cannot fit or
 the flat reader is used.
 
+The reader can lift out of the screen for reading. A short window has to fit the
+whole cabinet, which leaves a small screen (about 455x265 at 900x560); the
+enlarge control fills the window between the navbar and the scene controls with
+the same reader, over a scrim. Its own previous/next take over from the physical
+keys it covers. The same control, Esc, a click beside it or leaving the reader
+returns it to the TV.
+
 The project counter is also a native 48px selection control. It jumps directly
 to any title in the current category, supports the browser's keyboard type-ahead,
 and keeps the selected value synchronized with physical paging. The flat reader
@@ -280,8 +287,12 @@ than claiming unmeasured results. Amharic IR is identified as collaborative work
 the published author list does not establish individual implementation roles.
 Preview assets must exist locally as valid WebP files. Portfolio Leul uses a
 genuine local desktop capture; Luna uses original project artwork, explicitly
-identified as artwork rather than an application screenshot. Optional image
-notes and alternative text are carried through both TV and flat readers.
+identified as artwork rather than an application screenshot. Kitefew, AgendaFlow,
+Elona Practice, EthioDriveMaster, System Design Guide, CS Exit Practice and Dream
+Weaver use 16:10 desktop captures of their own live demos. Every image is
+labelled as an interface capture, a presentation mockup or project artwork.
+Optional image notes and alternative text are carried through both TV and flat
+readers.
 
 Power-off in Projects uses its existing back-to-scene retreat, then leaves
 dark glass. Entering Projects always makes the reader available, even when
