@@ -3,16 +3,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
 import * as THREE from 'three';
 import { Ocean } from './Ocean';
-import type { OwnedWater } from '@/lib/ocean/OwnedWater';
+import type { OwnedWater, OwnedWaterOptions } from '@/lib/ocean/OwnedWater';
 import { resetFrameGate, setFrameBudget } from '@/lib/render/frameGate';
 import { resetCameraHold, setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { OCEAN_TIME_SPEED } from './ocean/oceanConfig';
+import { DEFAULT_WAVE_SETTINGS, maxWaveHeight } from './ocean/waveShader';
 
 type FrameCallback = (state: { clock: { elapsedTime: number } }, delta: number) => void;
 
 const harness = vi.hoisted(() => ({
   resources: [] as {
-    water: OwnedWater; targetDisposals: number; materialDisposals: number; geometryDisposals: number;
+    water: OwnedWater; options: OwnedWaterOptions | undefined;
+    targetDisposals: number; materialDisposals: number; geometryDisposals: number;
   }[],
   frame: (() => {}) as FrameCallback,
   reduced: false,
@@ -23,7 +25,9 @@ vi.mock('@/lib/ocean/OwnedWater', async (importOriginal) => {
   class RecordedWater extends OwnedWater {
     constructor(...args: ConstructorParameters<typeof OwnedWater>) {
       super(...args);
-      const record = { water: this, targetDisposals: 0, materialDisposals: 0, geometryDisposals: 0 };
+      const record = {
+        water: this, options: args[1], targetDisposals: 0, materialDisposals: 0, geometryDisposals: 0,
+      };
       this.reflectionTarget.addEventListener('dispose', () => { record.targetDisposals++; });
       this.material.addEventListener('dispose', () => { record.materialDisposals++; });
       this.geometry.addEventListener('dispose', () => { record.geometryDisposals++; });
@@ -62,6 +66,11 @@ describe('Ocean resource lifetime', () => {
     expect(material.uniforms.waterColor.value.getHex()).toBe(theme === 'light' ? 0x2f8db8 : 0x04303a);
     expect(material.uniforms.alpha.value).toBe(theme === 'light' ? 0.92 : 0.95);
     expect(harness.resources[0].water.parent).toBeInstanceOf(THREE.Group);
+  });
+
+  it('bounds the reflection skip by the swell the surface is given', () => {
+    render(<Ocean theme="light" />);
+    expect(harness.resources[0].options?.crestHeight).toBe(maxWaveHeight(DEFAULT_WAVE_SETTINGS));
   });
 
   it('updates eight themes in place without new reflection targets, shaders or geometry', () => {

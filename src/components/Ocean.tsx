@@ -15,7 +15,7 @@ import {
   DEFAULT_OCEAN_GEOMETRY,
   createOceanGeometry,
 } from '@/lib/ocean/oceanGeometry';
-import { DEFAULT_WAVE_SETTINGS, applyWaveShader } from './ocean/waveShader';
+import { DEFAULT_WAVE_SETTINGS, applyWaveShader, maxWaveHeight } from './ocean/waveShader';
 import { drawnFrameDelta, isFrameDrawn } from '@/lib/render/frameGate';
 import { createReflectionCadence } from '@/lib/render/reflectionCadence';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
@@ -91,6 +91,7 @@ export function Ocean({
     const surface = new OwnedWater(geometry, {
       ...getOceanSurfaceConfig('dark', reflectionSize),
       waterNormals,
+      crestHeight: maxWaveHeight(DEFAULT_WAVE_SETTINGS),
     });
     surface.rotation.x = -Math.PI / 2;
     surface.receiveShadow = true;

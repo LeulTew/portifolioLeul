@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { SHORE_FIELD_LAYOUT, DEFAULT_WAVE_SETTINGS } from './waveShader';
+import * as THREE from 'three';
+import {
+  SHORE_FIELD_LAYOUT, DEFAULT_WAVE_SETTINGS, SHOALING_GAIN, SWELL_HEIGHTS, applyWaveShader, maxWaveHeight,
+} from './waveShader';
 import { DEFAULT_OCEAN_GEOMETRY } from '@/lib/ocean/oceanGeometry';
+import { OwnedWater } from '@/lib/ocean/OwnedWater';
 import { SHORE_BAKE_LAYOUT } from '@/lib/ocean/shoreFieldBake';
 
 /**
@@ -45,8 +49,25 @@ describe('wave settings', () => {
      * over-estimate: the peak sits far enough offshore that the height is
      * already ramping down by the time it reaches the coast.
      */
-    const shoalingPeak = 2.35;
+    const shoalingPeak = 1 + SHOALING_GAIN;
     expect(DEFAULT_WAVE_SETTINGS.amplitude * shoalingPeak).toBeLessThan(2.5);
+  });
+
+  it('bounds the crest by the swell the shader actually sums', () => {
+    const water = new OwnedWater(new THREE.PlaneGeometry());
+    applyWaveShader(water.material, { shoreField: new THREE.Texture() });
+    const shader = {
+      uniforms: {}, vertexShader: water.material.vertexShader, fragmentShader: water.material.fragmentShader,
+    } as unknown as THREE.WebGLProgramParametersWithUniforms;
+    water.material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+    const gain = Number(/shoaling = 1\.0 \+ ([\d.]+) \* exp/.exec(shader.vertexShader)?.[1]);
+    const heights = [...shader.vertexShader.matchAll(/amp \* ([\d.]+), [\d.]+, q\b/g)].map(match => Number(match[1]));
+    expect(gain).toBe(SHOALING_GAIN);
+    expect(heights).toEqual([...SWELL_HEIGHTS]);
+    const summed = heights.reduce((sum, height) => sum + height, 0);
+    expect(maxWaveHeight(DEFAULT_WAVE_SETTINGS)).toBeCloseTo(DEFAULT_WAVE_SETTINGS.amplitude * (1 + gain) * summed, 12);
+    water.geometry.dispose();
+    water.dispose();
   });
 
   it('keeps the surf zone inside the field that describes it', () => {
