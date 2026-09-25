@@ -7,12 +7,14 @@ export interface HeroCloudProps {
   active?: boolean;
   /** Inherits the ancestor's data-theme when omitted. */
   theme?: string;
+  /** What the night mist drifts over: the island scene, or the fallback's plain page. */
+  ground?: 'scene' | 'plain';
 }
 
 type CloudLayer = 'body' | 'vapor' | 'shear' | 'mask';
 
 /** The authored SVG noise is baked once, not evaluated during every fog frame. */
-export function HeroCloud({ className, active = true, theme }: HeroCloudProps) {
+export function HeroCloud({ className, active = true, theme, ground = 'scene' }: HeroCloudProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [moving, setMoving] = useState(false);
   const [vectorFallback, setVectorFallback] = useState(false);
@@ -75,6 +77,7 @@ export function HeroCloud({ className, active = true, theme }: HeroCloudProps) {
       aria-hidden="true"
       data-hero-cloud=""
       data-cloud-theme={cloudTheme}
+      data-cloud-ground={ground}
       data-cloud-texture={vectorFallback ? 'vector' : 'raster'}
       data-motion={active && moving ? 'running' : 'paused'}
     >

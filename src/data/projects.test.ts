@@ -54,6 +54,26 @@ describe("projectsData", () => {
     }
   });
 
+  it("shows each live demo it could capture as its own desktop interface, not a mockup or phone crop", () => {
+    // Round 9 (D-BRAND-002): Kitefew and AgendaFlow showed staged mockups; five others were
+    // phone-width or tiny crops. Each is now a 16:10 desktop capture of its own live demo.
+    const recaptured = ["Kitefew", "AgendaFlow AI", "Elona Practice", "EthioDriveMaster",
+      "System Design Guide", "CS Exit Practice", "Dream Weaver"];
+    for (const title of recaptured) {
+      const project = projectsData.find(item => item.title === title)!;
+      expect(project.imageKind, title).toBe("interface");
+      expect(project.demoUrl, title).toBeTruthy();
+      const bytes = readFileSync(resolve("public", ...project.image.split("/").filter(Boolean)));
+      expect(bytes.length, title).toBeLessThanOrEqual(80_000);
+      // A lossy VP8 frame stores its size at bytes 26-29: 14 bits of width, then of height.
+      expect(bytes.subarray(12, 16).toString(), title).toBe("VP8 ");
+      const width = bytes.readUInt16LE(26) & 0x3fff;
+      const height = bytes.readUInt16LE(28) & 0x3fff;
+      expect(width / height, title).toBeCloseTo(1.6, 2);
+      expect(width, title).toBeGreaterThanOrEqual(1280);
+    }
+  });
+
   it("adds inspection notes only to the researched projects", () => {
     expect(projectsData.filter(project => project.evidence).map(project => project.title))
       .toEqual(["Mizan", "Ignition", "ProtoChem 3D", "Amharic IR Improved", "Portfolio Leul"]);

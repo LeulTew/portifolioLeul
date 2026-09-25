@@ -54,4 +54,22 @@ describe("ExpandableTabs Component", () => {
     expect(screen.getByRole("group", { name: "Filter projects" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Web" })).toBeInTheDocument();
   });
+
+  it("names an inactive category on hover and keyboard focus without moving the row", () => {
+    // Round 9 (D-UX-001): inactive fallback categories showed only an icon, even on hover or focus.
+    const { container } = render(<ExpandableTabs tabs={mockTabs} />);
+    const hints = [...container.querySelectorAll<HTMLElement>("[data-tab-hint]")];
+    expect(hints.map(hint => hint.textContent)).toEqual(["AI", "Mobile"]);
+    for (const hint of hints) {
+      expect(hint).toHaveAttribute("aria-hidden", "true");
+      expect(hint.closest("button")!.className).toContain("group");
+      expect(hint.className).toContain("absolute");
+      expect(hint.className).toContain("opacity-0");
+      expect(hint.className).toContain("[.group:hover_&]:opacity-100");
+      expect(hint.className).toContain("[.group:focus-visible_&]:opacity-100");
+    }
+    expect(screen.getByRole("button", { name: "AI" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    expect([...container.querySelectorAll("[data-tab-hint]")].map(hint => hint.textContent)).toEqual(["Web", "Mobile"]);
+  });
 });

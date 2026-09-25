@@ -21,6 +21,43 @@
   --cloud-light-density: 0.44;
 }
 
+/*
+ * Night mist, not a daytime patch (round 9, D-UI-002). In dark the authored
+ * layers take the night's own teal-slate, and only the lit shear keeps a
+ * moonlit sheen. Each filter is static on an image that does not move, so it
+ * is applied when the image is painted; the drifting wrappers move pixels
+ * that are already toned.
+ */
+.cloud[data-cloud-theme='dark'],
+:global([data-theme='dark']) .cloud:not([data-cloud-theme]) {
+  --cloud-density: 0.92;
+  --cloud-vapor-density: 0.5;
+  --cloud-light-density: 0.3;
+  --cloud-body-tone: brightness(0.2) sepia(0.6) hue-rotate(118deg) saturate(1.6);
+  --cloud-vapor-tone: brightness(0.34) sepia(0.5) hue-rotate(118deg) saturate(1.4);
+  --cloud-light-tone: brightness(0.78) sepia(0.2) hue-rotate(110deg);
+}
+
+/* Over the fallback's plain slate page, the same mist takes the page's blue, not the sea's teal. */
+.cloud[data-cloud-theme='dark'][data-cloud-ground='plain'],
+:global([data-theme='dark']) .cloud[data-cloud-ground='plain']:not([data-cloud-theme]) {
+  --cloud-body-tone: brightness(0.24) sepia(0.5) hue-rotate(182deg) saturate(1.3);
+  --cloud-vapor-tone: brightness(0.38) sepia(0.4) hue-rotate(182deg) saturate(1.2);
+  --cloud-light-tone: brightness(0.8) sepia(0.2) hue-rotate(178deg);
+}
+
+.cloud .body {
+  filter: var(--cloud-body-tone, none);
+}
+
+.cloud .vapor .layerImage {
+  filter: var(--cloud-vapor-tone, none);
+}
+
+.cloud .shear .layerImage {
+  filter: var(--cloud-light-tone, none);
+}
+
 .body,
 .vapor,
 .shear,

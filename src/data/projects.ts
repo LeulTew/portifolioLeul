@@ -86,7 +86,7 @@ export const projectsData: Project[] = [
     longDescription: "**Kitefew** is an experimental spatial computing game that brings the 'Fruit Ninja' experience to your browser using **MediaPipe** finger tracking.\n\n• **Computer Vision**: Real-time tracking of the index finger via camera—no touch or mouse required.\n• **Spatial Interaction**: Slicing physics and interaction layers mapped to physical hand movements.\n• **Performance**: Optimized for web execution with low-latency gesture recognition.\n• **Modern Aesthetics**: Neon-accented dark UI with fluid animations and responsive gameplay.\n\nA showcase of interactive computer vision and web-based gaming technology.",
     tech: "JAVASCRIPT, MEDIAPIPE, VITE, VANILLA CSS",
     image: "/projects/kitefew.webp",
-    imageKind: "mockup",
+    imageKind: "interface",
     githubUrl: "https://github.com/LeulTew/Kitefew",
     demoUrl: "https://kitefew.vercel.app/",
     categories: ["AI/DataScience", "Desktop & Games", "Web Development"]
@@ -167,7 +167,7 @@ export const projectsData: Project[] = [
     longDescription: "**AgendaFlow AI** is a high-performance meeting management engine that leverages **Google Gemini** to transform raw inputs into structured agendas.\n\n• **Intelligent Scanner**: Camera-based extraction of handwritten or printed agendas with real-time AI processing.\n• **Document Intelligence**: Upload documents or provide descriptions to generate comprehensive meeting structures.\n• **Excel Integration**: Full-featured Excel-like management for topics, stakeholders, and timing.\n• **Multi-Modal AI**: Supports camera uploads, document parsing, and natural language descriptions.\n\nDesigned for maximum productivity with a sleek, glassmorphic technical interface.",
     tech: "REACT, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI, LUCIDE REACT",
     image: "/projects/agenda-flow.webp",
-    imageKind: "mockup",
+    imageKind: "interface",
     githubUrl: "https://github.com/LeulTew/AgendaFlow-AI",
     demoUrl: "https://agenda-flow-ai.vercel.app",
     categories: ["AI/DataScience", "Web Development"]
