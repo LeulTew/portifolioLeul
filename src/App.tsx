@@ -486,7 +486,12 @@ function App() {
       const container = scrollElement;
       const main = mainRef.current;
       const containerScrollable = Math.max(container.scrollHeight - container.clientHeight, 1);
-      const contentScrollable = Math.max(main.scrollHeight - container.clientHeight, 1);
+      // The layer is drawn across (pages - 1) screens of the page count ScrollControls was last
+      // given, read back from its track as the rebuild restore does. The content's own height
+      // is not that range: a change inside the rebuild deadband left the two apart, and navbar
+      // Skills landed 25px outside its entry at 1280x720 (round 15, TECH-049).
+      const renderedPages = container.clientHeight > 0 ? container.scrollHeight / container.clientHeight - 1 : 1;
+      const contentScrollable = Math.max((renderedPages - 1) * container.clientHeight, 1);
       const rawOffset = id === 'home' ? 0 : target.offsetTop - (main.offsetTop || 0);
 
       let adjustedOffset = 0;

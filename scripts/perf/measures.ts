@@ -337,6 +337,20 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
     if (journey[index].section !== 'about' || journey[index].about !== ABOUT_BEATS[step]) continue;
     if (++step === ABOUT_BEATS.length) opened = index;
   }
+  // The opening itself runs forward: a return to an earlier beat before Education opened is
+  // the costliest stretch paid twice, not one pass (round 15, TECH-054). Green after Education
+  // is its release on the way to Skills, and allowed.
+  let furthestBeat = -1;
+  for (let index = 0; index <= (opened >= 0 ? opened : journey.length - 1); index++) {
+    const checkpoint = journey[index];
+    const beatIndex = checkpoint.section === 'about' ? ABOUT_BEATS.indexOf(checkpoint.about as (typeof ABOUT_BEATS)[number]) : -1;
+    if (beatIndex < 0) continue;
+    if (beatIndex < furthestBeat) {
+      failures.push(`About went back from ${ABOUT_BEATS[furthestBeat]} to ${ABOUT_BEATS[beatIndex]} before Education opened`);
+      break;
+    }
+    furthestBeat = beatIndex;
+  }
   let closed = opened;
   while (opened >= 0 && journey[closed + 1]?.section === 'about' && journey[closed + 1].about === 'education') closed++;
   const opening = (index: number) => opened >= 0 && index >= opened && index <= closed;

@@ -763,14 +763,14 @@ describe('Skills completed-beat playback', () => {
       motion(true);
       expect(stage()).toHaveAttribute('data-staged', 'false');
       advance(100);
-      expect(onNavigate).toHaveBeenLastCalledWith('skills', { source: 'navbar', anchor: skillChapterId(2) });
+      expect(onNavigate).toHaveBeenLastCalledWith('skills', { source: 'navbar', resume: true, anchor: skillChapterId(2) });
       // Focus lost with the staged reader lands on the chapter's own title.
       const title = document.querySelector<HTMLElement>(`#${skillChapterId(2)} [data-skill-landing]`);
       expect(document.activeElement).toBe(title);
       // And again after a track rebuild detached it, when the rebuilt track takes the navigation again.
       act(() => {
         title!.blur();
-        publishSectionNavigation('skills', { source: 'navbar', anchor: skillChapterId(2) });
+        publishSectionNavigation('skills', { source: 'navbar', resume: true, anchor: skillChapterId(2) });
       });
       expect(document.activeElement).toBe(title);
 
@@ -778,7 +778,7 @@ describe('Skills completed-beat playback', () => {
       advance(100);
       await act(async () => {});
       advance(50);
-      expect(onNavigate).toHaveBeenLastCalledWith('skills', { source: 'navbar' });
+      expect(onNavigate).toHaveBeenLastCalledWith('skills', { source: 'navbar', resume: true });
       expect(stage()).toHaveAttribute('data-staged', 'true');
       expect(stage()).toHaveAttribute('data-phase', 'reading');
       expect(stage()).not.toHaveAttribute('aria-hidden');
@@ -797,6 +797,52 @@ describe('Skills completed-beat playback', () => {
       expect(onNavigate).not.toHaveBeenCalledWith('skills', expect.anything());
     });
 
+    const resumes = (onNavigate: ReturnType<typeof navigate>) =>
+      onNavigate.mock.calls.filter(([, options]) => options?.resume).length;
+
+    it('gives way to a newer destination chosen before it lands, however it was chosen', () => {
+      // Round 15 (TECH-050): a Contact activation with no pointer or key event was overruled by the resume.
+      const onNavigate = navigate();
+      enter(onNavigate);
+      cross();
+      motion(true);
+      act(() => publishSectionNavigation('contact', { source: 'navbar' }));
+      advance(100);
+      expect(resumes(onNavigate)).toBe(0);
+    });
+
+    it('forgets the chapter once the reader has been taken elsewhere', async () => {
+      const onNavigate = navigate();
+      enter(onNavigate);
+      cross();
+      cross();
+      motion(true);
+      advance(100);
+      expect(resumes(onNavigate)).toBe(1);
+      act(() => publishSectionNavigation('contact', { source: 'navbar' }));
+      motion(false);
+      advance(100);
+      await act(async () => {});
+      expect(resumes(onNavigate)).toBe(1);
+      expect(index()).toBe(0);
+    });
+
+    it('lets a new choice of Skills itself start afresh', async () => {
+      const onNavigate = navigate();
+      enter(onNavigate);
+      cross();
+      cross();
+      motion(true);
+      advance(100);
+      motion(false);
+      await navbar('skills');
+      advance(100);
+      await act(async () => {});
+      expect(resumes(onNavigate)).toBe(1);
+      expect(stage()).toHaveAttribute('data-phase', 'reading');
+      expect(index()).toBe(0);
+    });
+
     it('stages the chapter the reader scrolled to in the linear page', async () => {
       vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
         if (this.id === 'skills') return DOMRect.fromRect({ x: 0, y: top, width: 1440, height: 4320 });
@@ -807,8 +853,9 @@ describe('Skills completed-beat playback', () => {
       staged = false;
       const onNavigate = navigate();
       mount(onNavigate);
+      // Round 15 (TECH-053): a scrollbar drag outlasts any window after a discrete input.
+      now += 5000;
       top = -2000;
-      wheel(120);
       act(() => { window.dispatchEvent(new Event('scroll')); });
       advance(20);
       staged = true;

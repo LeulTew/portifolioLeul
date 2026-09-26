@@ -360,6 +360,9 @@ chapter being read. It is taken through navigation, as the navbar would (with
 around it and a rebuilding track takes it again; a staged reader resumes
 settled, without an entrance, and focus lost with the old layout lands in it.
 The reader's own input first, or a navigation elsewhere, cancels the resume.
+Its own navigations carry `resume: true`, which is how it, and the replay of
+it after a rebuild, are told from a new choice of Skills, which starts afresh
+(round 15, TECH-050).
 A scroll offset or a section ratio alone is not a reader's place: the staged
 reader came back empty waiting for a gesture, and the linear page opened on
 another chapter (round 14, D-MOTION-001).

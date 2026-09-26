@@ -77,6 +77,10 @@ export function useResizeAnchor(enabled: boolean): void {
     const release = () => {
       cancelAnimationFrame(holding);
       holding = 0;
+      // A resize still settling would restore the old place over the new one (round 15, TECH-052);
+      // the next scroll samples the anchor afresh.
+      cancelAnimationFrame(settling);
+      settling = 0;
     };
     const hold = (now: number) => {
       if (!holding) return;
