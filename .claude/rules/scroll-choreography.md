@@ -352,6 +352,18 @@ never wall-clock time, and never through a hidden tab. A navbar choice made
 while the track is about to rebuild (a resize) is kept and taken again once the
 new geometry is in place, instead of restoring the pre-resize offset over it.
 
+**A layout change keeps the reader's chapter (2026-09-26):** when a chapter
+remounts between its staged reader and its linear page -- a motion preference
+changed, or a window crossing the stage's size -- the new layout continues the
+chapter being read. It is taken through navigation, as the navbar would (with
+`anchor` naming the linear chapter's element), so the other chapters settle
+around it and a rebuilding track takes it again; a staged reader resumes
+settled, without an entrance, and focus lost with the old layout lands in it.
+The reader's own input first, or a navigation elsewhere, cancels the resume.
+A scroll offset or a section ratio alone is not a reader's place: the staged
+reader came back empty waiting for a gesture, and the linear page opened on
+another chapter (round 14, D-MOTION-001).
+
 ---
 
 ## 6. A movement is never skippable, and never plays to an empty room

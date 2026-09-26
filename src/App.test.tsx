@@ -239,7 +239,13 @@ vi.mock("./components/sections/About/About", () => ({
 }));
 
 vi.mock("./components/sections/Skills/Skills", () => ({
-  Skills: () => <div data-testid="skills-section">Skills Section</div>,
+  Skills: ({ onNavigate }: { onNavigate?: import('./lib/scroll/sectionNavigation').SectionNavigate }) =>
+    <div data-testid="skills-section">Skills Section
+      <article data-testid="skills-chapter" id="skills-chapter" />
+      <button onClick={() => onNavigate?.('skills', { source: 'navbar', anchor: 'skills-chapter' })}>
+        Resume a Skills chapter
+      </button>
+    </div>,
 }));
 
 vi.mock("./components/sections/Projects/Projects", () => ({
@@ -514,6 +520,20 @@ describe("App without a WebGL context", () => {
     }
   });
 
+  it("lands a navigation that names an element of its section on that element, in the flat document", async () => {
+    // Round 14 (D-MOTION-001): Skills resumes the chapter being read after a change of layout.
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    try {
+      await renderSettled();
+      screen.getByTestId("skills-section").id = "skills";
+      screen.getByTestId("skills-chapter").getBoundingClientRect = () => DOMRect.fromRect({ y: 1500, height: 700 });
+      fireEvent.click(screen.getByRole("button", { name: "Resume a Skills chapter" }));
+      expect(scrollTo).toHaveBeenLastCalledWith({ top: 1500 + window.scrollY - 80, behavior: "auto" });
+    } finally {
+      scrollTo.mockRestore();
+    }
+  });
+
 });
 
 describe("App scroll track sizing", () => {
@@ -749,6 +769,18 @@ describe("App scroll position across a track resize", () => {
     } finally {
       unsubscribe();
     }
+  });
+
+  it("lands a navigation that names an element of its section on that element, on the scene scrollport", () => {
+    renderApp();
+    const target = screen.getByTestId('skills-section');
+    target.id = 'skills';
+    Object.defineProperty(target, 'offsetTop', { configurable: true, value: 5000 });
+    // Drawn through the layer's translation; only their difference is layout.
+    target.getBoundingClientRect = () => DOMRect.fromRect({ y: -600, height: 3000 });
+    screen.getByTestId('skills-chapter').getBoundingClientRect = () => DOMRect.fromRect({ y: 600, height: 700 });
+    fireEvent.click(screen.getByRole('button', { name: 'Resume a Skills chapter' }));
+    expect(mockScroll.offset).toBeCloseTo((5000 + 1200 - 80) / (contentHeight - track.clientHeight));
   });
 
   it("does not throw the reader back to the top when content grows", () => {

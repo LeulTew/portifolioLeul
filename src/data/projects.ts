@@ -2,10 +2,17 @@ export interface ProjectEvidence {
   inspect: string;
   access?: string;
   sourceNote?: string;
+  /** The owner's own part in the work, bounded to what the source or the page credits. */
+  role?: string;
   decision?: {
     summary: string;
-    sourceLabel: string;
-    sourceUrl: string;
+    /**
+     * Where a visitor can verify it: a pinned source revision, or a file the
+     * project's own live page serves. Absent only for a private repository,
+     * which the source note then says (round 14, D-BRAND-002).
+     */
+    sourceLabel?: string;
+    sourceUrl?: string;
   };
 }
 
@@ -72,6 +79,7 @@ const projectRecords: Project[] = [
     evidence: {
       inspect: "Enter a goal, inspect the five-step result, then open a step for sub-actions. Switch between English and Amharic.",
       access: "Plan generation depends on the live AI service. The demo publicly lists other visitors' recent goals.",
+      role: "Built solo: the Next.js interface, the FastAPI service and the checks between them and the model.",
       decision: {
         summary: "Model output is not assumed to be valid: the service checks for exactly five non-empty steps and a complexity score from 1 to 10 before accepting a response.",
         sourceLabel: "Response validation source",
@@ -94,8 +102,9 @@ const projectRecords: Project[] = [
       inspect: "Open How to Play, then start the camera and move an index finger to slice fruit while avoiding bombs.",
       access: "The game asks for a player name, and camera play needs camera access.",
       sourceNote: "MediaPipe provides the hand recognition; this is an integration, not a trained model or measured tracking performance.",
+      role: "Built solo: the game, its camera hand tracking and its arcade interface.",
       decision: {
-        summary: "Tracking is configured for one hand with MediaPipe's lite model, and both detection and tracking confidence thresholds set to 0.6.",
+        summary: "One hand on MediaPipe's lite model rather than its default full one, with detection and tracking confidence raised from 0.5 to 0.6: speed over landmark detail, and a surer hand before it slices.",
         sourceLabel: "Hand-tracking configuration",
         sourceUrl: "https://github.com/LeulTew/Kitefew/blob/ea3c4905625940204e521e8ecc10e6d66308b0fb/webapp/src/logic/MediaPipeService.ts#L32-L37",
       },
@@ -180,7 +189,11 @@ const projectRecords: Project[] = [
     evidence: {
       inspect: "Open Wizard and compare Step-by-Step with Quick Create, then describe a meeting and generate its agenda.",
       access: "No sign-in is needed to open the builder; generation depends on the live Gemini service.",
-      sourceNote: "The implementation repository is private, so no source is linked; this describes the live demo only.",
+      sourceNote: "The implementation repository is private, so no source is linked; the implementation note is taken from it, and the live builder shows its result.",
+      role: "Built solo: the agenda builder and its Gemini integration.",
+      decision: {
+        summary: "Gemini has to answer in JSON matching a schema (title, objective, stakeholders, and timed topics with owners), so a generated agenda fills the timeline and spreadsheet directly instead of being parsed from prose.",
+      },
     }
   },
   {
@@ -221,7 +234,13 @@ const projectRecords: Project[] = [
     evidence: {
       inspect: "Answer a question and use Check Answer, bookmark another, then jump across the exam with the numbered grid.",
       access: "Opens without sign-in, straight into a timed exam.",
-      sourceNote: "No implementation source is linked; this describes the live demo only.",
+      sourceNote: "No repository is linked; the implementation note points at a script the live page itself serves.",
+      role: "Created solo, as the live page credits: the exam interface, its timer and its exam registry.",
+      decision: {
+        summary: "Past exams are entries in one registry (100 questions, a 120-minute limit, their subjects) that the exam manager loads and caches by id, so another exam is a data file and an entry, not new interface code.",
+        sourceLabel: "Exam registry, as served",
+        sourceUrl: "https://exitpractice.wasmer.app/exams/examRegistry.js",
+      },
     }
   },
   {
@@ -237,6 +256,7 @@ const projectRecords: Project[] = [
     evidence: {
       inspect: "In a local setup, browse cars in the 3D viewer, filter them, book one, and follow the sandbox PayPal checkout.",
       access: "No live demo is linked; it runs as a local ASP.NET Core app with its SQL Server database.",
+      role: "Built solo: the ASP.NET Core MVC app, its data model and the Three.js vehicle viewer.",
       decision: {
         summary: "One EF Core context extends ASP.NET Identity's with cars, bookings, reviews, payments, favorites and vehicle versions, so accounts and rentals share one data model.",
         sourceLabel: "Data model source",
@@ -302,6 +322,7 @@ const projectRecords: Project[] = [
       inspect: "Move from Skills to Projects, open Details, and compare reading with browsing. Use reduced-motion mode to inspect the alternate camera behavior.",
       access: "The TV view appears only when the 3D screen is ready and the viewport is large enough.",
       sourceNote: "This describes the published source revision, not unpublished optimizations or measured performance of the live deployment.",
+      role: "Designed and built solo: the island scene, the scroll chapters and the TV reader.",
       decision: {
         summary: "One shared gate decides whether a frame is drawn. The renderer and camera skip the same hidden frames, and camera damping uses elapsed time between draws.",
         sourceLabel: "Shared frame-gate source",

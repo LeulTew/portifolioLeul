@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LANDING_FRAME_CAP_MS, LANDING_WAIT_MS, cancelSectionLanding, landSectionFocus } from './sectionLanding';
+import { publishSectionNavigation, subscribeSectionNavigation } from './sectionNavigation';
 
 const frames: FrameRequestCallback[] = [];
 let clock = 0;
@@ -61,6 +62,39 @@ describe('landing focus after navigation', () => {
     byId('stage').removeAttribute('inert');
     flush(5);
     expect(byId('reader')).not.toHaveFocus();
+  });
+
+  it.each(['wheel', 'touchstart'])('gives way to a %s from the reader as well', type => {
+    // Round 14 (TECH-045): only keys and presses ended the wait; a scroll gesture left it to land later.
+    byId('projects-link').focus();
+    landSectionFocus('projects');
+    flush();
+    document.dispatchEvent(new Event(type));
+    byId('stage').removeAttribute('inert');
+    flush(5);
+    expect(byId('projects-link')).toHaveFocus();
+    expect(frames).toHaveLength(0);
+  });
+
+  it('gives way to a newer navigation elsewhere, and keeps waiting through a repeat of its own', () => {
+    byId('projects-link').focus();
+    landSectionFocus('projects');
+    flush();
+    publishSectionNavigation('projects', { source: 'navbar' });
+    expect(frames).toHaveLength(1);
+    publishSectionNavigation('contact');
+    byId('stage').removeAttribute('inert');
+    flush(5);
+    expect(byId('projects-link')).toHaveFocus();
+
+    // Its own navigation, published while it starts, is not a newer one.
+    byId('stage').setAttribute('inert', '');
+    const stop = subscribeSectionNavigation(target => { if (target === 'projects') landSectionFocus('projects'); });
+    publishSectionNavigation('projects', { source: 'navbar' });
+    stop();
+    byId('stage').removeAttribute('inert');
+    flush();
+    expect(byId('reader')).toHaveFocus();
   });
 
   it('waits through the TV turn on a fast display, then gives up rather than taking focus late', () => {

@@ -467,6 +467,8 @@ function App() {
   const scrollToSection = useCallback((id: string, options?: SectionNavigationOptions) => {
     const target = document.getElementById(id);
     if (!target) return;
+    const anchor = options?.anchor ? document.getElementById(options.anchor) : null;
+    const landing = anchor && target.contains(anchor) ? anchor : null;
     trackFocus.cancel();
     const immediate = options?.immediate || options?.source === 'navbar';
     if (options?.source === 'navbar') {
@@ -490,6 +492,9 @@ function App() {
       let adjustedOffset = 0;
       if (id === 'home') {
         adjustedOffset = 0;
+      } else if (landing) {
+        // Both boxes share the layer's translation, so their difference is the layout offset.
+        adjustedOffset = Math.max(rawOffset + landing.getBoundingClientRect().top - target.getBoundingClientRect().top - 80, 0);
       } else if (id === 'about') {
         // Only navbar intent lands inside the first readable beat. Natural
         // handoffs retain the authored heading entry and completion gates.
@@ -532,7 +537,8 @@ function App() {
       const inset = options?.edge === 'end'
         ? target.offsetHeight - window.innerHeight + 80
         : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source) : -80;
-      const top = id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
+      const top = landing ? landing.getBoundingClientRect().top + window.scrollY - 80
+        : id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
       window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
       // An unchanged native position emits no scroll event on a repeated visit.
       window.dispatchEvent(new Event('scroll'));

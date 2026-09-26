@@ -128,6 +128,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   let frame = 0;
   /** True while this module's own navigation is being published. */
   let issuing = false;
+  /** An invalid field's queued reveal, owned so teardown can cancel it (round 14, TECH-045). */
+  let validation = 0;
 
   const nudge = (element: HTMLElement) => {
     const content = main();
@@ -218,7 +220,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   const invalid = (event: Event) => {
     const field = event.target;
     if (!(field instanceof HTMLElement)) return;
-    view.requestAnimationFrame(() => { if (root.activeElement === field) reveal(field); });
+    view.cancelAnimationFrame(validation);
+    validation = view.requestAnimationFrame(() => { if (root.activeElement === field) reveal(field); });
   };
   const requested = (event: Event) => reveal(event.target instanceof Element ? event.target : null, true);
 
@@ -233,6 +236,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     root.removeEventListener(REVEAL_REQUEST, requested, true);
     stopNewerIntent();
     view.cancelAnimationFrame(frame);
+    view.cancelAnimationFrame(validation);
   };
 }
 
@@ -394,6 +398,7 @@ export function installDocumentFocus({ main, navigate }: {
   let from: string | null = null;
   let frame = 0;
   let issuing = false;
+  let validation = 0;
 
   const key = (event: KeyboardEvent) => {
     if (event.key !== 'Tab') return;
@@ -430,7 +435,8 @@ export function installDocumentFocus({ main, navigate }: {
   const invalid = (event: Event) => {
     const field = event.target;
     if (!(field instanceof HTMLElement) || !main()?.contains(field)) return;
-    view.requestAnimationFrame(() => {
+    view.cancelAnimationFrame(validation);
+    validation = view.requestAnimationFrame(() => {
       if (root.activeElement !== field) return;
       const hidden = chromeClearance() - revealBox(field).top;
       if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
@@ -464,5 +470,6 @@ export function installDocumentFocus({ main, navigate }: {
     root.removeEventListener('invalid', invalid, true);
     root.removeEventListener(REVEAL_REQUEST, requested, true);
     view.cancelAnimationFrame(frame);
+    view.cancelAnimationFrame(validation);
   };
 }

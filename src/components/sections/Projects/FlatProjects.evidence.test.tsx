@@ -47,7 +47,9 @@ describe('flat project evidence parity', () => {
         expect(article).toHaveTextContent(project.evidence.inspect);
         expect(article).toHaveTextContent(project.evidence.access!);
         if (project.evidence.sourceNote) expect(article).toHaveTextContent(project.evidence.sourceNote);
-        if (project.evidence.decision) {
+        if (project.evidence.role) expect(article).toHaveTextContent(project.evidence.role);
+        if (project.evidence.decision) expect(article).toHaveTextContent(project.evidence.decision.summary);
+        if (project.evidence.decision?.sourceUrl) {
           expect(within(article).getByRole('link', { name: project.evidence.decision.sourceLabel }))
             .toHaveAttribute('href', project.evidence.decision.sourceUrl);
         }

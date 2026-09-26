@@ -29,6 +29,20 @@ function tab(shift = false, init: KeyboardEventInit = {}) {
 function flushFrames() {
   while (frames.length) frames.shift()!(performance.now());
 }
+/** Frames cancelled by handle, as the browser's are: a callback must own its handle to cancel it. */
+function ownedFrames() {
+  const queued = new Map<number, FrameRequestCallback>();
+  let handle = 0;
+  vi.mocked(window.requestAnimationFrame).mockImplementation(callback => { queued.set(++handle, callback); return handle; });
+  vi.mocked(window.cancelAnimationFrame).mockImplementation(id => { queued.delete(id); });
+  return () => {
+    while (queued.size) {
+      const [id, callback] = queued.entries().next().value!;
+      queued.delete(id);
+      callback(performance.now());
+    }
+  };
+}
 
 beforeEach(() => {
   document.body.innerHTML = `
@@ -232,6 +246,20 @@ describe('keyboard focus in the scroll layer', () => {
     byId('email').focus();
     flushFrames();
     expect(byId('track').scrollTop).toBe(0);
+  });
+
+  it('drops a validation reveal still queued when it is uninstalled', () => {
+    // Round 14 (TECH-045): the discarded frame still scrolled the track after teardown.
+    place('contact', 0, 1000); place('message', 44, 120);
+    rendered = 1000;
+    byId('track').scrollTop = 5000;
+    const flush = ownedFrames();
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    release();
+    release = () => {};
+    flush();
+    expect(byId('track').scrollTop).toBe(5000);
   });
 
   it('brings requested feedback that arrived below the fold into view', () => {
@@ -642,6 +670,22 @@ describe('keyboard focus in the no-WebGL document', () => {
     // The label's top, 60, to below the bar and the ring's room, 82.
     expect(scrolled).toHaveBeenCalledExactlyOnceWith({ top: -22, behavior: 'auto' });
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('drops a validation reveal still queued when it is uninstalled', () => {
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    place('message', 20, 120);
+    const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const flush = ownedFrames();
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    release();
+    release = () => {};
+    flush();
+    expect(scrolled).not.toHaveBeenCalled();
   });
 
   it('shows requested feedback whole, and clear of the bar', () => {

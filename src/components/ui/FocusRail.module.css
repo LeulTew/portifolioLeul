@@ -69,18 +69,37 @@
  * At the desktop floor the reader's own title sat below the fold, under a
  * carousel sized for a tall window. Shorter windows get a shorter stage, so
  * the project name and its copy arrive with the images.
+ *
+ * Between the floor and a tall window the stage gives up what the window
+ * lacks, so a project's name, its purpose and its first action arrive
+ * together at every laptop height, 1280x720 included (round 14, D-UI-007).
+ * The name scales with the window's height too, so a two-line one does not
+ * cost the action its place at the floor either (TECH-048).
  */
 @media (max-height: 960px) {
+  .rail {
+    --rail-stage: clamp(200px, calc(100vh - 470px), 360px);
+  }
+
   .rail .stage {
-    height: 360px;
+    height: var(--rail-stage);
   }
 
   .rail .track {
-    height: 340px;
+    height: calc(var(--rail-stage) - 20px);
   }
 
   .rail .card {
-    width: min(520px, 60vw);
+    width: min(520px, 60vw, calc((var(--rail-stage) - 48px) * 16 / 9));
+  }
+
+  .rail .title {
+    font-size: clamp(2.25rem, 5.5vh, 3rem);
+    line-height: 1.05;
+  }
+
+  .rail .lead > :not([hidden]) ~ :not([hidden]) {
+    margin-top: clamp(0.5rem, 1.6vh, 1rem);
   }
 }
 @media (max-height: 640px) {

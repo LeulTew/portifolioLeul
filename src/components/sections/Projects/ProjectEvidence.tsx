@@ -20,13 +20,14 @@ export function ProjectEvidence({ evidence }: { evidence: Evidence }) {
         {evidence.access && <p className={styles.access}>{evidence.access}</p>}
         {evidence.sourceNote && <p className={styles.access}>{evidence.sourceNote}</p>}
       </section>
-      {evidence.decision && <section>
+      {(evidence.role || evidence.decision) && <section>
         <h4>Implementation</h4>
-        <p>{evidence.decision.summary}</p>
-        <a href={evidence.decision.sourceUrl} target="_blank" rel="noopener noreferrer"
+        {evidence.role && <p className={styles.role} data-project-role="">{evidence.role}</p>}
+        {evidence.decision && <p>{evidence.decision.summary}</p>}
+        {evidence.decision?.sourceUrl && <a href={evidence.decision.sourceUrl} target="_blank" rel="noopener noreferrer"
           onClick={event => event.stopPropagation()}>
           {evidence.decision.sourceLabel} <ArrowUpRight size="1em" aria-hidden="true" />
-        </a>
+        </a>}
       </section>}
     </div>
   );

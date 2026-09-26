@@ -723,15 +723,16 @@
 /*
  * The desktop floor (round 12, D-HIT-003). The copy has to fit between the
  * header and the chapter controls, not spill over them: a wider column keeps
- * a two-word title on one line, the toolkit runs three across, and the proof
- * keeps its label and link while its one-line claim yields.
+ * a two-word title on one line, and the toolkit runs three across. The proof
+ * keeps its claim, which says what the linked work shows, and on the staged
+ * reader the summary yields its room to it (round 14, D-UX-002).
  */
 @media (max-height: 640px) {
   .editorial { width: min(48%, 46rem); padding-block: 0; }
-  .summary { margin-top: 0.6rem; line-height: 1.45; }
+  .stage[data-staged='true'] .summary { display: none; }
   .skillList { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem 0.75rem; margin-top: 0.8rem; }
   .proof { margin-top: 0.6rem; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; column-gap: 0.6rem; }
-  .proofClaim { display: none; }
+  .proofClaim { grid-column: 1 / -1; line-height: 1.4; }
 }
 
 @media (min-width: 2400px) and (min-height: 1200px) {

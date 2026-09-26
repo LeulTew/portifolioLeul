@@ -123,15 +123,35 @@ describe("projectsData", () => {
 
   it("pins each implementation claim to inspectable source, not a moving branch", () => {
     const decisions = projectsData.flatMap(project => project.evidence?.decision
-      ? [project.evidence.decision] : []);
-    expect(decisions).toHaveLength(5);
-    for (const decision of decisions) {
+      ? [{ project, decision: project.evidence.decision }] : []);
+    expect(decisions).toHaveLength(7);
+    for (const { project, decision } of decisions) {
       expect(decision.summary).toBeTruthy();
-      expect(decision.sourceLabel).toBeTruthy();
+      expect(Boolean(decision.sourceLabel), project.title).toBe(Boolean(decision.sourceUrl));
+      if (!decision.sourceUrl) {
+        // Round 14 (D-BRAND-002): a private repository's choice is stated, and said to be unlinked.
+        expect(project.evidence!.sourceNote, project.title).toMatch(/repository is private, so no source is linked/);
+        continue;
+      }
       const url = new URL(decision.sourceUrl);
+      if (project.demoUrl && url.origin === new URL(project.demoUrl).origin) {
+        // A file the live page itself serves, for work with no public repository.
+        expect(decision.sourceLabel, project.title).toMatch(/as served/);
+        expect(project.githubUrl, project.title).toBe("");
+        continue;
+      }
       expect(url.origin).toBe("https://github.com");
       expect(url.pathname).toMatch(/^\/LeulTew\/[^/]+\/blob\/[a-f0-9]{40}\//);
       expect(url.hash).toMatch(/^#L\d+-L\d+$/);
+    }
+  });
+
+  it("gives every selected project its owner's part and one consequential choice", () => {
+    // Round 14 (D-BRAND-002): two of the six had access notes but no contribution or decision account.
+    for (const id of FEATURED_PROJECT_IDS) {
+      const project = projectsData.find(item => item.id === id)!;
+      expect(project.evidence?.role, project.title).toMatch(/solo/);
+      expect(project.evidence?.decision?.summary, project.title).toBeTruthy();
     }
   });
 

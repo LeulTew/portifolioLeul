@@ -180,9 +180,16 @@ describe('the semantic TV project reader', () => {
       } else {
         expect(details.querySelector('[data-project-evidence]')).toBeNull();
       }
+      if (project.evidence?.role) expect(details).toHaveTextContent(project.evidence.role);
       if (project.evidence?.decision) {
         const decision = project.evidence.decision;
         expect(details).toHaveTextContent(decision.summary);
+        if (!decision.sourceUrl) {
+          // A private repository: the choice is stated, and its note says why nothing is linked.
+          expect(within(details).queryByRole('link', { name: /source/i })).not.toBeInTheDocument();
+          fireEvent.click(next);
+          continue;
+        }
         const source = within(details).getByRole('link', { name: decision.sourceLabel });
         expect(source).toHaveAttribute('href', decision.sourceUrl);
         expect(source).toHaveAttribute('target', '_blank');

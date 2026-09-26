@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { ControlButton } from '@/components/ui/ControlButton';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
-import { SKILL_CHAPTERS, type SkillChapter } from './skillsData';
+import { SKILL_CHAPTERS, skillChapterId, type SkillChapter } from './skillsData';
 import { SkillInlineText, SkillText, TiltedInstrument } from './SkillsMotion';
 import { SkillSculpture } from './SkillSculpture';
 import { useSkillsPlayback, useSkillsStaged } from './useSkillsPlayback';
@@ -21,6 +21,7 @@ function Chapter({
 }) {
   return (
     <article
+      id={skillChapterId(index)}
       className={styles.chapter}
       data-skill-chapter={index}
       data-scene={chapter.scene}
@@ -30,7 +31,7 @@ function Chapter({
     >
       <div className={styles.editorial} onWheel={onWheel}>
         <SkillText text={chapter.title} tag="h3" className={styles.title}
-          animated={staged} mode={chapter.textMotion} />
+          animated={staged} mode={chapter.textMotion} landing={!staged} />
         <p className={styles.summary} data-skill-summary="">{chapter.summary}</p>
         <ul className={styles.skillList} aria-label={`${chapter.title} toolkit`}>
           {chapter.items.map(skill => (
