@@ -105,18 +105,34 @@ export interface OwnedProcess {
   /** Why the process could not be started, if it could not. */
   readonly startError: Error | undefined;
   readonly exited: Promise<void>;
+  /** Waits up to `milliseconds` for the process to have gone; true once it has. */
+  settle(milliseconds: number): Promise<boolean>;
   /** Stops the process and waits for it to exit, forcibly if it will not. */
   stop(): Promise<void>;
 }
 
-type ProcessLike = Pick<ChildProcess, 'kill' | 'once'>;
+type ProcessLike = Pick<ChildProcess, 'kill' | 'once'> & Partial<Pick<ChildProcess, 'pid'>>;
 
-export function ownProcess(child: ProcessLike, label: string, { graceMs = 5000, terminate }: {
+/** Whether the OS still runs `pid`: signal 0 tests for the process without touching it. */
+function processGone(pid: number | undefined): boolean {
+  if (pid === undefined) return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ESRCH';
+  }
+}
+
+export function ownProcess(child: ProcessLike, label: string, { graceMs = 5000, terminate, gone }: {
   graceMs?: number;
   /** Forces the process to stop; defaults to signalling it. See `terminateTree`. */
   terminate?: (signal?: NodeJS.Signals) => void;
+  /** Asks the OS whether the process has gone; defaults to probing its pid. */
+  gone?: () => boolean;
 } = {}): OwnedProcess {
   const end = terminate ?? ((signal?: NodeJS.Signals) => { child.kill(signal); });
+  const ended = gone ?? (() => processGone(child.pid));
   let exitCode: number | null | undefined;
   let startError: Error | undefined;
   let finish!: () => void;
@@ -125,19 +141,30 @@ export function ownProcess(child: ProcessLike, label: string, { graceMs = 5000, 
   // A process that fails to spawn emits 'error' and never 'exit'.
   child.once('error', (error: Error) => { startError = error; exitCode ??= null; finish(); });
   const running = () => exitCode === undefined;
+  /*
+   * Its exit event, or the OS saying it has gone: on Windows Bun reported Chrome's exit well
+   * after taskkill had ended it and nothing was left, and a stopped browser was counted as one
+   * that would not die (round 21, TECH-064).
+   */
+  const settle = async (milliseconds: number) => {
+    const deadline = performance.now() + milliseconds;
+    while (running() && !ended() && performance.now() < deadline) {
+      await Promise.race([exited, delay(100)]);
+    }
+    return !running() || ended();
+  };
   return {
     label,
     get exitCode() { return exitCode; },
     get startError() { return startError; },
     exited,
+    settle,
     async stop() {
-      if (!running()) return;
+      if (!running() || ended()) return;
       end();
-      await Promise.race([exited, delay(graceMs)]);
-      if (!running()) return;
+      if (await settle(graceMs)) return;
       end('SIGKILL');
-      await Promise.race([exited, delay(graceMs)]);
-      if (running()) throw new Error(`${label} did not exit`);
+      if (!await settle(graceMs)) throw new Error(`${label} did not exit`);
     },
   };
 }

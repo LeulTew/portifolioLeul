@@ -112,7 +112,7 @@ async function launchChrome(scope: Scope, { executable, headed, width, height }:
   // Windows and left the rest running (round 20, TECH-064).
   scope.defer('close Chrome', async () => {
     await cdp.send('Browser.close', {}, { timeoutMs: 5000 }).catch(() => {});
-    await Promise.race([chrome.exited, delay(15_000)]);
+    await chrome.settle(15_000);
   });
   return cdp;
 }

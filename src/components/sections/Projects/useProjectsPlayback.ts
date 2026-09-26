@@ -101,6 +101,13 @@ export function useProjectsPlayback(
     let active = false;
     let side: 'before' | 'after' = rail.getBoundingClientRect().bottom <= 0 ? 'after' : 'before';
     setProjectsReturnOwed(side === 'after');
+    /*
+     * Read from the layout until the reader or a navigation says otherwise: mounted while a track
+     * was rebuilding, the TV took its side from the half-built page -- still below the window,
+     * though App put the reader back at Contact -- and let a reverse wheel pass it by (round 21,
+     * TECH-065).
+     */
+    let sideFromLayout = true;
     let wave: ScrollDirection | null = null;
     let bypass = false;
     let continuedReturn = false;
@@ -135,6 +142,7 @@ export function useProjectsPlayback(
     const show = () => {
       if (active) return;
       active = true;
+      sideFromLayout = false;
       continuedReturn = false;
       afterContactEdit = false;
       setProjectsReturnOwed(false);
@@ -300,6 +308,16 @@ export function useProjectsPlayback(
       if (!alive || document.hidden || !rail?.isConnected || active || bypass ||
           previous.some(hasChapterOwnership)) return;
       const { top, height } = railPosition.readRect();
+      // Only a rail wholly past the window, or wholly ahead of it, says which side the reader is on.
+      if (sideFromLayout && height > 0) {
+        const settledSide = top + height <= 0 ? 'after' : top >= window.innerHeight ? 'before' : side;
+        if (settledSide !== side) {
+          side = settledSide;
+          setProjectsReturnOwed(side === 'after');
+        }
+      }
+      // The reader's first gesture is taken on the settled side, and fixes it.
+      if (wave !== null) sideFromLayout = false;
       const from = projectsEntry({
         side, wave, top, height, viewportHeight: () => window.innerHeight,
         skillsHolding: skills?.dataset.staged === 'true' && skills.dataset.skillsReleased !== 'true',
@@ -312,6 +330,7 @@ export function useProjectsPlayback(
       bypass = false;
       pendingNavigation = null;
       side = 'before';
+      sideFromLayout = false;
       if (next === 'withdrawing') {
         cancel();
         releaseContactSky();
@@ -379,6 +398,7 @@ export function useProjectsPlayback(
       (side === 'after' && (event.key === 'ArrowUp' || event.key === 'PageUp')));
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (navigating) return;
+      sideFromLayout = false;
       wave = null;
       continuedReturn = false;
       afterContactEdit = false;
