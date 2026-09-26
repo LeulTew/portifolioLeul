@@ -390,6 +390,10 @@ of the reader's old place as well as the replay: a natural handoff made while
 a rebuild is still to land is kept for it and taken again after, as a navbar
 choice is. A Contact handoff made as a motion change landed mid-flight was
 placed, then the rebuild put the reader back in Projects (round 19, TECH-061).
+A chapter that has handed the reader on does not take back the scene it
+handed over: the rebuild's replay of the Contact handoff reached Projects as a
+fresh departure, and Projects released the Contact clearing it had just
+parked, leaving the island behind the form (round 20, D-MOTION-004).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

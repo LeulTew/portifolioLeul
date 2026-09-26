@@ -27,7 +27,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
-  Scope, assertPortFree, awaitOwnedPreview, createCdp, delay, openSocket, ownProcess, scoped, until, type Cdp,
+  Scope, assertPortFree, awaitOwnedPreview, createCdp, delay, openSocket, ownProcess, scoped, terminateTree, until, type Cdp,
 } from './perf/harness';
 import {
   PAGE_PROBE, UsageError, checkJourney, journeyPath, judge, parseOptions, summariseFrames, summariseIntervals,
@@ -77,7 +77,7 @@ async function launchChrome(scope: Scope, { executable, headed, width, height }:
 }): Promise<Cdp> {
   const profile = await mkdtemp(join(tmpdir(), 'perf-budget-'));
   // Windows lets go of a closed Chrome's files a moment after its processes exit.
-  scope.defer('remove the Chrome profile', () => rm(profile, { recursive: true, force: true, maxRetries: 25, retryDelay: 200 }));
+  scope.defer('remove the Chrome profile', () => rm(profile, { recursive: true, force: true, maxRetries: 50, retryDelay: 200 }));
   const child = spawn(executable, [
     ...(headed ? [] : ['--headless=new']), '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${width},${height}`,
@@ -86,7 +86,11 @@ async function launchChrome(scope: Scope, { executable, headed, width, height }:
     '--disable-component-update', '--disable-sync', '--no-service-autorun',
     'about:blank',
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
-  const chrome = ownProcess(child, 'Chrome');
+  const chrome = ownProcess(child, 'Chrome', {
+    // A loaded machine takes a while to reap a whole browser; a forced tree stop is final, only slow.
+    graceMs: 10_000,
+    terminate: terminateTree(child, { run: (command, args) => { spawnSync(command, args, { stdio: 'ignore' }); } }),
+  });
   scope.defer('stop Chrome', () => chrome.stop());
   let log = '';
   let endpoint: string | undefined;
@@ -103,8 +107,13 @@ async function launchChrome(scope: Scope, { executable, headed, width, height }:
   }, { timeoutMs: 30_000, label: 'Chrome DevTools' });
   const cdp = createCdp(await openSocket(url));
   scope.defer('close the DevTools connection', () => cdp.close());
-  // Asked to close, Chrome takes its renderer and GPU processes with it and lets go of the profile.
-  scope.defer('close Chrome', () => cdp.send('Browser.close', {}, { timeoutMs: 5000 }).catch(() => {}));
+  // Asked to close, Chrome takes its renderer and GPU processes with it and lets go of the profile --
+  // once it has exited. Stopping it while it was still closing ended only its main process on
+  // Windows and left the rest running (round 20, TECH-064).
+  scope.defer('close Chrome', async () => {
+    await cdp.send('Browser.close', {}, { timeoutMs: 5000 }).catch(() => {});
+    await Promise.race([chrome.exited, delay(15_000)]);
+  });
   return cdp;
 }
 
@@ -372,6 +381,7 @@ async function main() {
       for (let index = 1; index <= options.runs; index++) {
         // Each cold sample owns its Chrome and profile; Ctrl+C closes them through the run's scope.
         const cache = 'fresh profile: empty HTTP, shader and storage caches';
+        let released = true;
         await run(index, cache, async () => {
           const { outcome, cleanup } = await scoped(scope, `sample ${index}`, async own => {
             const cdp = await launchChrome(own, chrome);
@@ -383,8 +393,15 @@ async function main() {
           const sample = outcome.status === 'fulfilled' ? outcome.value : failedSample(cache, outcome.reason);
           // A Chrome or profile that outlived its sample shares the machine with the next one.
           sample.failures.push(...cleanup.map(error => `cleanup: ${error.message}`));
+          released = cleanup.length === 0;
           return sample;
         });
+        // So the next sample would not measure a fresh browser on a machine to itself (round 20, TECH-064).
+        if (!released && index < options.runs) {
+          console.error(`Stopping the cold series after sample ${index}: its Chrome or profile could not be released.`);
+          samples.at(-1)?.failures.push(`the cold series stopped after sample ${index} of ${options.runs}`);
+          break;
+        }
       }
     } else {
       const cdp = await launchChrome(scope, chrome);

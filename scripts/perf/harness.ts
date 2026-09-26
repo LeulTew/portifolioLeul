@@ -111,7 +111,12 @@ export interface OwnedProcess {
 
 type ProcessLike = Pick<ChildProcess, 'kill' | 'once'>;
 
-export function ownProcess(child: ProcessLike, label: string, { graceMs = 5000 } = {}): OwnedProcess {
+export function ownProcess(child: ProcessLike, label: string, { graceMs = 5000, terminate }: {
+  graceMs?: number;
+  /** Forces the process to stop; defaults to signalling it. See `terminateTree`. */
+  terminate?: (signal?: NodeJS.Signals) => void;
+} = {}): OwnedProcess {
+  const end = terminate ?? ((signal?: NodeJS.Signals) => { child.kill(signal); });
   let exitCode: number | null | undefined;
   let startError: Error | undefined;
   let finish!: () => void;
@@ -127,13 +132,35 @@ export function ownProcess(child: ProcessLike, label: string, { graceMs = 5000 }
     exited,
     async stop() {
       if (!running()) return;
-      child.kill();
+      end();
       await Promise.race([exited, delay(graceMs)]);
       if (!running()) return;
-      child.kill('SIGKILL');
+      end('SIGKILL');
       await Promise.race([exited, delay(graceMs)]);
       if (running()) throw new Error(`${label} did not exit`);
     },
+  };
+}
+
+/**
+ * Stops a process and everything it started. On Windows a signal ends only the
+ * process it is sent to: Chrome's renderer, GPU and utility processes outlived
+ * it, held its profile, and shared the machine with the next sample (round 20,
+ * TECH-064). They are ended by the owned process's id, never by name.
+ */
+export function terminateTree(
+  child: Pick<ChildProcess, 'kill' | 'pid'>,
+  { platform = process.platform, run }: {
+    platform?: NodeJS.Platform;
+    run?: (command: string, args: string[]) => void;
+  } = {},
+): (signal?: NodeJS.Signals) => void {
+  return signal => {
+    if (platform !== 'win32' || child.pid === undefined || !run) {
+      child.kill(signal);
+      return;
+    }
+    run('taskkill', ['/PID', String(child.pid), '/T', '/F']);
   };
 }
 

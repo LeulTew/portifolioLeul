@@ -747,6 +747,21 @@ describe('the completed-beat TV chapter', () => {
     expect(onNavigate).toHaveBeenCalledExactlyOnceWith('contact', { immediate: true });
   });
 
+  it("keeps Contact's clearing when a rebuild takes the Contact handoff again", async () => {
+    // Round 20 (D-MOTION-004): the replay of the handoff released the sky just parked for it, and
+    // the island stood behind the form until the reader chose Contact again.
+    const { refresh, onNavigate } = mount();
+    await navbar('projects');
+    wheel(200);
+    await clock.run(500);
+    reduced = true;
+    refresh();
+    expect(getContactView().mode).toBe('parked');
+    await act(async () => publishSectionNavigation('contact', { immediate: true }));
+    expect(getContactView().mode).toBe('parked');
+    expect(onNavigate).toHaveBeenCalledExactlyOnceWith('contact', { immediate: true });
+  });
+
   it('settles a live reduced-motion preference without leaving stale animation or ownership', async () => {
     const { refresh } = mount();
     handoff();
