@@ -64,9 +64,12 @@ export function KineticHeading({
   return (
     <Tag className={cn('flex flex-wrap items-baseline gap-x-3 gap-y-1', className)} aria-label={text}>
       <MotionSpan
+        // A change of mode starts the words over from their settled pose: an entrance already asked
+        // for, delayed or mid-stagger, went on moving under reduced motion (round 19, TECH-062).
+        key={still ? 'still' : 'moving'}
         ref={entrance.ref}
         variants={containerVariants}
-        initial={still ? false : 'hidden'}
+        initial={still || entrance.hasEntered ? false : 'hidden'}
         // Reduced motion is settled at the visible pose, not left without a target: a heading
         // mounted with motion kept its hidden words when the preference changed.
         animate={still || entrance.hasEntered ? 'visible' : 'hidden'}

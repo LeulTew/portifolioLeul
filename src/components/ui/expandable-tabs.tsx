@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { LucideIcon } from "lucide-react";
 import { ThemeContext } from "../sections/theme/ThemeContext";
+import rail from "./chamferRail.module.css";
 
 interface Tab {
   title: string;
@@ -97,8 +98,10 @@ export function ExpandableTabs({
     <div
       role="group"
       aria-label={ariaLabel}
+      data-tone={isLight ? 'light' : 'dark'}
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-full border border-[var(--pill-rail-border)] bg-[var(--pill-rail-bg)] p-2",
+        "flex flex-wrap items-center gap-2 p-2",
+        rail.rail,
         className
       )}
     >
@@ -124,17 +127,18 @@ export function ExpandableTabs({
             onClick={() => handleSelect(index)}
             transition={transition}
             className={cn(
-              "group relative flex items-center justify-center rounded-full text-[0.8125rem] font-medium transition-colors duration-300",
+              "group flex items-center justify-center text-[0.8125rem] font-medium transition-colors duration-300",
+              rail.tab,
               // Keep a 48px target while the Projects surface scales to 0.97.
               "min-h-[50px] min-w-[50px]",
               "focus-visible:[outline-style:solid] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-current",
               is720p ? "py-2" : "py-3",
               // Horizontal padding is handled by variants
               selected === index
-                ? "bg-[var(--pill-active-bg)] text-[var(--pill-active-text)]"
+                ? "text-[var(--pill-active-text)]"
                 : isLight
-                  ? "text-black/60 hover:bg-black/5 hover:text-black"
-                  : "text-white/70 hover:bg-white/5 hover:text-white/95"
+                  ? "text-black/60 hover:text-black"
+                  : "text-white/70 hover:text-white/95"
             )}
             style={
               selected !== index && isLight

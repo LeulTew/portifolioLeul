@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { MagneticButton } from "./MagneticButton";
 import { IndexPicker } from "./IndexPicker";
 import styles from "./FocusRail.module.css";
+import rail from "./chamferRail.module.css";
 
 export type FocusRailItem = {
   id: string | number;
@@ -415,15 +416,13 @@ export function FocusRail({
           {/* Nav Controls */}
           <div className="flex-shrink-0 flex items-center gap-4 pt-2 self-start sticky top-0">
             <div
-              className={cn(
-                "flex items-center gap-2 rounded-full p-2 backdrop-blur-md",
-                isLight ? "bg-white/75 ring-1 ring-black/15" : "bg-neutral-950/50 ring-1 ring-white/10"
-              )}
+              data-tone={isLight ? 'light' : 'dark'}
+              className={cn("flex items-center gap-2 p-2", rail.rail)}
             >
               <button
                 onClick={handlePrev}
                 aria-label="Previous project"
-                className={cn("rounded-full p-3 transition hover:bg-white/10 active:scale-95", styles.navigationButton)}
+                className={cn("p-3 transition active:scale-95", rail.tab, styles.navigationButton)}
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -439,7 +438,7 @@ export function FocusRail({
               <button
                 onClick={handleNext}
                 aria-label="Next project"
-                className={cn("rounded-full p-3 transition hover:bg-white/10 active:scale-95", styles.navigationButton)}
+                className={cn("p-3 transition active:scale-95", rail.tab, styles.navigationButton)}
               >
                 <ChevronRight className="h-5 w-5" />
               </button>

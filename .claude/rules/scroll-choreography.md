@@ -385,6 +385,11 @@ frame see positions from a layout they no longer own (round 17; Education the
 same, round 18, TECH-060). Any destination accepted after a choice was queued
 for a rebuild retires that queued choice, a natural handoff included: the
 replay otherwise wrote the older destination back over it (round 18, TECH-059).
+The newest accepted destination owns the whole pending settlement, the restore
+of the reader's old place as well as the replay: a natural handoff made while
+a rebuild is still to land is kept for it and taken again after, as a navbar
+choice is. A Contact handoff made as a motion change landed mid-flight was
+placed, then the rebuild put the reader back in Projects (round 19, TECH-061).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

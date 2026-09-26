@@ -83,16 +83,44 @@ describe("KineticText Components", () => {
       const media = liveMotionQuery(false);
       try {
         const { container } = render(<KineticHeading text="Selected Work" as="h2" />);
-        const words = [...container.querySelectorAll<HTMLElement>("h2 > span > span")];
-        expect(words).toHaveLength(2);
-        expect(words[0].style.opacity).toBe("0");
+        const words = () => [...container.querySelectorAll<HTMLElement>("h2 > span > span")];
+        expect(words()).toHaveLength(2);
+        expect(words()[0].style.opacity).toBe("0");
         act(() => media.set(true));
         await waitFor(() => {
-          for (const word of [container.querySelector<HTMLElement>("h2 > span")!, ...words]) {
+          for (const word of [container.querySelector<HTMLElement>("h2 > span")!, ...words()]) {
             expect(word.style.opacity).toBe("1");
           }
         });
       } finally { media.restore(); }
+    });
+
+    it("stops an entrance already on its way and settles it at once", async () => {
+      // Round 19 (TECH-062): a requested, delayed entrance went on moving after reduced motion was asked for.
+      const media = liveMotionQuery(false);
+      vi.stubGlobal("IntersectionObserver", class {
+        constructor(private readonly callback: IntersectionObserverCallback) {}
+        observe(target: Element) {
+          this.callback([{ target, isIntersecting: true, intersectionRect: { height: 400 }, rootBounds: { height: 800 } } as unknown as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+        }
+        unobserve() {}
+        disconnect() {}
+        takeRecords() { return []; }
+      });
+      try {
+        const { container } = render(<KineticHeading text="Selected Work" as="h2" delay={2} />);
+        const words = () => [...container.querySelectorAll<HTMLElement>("h2 > span > span")];
+        // The entrance is asked for and waiting out its delay.
+        await new Promise(resolve => setTimeout(resolve, 150));
+        expect(words()[0].style.opacity).toBe("0");
+        act(() => media.set(true));
+        await waitFor(() => {
+          for (const word of words()) expect(word.style.opacity).toBe("1");
+        }, { timeout: 400 });
+      } finally {
+        media.restore();
+        vi.unstubAllGlobals();
+      }
     });
   });
 });
