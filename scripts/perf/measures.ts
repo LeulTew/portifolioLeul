@@ -353,6 +353,14 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
   }
   let closed = opened;
   while (opened >= 0 && journey[closed + 1]?.section === 'about' && journey[closed + 1].about === 'education') closed++;
+  // After it, About only lets Education go, back to green on the way to Skills: statements
+  // again, or Education reopened, is About read twice (round 16).
+  for (let index = opened >= 0 ? closed + 1 : journey.length; index < journey.length; index++) {
+    const { section, about } = journey[index];
+    if (section !== 'about' || !about || about === 'green') continue;
+    failures.push(`About went back to ${about} after Education`);
+    break;
+  }
   const opening = (index: number) => opened >= 0 && index >= opened && index <= closed;
   const records = collapse(journey.filter((checkpoint, index) => reading(checkpoint) && opening(index)).map(checkpoint => checkpoint.record));
   const expectedRecords = Array.from({ length: educationRecords }, (_, index) => String(index));

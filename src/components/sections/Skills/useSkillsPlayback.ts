@@ -523,7 +523,7 @@ export function useSkillsPlayback(
       if (resuming === null || !focusLost()) return;
       panel.querySelector<HTMLElement>(`#${skillChapterId(resuming)} [data-skill-landing]`)?.focus({ preventScroll: true });
     };
-    const retire = () => {
+    const cancelPlacement = () => {
       cancelAnimationFrame(placing);
       placing = 0;
       resuming = null;
@@ -548,6 +548,17 @@ export function useSkillsPlayback(
     const onScroll = () => {
       if (!sampling) sampling = requestAnimationFrame(sample);
     };
+    /**
+     * The reader or a newer choice took over: the chapter carried from the staged reader
+     * goes with its placement, and the place remembered is where the reader is now, not the
+     * one they left -- a new choice of Skills, or a click before placement, reopened chapter 2
+     * on the next remount (round 16).
+     */
+    const retire = () => {
+      cancelPlacement();
+      resumeRef.current = null;
+      onScroll();
+    };
     const stopNavigation = subscribeSectionNavigation((target, options) => {
       // A rebuilt track taking the resume again detached the layer, and focus with it.
       if (target === 'skills' && options?.resume) {
@@ -555,7 +566,6 @@ export function useSkillsPlayback(
         return;
       }
       retire();
-      if (target !== 'skills') resumeRef.current = null;
     });
     if (resuming !== null) {
       // As the staged reader resumes: two frames on, through navigation (see above). Focus lost
@@ -576,7 +586,7 @@ export function useSkillsPlayback(
     const unsubscribeScroll = subscribeScrollProgress(onScroll);
     return () => {
       cancelAnimationFrame(sampling);
-      retire();
+      cancelPlacement();
       stopNavigation();
       unsubscribeScroll();
       for (const type of READER_INPUTS) window.removeEventListener(type, retire, { capture: true });

@@ -827,6 +827,33 @@ describe('Skills completed-beat playback', () => {
       expect(index()).toBe(0);
     });
 
+    /** The linear page's chapters, 700px apart below the section's top. */
+    const layoutChapters = () => vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+      if (this.id === 'skills') return DOMRect.fromRect({ x: 0, y: top, width: 1440, height: 4320 });
+      const chapter = this instanceof HTMLElement ? this.dataset.skillChapter : undefined;
+      if (chapter !== undefined) return DOMRect.fromRect({ x: 0, y: top + 200 + Number(chapter) * 700, width: 1440, height: 700 });
+      return originalRect.call(this);
+    });
+
+    it.each([
+      ['a new choice of Skills in the linear page', () => publishSectionNavigation('skills', { source: 'navbar' })],
+      ['a click before the resume lands', () => window.dispatchEvent(new Event('pointerdown'))],
+    ])('remembers where the reader is after %s, not the chapter they left', async (_case, takeOver) => {
+      // Round 16: either one retired the placement but kept chapter 2 for the next remount.
+      const onNavigate = navigate();
+      enter(onNavigate);
+      cross();
+      cross();
+      layoutChapters();
+      motion(true);
+      act(() => { takeOver(); });
+      advance(100);
+      motion(false);
+      advance(100);
+      await act(async () => {});
+      expect(index()).toBe(0);
+    });
+
     it('lets a new choice of Skills itself start afresh', async () => {
       const onNavigate = navigate();
       enter(onNavigate);

@@ -109,6 +109,33 @@ describe('landing focus after navigation', () => {
     expect(byId('reader')).toHaveFocus();
   });
 
+  it('is not given way by that older navigation after a replay published in between', () => {
+    // Round 16: a nested replay raised the count, and the outer navigation then read as newer.
+    const stopOuter = subscribeSectionNavigation(target => {
+      if (target !== 'about') return;
+      publishSectionNavigation('projects', { source: 'navbar' });
+      publishSectionNavigation('projects', { source: 'navbar', resume: true });
+    });
+    const stopInner = subscribeSectionNavigation((target, options) => {
+      if (target === 'projects' && !options?.resume) landSectionFocus('projects');
+    });
+    publishSectionNavigation('about', { source: 'navbar' });
+    stopOuter();
+    stopInner();
+    byId('stage').removeAttribute('inert');
+    flush();
+    expect(byId('reader')).toHaveFocus();
+
+    // A navigation begun after the landing still outranks it.
+    byId('projects-link').focus();
+    byId('stage').setAttribute('inert', '');
+    landSectionFocus('projects');
+    publishSectionNavigation('contact');
+    byId('stage').removeAttribute('inert');
+    flush(5);
+    expect(byId('projects-link')).toHaveFocus();
+  });
+
   it('waits through the TV turn on a fast display, then gives up rather than taking focus late', () => {
     // Round 9 (TECH-025): 60 frames were a second at 60 Hz, half that at 120 -- shorter than the 2.2s turn.
     landSectionFocus('projects');
