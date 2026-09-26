@@ -26,6 +26,7 @@ import { useActiveSection } from './lib/scroll/useActiveSection';
 import { ChapterInkLayer, InkLabel } from './components/ui/ChapterInkLayer/ChapterInkLayer';
 import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
+import { subscribeScrollProgress } from './lib/scroll/scrollProgress';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
 import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
@@ -48,6 +49,15 @@ const SpatialStage = lazy(loadSpatialStage);
  * enough that no section becomes unreachable.
  */
 const SCROLL_PAGE_EPSILON = 0.15;
+
+/** The story's chapters, in order: where a reader's place is anchored. */
+const STORY_SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
+
+/** A reader's place: a chapter, and how far into it the top of the window is, in content pixels. */
+interface ReadingAnchor {
+  id: string;
+  fromTop: number;
+}
 
 /** The section that covers the world outright, and freezes it while it does. */
 const OPAQUE_SECTION_ID = 'about';
@@ -98,7 +108,20 @@ function App() {
   const scrollElementRef = useRef<HTMLDivElement | null>(null);
   const scrollStateRef = useRef<ScrollControlsState | null>(null);
   /** Reader position captured just before the track is resized. */
-  const pendingRestoreRef = useRef<{ offset: number; fromPages: number } | null>(null);
+  const pendingRestoreRef = useRef<{ offset: number; fromPages: number; anchor: ReadingAnchor | null } | null>(null);
+  /**
+   * Where the reader is, as a section and a distance into it, sampled from the
+   * drawn layer while the layout is settled. A rebuild restores to it: keeping
+   * the pixel offset instead put a Contact reader 1,800px down into Projects
+   * once a motion-preference change re-staged Skills above them (round 17).
+   */
+  const readingAnchorRef = useRef<ReadingAnchor | null>(null);
+  /**
+   * Each chapter's top in the content, measured with the page and dropped the
+   * moment the content changes, so sampling the reader's place reads no layout
+   * per frame (a rect per scroll publication cost 672ms in round 8's profile).
+   */
+  const sectionTopsRef = useRef<{ id: string; top: number }[] | null>(null);
   /**
    * A navbar destination chosen while the track was about to rebuild. The
    * rebuild resets the track, and restoring the old offset afterwards threw
@@ -255,6 +278,10 @@ function App() {
     // the content 1:1 onto the scroll track. Every section stays reachable and
     // the track ends exactly where the content does, with no dead scroll.
     const calculatedPages = Math.max(contentHeight / viewportHeight, 1);
+    sectionTopsRef.current = STORY_SECTIONS.flatMap(id => {
+      const section = document.getElementById(id);
+      return section ? [{ id, top: section.offsetTop - (node.offsetTop || 0) }] : [];
+    });
 
     /*
      * Where the camera stands still, and where nothing is drawn at all.
@@ -324,6 +351,7 @@ function App() {
       pendingRestoreRef.current = {
         offset: readScrollOffset(track),
         fromPages: previousPages,
+        anchor: readingAnchorRef.current,
       };
     }
 
@@ -382,9 +410,22 @@ function App() {
   const applyPendingRestore = useCallback((): number | null => {
     const track = scrollElementRef.current;
     const pending = pendingRestoreRef.current;
-    const expectedOffset = pending
-      ? preserveScrollOffset(pending.offset, pending.fromPages, scrollPagesRef.current)
-      : null;
+    /**
+     * The offset that puts the reader back: at the same distance into their chapter when their
+     * place was anchored, else over the same content pixels.
+     */
+    const restoreTo = (nextPages: number) => {
+      if (!pending) return null;
+      const section = pending.anchor ? document.getElementById(pending.anchor.id) : null;
+      const content = mainRef.current;
+      const height = track?.clientHeight || window.innerHeight || 1;
+      if (!pending.anchor || !section || !content || nextPages <= 1) {
+        return preserveScrollOffset(pending.offset, pending.fromPages, nextPages);
+      }
+      const drawn = section.offsetTop - (content.offsetTop || 0) + pending.anchor.fromTop;
+      return Math.min(1, Math.max(0, drawn / ((nextPages - 1) * height)));
+    };
+    const expectedOffset = restoreTo(scrollPagesRef.current);
     if (!track) return expectedOffset;
 
     if (restoreSyncFramesRef.current > 0) {
@@ -422,7 +463,7 @@ function App() {
       if (!settleTimerRef.current) replayNavigation();
       return null;
     }
-    const offset = preserveScrollOffset(pending.offset, pending.fromPages, nextPages);
+    const offset = restoreTo(nextPages) ?? 0;
     track.scrollTop = offset * scrollable;
     restoredOffsetRef.current = offset;
     restoreSyncFramesRef.current = 2;
@@ -449,6 +490,7 @@ function App() {
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => {
         watcher.poke();
+        sectionTopsRef.current = null;
         setAvatarLayoutReady(false);
         if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
         settleTimerRef.current = setTimeout(() => {
@@ -468,6 +510,21 @@ function App() {
     window.addEventListener('resize', updateScrollPages);
     return () => window.removeEventListener('resize', updateScrollPages);
   }, [updateScrollPages]);
+
+  // The reader's place, as a chapter and a distance into it, sampled from what is drawn.
+  useEffect(() => {
+    if (!scrollElement) return;
+    return subscribeScrollProgress(progress => {
+      // Changed content, until it is measured again, would show the old place over new content.
+      const tops = sectionTopsRef.current;
+      if (!tops || pendingRestoreRef.current || settleTimerRef.current || restoreSyncFramesRef.current > 0) return;
+      const height = scrollElement.clientHeight || window.innerHeight || 1;
+      const drawn = progress * Math.max(scrollPagesRef.current - 1, 0) * height;
+      let anchor: ReadingAnchor | null = null;
+      for (const { id, top } of tops) if (top <= drawn + height / 2) anchor = { id, fromTop: drawn - top };
+      readingAnchorRef.current = anchor;
+    });
+  }, [scrollElement]);
 
   useEffect(() => () => {
     cancelReplay();

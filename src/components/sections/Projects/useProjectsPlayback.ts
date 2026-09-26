@@ -85,7 +85,10 @@ export function useProjectsPlayback(
     // Follows drei's translated layer between layout changes: a rect per scroll publication
     // forced 672ms of layout in a cold 70s journey at 4x CPU (round 8 profile).
     const railPosition = createTranslatedPositionReader(rail, cachedElement(() => translatedLayerOf(rail)));
-    const contactSection = document.getElementById('contact');
+    // Contact's own opening, not its section box: the section's top padding is sky, and at 1440x900
+    // it held the section's edge just inside the window while the heading had left (round 17).
+    const contactSection = document.querySelector<HTMLElement>('#contact [data-section-landing="contact"]') ??
+      document.getElementById('contact');
     const contactPosition = contactSection
       ? createTranslatedPositionReader(contactSection, cachedElement(() => translatedLayerOf(contactSection)))
       : null;
