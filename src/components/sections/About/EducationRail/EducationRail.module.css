@@ -1242,6 +1242,21 @@
   }
 }
 
+/*
+ * The coursework panel is ink only in the wide layout; at the 900px floor it is
+ * paper, where the white mark all but vanished. The colour mark belongs there
+ * (round 15, D-UI-008).
+ */
+@media (max-width: 900px) {
+  .brandColor {
+    opacity: 1;
+  }
+
+  .brandWhite {
+    opacity: 0;
+  }
+}
+
 @media (min-width: 901px) and (max-height: 740px) {
   .record[data-provider='bootdev'] {
     --boot-gutter: clamp(1.25rem, 2.2vw, 1.75rem);

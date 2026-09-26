@@ -19,7 +19,7 @@ import { PROJECT_CATEGORIES } from './projectCategories';
 import { isProjectsReadingTarget } from './projectsInput';
 import { ProjectWheelPaging } from './projectPaging';
 import { useCRTPowerOn, useProjectBroadcast } from './projectBroadcast';
-import { ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
+import { ProjectContribution, ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
 import styles from './TVProjects.module.css';
 
 function ProjectDescription({ project }: { project: Project }) {
@@ -279,6 +279,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                   data-broadcast-copy="">{projectTier(project)}</p>
                 <h3 data-broadcast-title="">{project.title}</h3>
                 {details ? <>
+                  {project.evidence && <ProjectContribution evidence={project.evidence} />}
                   <ProjectDescription project={project} />
                   {project.evidence && <ProjectEvidence evidence={project.evidence} />}
                   <dl className={styles.technology}>

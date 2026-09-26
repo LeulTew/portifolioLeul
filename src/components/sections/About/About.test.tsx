@@ -32,7 +32,7 @@ describe("About Section", () => {
     expect(screen.getByRole("heading", { level: 3, name: /FROM MODEL TO INTERFACE/i })).toBeInTheDocument();
     const summary = within(screen.getByTestId("about-right-column"));
     expect(summary.getByText(String(projectsData.length))).toBeInTheDocument();
-    expect(summary.getByText(String(cvData.skills.reduce((total, category) => total + category.items.length, 0))))
+    expect(summary.getByText(String(projectsData.filter(project => project.evidence?.decision?.sourceUrl).length)))
       .toBeInTheDocument();
     expect(summary.getByText("Projects to Explore Across Web, Mobile, AI & Graphics")).toBeInTheDocument();
 

@@ -11,6 +11,30 @@ export function ProjectVisualNote({ project }: { project: Pick<Project, 'imageKi
   );
 }
 
+/**
+ * The owner's part and one consequential choice, which lead a project's
+ * details: behind a feature list and the inspection notes, all six selected
+ * projects' accounts began below the first view of the TV reader (round 15,
+ * D-UX-003).
+ */
+export function ProjectContribution({ evidence }: { evidence: Evidence }) {
+  if (!evidence.role && !evidence.decision) return null;
+  return (
+    <div className={styles.notes} data-project-contribution="">
+      <section>
+        <h4>Implementation</h4>
+        {evidence.role && <p className={styles.role} data-project-role="">{evidence.role}</p>}
+        {evidence.decision && <p>{evidence.decision.summary}</p>}
+        {evidence.decision?.sourceUrl && <a href={evidence.decision.sourceUrl} target="_blank" rel="noopener noreferrer"
+          onClick={event => event.stopPropagation()}>
+          {evidence.decision.sourceLabel} <ArrowUpRight size="1em" aria-hidden="true" />
+        </a>}
+      </section>
+    </div>
+  );
+}
+
+/** How to try the project, and what stands in the way, after what it is. */
 export function ProjectEvidence({ evidence }: { evidence: Evidence }) {
   return (
     <div className={styles.notes} data-project-evidence="">
@@ -20,15 +44,6 @@ export function ProjectEvidence({ evidence }: { evidence: Evidence }) {
         {evidence.access && <p className={styles.access}>{evidence.access}</p>}
         {evidence.sourceNote && <p className={styles.access}>{evidence.sourceNote}</p>}
       </section>
-      {(evidence.role || evidence.decision) && <section>
-        <h4>Implementation</h4>
-        {evidence.role && <p className={styles.role} data-project-role="">{evidence.role}</p>}
-        {evidence.decision && <p>{evidence.decision.summary}</p>}
-        {evidence.decision?.sourceUrl && <a href={evidence.decision.sourceUrl} target="_blank" rel="noopener noreferrer"
-          onClick={event => event.stopPropagation()}>
-          {evidence.decision.sourceLabel} <ArrowUpRight size="1em" aria-hidden="true" />
-        </a>}
-      </section>}
     </div>
   );
 }

@@ -15,8 +15,12 @@ describe('education artwork styling', () => {
     };
     expect(values('.brandStamp', 'background')).toEqual(['transparent']);
     expect(values('.brandStamp', 'pointer-events')).toEqual(['auto']);
-    expect(values('.brandWhite', 'opacity')).toEqual(['1']);
-    expect(values('.brandColor', 'opacity')).toEqual(['0']);
+    // The white mark on the wide layout's ink panel; the colour one on the 900px paper layout (round 15, D-UI-008).
+    expect(values('.brandWhite', 'opacity')).toEqual(['1', '0']);
+    expect(values('.brandColor', 'opacity')).toEqual(['0', '1']);
+    css.walkRules('.brandColor', rule => {
+      if (rule.parent?.type === 'atrule') expect((rule.parent as postcss.AtRule).params).toBe('(max-width: 900px)');
+    });
     expect(values('.brandStamp:hover .brandWhite', 'opacity')).toEqual(['0']);
     expect(values('.brandStamp:hover .brandColor', 'opacity')).toEqual(['1']);
     expect(values('.sealDisc', 'background')).toEqual(['#164b36']);

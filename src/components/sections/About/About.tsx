@@ -45,6 +45,8 @@ import {
 /** The degree the About metrics cite, and its grade as the education record gives it. */
 const DEGREE = cvData.education[0];
 const DEGREE_GPA = /GPA:\s*([\d.]+)/.exec(DEGREE.details.join(' '))?.[1];
+/** Projects whose stated build decision links to source a visitor can open. */
+const LINKED_DECISIONS = projectsData.filter(project => project.evidence?.decision?.sourceUrl).length;
 
 function TransitionMaskedOverlay() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -685,11 +687,11 @@ export function About({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
                     </span>
                   </div>
                   <div className={styles.metricItem}>
-                    <span className={styles.metricValue}>
-                      {cvData.skills.reduce((total, category) => total + category.items.length, 0)}
-                    </span>
+                    {/* A count of evidence, not of keywords: the skill total mixed languages, libraries and
+                        broad capabilities as if they were one unit (round 15, D-COPY-001). */}
+                    <span className={styles.metricValue}>{LINKED_DECISIONS}</span>
                     <span className={styles.metricLabel}>
-                      Skills Across {cvData.skills.length} Engineering &amp; Design Categories
+                      Build Decisions, Each Linked to the Source That Makes It
                     </span>
                   </div>
                   <div className={styles.metricItem}>

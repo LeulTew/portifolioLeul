@@ -202,13 +202,14 @@ describe('About editorial text motion', () => {
     expect([...right.querySelectorAll(`.${styles.metricValue}`)].map(value => value.textContent))
       .toEqual([
         String(projectsData.length),
-        String(cvData.skills.reduce((total, category) => total + category.items.length, 0)),
+        String(projectsData.filter(project => project.evidence?.decision?.sourceUrl).length),
         '3.92',
       ]);
     expect(cvData.education[0].details).toContain('GPA: 3.92 / 4.00');
     expect(within(right).getByText('GPA, BSc in Computer Science (HiLCoE, 2025)')).toBeInTheDocument();
     expect(within(right).getByText('Projects to Explore Across Web, Mobile, AI & Graphics')).toBeInTheDocument();
-    expect(within(right).getByText(`Skills Across ${cvData.skills.length} Engineering & Design Categories`)).toBeInTheDocument();
+    // Round 15 (D-COPY-001): a count of linked evidence replaces a keyword total of mixed units.
+    expect(within(right).getByText('Build Decisions, Each Linked to the Source That Makes It')).toBeInTheDocument();
     for (const column of [left, right]) {
       expect(column.children[0]).toHaveAttribute('data-statement-morph');
       expect(column.children[1]).toHaveAttribute('data-statement-copy');

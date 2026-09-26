@@ -181,6 +181,12 @@ describe('the semantic TV project reader', () => {
         expect(details.querySelector('[data-project-evidence]')).toBeNull();
       }
       if (project.evidence?.role) expect(details).toHaveTextContent(project.evidence.role);
+      if (project.evidence?.role || project.evidence?.decision) {
+        // Round 15 (D-UX-003): the owner's part and the choice lead Details, before the feature list.
+        const contribution = details.querySelector('[data-project-contribution]')!;
+        expect(contribution).not.toBeNull();
+        expect(details.querySelector('h3')!.nextElementSibling).toBe(contribution);
+      }
       if (project.evidence?.decision) {
         const decision = project.evidence.decision;
         expect(details).toHaveTextContent(decision.summary);

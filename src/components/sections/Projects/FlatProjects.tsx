@@ -3,7 +3,7 @@ import { useActiveSection } from '@/lib/scroll/useActiveSection';
 import { Globe, Smartphone, Brain, Gamepad2, Shapes, Grid3x3 } from 'lucide-react';
 import styles from './Projects.module.css';
 import { projectTier, projectsData } from '../../../data/projects';
-import { ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
+import { ProjectContribution, ProjectEvidence, ProjectVisualLink, ProjectVisualNote } from './ProjectEvidence';
 import { ExpandableTabs } from '../../ui/expandable-tabs';
 import { FocusRail, type FocusRailItem } from '../../ui/focus-rail';
 import { KineticHeading } from '../../ui/KineticText';
@@ -76,6 +76,7 @@ export function FlatProjects({ theme }: { theme?: string }) {
     description: (
       <div className="flex flex-col gap-3 text-left">
         <ProjectVisualNote project={project} />
+        {project.evidence && <ProjectContribution evidence={project.evidence} />}
         {(project.longDescription || project.description).split('\n').map((line, i) => {
           if (!line.trim()) return null;
           return (
