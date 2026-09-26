@@ -107,7 +107,7 @@ describe('the journey a sample must have travelled', () => {
     expect(check(completeJourney(chapters(6), ['0', '2', '1']))).toEqual(['Education settled on 0 > 2 > 1, not 0 > 1 > 2']);
     const late = completeJourney();
     const firstSkill = late.findIndex(checkpoint => checkpoint.skills === 'reading');
-    late.splice(firstSkill + 1, 0, at('journey', 'about', { record: '2' }));
+    late.splice(firstSkill + 1, 0, at('journey', 'about', { about: 'education', record: '2' }));
     expect(check(late)).toContain('Education was still being read after Skills began');
     expect(check(completeJourney(), 6, 0)).toContain('the page shows no Education records');
   });
@@ -145,6 +145,13 @@ describe('the journey a sample must have travelled', () => {
     const about = misplaced.findIndex(checkpoint => checkpoint.about === 'education');
     misplaced.splice(about + 1, 0, ...chapters(6).map(skill => at('journey', 'about', { skills: 'reading', skill })));
     expect(check(misplaced)).toContain('Skills read no chapter, not 0 > 1 > 2 > 3 > 4 > 5');
+  });
+  it('counts an Education record only while Education itself is open', () => {
+    // Round 13 (TECH-042): all four records during About's statements, then an empty Education, passed.
+    const early = completeJourney(chapters(6), []);
+    const statements = early.findIndex(checkpoint => checkpoint.about === 'statements');
+    early.splice(statements + 1, 0, ...chapters(3).map(record => at('journey', 'about', { about: 'statements', record })));
+    expect(check(early)).toEqual(['Education settled on no record, not 0 > 1 > 2']);
   });
   it('counts only what happened while the journey was measured', () => {
     const outside = completeJourney().map(checkpoint => ({ ...checkpoint, phase: 'settle' as const }));

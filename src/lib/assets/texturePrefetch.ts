@@ -15,8 +15,10 @@ export async function cacheTextureBytes(
   if (signal?.aborted || typeof Image === 'undefined' || typeof URL.createObjectURL !== 'function' ||
       !contentType?.toLowerCase().startsWith('image/')) return false;
 
-  // Loaded alongside the decode; the entry is added before this resolves.
+  // Loaded alongside the decode; the entry is added before this resolves. Its failure is owned from
+  // here: an abort or image error before publication must not leave it unhandled (round 13, TECH-041).
   const cached = threeCache();
+  cached.catch(() => {});
   const image = new Image();
   image.decoding = 'async';
   const objectUrl = URL.createObjectURL(new Blob([buffer], { type: contentType }));

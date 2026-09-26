@@ -9,7 +9,7 @@ const projectExamples: Record<string, number[]> = {
   'AI & Data Science': [3, 23],
   Databases: [20, 23],
   'Tools & Design': [6, 4],
-  'Professional Skills': [3, 2],
+  'Professional Skills': [3, 4],
 };
 
 describe('Skills editorial content', () => {

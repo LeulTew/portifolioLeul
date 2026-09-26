@@ -90,6 +90,8 @@ export interface Checkpoint {
 
 export interface LongFrame {
   phase: Phase;
+  /** When the frame's work began, in milliseconds since navigation; it is classified by this. */
+  start?: number;
   ms: number;
   blocking: number;
   context: string;
@@ -98,7 +100,7 @@ export interface LongFrame {
   /** For a frame of 150ms or more, the script that took longest in it. */
   cause?: string;
 }
-export interface TimedEvent { phase: Phase; name: string; ms: number }
+export interface TimedEvent { phase: Phase; start?: number; name: string; ms: number }
 
 /** What the in-page probe hands back. */
 export interface PageTrace {
@@ -107,6 +109,8 @@ export interface PageTrace {
   intervals: number[];
   events: TimedEvent[];
   checkpoints: Checkpoint[];
+  /** Where each part of the run began, in milliseconds since navigation. */
+  boundaries: { phase: Phase; t: number }[];
   /** Performance entry types the browser does not report. */
   unsupported: string[];
   /** When the hero settled, in milliseconds since navigation. */
@@ -131,7 +135,7 @@ export const PAGE_PROBE = String.raw`(() => {
   if (window.__budget) return;
   const trace = {
     phase: 'load', frames: [], intervals: [], events: [], checkpoints: [], unsupported: [],
-    readyAt: null, fcp: null, lcp: null,
+    boundaries: [{ phase: 'load', t: 0 }], readyAt: null, fcp: null, lcp: null,
   };
   window.__budget = trace;
   const found = {};
@@ -168,22 +172,38 @@ export const PAGE_PROBE = String.raw`(() => {
     current = next;
     mark();
   };
-  const context = () => (current.section || '?')
-    + (current.section === 'about' && current.about ? ' about:' + current.about : '')
-    + (current.skills && current.skills !== 'outside' ? ' skills:' + current.skills : '')
-    + (current.tv && current.tv !== 'outside' ? ' tv:' + current.tv : '')
-    + (current.quality && current.quality !== '0' ? ' q' + current.quality : '');
+  const contextOf = at => (at.section || '?')
+    + (at.section === 'about' && at.about ? ' about:' + at.about : '')
+    + (at.skills && at.skills !== 'outside' ? ' skills:' + at.skills : '')
+    + (at.tv && at.tv !== 'outside' ? ' tv:' + at.tv : '')
+    + (at.quality && at.quality !== '0' ? ' q' + at.quality : '');
+  // Observers deliver entries late, so an entry belongs to the phase and chapter where its work
+  // began, not where its callback ran: a frame from the journey delivered after 'settle' is the
+  // journey's (round 13, TECH-043). A frame that crosses a boundary counts where it started.
+  const phaseAt = t => {
+    let phase = trace.boundaries[0].phase;
+    for (const boundary of trace.boundaries) if (boundary.t <= t) phase = boundary.phase;
+    return phase;
+  };
+  const contextAt = t => {
+    let at = trace.checkpoints[0] || current;
+    for (const checkpoint of trace.checkpoints) if (checkpoint.t <= t) at = checkpoint;
+    return contextOf(at);
+  };
   const observe = (type, callback, extra) => {
     const types = typeof PerformanceObserver === 'function' ? PerformanceObserver.supportedEntryTypes || [] : [];
     if (!types.includes(type)) {
       trace.unsupported.push(type);
       return;
     }
-    new PerformanceObserver(list => list.getEntries().forEach(callback))
-      .observe(Object.assign({ type, buffered: true }, extra));
+    const observer = new PerformanceObserver(list => list.getEntries().forEach(callback));
+    observer.observe(Object.assign({ type, buffered: true }, extra));
+    observers.push({ observer, callback });
   };
+  const observers = [];
   observe('long-animation-frame', entry => {
-    const frame = { phase: trace.phase, ms: entry.duration, blocking: entry.blockingDuration, context: context() };
+    const frame = { phase: phaseAt(entry.startTime), start: Math.round(entry.startTime), ms: entry.duration,
+      blocking: entry.blockingDuration, context: contextAt(entry.startTime) };
     if (entry.renderStart) frame.render = Math.round(entry.startTime + entry.duration - entry.renderStart);
     if (entry.duration >= 150) {
       let top = null;
@@ -196,7 +216,9 @@ export const PAGE_PROBE = String.raw`(() => {
     trace.frames.push(frame);
   });
   observe('event', entry => {
-    if (entry.interactionId) trace.events.push({ phase: trace.phase, name: entry.name, ms: entry.duration });
+    if (entry.interactionId) {
+      trace.events.push({ phase: phaseAt(entry.startTime), start: Math.round(entry.startTime), name: entry.name, ms: entry.duration });
+    }
   }, { durationThreshold: 16 });
   observe('paint', entry => {
     if (entry.name === 'first-contentful-paint') trace.fcp = Math.round(entry.startTime);
@@ -232,8 +254,13 @@ export const PAGE_PROBE = String.raw`(() => {
     } },
     enter: { value: phase => {
       trace.phase = phase;
+      trace.boundaries.push({ phase, t: Math.round(performance.now()) });
       current = state();
       mark();
+    } },
+    // Hands over entries the observers hold but have not delivered, before the trace is read.
+    drain: { value: () => {
+      for (const { observer, callback } of observers) observer.takeRecords().forEach(callback);
     } },
   });
 })()`;
@@ -299,13 +326,15 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
     failures.push(`About never reached its ${ABOUT_BEATS[beat]} beat (saw ${beats.join(' > ') || 'nothing'})`);
   }
   if (educationRecords < 1) failures.push('the page shows no Education records');
-  const records = collapse(on('about').map(checkpoint => checkpoint.record ?? '').filter(Boolean));
+  // A record counts only while Education itself is open in About (round 13, TECH-042).
+  const reading = (checkpoint: Checkpoint) => checkpoint.section === 'about' && checkpoint.about === 'education' && Boolean(checkpoint.record);
+  const records = collapse(journey.filter(reading).map(checkpoint => checkpoint.record));
   const expectedRecords = Array.from({ length: educationRecords }, (_, index) => String(index));
   if (educationRecords >= 1 && records.join() !== expectedRecords.join()) {
     failures.push(`Education settled on ${records.join(' > ') || 'no record'}, not ${expectedRecords.join(' > ')}`);
   }
   const readingSkills = (checkpoint: Checkpoint) => checkpoint.section === 'skills' && checkpoint.skills === 'reading';
-  const lastRecord = journey.reduce((last, checkpoint, index) => (checkpoint.section === 'about' && checkpoint.record ? index : last), -1);
+  const lastRecord = journey.reduce((last, checkpoint, index) => (reading(checkpoint) ? index : last), -1);
   const firstSkill = journey.findIndex(readingSkills);
   if (lastRecord >= 0 && firstSkill >= 0 && lastRecord > firstSkill) {
     failures.push('Education was still being read after Skills began');

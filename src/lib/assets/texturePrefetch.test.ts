@@ -79,6 +79,32 @@ describe('decoded texture prefetch ownership', () => {
     expect(revoke).toHaveBeenCalledOnce();
   });
 
+  it('owns a graphics-import failure that arrives after the texture was already given up', async () => {
+    // Round 13 (TECH-041): an abort before load left a later import rejection unhandled.
+    vi.resetModules();
+    let fail!: (error: Error) => void;
+    vi.doMock('./threeCache', async () => {
+      const actual = await vi.importActual<typeof import('./threeCache')>('./threeCache');
+      const gate = new Promise<typeof Cache>((_, reject) => { fail = reject; });
+      return { ...actual, threeCache: () => gate };
+    });
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      const { cacheTextureBytes: late } = await import('./texturePrefetch');
+      const controller = new AbortController();
+      const pending = late(url, new ArrayBuffer(8), 'image/jpeg', controller.signal);
+      controller.abort();
+      expect(await pending).toBe(false);
+      fail(new Error('graphics chunk failed'));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+      vi.doUnmock('./threeCache');
+      vi.resetModules();
+    }
+  });
   it('keeps an abort that lands after the decode, before the cache is ready, from publishing', async () => {
     // Round 12 (TECH-037): cancellation was released at decode, and the image was cached later anyway.
     vi.resetModules();

@@ -217,7 +217,12 @@ const projectRecords: Project[] = [
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://exitpractice.wasmer.app/",
-    categories: ["Web Development"]
+    categories: ["Web Development"],
+    evidence: {
+      inspect: "Answer a question and use Check Answer, bookmark another, then jump across the exam with the numbered grid.",
+      access: "Opens without sign-in, straight into a timed exam.",
+      sourceNote: "No implementation source is linked; this describes the live demo only.",
+    }
   },
   {
     id: 1,

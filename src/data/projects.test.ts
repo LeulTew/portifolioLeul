@@ -113,7 +113,7 @@ describe("projectsData", () => {
 
   it("adds inspection notes only to the researched projects", () => {
     expect(projectsData.filter(project => project.evidence).map(project => project.title))
-      .toEqual(["Portfolio Leul", "Ignition", "Car Rental Platform", "Kitefew", "AgendaFlow AI", "Mizan", "ProtoChem 3D", "Amharic IR Improved"]);
+      .toEqual(["Portfolio Leul", "Ignition", "Car Rental Platform", "Kitefew", "AgendaFlow AI", "CS Exit Practice", "Mizan", "ProtoChem 3D", "Amharic IR Improved"]);
     for (const project of projectsData.filter(project => project.evidence)) {
       expect(project.evidence!.inspect.length).toBeGreaterThan(0);
       expect(project.evidence!.access?.length).toBeGreaterThan(0);

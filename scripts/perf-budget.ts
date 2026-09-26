@@ -268,7 +268,7 @@ async function travel(page: Page, origin: string, config: BudgetConfig, { cold, 
   } else if (field) failures.push("Contact's name field could not be reached for typing");
   await enter('done');
 
-  const trace = JSON.parse(await page.evaluate<string>('JSON.stringify(window.__budget)')) as PageTrace;
+  const trace = JSON.parse(await page.evaluate<string>('(window.__budget.drain(), JSON.stringify(window.__budget))')) as PageTrace;
   const skillChapters = await page.evaluate<number>(`document.querySelectorAll('[aria-label="Skills chapters"] button').length`);
   const educationRecords = await page.evaluate<number>(`document.querySelectorAll('[data-testid="education-progress"] > li').length`);
   failures.push(...checkJourney(trace.checkpoints, skillChapters, educationRecords));

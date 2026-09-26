@@ -91,6 +91,49 @@ describe('the in-page probe', () => {
     expect(records()).toEqual(['', '0', '', '1']);
   });
 
+  it('files a late-delivered entry under the phase and chapter where its work began', () => {
+    // Round 13 (TECH-043): a journey frame delivered after 'settle' was counted as parked Contact.
+    type Entry = Record<string, number | string | undefined>;
+    const observers: { type?: string; pending: Entry[]; deliver: (entries: Entry[]) => void }[] = [];
+    class FakeObserver {
+      static supportedEntryTypes = ['long-animation-frame', 'event'];
+      type?: string;
+      pending: Entry[] = [];
+      constructor(private readonly callback: (list: { getEntries: () => Entry[] }) => void) { observers.push(this); }
+      observe(options: { type: string }) { this.type = options.type; }
+      takeRecords() { const pending = this.pending; this.pending = []; return pending; }
+      deliver(entries: Entry[]) { this.callback({ getEntries: () => entries }); }
+    }
+    let now = 100;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    vi.stubGlobal('PerformanceObserver', FakeObserver);
+    try {
+      delete (window as unknown as { __budget?: Probe }).__budget;
+      new Function(PAGE_PROBE)();
+      const frames = observers.find(observer => observer.type === 'long-animation-frame')!;
+      const events = observers.find(observer => observer.type === 'event')!;
+      now = 200;
+      probe().enter('journey');
+      document.querySelector('[data-testid="page-footer"]')!.setAttribute('data-footer-section', 'about');
+      now = 300;
+      vi.advanceTimersByTime(100);
+      now = 600;
+      probe().enter('settle');
+      frames.deliver([{ startTime: 350, duration: 240, blockingDuration: 190 }]);
+      expect(probe().frames.at(-1)).toMatchObject({ phase: 'journey', start: 350, context: 'about' });
+
+      now = 700;
+      probe().enter('interaction');
+      events.pending.push({ startTime: 750, duration: 240, name: 'keydown', interactionId: 1 });
+      now = 900;
+      probe().enter('done');
+      (probe() as unknown as { drain(): void }).drain();
+      expect(probe().events.at(-1)).toMatchObject({ phase: 'interaction', start: 750, name: 'keydown' });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('adds no observer that every attribute write on the page would have to consult', () => {
     const observe = vi.spyOn(MutationObserver.prototype, 'observe');
     delete (window as unknown as { __budget?: Probe }).__budget;

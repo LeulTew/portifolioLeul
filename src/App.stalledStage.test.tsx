@@ -18,7 +18,18 @@ vi.mock('./lib/gateways/gpuTier', () => {
   const config = { tier: 'high', softwareRenderer: false, particleCount: 2000, dpr: 1.5 };
   return { useGpuTier: () => config, getGpuTier: () => config };
 });
-vi.mock('./components/Loader', () => ({ Loader: () => <div role="progressbar" /> }));
+/** Whether the stubbed loader reports its assets in: off, the page waits on the 45s failsafe. */
+let loaderFills = false;
+vi.mock('./components/Loader', async () => {
+  const { useEffect } = await import('react');
+  return {
+    Loader: ({ onLoaded, onFilled, ready }: { onLoaded?: () => void; onFilled?: () => void; ready?: boolean }) => {
+      useEffect(() => { if (loaderFills) onFilled?.(); }, [onFilled]);
+      useEffect(() => { if (loaderFills && ready) onLoaded?.(); }, [onLoaded, ready]);
+      return <div role="progressbar" />;
+    },
+  };
+});
 vi.mock('./components/sections/Home/Home', () => ({ Home: () => <section id="home">Home Section</section> }));
 vi.mock('./components/sections/About/About', () => ({ About: () => <section id="about">About Section</section> }));
 vi.mock('./components/sections/Skills/Skills', () => ({ Skills: () => <section id="skills">Skills Section</section> }));
@@ -35,6 +46,7 @@ class Observer {
 }
 
 beforeEach(() => {
+  loaderFills = false;
   vi.useFakeTimers();
   vi.stubGlobal('IntersectionObserver', Observer as any);
   vi.stubGlobal('ResizeObserver', Observer as any);
@@ -56,5 +68,18 @@ describe('a spatial stage that never arrives', () => {
     expect(screen.getByText('Contact Section')).toBeInTheDocument();
     expect(document.querySelector('main')).toBeInTheDocument();
     expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/did not load in time/));
+  });
+
+  it('keeps the full loader up, never an empty page, then opens flat once the stage is clearly not coming', async () => {
+    // Round 13 (D-LOAD-001): the loader lifted over the pending stage, leaving ~40s of navbar only.
+    loaderFills = true;
+    render(<ThemeProvider><App /></ThemeProvider>);
+    await act(async () => {});
+    await act(async () => { vi.advanceTimersByTime(9_900); });
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.queryByText('Contact Section')).not.toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(200); });
+    expect(screen.getByText('Contact Section')).toBeInTheDocument();
+    expect(document.querySelector('main')).toBeInTheDocument();
   });
 });
