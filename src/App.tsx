@@ -545,7 +545,8 @@ function App() {
     const landing = anchor && target.contains(anchor) ? anchor : null;
     if (!replayingRef.current) trackFocus.cancel();
     const immediate = options?.immediate || options?.source === 'navbar';
-    if (options?.source === 'navbar') {
+    // A layout change's own resume is kept across the rebuild it causes, as a navbar choice is.
+    if (options?.source === 'navbar' || options?.resume) {
       // A newer choice outranks one still queued to replay (round 11, TECH-032).
       cancelReplay();
       // A rebuild still to land would reset the track under this choice: keep it, and take it again after.

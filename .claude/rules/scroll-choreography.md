@@ -372,6 +372,10 @@ once Skills re-staged above them. A replayed navigation re-announces its
 place for two frames after a rebuild, as a restore does, or Drei damps back
 to the target it held before; and a navbar choice made on a layout already
 changed but not yet reported is kept for the rebuild (round 16, TECH-055).
+Education keeps its record the same way Skills keeps its chapter, through a
+`resume` navigation to About that About's other chapters leave alone (they
+act only on navbar choices), and that App keeps across a rebuild just as it
+keeps a navbar choice (round 17, TECH-058).
 A scroll offset or a section ratio alone is not a reader's place: the staged
 reader came back empty waiting for a gesture, and the linear page opened on
 another chapter (round 14, D-MOTION-001).

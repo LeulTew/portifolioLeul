@@ -6,6 +6,7 @@ import { EducationText } from './EducationText';
 import { EDUCATION_TEXT_PROFILES, type EducationTextProfile } from './educationTextProfiles';
 import { BootdevBrand, CertificationDiagram } from './EducationBrand';
 import type { EducationRecord as RecordData } from './educationRecords';
+import { educationRecordId } from './educationPlace';
 import styles from './EducationRail.module.css';
 
 function displayName(record: RecordData) {
@@ -77,12 +78,15 @@ export function EducationRecord({
   onWheel,
   inactive,
   interactive,
+  landing = false,
 }: {
   record: RecordData;
   position: number;
   onWheel: (event: WheelEvent) => void;
   inactive: boolean;
   interactive: boolean;
+  /** The title takes focus by script when the reader is carried to this record (the linear page). */
+  landing?: boolean;
 }) {
   const name = displayName(record);
   const projects = record.items.filter((item) => item.startsWith('Build '));
@@ -102,6 +106,7 @@ export function EducationRecord({
 
   return (
     <article
+      id={educationRecordId(position)}
       className={styles.record}
       data-record={position}
       data-program={record.logo ? 'academic' : 'practice'}
@@ -114,7 +119,8 @@ export function EducationRecord({
     >
       <div className={styles.plate}>
         <div className={styles.plateHead}>
-          <h3 className={styles.recordTitle} aria-label={record.title}>
+          <h3 className={styles.recordTitle} aria-label={record.title}
+            tabIndex={landing ? -1 : undefined} data-education-landing={landing ? '' : undefined}>
             <span className={styles.recordTitleInner} data-part="title" data-edu-text={bootdev ? undefined : 'split'} aria-hidden="true">
               {bootdev ? <EducationText text={name} motion={text.title} role="title" /> : name.split(' ').map((word, wordIndex) => (
                 <span className={styles.titleWord} key={`${word}-${wordIndex}`}>
