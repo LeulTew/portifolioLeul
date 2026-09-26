@@ -111,7 +111,11 @@ transferred, blocking during load); cold samples have their own allowance for
 the journey's worst frame, where a first-use shader compile lands. `--headed`,
 `--chrome <path>`, `--url <origin>`, `--port` and `--runs` cover other browsers,
 servers and sample counts. Every process, profile and connection is released
-on success, failure or Ctrl+C. The report in `perf-reports/` (ignored by git)
+on success, failure or Ctrl+C: Chrome is asked to close and given time to exit,
+then its whole process tree is ended by its id (on Windows a signal ends only
+the main process). A cold series stops at the first sample whose Chrome or
+profile could not be released, since the next would not have the machine to
+itself. The report in `perf-reports/` (ignored by git)
 records the commit, the dist hash, the browser, WebGL renderer, cores and
 memory, each sample's cache state, and the chapter -- and world quality level --
 each long frame fell in, with the script behind any frame over 150ms.

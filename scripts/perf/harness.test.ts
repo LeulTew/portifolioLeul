@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { createServer, type AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  Scope, assertPortFree, awaitOwnedPreview, createCdp, ownProcess, scoped, until, withTimeout, type SocketLike,
+  Scope, assertPortFree, awaitOwnedPreview, createCdp, ownProcess, scoped, terminateTree, until, withTimeout, type SocketLike,
 } from './harness';
 
 afterEach(() => { vi.useRealTimers(); });
@@ -122,6 +122,34 @@ describe('owned processes', () => {
     child.emit('error', new Error('spawn chrome ENOENT'));
     expect(owned.exitCode).toBeNull();
     expect(owned.startError?.message).toContain('ENOENT');
+  });
+
+  it('stops through the terminate it is given, forcibly on the second attempt', async () => {
+    const child = new FakeChild([]);
+    const calls: (string | undefined)[] = [];
+    const owned = ownProcess(child as never, 'Chrome', {
+      graceMs: 10,
+      terminate: signal => { calls.push(signal); if (signal === 'SIGKILL') queueMicrotask(() => child.emit('exit', 1)); },
+    });
+    await owned.stop();
+    expect(calls).toEqual([undefined, 'SIGKILL']);
+    expect(child.signals).toEqual([]);
+  });
+
+  it("ends a Windows process's whole tree by its id, and signals it elsewhere", () => {
+    // Round 20 (TECH-064): a signal ended only Chrome's main process on Windows; its renderers held the profile.
+    const runs: [string, string[]][] = [];
+    const run = (command: string, args: string[]) => { runs.push([command, args]); };
+    const windows = new FakeChild([]);
+    Object.assign(windows, { pid: 4242 });
+    terminateTree(windows as never, { platform: 'win32', run })();
+    expect(runs).toEqual([['taskkill', ['/PID', '4242', '/T', '/F']]]);
+    expect(windows.signals).toEqual([]);
+    const linux = new FakeChild(['SIGTERM']);
+    Object.assign(linux, { pid: 7 });
+    terminateTree(linux as never, { platform: 'linux', run })('SIGKILL');
+    expect(linux.signals).toEqual(['SIGKILL']);
+    expect(runs).toHaveLength(1);
   });
 });
 

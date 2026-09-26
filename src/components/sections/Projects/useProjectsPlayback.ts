@@ -397,7 +397,10 @@ export function useProjectsPlayback(
         pendingNavigation = target;
         side = target === 'contact' ? 'after' : 'before';
         setProjectsReturnOwed(side === 'after');
-        if (!flight && !contactComplete) release();
+        // Contact's sky is Contact's once the reader is going there: a rebuild's replay of the
+        // Contact handoff tore down the clearing it had just parked, and left the island behind the
+        // form (round 20, D-MOTION-004).
+        if (!flight && !contactComplete) release(false, target === 'contact');
       } else if (!active) {
         bypass = false;
         pendingNavigation = null;
@@ -443,7 +446,8 @@ export function useProjectsPlayback(
     return () => {
       resumeRef.current = active;
       alive = false;
-      release();
+      // A TV no longer engaged holds no sky: after it handed the reader to Contact, the clearing is Contact's.
+      release(false, !active);
       setProjectsReturnOwed(false);
       requestRef.current = null;
       preferenceRef.current = null;
