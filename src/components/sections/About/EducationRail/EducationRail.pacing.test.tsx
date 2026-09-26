@@ -4,7 +4,8 @@ import gsap from 'gsap';
 import { EducationRail } from './EducationRail';
 import styles from './EducationRail.module.css';
 import { SCROLL_WAVE_IDLE_MS } from '@/lib/scroll/scrollGesture';
-import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
+import { publishSectionNavigation, type SectionNavigationOptions } from '@/lib/scroll/sectionNavigation';
+import { EDUCATION_RAIL_ID, educationRecordId } from './educationPlace';
 import {
   advanceEducation as advance, placeEducation as place,
   wheelEducation as wheel, finishEducation as finish,
@@ -659,5 +660,112 @@ describe('Education per-frame cost', () => {
     } finally {
       layer.remove();
     }
+  });
+});
+
+describe('a reader carried across a change of motion preference', () => {
+  // Round 17 (TECH-058): each layout mounted at the first record, and the page moved on to Skills.
+  let reduced = false;
+  const listeners = new Map<string, Set<(event: { matches: boolean }) => void>>();
+  const frames = new Map<number, FrameRequestCallback>();
+  let frameId = 0;
+
+  beforeEach(() => {
+    reduced = false;
+    listeners.clear();
+    frames.clear();
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      get matches() { return query === '(prefers-reduced-motion: reduce)' && reduced; },
+      media: query,
+      addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => {
+        if (!listeners.has(query)) listeners.set(query, new Set());
+        listeners.get(query)!.add(listener);
+      },
+      removeEventListener: (_type: string, listener: (event: { matches: boolean }) => void) =>
+        listeners.get(query)?.delete(listener),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })));
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++frameId, callback);
+      return frameId;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => { frames.delete(id); });
+  });
+
+  const flushFrames = (count = 2) => {
+    for (let index = 0; index < count; index++) {
+      const pending = [...frames.values()];
+      frames.clear();
+      act(() => { pending.forEach(callback => callback(performance.now())); });
+    }
+    gsap.ticker.sleep();
+  };
+  const motion = (value: boolean) => {
+    reduced = value;
+    act(() => listeners.get('(prefers-reduced-motion: reduce)')?.forEach(listener => listener({ matches: value })));
+    gsap.ticker.sleep();
+  };
+  const navigate = () => vi.fn((section: string, options?: SectionNavigationOptions) => publishSectionNavigation(section, options));
+  const resumes = (onNavigate: ReturnType<typeof navigate>) =>
+    onNavigate.mock.calls.filter(([, options]) => options?.resume);
+  const readRecord = (onNavigate: ReturnType<typeof navigate>, record: number) => {
+    enter(onNavigate);
+    for (let index = 1; index <= record; index++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Next record' }));
+      finish('education-track');
+    }
+    expect(selected()).toBe(record);
+  };
+
+  it('opens the linear page on the record being read, and the staged rail on it again', () => {
+    const onNavigate = navigate();
+    readRecord(onNavigate, 2);
+    motion(true);
+    expect(screen.getByTestId('education-rail')).not.toHaveAttribute('data-staged');
+    flushFrames();
+    expect(resumes(onNavigate).at(-1)).toEqual(['about', { immediate: true, resume: true, anchor: educationRecordId(2) }]);
+    // Focus lost with the staged rail lands on the record's own title.
+    expect(document.activeElement).toBe(document.querySelector(`#${educationRecordId(2)} [data-education-landing]`));
+
+    motion(false);
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-phase', 'reading');
+    expect(selected()).toBe(2);
+    flushFrames();
+    expect(resumes(onNavigate).at(-1)).toEqual(['about', { immediate: true, resume: true, anchor: EDUCATION_RAIL_ID }]);
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-phase', 'reading');
+    expect(selected()).toBe(2);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Next record' }));
+  });
+
+  it('gives way to a newer destination chosen before it lands', () => {
+    const onNavigate = navigate();
+    readRecord(onNavigate, 2);
+    motion(true);
+    act(() => publishSectionNavigation('skills', { source: 'navbar' }));
+    // The page has gone on to Skills, far below the rail.
+    place(-10000);
+    flushFrames();
+    expect(resumes(onNavigate)).toHaveLength(0);
+    motion(false);
+    flushFrames();
+    expect(resumes(onNavigate)).toHaveLength(0);
+  });
+
+  it('remembers where the reader is after their own input, not the record they left', () => {
+    const onNavigate = navigate();
+    readRecord(onNavigate, 2);
+    const previous = vi.mocked(Element.prototype.getBoundingClientRect).getMockImplementation()!;
+    vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+      const record = this instanceof HTMLElement ? this.dataset.record : undefined;
+      if (record !== undefined) return DOMRect.fromRect({ x: 0, y: 80 + Number(record) * 700, width: 1440, height: 700 });
+      return previous.call(this);
+    });
+    motion(true);
+    act(() => { window.dispatchEvent(new Event('pointerdown')); });
+    flushFrames();
+    expect(resumes(onNavigate)).toHaveLength(0);
+    motion(false);
+    expect(selected()).toBe(0);
   });
 });

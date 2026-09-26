@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import gsap from 'gsap';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
-import { subscribeSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
+import { subscribeSectionNavigation, publishSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { writeAttribute, writeStyleProperty, cachedElement } from '@/lib/dom/cachedElement';
 import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
@@ -12,8 +12,20 @@ import { coverEducationBackground } from './educationCover';
 import { isProjectsReturnOwed } from '@/lib/projects/projectsScene';
 import { stageVisible, trackOffset } from './railTransit';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
+import { EDUCATION_RAIL_ID, educationRecordId } from './educationPlace';
 
 type Phase = 'outside' | 'opening' | 'reading' | 'crossing' | 'closing';
+
+/** The reader's own moves: any of them outranks a record still waiting to be resumed. */
+const READER_INPUTS = ['wheel', 'keydown', 'pointerdown', 'touchstart'] as const;
+/** The line, as a share of the window's height, a record has to pass to be the one being read. */
+const READING_LINE = 0.4;
+
+/** Focus went with a layout that has been replaced: nothing, the page, or an element no longer in it. */
+const focusLost = () => {
+  const active = document.activeElement;
+  return !active || active === document.body || !active.isConnected;
+};
 type Ref = RefObject<HTMLDivElement | null>;
 interface PlaybackRefs {
   rail: Ref;
@@ -35,6 +47,13 @@ export function useEducationPlayback(
   const [ready, setReady] = useState(false);
   const requestRef = useRef<((direction: -1 | 1) => void) | null>(null);
   const step = useCallback((direction: -1 | 1) => requestRef.current?.(direction), []);
+  /**
+   * The record a reader of Education is on, carried across a change between
+   * the staged rail and the linear page -- a motion preference turned on or
+   * off, or a window crossing the rail's breakpoint. Each layout mounted afresh
+   * at the first record, and the page moved on to Skills (round 17, TECH-058).
+   */
+  const resumeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const host = rail.current;
@@ -88,6 +107,11 @@ export function useEducationPlayback(
     let playing: gsap.core.Timeline | null = null;
     let open: gsap.core.Timeline;
     let exit: gsap.core.Timeline;
+    // Kept until the reader's own input or a navigation elsewhere: the track rebuilt under the
+    // resuming navigation takes it again, and that repeat keeps the same record.
+    let resumeAt = resumeRef.current;
+    resumeRef.current = null;
+    let resumeFrame = 0;
     const crossings = new Map<number, gsap.core.Timeline>();
     let reveal: ReturnType<typeof createEducationReveal> | null = null;
     let uncover: (() => void) | null = null;
@@ -230,6 +254,16 @@ export function useEducationPlayback(
       flag('data-education-owned', true);
       writeStyleProperty(panel, '--release', '0px');
       show(true);
+      if (resumeAt !== null) {
+        // A resumed reader was already reading: the record is shown as it was, without the opening.
+        current = resumeAt;
+        setActive(current);
+        positionTrack(trackOffset(current, total));
+        writeAttribute(outline, 'data-open', 'true');
+        open.pause(open.duration(), true);
+        reading();
+        return;
+      }
       open.pause(0, true);
       positionTrack(trackOffset(current, total));
       writeAttribute(heading, 'data-settled', null);
@@ -298,6 +332,9 @@ export function useEducationPlayback(
       }
     }, { startsOnly: true });
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
+      // Its own resume, and the replay of it after a rebuild, are not a new destination.
+      if (target === 'about' && options?.resume) return;
+      resumeAt = null;
       if (options?.source === 'navbar') {
         landing = null;
         playing?.pause();
@@ -355,8 +392,8 @@ export function useEducationPlayback(
      * record through the ordinary upward entry.
      */
     const placed = host.getBoundingClientRect();
-    // An unmeasured, zero-height rail says nothing about where the reader is.
-    if (placed.height > 0 && placed.bottom <= 0) {
+    // An unmeasured, zero-height rail says nothing about where the reader is; a resumed one is read.
+    if (resumeAt === null && placed.height > 0 && placed.bottom <= 0) {
       side = 'after';
       handoffPending = false;
       current = total - 1;
@@ -381,9 +418,32 @@ export function useEducationPlayback(
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', visibility);
+    const forget = () => { resumeAt = null; };
+    for (const type of READER_INPUTS) window.addEventListener(type, forget, { capture: true, passive: true });
     apply();
+    if (resumeAt !== null) {
+      // Two frames on, once the page has measured this layout, the reader is taken back to the rail:
+      // through a navigation About's other chapters leave alone, which a rebuilding track keeps
+      // and takes again. Focus lost with the old layout lands on the rail's own control.
+      resumeFrame = requestAnimationFrame(() => {
+        resumeFrame = requestAnimationFrame(() => {
+          resumeFrame = 0;
+          if (!alive || resumeAt === null) return;
+          (onNavigate ?? publishSectionNavigation)('about', { immediate: true, resume: true, anchor: EDUCATION_RAIL_ID });
+          if (focusLost()) {
+            const control = panel.querySelector<HTMLButtonElement>('button[aria-label="Next record"]:not(:disabled)') ??
+              panel.querySelector<HTMLButtonElement>('button[aria-label="Previous record"]:not(:disabled)');
+            control?.focus({ preventScroll: true });
+          }
+        });
+      });
+    }
 
     return () => {
+      // The reader goes on with this record in whatever layout replaces this one.
+      resumeRef.current = state === 'reading' || state === 'crossing' || state === 'opening' ? current : resumeAt;
+      cancelAnimationFrame(resumeFrame);
+      for (const type of READER_INPUTS) window.removeEventListener(type, forget, { capture: true });
       alive = false;
       requestRef.current = null;
       unsubscribeGesture();
@@ -402,6 +462,77 @@ export function useEducationPlayback(
       context.revert();
     };
   }, [rail, stage, pinned, frame, head, track, staged, total, onNavigate]);
+
+  // The linear page: lands on a record carried from the staged rail, and keeps the one being read.
+  useEffect(() => {
+    const host = rail.current;
+    if (staged || !host) return;
+    /** The record this layout is taking the reader back to, until their input or a newer destination. */
+    let resuming = resumeRef.current;
+    let placing = 0;
+    let sampling = 0;
+    const land = () => {
+      if (resuming === null || !focusLost()) return;
+      host.querySelector<HTMLElement>(`#${educationRecordId(resuming)} [data-education-landing]`)?.focus({ preventScroll: true });
+    };
+    const cancelPlacement = () => {
+      cancelAnimationFrame(placing);
+      placing = 0;
+      resuming = null;
+    };
+    // Every scroll moves the reader's place, except while a resume stands.
+    const sample = () => {
+      sampling = 0;
+      if (placing || resuming !== null) return;
+      const line = window.innerHeight * READING_LINE;
+      const area = host.getBoundingClientRect();
+      if (area.top > line || area.bottom <= line) {
+        resumeRef.current = null;
+        return;
+      }
+      let record = 0;
+      host.querySelectorAll<HTMLElement>('[data-record]').forEach((element, index) => {
+        if (element.getBoundingClientRect().top <= line) record = index;
+      });
+      resumeRef.current = record;
+    };
+    const onScroll = () => {
+      if (!sampling) sampling = requestAnimationFrame(sample);
+    };
+    const retire = () => {
+      cancelPlacement();
+      resumeRef.current = null;
+      onScroll();
+    };
+    const stopNavigation = subscribeSectionNavigation((target, options) => {
+      // A rebuilt track taking the resume again detached the layer, and focus with it.
+      if (target === 'about' && options?.resume) {
+        land();
+        return;
+      }
+      retire();
+    });
+    if (resuming !== null) {
+      const record = resuming;
+      placing = requestAnimationFrame(() => {
+        placing = requestAnimationFrame(() => {
+          placing = 0;
+          (onNavigate ?? publishSectionNavigation)('about', { immediate: true, resume: true, anchor: educationRecordId(record) });
+        });
+      });
+    }
+    for (const type of READER_INPUTS) window.addEventListener(type, retire, { capture: true, passive: true });
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    const unsubscribeScroll = subscribeScrollProgress(onScroll);
+    return () => {
+      cancelAnimationFrame(sampling);
+      cancelPlacement();
+      stopNavigation();
+      unsubscribeScroll();
+      for (const type of READER_INPUTS) window.removeEventListener(type, retire, { capture: true });
+      window.removeEventListener('scroll', onScroll, { capture: true });
+    };
+  }, [rail, staged, onNavigate]);
 
   return { active, phase, ready, step };
 }

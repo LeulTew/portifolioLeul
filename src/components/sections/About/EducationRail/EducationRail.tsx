@@ -7,6 +7,7 @@ import { EducationRecord } from './EducationRecord';
 import { EDUCATION_RECORDS } from './educationRecords';
 import { useRailStaged } from './useRailStaging';
 import { useEducationPlayback } from './useEducationPlayback';
+import { EDUCATION_RAIL_ID } from './educationPlace';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import styles from './EducationRail.module.css';
 
@@ -184,6 +185,7 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
                       onWheel={forwardWheel}
                       inactive={staged && index !== active}
                       interactive={staged && phase === 'reading' && index === active}
+                      landing={!staged}
                     />
                   ))}
                 </div>
@@ -238,6 +240,7 @@ export function EducationRail({ onNavigate }: { onNavigate?: SectionNavigate } =
   return (
     <div
       ref={railRef}
+      id={EDUCATION_RAIL_ID}
       className={styles.rail}
       data-testid="education-rail"
       data-staged={staged ? 'true' : undefined}
