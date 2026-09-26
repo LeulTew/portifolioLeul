@@ -363,6 +363,15 @@ The reader's own input first, or a navigation elsewhere, cancels the resume.
 Its own navigations carry `resume: true`, which is how it, and the replay of
 it after a rebuild, are told from a new choice of Skills, which starts afresh
 (round 15, TECH-050).
+
+**A rebuild keeps the reader's place, not their pixel offset (2026-09-26):**
+the 3D page samples where the reader is -- a chapter and a distance into it,
+from what is drawn, while the layout is settled -- and a track rebuild
+restores to it. Keeping the pixel offset put a Contact reader into Projects
+once Skills re-staged above them. A replayed navigation re-announces its
+place for two frames after a rebuild, as a restore does, or Drei damps back
+to the target it held before; and a navbar choice made on a layout already
+changed but not yet reported is kept for the rebuild (round 16, TECH-055).
 A scroll offset or a section ratio alone is not a reader's place: the staged
 reader came back empty waiting for a gesture, and the linear page opened on
 another chapter (round 14, D-MOTION-001).

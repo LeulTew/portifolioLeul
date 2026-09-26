@@ -827,6 +827,34 @@ describe("App scroll position across a track resize", () => {
     expect(mockScroll.offset).toBeCloseTo((5000 + 1200 - 80) / (contentHeight - track.clientHeight));
   });
 
+  it("keeps a reader in their chapter when content above them grows", () => {
+    // Round 17: re-staging Skills above a Contact reader kept the pixel offset and showed Projects.
+    renderApp();
+    act(() => runFrames(4));
+    const contact = screen.getByTestId('contact-section');
+    contact.id = 'contact';
+    let contactTop = 7000;
+    Object.defineProperty(contact, 'offsetTop', { configurable: true, get: () => contactTop });
+    // The page measures its chapters with its layout (a same-size resize here).
+    act(() => { window.dispatchEvent(new Event("resize")); });
+    // Reading Contact, 100px into it: 7100 of the 8000 drawn pixels.
+    const progress = 7100 / ((track.pages - 1) * track.clientHeight);
+    act(() => {
+      mockScroll.el.scrollTop = progress * (mockScroll.el.scrollHeight - track.clientHeight);
+      mockScroll.offset = progress;
+      setScrollProgress(progress);
+    });
+    // Skills re-staged above it: everything from Projects on moves 2000px down.
+    contactTop = 9000;
+    act(() => {
+      contentHeight = 11000;
+      window.dispatchEvent(new Event("resize"));
+    });
+    act(() => runFrames(3));
+    expect(track.pages).toBeCloseTo(11, 5);
+    expect(mockScroll.offset * (track.pages - 1) * track.clientHeight).toBeCloseTo(9100, 0);
+  });
+
   it("does not throw the reader back to the top when content grows", () => {
     // Regression: ScrollControls resets scrollTop to 1 whenever `pages`
     // changes, so a lazily loaded image mid-scroll yanked the page to the top.

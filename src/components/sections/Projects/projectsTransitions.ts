@@ -62,7 +62,7 @@ export interface ProjectsEntryReading {
   viewportHeight: () => number;
   /** Skills still holds the view and has not released it to the TV. */
   skillsHolding: boolean;
-  /** Where Contact, the chapter after the rail, begins in the window; the stretch between them is the TV's. */
+  /** Where Contact, the chapter after the rail, opens in the window -- its heading; the stretch before it is the TV's. */
   nextTop?: number;
 }
 
