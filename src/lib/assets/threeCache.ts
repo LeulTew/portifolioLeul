@@ -37,6 +37,10 @@ export function threeCache(): Promise<typeof ThreeCache> {
     three.Cache.enabled = true;
     loaded = three.Cache;
     return three.Cache;
+  }, error => {
+    // A failed chunk request is not the last word: the next consumer asks again.
+    cache = null;
+    throw error;
   });
   return cache;
 }
@@ -49,5 +53,5 @@ export function threeCache(): Promise<typeof ThreeCache> {
  */
 export function removeFromThreeCache(url: string): void {
   if (loaded) loaded.remove(url);
-  else void cache?.then(entries => entries.remove(url));
+  else void cache?.then(entries => entries.remove(url), () => {});
 }

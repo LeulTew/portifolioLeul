@@ -323,6 +323,8 @@ async function runLoad(
   // reused without another HTTP-cache revalidation. Loaded alongside the
   // downloads, never ahead of them, and not at all for DOM-only media.
   const cached = assets.some(asset => asset.kind === 'model') ? threeCache() : null;
+  // Owned from the start: a model that fails before its handoff never awaits it (round 13, TECH-041).
+  cached?.catch(() => {});
 
   const expected = assets.map((asset) => asset.bytes);
   const received = assets.map(() => 0);

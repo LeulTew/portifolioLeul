@@ -172,10 +172,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       });
     } else nudge(element);
   };
-  /** A navigation this module did not issue cancels its queued nudge. */
-  const stopNavigation = subscribeSectionNavigation(() => {
-    if (!issuing) view.cancelAnimationFrame(frame);
-  });
+  const stopNewerIntent = onNewerIntent(root, () => issuing, () => view.cancelAnimationFrame(frame));
 
   const hold = (event: Event) => {
     const box = event.target;
@@ -234,8 +231,24 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     root.removeEventListener('keydown', tab);
     root.removeEventListener('invalid', invalid, true);
     root.removeEventListener(REVEAL_REQUEST, requested, true);
-    stopNavigation();
+    stopNewerIntent();
     view.cancelAnimationFrame(frame);
+  };
+}
+
+/**
+ * Cancels queued focus work when the reader shows a newer intent: a navigation
+ * this module did not issue, or their own wheel, touch or key. Two frames on,
+ * an old reveal would otherwise scroll back over it (round 13, TECH-040). The
+ * input itself is never cancelled.
+ */
+function onNewerIntent(root: Document, issuing: () => boolean, cancel: () => void): () => void {
+  const stopNavigation = subscribeSectionNavigation(() => { if (!issuing()) cancel(); });
+  const inputs = ['wheel', 'touchstart', 'keydown'] as const;
+  for (const type of inputs) root.addEventListener(type, cancel, { capture: true, passive: true });
+  return () => {
+    stopNavigation();
+    for (const type of inputs) root.removeEventListener(type, cancel, { capture: true });
   };
 }
 
@@ -380,6 +393,7 @@ export function installDocumentFocus({ main, navigate }: {
   let keyboard = false;
   let from: string | null = null;
   let frame = 0;
+  let issuing = false;
 
   const key = (event: KeyboardEvent) => {
     if (event.key !== 'Tab') return;
@@ -398,7 +412,12 @@ export function installDocumentFocus({ main, navigate }: {
     if (!(element instanceof HTMLElement) || !content?.contains(element)) return;
     const section = sectionOf(content, element);
     if (!section?.id || section.id === from) return;
-    navigate(section.id);
+    issuing = true;
+    try {
+      navigate(section.id);
+    } finally {
+      issuing = false;
+    }
     view.cancelAnimationFrame(frame);
     frame = view.requestAnimationFrame(() => {
       frame = view.requestAnimationFrame(() => {
@@ -436,7 +455,9 @@ export function installDocumentFocus({ main, navigate }: {
   root.addEventListener('focusin', follow, true);
   root.addEventListener('invalid', invalid, true);
   root.addEventListener(REVEAL_REQUEST, requested, true);
+  const stopNewerIntent = onNewerIntent(root, () => issuing, () => view.cancelAnimationFrame(frame));
   return () => {
+    stopNewerIntent();
     root.removeEventListener('keydown', key, { capture: true });
     root.removeEventListener('pointerdown', pointer, { capture: true });
     root.removeEventListener('focusin', follow, true);

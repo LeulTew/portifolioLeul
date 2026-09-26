@@ -75,6 +75,14 @@ const CONTENT_SETTLE_MS = 120;
  */
 const LOADER_FAILSAFE_MS = 45_000;
 
+/**
+ * How long a full loader waits for the spatial stage once every asset is in.
+ * The stage's own chunk is small and asked for first, so past this it is not
+ * coming: the page opens flat rather than leaving the full loader, or an empty
+ * page, in front of the reader (round 13, D-LOAD-001).
+ */
+const STAGE_GRACE_MS = 10_000;
+
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -101,6 +109,8 @@ function App() {
   const trackFocus = useMemo(createTrackFocusRecovery, []);
 
   const handleLoaded = useCallback(() => setIsLoading(false), []);
+  const [assetsIn, setAssetsIn] = useState(false);
+  const handleFilled = useCallback(() => setAssetsIn(true), []);
   /** Frames left to re-announce a restored position to ScrollControls. */
   const restoreSyncFramesRef = useRef(0);
   const restoredOffsetRef = useRef(0);
@@ -197,6 +207,16 @@ function App() {
     }, LOADER_FAILSAFE_MS);
     return () => clearTimeout(stalled);
   }, [handleLoaded, canRender3D]);
+
+  // Every asset is in and the stage still has not arrived: open the page without it.
+  useEffect(() => {
+    if (!assetsIn || !show3D || scrollElement) return;
+    const late = setTimeout(() => {
+      console.warn('The 3D scene did not load in time; showing the page without it.');
+      setWebglRuntimeError(true);
+    }, STAGE_GRACE_MS);
+    return () => clearTimeout(late);
+  }, [assetsIn, show3D, scrollElement]);
 
   /*
    * The prefetched model bytes have done their job -- but only once the scene
@@ -596,7 +616,8 @@ function App() {
   return (
     <div className={styles.container}>
       <AnimatePresence>
-        {isLoading && <Loader key="loader" theme={theme} onLoaded={handleLoaded} scene={show3D} />}
+        {isLoading && <Loader key="loader" theme={theme} onLoaded={handleLoaded} onFilled={handleFilled}
+          scene={show3D} ready={!show3D || scrollElement !== null} />}
       </AnimatePresence>
 
       {!isLoading && (
@@ -636,14 +657,19 @@ function App() {
       <AvatarEncounter enabled={!isLoading && show3D} scrollElement={scrollElement} />
       <TVControls enabled={!isLoading && show3D} scrollElement={scrollElement} />
 
-      {!isLoading && <PageFooter />}
+      {!isLoading && <PageFooter flat={!show3D} />}
     </div>
   );
 }
 
 export default App;
 
-function PageFooter() {
+/**
+ * The fixed footer. On the flat page the document scrolls under it, so past Home its scroll cue
+ * would sit over reading text -- the project reader's prose at 1440x900 -- and it steps aside
+ * there (round 13, D-UI-005).
+ */
+function PageFooter({ flat = false }: { flat?: boolean }) {
   const section = useActiveSection(['home', 'about', 'skills', 'projects', 'contact']);
   const paint = (painted: boolean) => (
     <motion.footer
@@ -655,7 +681,7 @@ function PageFooter() {
       animate={{ opacity: 1 }}
       transition={{ duration: 1, ease: [0.76, 0, 0.24, 1], delay: 0.4 }}
     >
-      {section !== 'contact' && <div className={styles.scroll}>
+      {section !== 'contact' && (!flat || section === 'home') && <div className={styles.scroll}>
         <div className={styles.scrollText}><InkLabel text="Scroll to explore" painted={painted} /></div>
         <div className={styles.scrollLine} />
       </div>}

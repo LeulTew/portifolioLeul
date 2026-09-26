@@ -441,6 +441,18 @@ describe("App without a WebGL context", () => {
     await act(async () => {});
   };
 
+  it("keeps the scroll cue to Home, where it cannot sit over reading text", async () => {
+    // Round 13 (D-UI-005): on the flat page the fixed cue crossed the project reader's prose.
+    const tracking = vi.spyOn(sectionTracking, "useActiveSection").mockReturnValue("home");
+    const { rerender } = render(<ThemeProvider><App /></ThemeProvider>);
+    await act(async () => {});
+    const footer = () => screen.getByTestId("page-footer");
+    expect(footer()).toHaveTextContent("Scroll to explore");
+    tracking.mockReturnValue("projects");
+    rerender(<ThemeProvider><App /></ThemeProvider>);
+    expect(footer()).not.toHaveTextContent("Scroll to explore");
+    expect(footer()).toHaveTextContent(`© ${new Date().getFullYear()}`);
+  });
   it("still renders the whole site", async () => {
     /*
      * Reported from Firefox: "Error creating WebGL context. WebGL is currently

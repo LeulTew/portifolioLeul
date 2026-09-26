@@ -12,6 +12,13 @@ export interface ModernTVLoaderProps {
   theme?: string;
   /** False when the page will open without a 3D scene; only DOM assets are then worth waiting for. */
   scene?: boolean;
+  /**
+   * Whether the page under the loader has its story to show. A full loader waits for it rather
+   * than exiting into an empty page (round 13, D-LOAD-001).
+   */
+  ready?: boolean;
+  /** Called once, when every asset is in and the letters are full. */
+  onFilled?: () => void;
 }
 
 /**
@@ -39,6 +46,8 @@ export function ModernTVLoader({
   minDurationMs = 1800,
   theme: propTheme,
   scene = true,
+  ready = true,
+  onFilled,
 }: ModernTVLoaderProps) {
   const context = useContext(ThemeContext);
   const resolvedTheme =
@@ -51,6 +60,10 @@ export function ModernTVLoader({
 
   const [isCompleted, setIsCompleted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [filled, setFilled] = useState(false);
+  const readyRef = useRef(ready);
+  readyRef.current = ready;
+  const exitScheduledRef = useRef(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const logoRef = useRef<HTMLDivElement | null>(null);
@@ -64,9 +77,21 @@ export function ModernTVLoader({
     minDurationMs,
     scene,
     onComplete: () => {
-      // Let the wave land, and let it be seen landing, before pulling away.
-      holdTimerRef.current = setTimeout(() => setIsExiting(true), reducedMotion ? 0 : FULL_HOLD_MS);
+      setFilled(true);
+      onFilled?.();
+      if (readyRef.current) beginExit();
     },
+  });
+
+  // Let the wave land, and let it be seen landing, before pulling away -- once the page is ready.
+  function beginExit() {
+    if (exitScheduledRef.current) return;
+    exitScheduledRef.current = true;
+    holdTimerRef.current = setTimeout(() => setIsExiting(true), reducedMotion ? 0 : FULL_HOLD_MS);
+  }
+  // A page that became ready after the letters filled opens now.
+  useEffect(() => {
+    if (filled && ready) beginExit();
   });
 
   useEffect(

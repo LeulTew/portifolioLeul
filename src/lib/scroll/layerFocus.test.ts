@@ -159,6 +159,16 @@ describe('keyboard focus in the scroll layer', () => {
     byId('cta').focus();
     flushFrames();
     expect(byId('track').scrollTop).toBe(0);
+
+    // Round 13 (TECH-040): nor over the reader's own wheel, with focus left where it was.
+    place('contact', 4800, 1000); place('email', 5000);
+    byId('cta').focus();
+    tab();
+    place('contact', 80, 1000); place('email', 700);
+    window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true }));
+    document.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true }));
+    flushFrames();
+    expect(byId('track').scrollTop).toBe(0);
   });
 
   it('nudges within the chapter already on screen instead of navigating again', () => {
@@ -565,6 +575,19 @@ describe('keyboard focus in the no-WebGL document', () => {
     expect(navigate).toHaveBeenCalledExactlyOnceWith('home');
   });
 
+  it("drops the follow-up reveal once a newer navigation or the reader's own scroll arrives", () => {
+    // Round 13 (TECH-040): the old Contact reveal ran after a newer Projects navigation.
+    byId('cta').focus();
+    tabTo('email');
+    publishSectionNavigation('projects', { source: 'navbar' });
+    flushFrames();
+    expect(revealed).toEqual([]);
+    byId('cta').focus();
+    tabTo('email');
+    document.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true }));
+    flushFrames();
+    expect(revealed).toEqual([]);
+  });
   it('leaves focus moving within a chapter to the browser', () => {
     byId('email').focus();
     tabTo('message');
