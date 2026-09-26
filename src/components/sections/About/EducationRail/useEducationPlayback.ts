@@ -13,6 +13,7 @@ import { isProjectsReturnOwed } from '@/lib/projects/projectsScene';
 import { stageVisible, trackOffset } from './railTransit';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { EDUCATION_RAIL_ID, educationRecordId } from './educationPlace';
+import { RAIL_BREAKPOINT } from './useRailStaging';
 
 type Phase = 'outside' | 'opening' | 'reading' | 'crossing' | 'closing';
 
@@ -83,6 +84,9 @@ export function useEducationPlayback(
      * re-measured only when layout can have changed.
      */
     const position = createTranslatedPositionReader(host, cachedElement(() => translatedLayerOf(host)));
+    // The layout this reader belongs to, read live: a replacement is committed before this reader is let go.
+    const narrowQuery = window.matchMedia(`(max-width: ${RAIL_BREAKPOINT}px)`);
+    const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     let viewportHeight = viewport.offsetHeight;
     const remeasure = () => {
       position.refresh();
@@ -283,6 +287,9 @@ export function useEducationPlayback(
     };
     const apply = () => {
       if (!alive || document.hidden) return;
+      // A staged reader whose layout is being replaced claims nothing; its cleanup would carry the
+      // claim as a record to resume (round 18, TECH-060; as Skills, round 17).
+      if (narrowQuery.matches || reducedQuery.matches) return;
       if (state === 'opening' || state === 'crossing' || state === 'closing') return;
       let rect = position.readRect();
       // Drei briefly detaches its HTML layer when the scroll track is rebuilt.

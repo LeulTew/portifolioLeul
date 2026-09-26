@@ -738,6 +738,18 @@ describe('a reader carried across a change of motion preference', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Next record' }));
   });
 
+  it('claims no opening in the frame a reduced-motion change has committed but not yet let go of the rail', async () => {
+    // Round 18 (TECH-060): the old rail opened on the title's completion and cleanup carried it as a resume.
+    const onNavigate = navigate();
+    mount(false, onNavigate);
+    reduced = true;
+    await act(async () => { document.getElementById('about')!.dataset.titleSettled = 'true'; });
+    expect(screen.getByTestId('education-stage')).toHaveAttribute('data-phase', 'outside');
+    motion(true);
+    flushFrames();
+    expect(resumes(onNavigate)).toHaveLength(0);
+  });
+
   it('gives way to a newer destination chosen before it lands', () => {
     const onNavigate = navigate();
     readRecord(onNavigate, 2);

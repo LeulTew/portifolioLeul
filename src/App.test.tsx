@@ -734,6 +734,21 @@ describe("App scroll position across a track resize", () => {
         expect(mockScroll.offset).toBeCloseTo((7000 - 80) / 10000);
       } finally { stop(); }
     });
+
+    it("never lands over a newer natural handoff accepted before it replays", () => {
+      // Round 18 (TECH-059): only navbar and resume choices retired a queued replay; a handoff was written over.
+      resizing();
+      const calls: string[] = [];
+      const stop = subscribeSectionNavigation(id => calls.push(id));
+      try {
+        fireEvent.click(screen.getByRole("button", { name: "Contact" }));
+        act(() => runFrames(1));
+        fireEvent.click(screen.getByRole("button", { name: "Return through Skills" }));
+        act(() => vi.advanceTimersByTime(1));
+        expect(calls).toEqual(["contact", "skills"]);
+        expect(mockScroll.offset).toBeCloseTo((4000 - 1000 + 80) / 10000);
+      } finally { stop(); }
+    });
   });
 
   it("settles navbar intent and physical/damped position together without traversing intermediate sections", () => {

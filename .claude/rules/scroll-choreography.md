@@ -381,7 +381,10 @@ reader came back empty waiting for a gesture, and the linear page opened on
 another chapter (round 14, D-MOTION-001).
 A staged reader whose layout is being replaced claims nothing: the new layout
 is committed before the old reader's cleanup runs, and its observers in that
-frame see positions from a layout they no longer own (round 17).
+frame see positions from a layout they no longer own (round 17; Education the
+same, round 18, TECH-060). Any destination accepted after a choice was queued
+for a rebuild retires that queued choice, a natural handoff included: the
+replay otherwise wrote the older destination back over it (round 18, TECH-059).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

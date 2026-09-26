@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Springs, Easings, getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
+import { Springs, Easings, getPrefersReducedMotion, usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { useSectionEntrance } from '@/lib/scroll/useSectionFocus';
 
 interface KineticHeadingProps {
@@ -22,17 +22,19 @@ export function KineticHeading({
   as: Component = 'h1',
 }: KineticHeadingProps) {
   const words = text.split(' ');
-  const prefersReduced = getPrefersReducedMotion();
+  // Live: a preference changed on a mounted heading settles it (round 18, D-UI-010).
+  const prefersReduced = usePrefersReducedMotion();
   const entrance = useSectionEntrance(!prefersReduced, 20);
+  const still = instant || prefersReduced;
 
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        ...(instant ? { duration: 0 } : {}),
-        staggerChildren: instant ? 0 : 0.06,
-        delayChildren: instant ? 0 : delay,
+        ...(still ? { duration: 0 } : {}),
+        staggerChildren: still ? 0 : 0.06,
+        delayChildren: still ? 0 : delay,
       },
     },
   };
@@ -50,7 +52,7 @@ export function KineticHeading({
       rotateX: 0,
       filter: 'blur(0px)',
       transition: {
-        duration: instant ? 0 : 0.7,
+        duration: still ? 0 : 0.7,
         ease: Easings.easeOutCubic,
       },
     },
@@ -64,8 +66,10 @@ export function KineticHeading({
       <MotionSpan
         ref={entrance.ref}
         variants={containerVariants}
-        initial={prefersReduced || instant ? false : 'hidden'}
-        animate={instant ? 'visible' : prefersReduced ? undefined : entrance.hasEntered ? 'visible' : 'hidden'}
+        initial={still ? false : 'hidden'}
+        // Reduced motion is settled at the visible pose, not left without a target: a heading
+        // mounted with motion kept its hidden words when the preference changed.
+        animate={still || entrance.hasEntered ? 'visible' : 'hidden'}
         className="flex flex-wrap items-baseline gap-x-2"
       >
         {words.map((word, idx) => {
@@ -180,13 +184,25 @@ export function KineticRotator({
   interval = 3000,
 }: KineticRotatorProps) {
   const [index, setIndex] = useState(0);
+  // Rotation is repeating, nonessential movement: a reader who asked for less keeps one phrase
+  // still, the one showing when they asked (round 18, D-MOTION-002).
+  const reduced = usePrefersReducedMotion();
 
   useEffect(() => {
+    if (reduced) return;
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % words.length);
     }, interval);
     return () => clearInterval(timer);
-  }, [words.length, interval]);
+  }, [words.length, interval, reduced]);
+
+  if (reduced) {
+    return (
+      <span className={cn('inline-flex align-baseline font-mono font-bold text-emerald-400', className)}>
+        {words[index]}
+      </span>
+    );
+  }
 
   return (
     <div className={cn('relative inline-flex overflow-hidden h-[1.3em] align-baseline', className)}>
