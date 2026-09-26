@@ -560,6 +560,11 @@ function App() {
       navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
       restoreSyncFramesRef.current = 0;
       if (!rebuilding) pendingRestoreRef.current = null;
+    } else if (!replayingRef.current) {
+      // A natural handoff accepted now is newer than any choice still queued for a rebuild: that
+      // replay would write the older destination back over it (round 18, TECH-059).
+      cancelReplay();
+      navigationAfterRebuildRef.current = null;
     }
     publishSectionNavigation(id, options);
 
