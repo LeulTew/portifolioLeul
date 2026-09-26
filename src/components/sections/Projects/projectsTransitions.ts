@@ -62,18 +62,25 @@ export interface ProjectsEntryReading {
   viewportHeight: () => number;
   /** Skills still holds the view and has not released it to the TV. */
   skillsHolding: boolean;
+  /** Where Contact, the chapter after the rail, begins in the window; the stretch between them is the TV's. */
+  nextTop?: number;
 }
 
 /**
  * Whether the TV claims the view, and from which side: from Skills once the
  * rail reaches the top edge on a forward wave, from Contact once it reaches
- * the bottom edge on an upward one.
+ * the bottom edge on an upward one -- or once Contact has all but left the
+ * window. At 900x560 a wheel back from Contact took its form out of view
+ * 80px before the rail's edge arrived, and the page rested on empty sky
+ * (round 16, D-UX-004).
  */
 export function projectsEntry(reading: ProjectsEntryReading): 'skills' | 'contact' | null {
-  const { side, wave, top, height, viewportHeight, skillsHolding } = reading;
+  const { side, wave, top, height, viewportHeight, skillsHolding, nextTop } = reading;
   if (height <= 0) return null;
   if (side === 'after') {
-    return wave === 'up' && top + height >= viewportHeight() - PROJECTS_ENTRY_EDGE ? 'contact' : null;
+    if (wave !== 'up') return null;
+    const edge = viewportHeight() - PROJECTS_ENTRY_EDGE;
+    return top + height >= edge || (nextTop !== undefined && nextTop >= edge) ? 'contact' : null;
   }
   if (top > PROJECTS_ENTRY_EDGE || wave === 'up' || skillsHolding) return null;
   return 'skills';

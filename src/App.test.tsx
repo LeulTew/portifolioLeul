@@ -687,6 +687,36 @@ describe("App scroll position across a track resize", () => {
         act(() => vi.advanceTimersByTime(1));
         expect(calls).toEqual(["skills", "skills"]);
         expect(mockScroll.offset).toBeCloseTo((4000 - 80) / 10000);
+        // Round 16 (TECH-055): the rebuilt track ignores its first scroll, so the replay announces
+        // its place again for two frames, or Drei damps back to the target from before the rebuild.
+        const announced = vi.spyOn(mockScroll.el, "dispatchEvent");
+        act(() => runFrames(3));
+        expect(announced.mock.calls.filter(([event]) => event.type === "scroll")).toHaveLength(2);
+        expect(mockScroll.offset).toBeCloseTo((4000 - 80) / 10000);
+      } finally { stop(); }
+    });
+
+    it("is kept for the rebuild when the layout has changed but not yet been reported", () => {
+      // Round 16 (TECH-055): Contact chosen in the frame after a motion change, before the content
+      // observer ran, was placed on the half-built layout and never taken again.
+      renderApp();
+      for (const [name, top] of [["skills", 4000], ["contact", 7000]] as const) {
+        const element = screen.getByTestId(`${name}-section`);
+        element.id = name;
+        Object.defineProperty(element, "offsetTop", { configurable: true, value: top });
+      }
+      act(() => runFrames(4));
+      const calls: string[] = [];
+      const stop = subscribeSectionNavigation(id => calls.push(id));
+      try {
+        contentHeight = 11000;
+        fireEvent.click(screen.getByRole("button", { name: "Skills" }));
+        // The observer reports the change only now, and the track rebuilds.
+        act(() => { window.dispatchEvent(new Event("resize")); });
+        act(() => runFrames(1));
+        act(() => vi.advanceTimersByTime(1));
+        expect(calls).toEqual(["skills", "skills"]);
+        expect(mockScroll.offset).toBeCloseTo((4000 - 80) / 10000);
       } finally { stop(); }
     });
 

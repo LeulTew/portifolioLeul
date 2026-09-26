@@ -347,6 +347,8 @@ function App() {
   const scrollToSectionRef = useRef<((id: string, options?: SectionNavigationOptions) => void) | null>(null);
   /** A replay queued for the next task; any later navigation cancels it, so it can never land last. */
   const replayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** True while a destination chosen during a rebuild is being taken again. */
+  const replayingRef = useRef(false);
   const cancelReplay = useCallback(() => {
     if (replayTimerRef.current !== null) clearTimeout(replayTimerRef.current);
     replayTimerRef.current = null;
@@ -359,7 +361,22 @@ function App() {
     cancelReplay();
     replayTimerRef.current = setTimeout(() => {
       replayTimerRef.current = null;
-      scrollToSectionRef.current?.(navigation.id, navigation.options);
+      // Focus the rebuild detached is still to be put back after it: the replay does not drop that.
+      replayingRef.current = true;
+      try {
+        scrollToSectionRef.current?.(navigation.id, navigation.options);
+      } finally {
+        replayingRef.current = false;
+      }
+      // The track was just rebuilt, and ScrollControls ignores the first scroll after a rebuild:
+      // the place is announced again for two frames, as a restore does, or Drei went on damping
+      // the layer toward the target it kept from before -- a chapter or Contact landed 600px and
+      // more away from where the navigation put it (round 16, TECH-055).
+      const track = scrollElementRef.current;
+      if (track && !navigationAfterRebuildRef.current) {
+        restoredOffsetRef.current = readScrollOffset(track);
+        restoreSyncFramesRef.current = 2;
+      }
     }, 0);
   }, [cancelReplay]);
   const applyPendingRestore = useCallback((): number | null => {
@@ -469,13 +486,19 @@ function App() {
     if (!target) return;
     const anchor = options?.anchor ? document.getElementById(options.anchor) : null;
     const landing = anchor && target.contains(anchor) ? anchor : null;
-    trackFocus.cancel();
+    if (!replayingRef.current) trackFocus.cancel();
     const immediate = options?.immediate || options?.source === 'navbar';
     if (options?.source === 'navbar') {
       // A newer choice outranks one still queued to replay (round 11, TECH-032).
       cancelReplay();
       // A rebuild still to land would reset the track under this choice: keep it, and take it again after.
-      const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current);
+      // So would a layout already changed but not yet reported -- a motion-preference remount in
+      // the frame before the content observer runs -- whose page count the track does not yet draw
+      // (round 16, TECH-055).
+      const content = mainRef.current;
+      const unmeasured = Boolean(scrollElement) && content !== null &&
+        Math.abs(Math.max(content.scrollHeight / (window.innerHeight || 1), 1) - scrollPagesRef.current) > SCROLL_PAGE_EPSILON;
+      const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current) || unmeasured;
       navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
       restoreSyncFramesRef.current = 0;
       if (!rebuilding) pendingRestoreRef.current = null;

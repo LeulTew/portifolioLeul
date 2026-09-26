@@ -529,10 +529,11 @@ export function useSkillsPlayback(
       resuming = null;
     };
     // Every scroll moves the reader's place, a scrollbar drag however long included (round 15,
-    // TECH-053) -- except before the resume has placed them, when the place is the layout's.
+    // TECH-053) -- except while a resume stands, when the place is the layout's until the reader
+    // moves: a rebuild's settling scrolls replaced the chapter being resumed (round 16, TECH-055).
     const sample = () => {
       sampling = 0;
-      if (placing) return;
+      if (placing || resuming !== null) return;
       const line = window.innerHeight * READING_LINE;
       const area = rail.getBoundingClientRect();
       if (area.top > line || area.bottom <= line) {
