@@ -87,7 +87,10 @@ export function useSkillsPlayback(
     // As in Education: apply runs on every scroll publication, so the rail's
     // place comes from the layer's transform and sizes only from layout changes.
     const position = createTranslatedPositionReader(rail, cachedElement(() => translatedLayerOf(rail)));
-    const layout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => position.refresh());
+    const layout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      position.refresh();
+      educationPosition?.refresh();
+    });
     layout?.observe(main ?? rail);
     const findAboutOverlay = cachedElement(() => document.querySelector<HTMLElement>('[data-pinned-sequence]'));
     let current = 0;
@@ -278,7 +281,24 @@ export function useSkillsPlayback(
       }
     };
     const about = main?.querySelector<HTMLElement>('#about') ?? document.getElementById('about');
+    const fitsQuery = window.matchMedia(SKILLS_STAGE_QUERY);
+    const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const educationRail = about?.querySelector<HTMLElement>('[data-testid="education-rail"]');
+    const educationPosition = educationRail
+      ? createTranslatedPositionReader(educationRail, cachedElement(() => translatedLayerOf(educationRail)))
+      : null;
+    /**
+     * Whether a linear Education, the reading before this rail, has left the window while the rail
+     * is still short of its edge. At the 900px floor that stretch of the rail's runway was all the
+     * window showed, empty, until another wheel came (round 17, D-UX-005). Read only in that
+     * stretch, as the rail itself is.
+     */
+    const educationGone = (top: number) => {
+      if (!educationRail || !educationPosition || educationRail.dataset.staged === 'true') return false;
+      if (top >= window.innerHeight) return false;
+      const education = educationPosition.readRect();
+      return education.height > 0 && education.top + education.height <= 96;
+    };
     const otherChapterOwnsStage = () => {
       if (isProjectsReturnOwed() || document.getElementById('projects')?.dataset.projectsActive === 'true') return true;
       if (!about) return false;
@@ -292,6 +312,10 @@ export function useSkillsPlayback(
 
     function apply() {
       if (!alive || document.hidden || !rail?.isConnected) return;
+      // A change of motion or window commits the layout that replaces this one before this reader
+      // is let go: its observers heard the shorter linear Education carry the rail to the top and
+      // claimed an entrance nobody asked for, carried on as a resume of Skills (round 17).
+      if (!fitsQuery.matches || reducedQuery.matches) return;
       // PinnedSequence portals after its mount effect. Observe the actual
       // release, which can follow About's last flag after scrolling has stopped.
       if (!observedOverlay?.isConnected) {
@@ -314,7 +338,7 @@ export function useSkillsPlayback(
       }
       if (rect.height <= 0) return;
       const entering = side === 'before'
-        ? (directlyRequested || wave !== 'up') && rect.top <= 96
+        ? (directlyRequested || wave !== 'up') && (rect.top <= 96 || educationGone(rect.top))
         : directlyRequested || (wave === 'up' && rect.top + rect.height >= window.innerHeight - 96);
       if (entering) claim();
     }
@@ -455,6 +479,7 @@ export function useSkillsPlayback(
     const unsubscribeScroll = subscribeScrollProgress(apply);
     const resize = () => {
       position.refresh();
+      educationPosition?.refresh();
       apply();
     };
     window.addEventListener('scroll', apply, { passive: true });
