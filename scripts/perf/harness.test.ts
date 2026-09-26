@@ -136,6 +136,17 @@ describe('owned processes', () => {
     expect(child.signals).toEqual([]);
   });
 
+  it('counts a process the OS reports gone as stopped, before its exit event arrives', async () => {
+    // Round 21 (TECH-064): Bun reported Chrome's exit well after taskkill had ended it.
+    const child = new FakeChild([]);
+    let gone = false;
+    const owned = ownProcess(child as never, 'Chrome', { graceMs: 2000, terminate: () => { setTimeout(() => { gone = true; }, 50); }, gone: () => gone });
+    const started = performance.now();
+    await owned.stop();
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(await owned.settle(10)).toBe(true);
+  });
+
   it("ends a Windows process's whole tree by its id, and signals it elsewhere", () => {
     // Round 20 (TECH-064): a signal ended only Chrome's main process on Windows; its renderers held the profile.
     const runs: [string, string[]][] = [];

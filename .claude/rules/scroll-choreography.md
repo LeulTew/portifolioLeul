@@ -394,6 +394,12 @@ A chapter that has handed the reader on does not take back the scene it
 handed over: the rebuild's replay of the Contact handoff reached Projects as a
 fresh departure, and Projects released the Contact clearing it had just
 parked, leaving the island behind the form (round 20, D-MOTION-004).
+A chapter mounted while the track rebuilds does not take its place in the
+story from the half-built page: which side of it the reader is on is read
+from a settled layout, one where it lies wholly past or wholly ahead of the
+window, until the reader's first gesture or a navigation fixes it. The TV,
+re-enabled at Contact after a resize, decided it was still ahead, and a
+reverse wheel crossed Projects without its reader (round 21, TECH-065).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

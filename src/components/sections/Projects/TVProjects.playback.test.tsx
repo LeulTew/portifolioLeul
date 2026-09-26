@@ -262,6 +262,36 @@ describe('the completed-beat TV chapter', () => {
     expect(phase()).toBe('reading');
   });
 
+  it('takes its side from the settled page when it mounts while the track rebuilds', async () => {
+    // Round 21 (TECH-065): remounted at Contact on a half-built page, the TV decided it was still
+    // ahead of the reader, and a reverse wheel crossed Projects without its reader.
+    top = 1417;
+    mount();
+    expect(phase()).toBe('outside');
+    // App puts the reader back at Contact once the new geometry is in place.
+    top = -2800;
+    act(() => setScrollProgress(0.95));
+    clock.wait(300);
+    wheel(-200);
+    // The wheel carries the page back until the rail's end is in the window.
+    top = -1300;
+    act(() => setScrollProgress(0.9));
+    expect(phase()).toBe('approaching');
+    await clock.run(CONTACT_FLIGHT_MS);
+    expect(phase()).toBe('reading');
+  });
+
+  it('does not take a scrollbar drag back through the rail for a forward entry', () => {
+    // The side read from the layout changes only where the rail is wholly past or ahead of the window.
+    top = -2800;
+    mount();
+    top = -600;
+    act(() => setScrollProgress(0.9));
+    top = 40;
+    act(() => setScrollProgress(0.85));
+    expect(phase()).toBe('outside');
+  });
+
   it('keeps ownership until the final sky camera frame is committed, not just scheduled', async () => {
     const removeCamera = registerContactCamera();
     try {
