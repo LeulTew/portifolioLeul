@@ -128,8 +128,6 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   let frame = 0;
   /** True while this module's own navigation is being published. */
   let issuing = false;
-  /** An invalid field's queued reveal, owned so teardown can cancel it (round 14, TECH-045). */
-  let validation = 0;
 
   const nudge = (element: HTMLElement) => {
     const content = main();
@@ -174,7 +172,18 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       });
     } else nudge(element);
   };
-  const stopNewerIntent = onNewerIntent(root, () => issuing, () => view.cancelAnimationFrame(frame));
+  /*
+   * Native validation focuses the first invalid field and scrolls it into
+   * view, but the browser's view is the viewport, not what the navbar leaves
+   * of it: at 900x560 a blank Send put Name half under the bar, its message
+   * bubble over the navigation (round 8, D-A11Y-002). The field it focuses is
+   * revealed the way keyboard focus is, clear of the bar.
+   */
+  const validation = validationPass(root, view, () => true, field => reveal(field));
+  const stopNewerIntent = onNewerIntent(root, () => issuing, () => {
+    view.cancelAnimationFrame(frame);
+    validation.cancel();
+  });
 
   const hold = (event: Event) => {
     const box = event.target;
@@ -210,34 +219,52 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     else revealInOwnBox(next, view);
   };
 
-  /*
-   * Native validation focuses the first invalid field and scrolls it into
-   * view, but the browser's view is the viewport, not what the navbar leaves
-   * of it: at 900x560 a blank Send put Name half under the bar, its message
-   * bubble over the navigation (round 8, D-A11Y-002). The field it focuses is
-   * revealed the way keyboard focus is, clear of the bar.
-   */
-  const invalid = (event: Event) => {
-    const field = event.target;
-    if (!(field instanceof HTMLElement)) return;
-    view.cancelAnimationFrame(validation);
-    validation = view.requestAnimationFrame(() => { if (root.activeElement === field) reveal(field); });
-  };
   const requested = (event: Event) => reveal(event.target instanceof Element ? event.target : null, true);
 
   track.addEventListener('scroll', hold, { capture: true, passive: true });
   root.addEventListener('keydown', tab);
-  root.addEventListener('invalid', invalid, true);
+  root.addEventListener('invalid', validation.invalid, true);
   root.addEventListener(REVEAL_REQUEST, requested, true);
   return () => {
     track.removeEventListener('scroll', hold, { capture: true });
     root.removeEventListener('keydown', tab);
-    root.removeEventListener('invalid', invalid, true);
+    root.removeEventListener('invalid', validation.invalid, true);
     root.removeEventListener(REVEAL_REQUEST, requested, true);
     stopNewerIntent();
     view.cancelAnimationFrame(frame);
-    view.cancelAnimationFrame(validation);
+    validation.cancel();
   };
+}
+
+/**
+ * One reveal for one native validation pass. The browser fires `invalid` at
+ * every invalid control, then focuses the first: the pass's one frame reveals
+ * whichever of them holds focus by then. Keeping only the last event's frame
+ * left a blank form's focused Name under the navbar (round 15, TECH-051).
+ */
+function validationPass(root: Document, view: Window, accepts: (field: HTMLElement) => boolean,
+  reveal: (field: HTMLElement) => void) {
+  const fields = new Set<HTMLElement>();
+  let frame = 0;
+  const cancel = () => {
+    view.cancelAnimationFrame(frame);
+    frame = 0;
+    fields.clear();
+  };
+  const invalid = (event: Event) => {
+    const field = event.target;
+    if (!(field instanceof HTMLElement) || !accepts(field)) return;
+    fields.add(field);
+    if (frame) return;
+    frame = view.requestAnimationFrame(() => {
+      frame = 0;
+      const active = root.activeElement;
+      const focused = active instanceof HTMLElement && fields.has(active) ? active : null;
+      fields.clear();
+      if (focused) reveal(focused);
+    });
+  };
+  return { invalid, cancel };
 }
 
 /**
@@ -398,7 +425,6 @@ export function installDocumentFocus({ main, navigate }: {
   let from: string | null = null;
   let frame = 0;
   let issuing = false;
-  let validation = 0;
 
   const key = (event: KeyboardEvent) => {
     if (event.key !== 'Tab') return;
@@ -432,16 +458,10 @@ export function installDocumentFocus({ main, navigate }: {
   };
 
   // Native validation aligns the field under the bar; its label, above it, is shown with it.
-  const invalid = (event: Event) => {
-    const field = event.target;
-    if (!(field instanceof HTMLElement) || !main()?.contains(field)) return;
-    view.cancelAnimationFrame(validation);
-    validation = view.requestAnimationFrame(() => {
-      if (root.activeElement !== field) return;
-      const hidden = chromeClearance() - revealBox(field).top;
-      if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
-    });
-  };
+  const validation = validationPass(root, view, field => Boolean(main()?.contains(field)), field => {
+    const hidden = chromeClearance() - revealBox(field).top;
+    if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+  });
   // Requested feedback is brought in whole, then clear of the bar if that put it under it --
   // but only in the chapter on screen: a late answer never pulls the reader back to its section.
   const requested = (event: Event) => {
@@ -459,17 +479,20 @@ export function installDocumentFocus({ main, navigate }: {
   root.addEventListener('keydown', key, { capture: true, passive: true });
   root.addEventListener('pointerdown', pointer, { capture: true, passive: true });
   root.addEventListener('focusin', follow, true);
-  root.addEventListener('invalid', invalid, true);
+  root.addEventListener('invalid', validation.invalid, true);
   root.addEventListener(REVEAL_REQUEST, requested, true);
-  const stopNewerIntent = onNewerIntent(root, () => issuing, () => view.cancelAnimationFrame(frame));
+  const stopNewerIntent = onNewerIntent(root, () => issuing, () => {
+    view.cancelAnimationFrame(frame);
+    validation.cancel();
+  });
   return () => {
     stopNewerIntent();
     root.removeEventListener('keydown', key, { capture: true });
     root.removeEventListener('pointerdown', pointer, { capture: true });
     root.removeEventListener('focusin', follow, true);
-    root.removeEventListener('invalid', invalid, true);
+    root.removeEventListener('invalid', validation.invalid, true);
     root.removeEventListener(REVEAL_REQUEST, requested, true);
     view.cancelAnimationFrame(frame);
-    view.cancelAnimationFrame(validation);
+    validation.cancel();
   };
 }

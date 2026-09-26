@@ -27,8 +27,6 @@ interface Refs {
 
 /** The reader's own moves: any of them outranks a chapter still waiting to be resumed. */
 const READER_INPUTS = ['wheel', 'keydown', 'pointerdown', 'touchstart'] as const;
-/** How long after the reader's own input a scroll of the linear page is theirs to follow. */
-const READER_SCROLL_MS = 1500;
 /** The line, as a share of the window's height, a chapter has to pass to be the one being read. */
 const READING_LINE = 0.4;
 
@@ -383,7 +381,8 @@ export function useSkillsPlayback(
         wave = null;
         writeAttribute(rail, 'data-skills-released', null);
         side = target === 'home' || target === 'about' || target === 'skills' ? 'before' : 'after';
-        if (target !== 'skills') resumeAt = null;
+        // A new choice, even of Skills itself, starts afresh; only the resume's own navigation continues it.
+        if (target !== 'skills' || !options?.resume) resumeAt = null;
         current = resumeAt ?? (side === 'before' ? 0 : score.stops.length - 1);
         setActive(current);
         setSettledIndex(current);
@@ -406,7 +405,7 @@ export function useSkillsPlayback(
         return;
       }
       immediateEntry = false;
-      if (target !== 'skills') resumeAt = null;
+      if (target !== 'skills' || !options?.resume) resumeAt = null;
       if (target === 'skills') {
         bypass = false;
         navigation = state === 'leaving' ? 'skills' : null;
@@ -471,7 +470,7 @@ export function useSkillsPlayback(
       resumeFrame = requestAnimationFrame(() => {
         resumeFrame = requestAnimationFrame(() => {
           resumeFrame = 0;
-          if (alive && resumeAt !== null) (onNavigate ?? publishSectionNavigation)('skills', { source: 'navbar' });
+          if (alive && resumeAt !== null) (onNavigate ?? publishSectionNavigation)('skills', { source: 'navbar', resume: true });
         });
       });
     }
@@ -511,13 +510,29 @@ export function useSkillsPlayback(
     const rail = host.current;
     const panel = stage.current;
     if (staged || !rail || !panel) return;
-    let input = Number.NEGATIVE_INFINITY;
+    /**
+     * The chapter this layout is taking the reader back to, for as long as the resume
+     * lasts: its placement, the replay of that placement after a track rebuild, and the
+     * focus landing are all one lifetime, which the reader's own input or any newer
+     * destination ends (round 15, TECH-050).
+     */
+    let resuming = resumeRef.current;
+    let placing = 0;
     let sampling = 0;
-    let resuming = 0;
+    const land = () => {
+      if (resuming === null || !focusLost()) return;
+      panel.querySelector<HTMLElement>(`#${skillChapterId(resuming)} [data-skill-landing]`)?.focus({ preventScroll: true });
+    };
+    const retire = () => {
+      cancelAnimationFrame(placing);
+      placing = 0;
+      resuming = null;
+    };
+    // Every scroll moves the reader's place, a scrollbar drag however long included (round 15,
+    // TECH-053) -- except before the resume has placed them, when the place is the layout's.
     const sample = () => {
       sampling = 0;
-      // Only the reader's own scrolling moves their place; a layout settling around it does not.
-      if (performance.now() - input > READER_SCROLL_MS) return;
+      if (placing) return;
       const line = window.innerHeight * READING_LINE;
       const area = rail.getBoundingClientRect();
       if (area.top > line || area.bottom <= line) {
@@ -533,45 +548,38 @@ export function useSkillsPlayback(
     const onScroll = () => {
       if (!sampling) sampling = requestAnimationFrame(sample);
     };
-    let stopLanding = () => {};
-    const onInput = () => {
-      input = performance.now();
-      cancelAnimationFrame(resuming);
-      resuming = 0;
-      stopLanding();
-    };
-    const chapter = resumeRef.current;
-    if (chapter !== null) {
+    const stopNavigation = subscribeSectionNavigation((target, options) => {
+      // A rebuilt track taking the resume again detached the layer, and focus with it.
+      if (target === 'skills' && options?.resume) {
+        land();
+        return;
+      }
+      retire();
+      if (target !== 'skills') resumeRef.current = null;
+    });
+    if (resuming !== null) {
       // As the staged reader resumes: two frames on, through navigation (see above). Focus lost
-      // with the staged reader lands on the chapter's own title, where Tab continues from --
-      // and again when a track rebuilt under the navigation takes it again, since the rebuild
-      // detaches the layer the title is in.
-      const land = () => {
-        if (focusLost()) panel.querySelector<HTMLElement>(`#${skillChapterId(chapter)} [data-skill-landing]`)?.focus({ preventScroll: true });
-      };
-      resuming = requestAnimationFrame(() => {
-        resuming = requestAnimationFrame(() => {
-          resuming = 0;
-          (onNavigate ?? publishSectionNavigation)('skills',
-            chapter > 0 ? { source: 'navbar', anchor: skillChapterId(chapter) } : { source: 'navbar' });
-          land();
-          stopLanding = subscribeSectionNavigation(target => {
-            if (target === 'skills') land();
-            else stopLanding();
-          });
+      // with the staged reader lands on the chapter's own title, where Tab continues from.
+      const chapter = resuming;
+      placing = requestAnimationFrame(() => {
+        placing = requestAnimationFrame(() => {
+          placing = 0;
+          (onNavigate ?? publishSectionNavigation)('skills', chapter > 0
+            ? { source: 'navbar', resume: true, anchor: skillChapterId(chapter) }
+            : { source: 'navbar', resume: true });
         });
       });
     }
-    for (const type of READER_INPUTS) window.addEventListener(type, onInput, { capture: true, passive: true });
+    for (const type of READER_INPUTS) window.addEventListener(type, retire, { capture: true, passive: true });
     // Capture hears the 3D page's own scrolling element as well as the document.
     window.addEventListener('scroll', onScroll, { capture: true, passive: true });
     const unsubscribeScroll = subscribeScrollProgress(onScroll);
     return () => {
       cancelAnimationFrame(sampling);
-      cancelAnimationFrame(resuming);
-      stopLanding();
+      retire();
+      stopNavigation();
       unsubscribeScroll();
-      for (const type of READER_INPUTS) window.removeEventListener(type, onInput, { capture: true });
+      for (const type of READER_INPUTS) window.removeEventListener(type, retire, { capture: true });
       window.removeEventListener('scroll', onScroll, { capture: true });
     };
   }, [host, stage, staged, onNavigate]);

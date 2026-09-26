@@ -248,6 +248,34 @@ describe('keyboard focus in the scroll layer', () => {
     expect(byId('track').scrollTop).toBe(0);
   });
 
+  it('reveals the invalid field the browser focuses, not the last one it reported', () => {
+    // Round 15 (TECH-051): a blank form reports every field, then focuses the first; only the last was kept.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    place('contact', 0, 1000); place('message', 44, 120);
+    rendered = 1000;
+    const flush = ownedFrames();
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('send').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    flush();
+    expect(byId('track').scrollTop).toBeCloseTo(1000 - (52 * 7200) / 6200, 5);
+  });
+
+  it('drops a validation reveal once a newer navigation owns the view', () => {
+    place('contact', 0, 1000); place('message', 44, 120);
+    rendered = 1000;
+    byId('track').scrollTop = 5000;
+    const flush = ownedFrames();
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    publishSectionNavigation('home', { source: 'navbar' });
+    flush();
+    expect(byId('track').scrollTop).toBe(5000);
+  });
+
   it('drops a validation reveal still queued when it is uninstalled', () => {
     // Round 14 (TECH-045): the discarded frame still scrolled the track after teardown.
     place('contact', 0, 1000); place('message', 44, 120);
@@ -684,6 +712,31 @@ describe('keyboard focus in the no-WebGL document', () => {
     byId('message').focus();
     release();
     release = () => {};
+    flush();
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+
+  it('shows the label of the first invalid field of a blank form, which the browser focuses', () => {
+    // Round 15 (TECH-051): the frame kept was the last field's, so Name stayed under the bar.
+    const header = document.createElement('header');
+    document.body.prepend(header);
+    boxes.set(header, { top: 0, bottom: 70 });
+    onTestFinished(observeChromeInset(header));
+    place('message', 20, 120);
+    const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const flush = ownedFrames();
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('send').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    flush();
+    expect(scrolled).toHaveBeenCalledExactlyOnceWith({ top: -62, behavior: 'auto' });
+
+    // And not once a newer navigation owns the view.
+    scrolled.mockClear();
+    byId('message').blur();
+    byId('message').dispatchEvent(new Event('invalid', { cancelable: true }));
+    byId('message').focus();
+    publishSectionNavigation('projects', { source: 'navbar' });
     flush();
     expect(scrolled).not.toHaveBeenCalled();
   });

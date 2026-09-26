@@ -771,6 +771,20 @@ describe("App scroll position across a track resize", () => {
     }
   });
 
+  it("maps navigation onto the range the layer is drawn across, not the content's newer height", () => {
+    // Round 15 (TECH-049): growth inside the rebuild deadband left navbar Skills 25px short of its entry.
+    renderApp();
+    const target = screen.getByTestId('contact-section');
+    target.id = 'contact';
+    Object.defineProperty(target, 'offsetTop', { configurable: true, value: 6000 });
+    const pages = track.pages;
+    contentHeight += 100;
+    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
+    expect(track.pages).toBe(pages);
+    // Where the layer draws the section: offset * (pages - 1) screens, 80px under the top.
+    expect(mockScroll.offset * (track.pages - 1) * track.clientHeight).toBeCloseTo(6000 - 80);
+  });
+
   it("lands a navigation that names an element of its section on that element, on the scene scrollport", () => {
     renderApp();
     const target = screen.getByTestId('skills-section');

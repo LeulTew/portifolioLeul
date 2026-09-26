@@ -98,6 +98,29 @@ describe('flat page resize anchoring', () => {
     expect(scrollBy).not.toHaveBeenCalled();
   });
 
+  it('lets a navigation made before a resize settles keep its own place', () => {
+    // Round 15 (TECH-052): the settling frame put the old Projects place back over a newer Skills choice.
+    const queued = new Map<number, FrameRequestCallback>();
+    let handle = 0;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { queued.set(++handle, callback); return handle; });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => { queued.delete(id); });
+    render(<Probe />);
+    vi.stubGlobal('innerWidth', 900);
+    vi.stubGlobal('innerHeight', 560);
+    layout = SHORT;
+    act(() => { window.dispatchEvent(new Event('resize')); });
+    act(() => publishSectionNavigation('skills', { source: 'navbar' }));
+    scrollY = SHORT.skills[0] - 80;
+    scrollBy.mockClear();
+    act(() => {
+      const pending = [...queued.values()];
+      queued.clear();
+      pending.forEach(callback => callback(performance.now()));
+    });
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(scrollY).toBe(SHORT.skills[0] - 80);
+  });
+
   describe('through a change of motion preference', () => {
     let motionListeners: (() => void)[];
     /** Skills re-staged as a tall track: every chapter below it moves down 3,300px. */
