@@ -774,6 +774,10 @@ describe('Skills completed-beat playback', () => {
       });
       expect(document.activeElement).toBe(title);
 
+      // Round 16 (TECH-055): the rebuild's own settling scrolls do not replace the chapter resumed.
+      act(() => { window.dispatchEvent(new Event('scroll')); });
+      advance(20);
+
       motion(false);
       advance(100);
       await act(async () => {});

@@ -129,7 +129,8 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
               </TiltedInstrument>
               <div className={styles.sharedCaptions}>
                 {SKILL_CHAPTERS.map((chapter, index) => (
-                  <div key={chapter.scene} className={styles.process} data-material-caption={index}>
+                  <div key={chapter.scene} className={styles.process} data-material-caption={index}
+                    style={{ '--caption-lift': `${Math.max(0, chapter.camera.y)}cqh` } as CSSProperties}>
                     {chapter.process.map((part, partIndex) => (
                       <span key={part}>
                         {partIndex > 0 && <ArrowRight size={14} strokeWidth={1.5} />}

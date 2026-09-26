@@ -85,7 +85,14 @@ export function useProjectsPlayback(
     // Follows drei's translated layer between layout changes: a rect per scroll publication
     // forced 672ms of layout in a cold 70s journey at 4x CPU (round 8 profile).
     const railPosition = createTranslatedPositionReader(rail, cachedElement(() => translatedLayerOf(rail)));
-    const railLayout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => railPosition.refresh());
+    const contactSection = document.getElementById('contact');
+    const contactPosition = contactSection
+      ? createTranslatedPositionReader(contactSection, cachedElement(() => translatedLayerOf(contactSection)))
+      : null;
+    const railLayout = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      railPosition.refresh();
+      contactPosition?.refresh();
+    });
     railLayout?.observe(main ?? rail);
     let state: ProjectsPhase = 'outside';
     let active = false;
@@ -293,6 +300,7 @@ export function useProjectsPlayback(
       const from = projectsEntry({
         side, wave, top, height, viewportHeight: () => window.innerHeight,
         skillsHolding: skills?.dataset.staged === 'true' && skills.dataset.skillsReleased !== 'true',
+        nextTop: side === 'after' ? contactPosition?.readRect().top : undefined,
       });
       if (from) enter(from);
     }
@@ -420,6 +428,7 @@ export function useProjectsPlayback(
     const unsubscribeScroll = subscribeScrollProgress(apply);
     const resized = () => {
       railPosition.refresh();
+      contactPosition?.refresh();
       apply();
     };
     window.addEventListener('scroll', apply, { passive: true });

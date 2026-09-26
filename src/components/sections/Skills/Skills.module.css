@@ -517,7 +517,17 @@
 
 .sharedCaptions .process {
   position: absolute;
-  inset: 0;
+  /*
+   * The camera sets the whole rig lower for some chapters -- Databases by 2% of
+   * the track -- and its caption went with it, past the track's paint
+   * containment at 2560px and wider (round 16, D-UI-009). Each caption is lifted
+   * back by its own chapter's drop, in its insets: GSAP owns `transform`, and
+   * writes `translate: none` beside it.
+   */
+  top: calc(-1 * var(--caption-lift, 0cqh));
+  right: 0;
+  bottom: var(--caption-lift, 0cqh);
+  left: 0;
 }
 
 .process {

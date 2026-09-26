@@ -71,6 +71,16 @@ describe('when the TV claims the view', () => {
     expect(projectsEntry(reading({ ...after, wave: null }))).toBeNull();
   });
 
+  it('enters from Contact once Contact has all but left the window, the rail not yet at its edge', () => {
+    // Round 16 (D-UX-004): at 900x560 the form left the window 80px before the rail's edge came; empty sky stayed.
+    const short = { side: 'after' as const, wave: 'up' as const, top: 384 - 2400, height: 2400, viewportHeight: () => 560 };
+    expect(projectsEntry(reading({ ...short, nextTop: 720 }))).toBe('contact');
+    expect(projectsEntry(reading({ ...short, nextTop: 560 - PROJECTS_ENTRY_EDGE }))).toBe('contact');
+    expect(projectsEntry(reading({ ...short, nextTop: 560 - PROJECTS_ENTRY_EDGE - 1 }))).toBeNull();
+    expect(projectsEntry(reading({ ...short, nextTop: 720, wave: 'down' }))).toBeNull();
+    expect(projectsEntry(reading({ ...short, nextTop: 720, wave: null }))).toBeNull();
+  });
+
   it('reads the window height only past the chapter, where it is needed', () => {
     // Reading innerHeight can force layout, and entry is judged on every scroll publication.
     let reads = 0;
