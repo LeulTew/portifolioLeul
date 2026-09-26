@@ -1,0 +1,83 @@
+@value chamferPath, navSurfaceLight, navSurfaceDark from './controlFoundation.module.css';
+
+/*
+ * A row of controls in the site's own silhouette: the navbar's chamfer, edge
+ * and surface, so the Projects filters and project stepper read as the same
+ * family as the navigation and buttons rather than as pills beside them (round
+ * 17-18 design review). The edge and surface are drawn under the content, not
+ * clipped onto the rail, because the tabs' hints sit outside the rail.
+ */
+.rail {
+  --chamfer-cut: 12px;
+  --rail-edge: rgba(255, 255, 255, 0.16);
+  --rail-fill: navSurfaceDark;
+  position: relative;
+  isolation: isolate;
+}
+
+.rail[data-tone='light'] {
+  --rail-edge: rgba(17, 24, 39, 0.14);
+  --rail-fill: navSurfaceLight;
+}
+
+.rail::before,
+.rail::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  clip-path: chamferPath;
+}
+
+.rail::before {
+  inset: 0;
+  background: var(--rail-edge);
+}
+
+.rail::after {
+  --chamfer-cut: 11.5px;
+  inset: 1px;
+  background: var(--rail-fill);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* A control in the rail: its fill takes the same cut, smaller, under its own content. */
+.tab {
+  --chamfer-cut: 8px;
+  --tab-fill: transparent;
+  position: relative;
+  isolation: isolate;
+  border-radius: 0;
+}
+
+.tab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--tab-fill);
+  clip-path: chamferPath;
+  transition: background-color 300ms ease;
+}
+
+.tab[aria-pressed='true'] {
+  --tab-fill: var(--pill-active-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rail[data-tone='light'] .tab:not([aria-pressed='true']):hover {
+    --tab-fill: rgba(17, 24, 39, 0.06);
+  }
+
+  .rail:not([data-tone='light']) .tab:not([aria-pressed='true']):hover {
+    --tab-fill: rgba(255, 255, 255, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab::before {
+    transition: none;
+  }
+}

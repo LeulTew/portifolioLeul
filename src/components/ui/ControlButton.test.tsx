@@ -125,6 +125,7 @@ const controlCss = readCss('ControlButton.module.css');
 const foundationCss = readCss('controlFoundation.module.css');
 const navCss = readCss(join('..', 'Navigation.module.css'));
 const magneticCss = readCss('MagneticButton.module.css');
+const railCss = readCss('chamferRail.module.css');
 
 function declarations(css: Root, selector: string): Record<string, string> {
   const rule = css.nodes.find(node => node.type === 'rule' && node.selectors.includes(selector));
@@ -168,6 +169,17 @@ describe('shared control styling contract', () => {
     expect(declarations(navCss, ":global([data-theme='light']) .navBarInner").background).toBe('navSurfaceLight');
     expect(declarations(navCss, ":global([data-theme='dark']) .navBarInner").background).toBe('navSurfaceDark');
     expect(declarations(magneticCss, '.primary').background).toBe('linear-gradient(135deg, brandMint 0%, #00d17a 100%)');
+  });
+
+  it('draws the Projects control rails in the navbar silhouette, not as pills', () => {
+    // Round 17-18 design review: pill rails sat beside chamfered navigation and buttons.
+    const imports: string[] = [];
+    railCss.walkAtRules('value', rule => { imports.push(rule.params); });
+    expect(imports).toEqual([expect.stringMatching(/chamferPath.*navSurfaceLight.*navSurfaceDark.*controlFoundation\.module\.css/)]);
+    expect(declarations(railCss, '.rail::before')['clip-path']).toBe('chamferPath');
+    expect(declarations(railCss, '.rail')['--rail-fill']).toBe('navSurfaceDark');
+    expect(declarations(railCss, ".rail[data-tone='light']")['--rail-fill']).toBe('navSurfaceLight');
+    expect(declarations(railCss, '.tab::before')['clip-path']).toBe('chamferPath');
   });
 
   it('provides standalone dark defaults and data-theme light surfaces using nav and hero accents', () => {
