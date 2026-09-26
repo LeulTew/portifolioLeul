@@ -545,27 +545,25 @@ function App() {
     const landing = anchor && target.contains(anchor) ? anchor : null;
     if (!replayingRef.current) trackFocus.cancel();
     const immediate = options?.immediate || options?.source === 'navbar';
-    // A layout change's own resume is kept across the rebuild it causes, as a navbar choice is.
-    if (options?.source === 'navbar' || options?.resume) {
-      // A newer choice outranks one still queued to replay (round 11, TECH-032).
-      cancelReplay();
-      // A rebuild still to land would reset the track under this choice: keep it, and take it again after.
-      // So would a layout already changed but not yet reported -- a motion-preference remount in
-      // the frame before the content observer runs -- whose page count the track does not yet draw
-      // (round 16, TECH-055).
-      const content = mainRef.current;
-      const unmeasured = Boolean(scrollElement) && content !== null &&
-        Math.abs(Math.max(content.scrollHeight / (window.innerHeight || 1), 1) - scrollPagesRef.current) > SCROLL_PAGE_EPSILON;
-      const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current) || unmeasured;
-      navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
-      restoreSyncFramesRef.current = 0;
-      if (!rebuilding) pendingRestoreRef.current = null;
-    } else if (!replayingRef.current) {
-      // A natural handoff accepted now is newer than any choice still queued for a rebuild: that
-      // replay would write the older destination back over it (round 18, TECH-059).
-      cancelReplay();
-      navigationAfterRebuildRef.current = null;
-    }
+    /*
+     * The newest accepted destination owns the whole pending settlement: the replay queued for a
+     * rebuild and the restore of the reader's old place. Natural handoffs included -- a Contact
+     * handoff made as a motion change landed mid-flight was placed, then the rebuild put the
+     * reader back in Projects (round 18, TECH-059; round 19, TECH-061).
+     */
+    // A newer choice outranks one still queued to replay (round 11, TECH-032).
+    cancelReplay();
+    // A rebuild still to land would reset the track under this choice: keep it, and take it again after.
+    // So would a layout already changed but not yet reported -- a motion-preference remount in
+    // the frame before the content observer runs -- whose page count the track does not yet draw
+    // (round 16, TECH-055).
+    const content = mainRef.current;
+    const unmeasured = Boolean(scrollElement) && content !== null &&
+      Math.abs(Math.max(content.scrollHeight / (window.innerHeight || 1), 1) - scrollPagesRef.current) > SCROLL_PAGE_EPSILON;
+    const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current) || unmeasured;
+    navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
+    restoreSyncFramesRef.current = 0;
+    if (!rebuilding) pendingRestoreRef.current = null;
     publishSectionNavigation(id, options);
 
     if (scrollElement && mainRef.current) {

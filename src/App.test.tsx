@@ -749,6 +749,22 @@ describe("App scroll position across a track resize", () => {
         expect(mockScroll.offset).toBeCloseTo((4000 - 1000 + 80) / 10000);
       } finally { stop(); }
     });
+
+    it("keeps a natural handoff made before the rebuild's restore of the old place", () => {
+      // Round 19 (TECH-061): a Contact handoff made as a motion change landed mid-flight was placed,
+      // then the rebuild put the reader back where they had been.
+      resizing();
+      const calls: string[] = [];
+      const stop = subscribeSectionNavigation(id => calls.push(id));
+      try {
+        fireEvent.click(screen.getByRole("button", { name: "Return through Skills" }));
+        act(() => runFrames(1));
+        act(() => vi.advanceTimersByTime(1));
+        act(() => runFrames(3));
+        expect(calls.at(-1)).toBe("skills");
+        expect(mockScroll.offset).toBeCloseTo((4000 - 1000 + 80) / 10000);
+      } finally { stop(); }
+    });
   });
 
   it("settles navbar intent and physical/damped position together without traversing intermediate sections", () => {
