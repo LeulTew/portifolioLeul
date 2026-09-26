@@ -17,7 +17,7 @@
  * to the reader's own next key, pointer, wheel or touch, and to a navigation
  * elsewhere published meanwhile (round 14, TECH-045).
  */
-import { sectionNavigationSerial, subscribeSectionNavigation } from './sectionNavigation';
+import { deliveredSectionNavigation, sectionNavigationSerial, subscribeSectionNavigation } from './sectionNavigation';
 
 /**
  * How long a landing waits for its chapter, in milliseconds of visible time:
@@ -108,7 +108,7 @@ export function landSectionFocus(section: string, root: Document = document): ()
   // still being delivered around it -- is not newer.
   const startedAt = sectionNavigationSerial();
   stopNavigation = subscribeSectionNavigation(target => {
-    if (sectionNavigationSerial() > startedAt && target !== section) stop();
+    if (deliveredSectionNavigation() > startedAt && target !== section) stop();
   });
   pending = stop;
   frame = view.requestAnimationFrame(retry);

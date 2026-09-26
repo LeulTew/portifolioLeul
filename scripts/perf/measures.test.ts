@@ -168,6 +168,7 @@ describe('the journey a sample must have travelled', () => {
     again.splice(skills, 0, at('journey', 'about', { about: 'green' }),
       ...chapters(3).map(record => at('journey', 'about', { about: 'education', record })));
     expect(check(again)).toEqual([
+      'About went back to education after Education',
       'Education settled on no record, not 0 > 1 > 2', 'Education records were read outside the visit its ordered opening began',
     ]);
     // Its own release, back to green on the way to Skills, is part of the journey.
@@ -181,6 +182,13 @@ describe('the journey a sample must have travelled', () => {
     const green = reversed.findIndex(checkpoint => checkpoint.about === 'green');
     reversed.splice(green + 1, 0, at('journey', 'about', { about: 'statements' }), at('journey', 'about', { about: 'green' }));
     expect(check(reversed)).toEqual(['About went back from green to statements before Education opened']);
+  });
+  it('lets About only release Education after it, not open its earlier beats again', () => {
+    // Round 16: Education > green > statements > green > an empty Education passed as one forward pass.
+    const reopened = completeJourney();
+    const skills = reopened.findIndex(checkpoint => checkpoint.section === 'skills');
+    reopened.splice(skills, 0, ...['green', 'statements', 'green', 'education'].map(about => at('journey', 'about', { about })));
+    expect(check(reopened)).toEqual(['About went back to statements after Education']);
   });
   it('counts only what happened while the journey was measured', () => {
     const outside = completeJourney().map(checkpoint => ({ ...checkpoint, phase: 'settle' as const }));

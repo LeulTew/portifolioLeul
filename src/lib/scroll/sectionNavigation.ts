@@ -21,24 +21,38 @@ export type SectionNavigate = (section: string, options?: SectionNavigationOptio
 
 const listeners = new Set<Listener>();
 let serial = 0;
+/** The navigations being delivered now, innermost last: one may publish another from its listener. */
+const delivering: number[] = [];
 
 /** Chapter landings and navbar bypasses stay distinct from native scroll. */
 export function publishSectionNavigation(section: string, options?: SectionNavigationOptions): void {
-  serial += 1;
-  for (const listener of listeners) {
-    if (options) listener(section, options);
-    else listener(section);
+  delivering.push(++serial);
+  try {
+    for (const listener of listeners) {
+      if (options) listener(section, options);
+      else listener(section);
+    }
+  } finally {
+    delivering.pop();
   }
 }
 
 /**
- * How many navigations have begun. A listener added while one is being
- * delivered -- or while an older one, which published it, is still being
- * delivered -- is still reached by those: compared with this, it can tell
- * them from a navigation that begins after it (round 15).
+ * How many navigations have begun: taken when work starts, it marks every
+ * navigation already under way as older than that work (round 15).
  */
 export function sectionNavigationSerial(): number {
   return serial;
+}
+
+/**
+ * Which navigation a listener is being handed now. A listener added while
+ * one is delivered is still reached by it, and by an older one that published
+ * it and is still being delivered around it; a replay published in between
+ * raises the count but not their age (round 16).
+ */
+export function deliveredSectionNavigation(): number {
+  return delivering.at(-1) ?? serial;
 }
 
 export function subscribeSectionNavigation(listener: Listener): () => void {
