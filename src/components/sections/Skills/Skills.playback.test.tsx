@@ -898,6 +898,45 @@ describe('Skills completed-beat playback', () => {
     });
   });
 
+  it('enters once a linear Education before it has left the window, short of its own edge', () => {
+    // Round 17 (D-UX-005): at the 900px floor the window showed only the rail's empty runway until another wheel.
+    const about = document.createElement('section');
+    about.id = 'about';
+    about.dataset.titleSettled = 'true';
+    about.innerHTML = '<div data-testid="education-rail"></div>';
+    document.body.prepend(about);
+    let educationBottom = 200;
+    const previous = vi.mocked(Element.prototype.getBoundingClientRect).getMockImplementation()!;
+    vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+      if (this.getAttribute('data-testid') === 'education-rail') {
+        return DOMRect.fromRect({ x: 0, y: educationBottom - 3000, width: 1440, height: 3000 });
+      }
+      return previous.call(this);
+    });
+    mount();
+    place(156);
+    advance(200);
+    expect(stage()).toHaveAttribute('data-phase', 'outside');
+    educationBottom = 60;
+    place(156);
+    advance(200);
+    expect(stage()).not.toHaveAttribute('data-phase', 'outside');
+    about.remove();
+  });
+
+  it('claims no entrance in the frame a reduced-motion change has committed but not yet let go of the stage', () => {
+    // Round 17: the shorter linear Education carried the rail to the top before this reader was torn down.
+    mount();
+    reduced = true;
+    place(80);
+    advance(entranceMs);
+    expect(stage()).toHaveAttribute('data-phase', 'outside');
+    reduced = false;
+    place(80);
+    advance(entranceMs);
+    expect(stage()).toHaveAttribute('data-phase', 'reading');
+  });
+
   it('does not restart Skills when a static reader below the section resizes to desktop staging', () => {
     staged = false;
     top = -10000;

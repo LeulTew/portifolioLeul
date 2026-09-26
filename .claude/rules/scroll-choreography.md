@@ -379,6 +379,15 @@ keeps a navbar choice (round 17, TECH-058).
 A scroll offset or a section ratio alone is not a reader's place: the staged
 reader came back empty waiting for a gesture, and the linear page opened on
 another chapter (round 14, D-MOTION-001).
+A staged reader whose layout is being replaced claims nothing: the new layout
+is committed before the old reader's cleanup runs, and its observers in that
+frame see positions from a layout they no longer own (round 17).
+
+**A chapter enters where the one before it has left (2026-09-27):** where
+a linear chapter leads into a staged one, the staged one enters once the
+linear one has left the window, not only at its own edge. At the 900px
+floor the stretch between them was all the window showed, empty, until
+another wheel came (round 17, D-UX-005).
 
 ---
 
