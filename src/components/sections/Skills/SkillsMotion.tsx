@@ -15,9 +15,11 @@ interface SkillTextProps {
   className?: string;
   animated: boolean;
   mode?: SkillTextMotion;
+  /** Makes the text a focus landing, reached by script rather than Tab. */
+  landing?: boolean;
 }
 
-export function SkillText({ text, tag = 'span', className, animated, mode = 'assemble' }: SkillTextProps) {
+export function SkillText({ text, tag = 'span', className, animated, mode = 'assemble', landing = false }: SkillTextProps) {
   const [economy] = useState(() =>
     typeof document !== 'undefined' && document.documentElement.dataset.quality === 'low');
   const words = animated ? text.split(/(\s+)/).map((word, index) => {
@@ -46,6 +48,7 @@ export function SkillText({ text, tag = 'span', className, animated, mode = 'ass
   return createElement(tag, {
     className, 'aria-label': animated ? text : undefined, 'data-text-motion': animated ? mode : undefined,
     'data-text-quality': animated ? (economy ? 'economy' : 'full') : undefined,
+    tabIndex: landing ? -1 : undefined, 'data-skill-landing': landing ? '' : undefined,
   }, words);
 }
 

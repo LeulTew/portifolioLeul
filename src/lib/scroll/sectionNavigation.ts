@@ -7,6 +7,8 @@ export interface SectionNavigationOptions {
   source?: 'navbar';
   /** A reverse chapter handoff lands on the trailing record, not its heading. */
   edge?: 'end';
+  /** Lands on this element of the section, by id, instead of the section's own edge. */
+  anchor?: string;
 }
 
 export type SectionNavigate = (section: string, options?: SectionNavigationOptions) => void;

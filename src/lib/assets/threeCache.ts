@@ -37,11 +37,11 @@ export function threeCache(): Promise<typeof ThreeCache> {
     three.Cache.enabled = true;
     loaded = three.Cache;
     return three.Cache;
-  }, error => {
-    // A failed chunk request is not the last word: the next consumer asks again.
-    cache = null;
-    throw error;
   });
+  // A failed graphics chunk is not retried here: the browser's module map keeps a failed module
+  // URL for the life of the document, so asking again would only repeat the failure (round 14,
+  // TECH-044). Every waiter owns the rejection, and the page recovers by opening flat; a reload is
+  // the only real retry.
   return cache;
 }
 

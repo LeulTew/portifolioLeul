@@ -12,7 +12,11 @@ interface Presentation {
   inlineMotion: SkillInlineMotion;
   composition: 'visual-right' | 'visual-left';
   camera: { x: number; y: number; scale: number; roll: number };
-  /** One inspectable piece of the named work, pinned to a commit (round 11, D-UX-002). */
+  /**
+   * One inspectable piece of the named work, pinned to a commit (round 11,
+   * D-UX-002): a line of source, or a commit whose diff shows a reviewed
+   * design change (round 14).
+   */
   proof: { label: string; claim: string; url: string; project: string };
 }
 
@@ -27,7 +31,7 @@ const presentations = new Map<string, Presentation>([
     camera: { x: 25, y: 0, scale: 1.04, roll: -3 },
     proof: {
       label: "Tera Site's Python title parser",
-      claim: 'Extracts the first level-one Markdown heading, and raises an error when a page has none.',
+      claim: "Takes each page's title from its first level-one heading; a page without one stops the build instead of publishing untitled.",
       url: 'https://github.com/LeulTew/TeraSite/blob/8f7c6c1b75cb6791a2a016dea367412b7c9021d0/src/block_markdown.py#L165-L175',
       project: 'Tera Site',
     },
@@ -42,7 +46,7 @@ const presentations = new Map<string, Presentation>([
     camera: { x: -25, y: 1, scale: 1.04, roll: 3 },
     proof: {
       label: "Car Rental's EF Core context",
-      claim: "Extends ASP.NET Identity's context with cars, bookings, reviews, payments, favorites and vehicle versions.",
+      claim: "One EF Core context extends ASP.NET Identity's, so accounts, cars, bookings, payments and reviews share one database and its migrations.",
       url: 'https://github.com/LeulTew/CarRental-ThreeJS-MVC/blob/d6f8f89911df9ac5341e38b464bfb1c0a8d81c32/Carrental/Carrental/Models/CarContext.cs#L2-L17',
       project: 'Car Rental Platform',
     },
@@ -57,7 +61,7 @@ const presentations = new Map<string, Presentation>([
     camera: { x: 24, y: -1, scale: 1.1, roll: -5 },
     proof: {
       label: "Amharic IR's composite ranker",
-      claim: 'Combines TF-IDF, position and proximity scores, normalizes for length, and returns each component.',
+      claim: "Combines TF-IDF, position and proximity scores and returns each one with the total, so a result's rank can be explained.",
       url: 'https://github.com/LeulTew/amharic-ir-improved/blob/4096030543826b66370f9cc9ff35b6762b8e832c/core/ranker.py#L133-L150',
       project: 'Amharic IR Improved',
     },
@@ -86,9 +90,9 @@ const presentations = new Map<string, Presentation>([
     composition: 'visual-right',
     camera: { x: 25, y: 0, scale: 1.1, roll: -4 },
     proof: {
-      label: "Portfolio Leul's design rules",
-      claim: 'Colour held to a 90/10 neutral-to-accent split, with contrast minimums and 48px targets as rules.',
-      url: 'https://github.com/LeulTew/portifolioLeul/blob/f5fa795cd7bac7b85e870d04948494156c47cae6/.claude/rules/ui-design.md#L3-L9',
+      label: "Portfolio Leul's reading-first redesign",
+      claim: 'Review found the actions under a whole description; the redesign sets name and actions first, the title 232px higher.',
+      url: 'https://github.com/LeulTew/portifolioLeul/commit/8d645c1b19ca42072d8eea80369ba124c2ddbb10',
       project: 'Portfolio Leul',
     },
   }],
@@ -101,10 +105,10 @@ const presentations = new Map<string, Presentation>([
     composition: 'visual-left',
     camera: { x: -24, y: 0, scale: 1.09, roll: 2 },
     proof: {
-      label: "Portfolio Leul's scroll contract",
-      claim: 'Every rule the chapters follow names the reproducible defect that made it a rule.',
-      url: 'https://github.com/LeulTew/portifolioLeul/blob/f5fa795cd7bac7b85e870d04948494156c47cae6/.claude/rules/scroll-choreography.md#L1-L14',
-      project: 'Portfolio Leul',
+      label: "Amharic IR's evaluation harness",
+      claim: 'Written by Leul in the six-author project: ten Amharic queries scored against ground truth for precision, recall and NDCG.',
+      url: 'https://github.com/LeulTew/amharic-ir-improved/blob/3947a675152f0c29459509d3a8bde3a66f1213a1/tests/evaluation_script.py#L14-L86',
+      project: 'Amharic IR Improved',
     },
   }],
 ]);
@@ -120,3 +124,6 @@ export type SkillChapter = (typeof SKILL_CHAPTERS)[number];
 export const SKILLS_REVEAL_SECONDS = 1.65;
 export const SKILLS_TRANSITION_SECONDS = 2;
 export const SKILLS_STAGE_QUERY = '(min-width: 900px) and (min-height: 560px)';
+
+/** The id a chapter's article carries, so navigation can land on it. */
+export const skillChapterId = (index: number) => `skills-${SKILL_CHAPTERS[index].scene}`;

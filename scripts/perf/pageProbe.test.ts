@@ -129,6 +129,13 @@ describe('the in-page probe', () => {
       probe().enter('done');
       (probe() as unknown as { drain(): void }).drain();
       expect(probe().events.at(-1)).toMatchObject({ phase: 'interaction', start: 750, name: 'keydown' });
+
+      // Round 14 (TECH-047): a boundary stored rounded up to 1000 took a frame begun at 999.6 across it.
+      now = 999.8;
+      probe().enter('journey');
+      frames.deliver([{ startTime: 999.6, duration: 240, blockingDuration: 190 }, { startTime: 999.9, duration: 60, blockingDuration: 10 }]);
+      expect(probe().frames.slice(-2).map(frame => frame.phase)).toEqual(['done', 'journey']);
+      expect(probe().boundaries.at(-1)).toEqual({ phase: 'journey', t: 999.8 });
     } finally {
       vi.unstubAllGlobals();
     }

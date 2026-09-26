@@ -45,4 +45,21 @@ describe("three's file cache", () => {
     await threeCache();
     expect(loads).toHaveBeenCalledOnce();
   });
+
+  it('keeps a failed load failed, rather than claiming a retry the module map would refuse', async () => {
+    // Round 14 (TECH-044): the next consumer "asked again" for a module URL the document keeps as failed.
+    const loads = vi.fn();
+    vi.doMock('three', () => {
+      loads();
+      throw new Error('graphics chunk failed');
+    });
+    const { removeFromThreeCache, threeCache } = await import('./threeCache');
+    const first = threeCache();
+    // Vitest wraps a throwing factory's error; what matters is that the load failed, once.
+    await expect(first).rejects.toBeInstanceOf(Error);
+    expect(threeCache()).toBe(first);
+    removeFromThreeCache('/models/terrain-opt.glb');
+    await Promise.resolve();
+    expect(loads).toHaveBeenCalledOnce();
+  });
 });

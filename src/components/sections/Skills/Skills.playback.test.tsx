@@ -4,11 +4,11 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import gsap from 'gsap';
 import { Skills } from './Skills';
-import { SKILL_CHAPTERS, SKILLS_REVEAL_SECONDS, SKILLS_STAGE_QUERY, SKILLS_TRANSITION_SECONDS } from './skillsData';
+import { SKILL_CHAPTERS, SKILLS_REVEAL_SECONDS, SKILLS_STAGE_QUERY, SKILLS_TRANSITION_SECONDS, skillChapterId } from './skillsData';
 import { getMaterialGeometry } from './skillGeometry';
 import { resetScrollProgress, setScrollProgress } from '@/lib/scroll/scrollProgress';
 import { resetScrollGesture } from '@/lib/scroll/scrollGesture';
-import { publishSectionNavigation } from '@/lib/scroll/sectionNavigation';
+import { publishSectionNavigation, type SectionNavigationOptions } from '@/lib/scroll/sectionNavigation';
 import { getOverlayOcclusion, resetCameraHold } from '@/lib/camera/cameraHold';
 
 let top = 1200;
@@ -744,6 +744,80 @@ describe('Skills completed-beat playback', () => {
     expect(stage()).toHaveAttribute('data-staged', 'false');
     expect(screen.getAllByRole('article')).toHaveLength(SKILL_CHAPTERS.length);
     expect(getOverlayOcclusion()).toBe(false);
+  });
+
+  describe('a reader carried across a change of motion preference', () => {
+    // Round 14 (D-MOTION-001): the staged reader came back empty for 12s and more, focus on the page.
+    const motion = (value: boolean) => {
+      reduced = value;
+      act(() => mediaListeners.get('(prefers-reduced-motion: reduce)')?.forEach(listener => listener({ matches: value })));
+    };
+    const navigate = () => vi.fn((section: string, options?: SectionNavigationOptions) => publishSectionNavigation(section, options));
+
+    it('opens the linear page on the chapter being read, and the staged reader on it again', async () => {
+      const onNavigate = navigate();
+      enter(onNavigate);
+      cross();
+      cross();
+      expect(index()).toBe(2);
+      motion(true);
+      expect(stage()).toHaveAttribute('data-staged', 'false');
+      advance(100);
+      expect(onNavigate).toHaveBeenLastCalledWith('skills', { source: 'navbar', anchor: skillChapterId(2) });
+      // Focus lost with the staged reader lands on the chapter's own title.
+      const title = document.querySelector<HTMLElement>(`#${skillChapterId(2)} [data-skill-landing]`);
+      expect(document.activeElement).toBe(title);
+      // And again after a track rebuild detached it, when the rebuilt track takes the navigation again.
+      act(() => {
+        title!.blur();
+        publishSectionNavigation('skills', { source: 'navbar', anchor: skillChapterId(2) });
+      });
+      expect(document.activeElement).toBe(title);
+
+      motion(false);
+      advance(100);
+      await act(async () => {});
+      advance(50);
+      expect(onNavigate).toHaveBeenLastCalledWith('skills', { source: 'navbar' });
+      expect(stage()).toHaveAttribute('data-staged', 'true');
+      expect(stage()).toHaveAttribute('data-phase', 'reading');
+      expect(stage()).not.toHaveAttribute('aria-hidden');
+      expect(index()).toBe(2);
+      expect(screen.getByRole('heading', { name: SKILL_CHAPTERS[2].title })).toBeInTheDocument();
+      expect(document.activeElement).toBe(document.getElementById('skills-heading'));
+    });
+
+    it('gives way to the reader moving on first', () => {
+      const onNavigate = navigate();
+      enter(onNavigate);
+      cross();
+      motion(true);
+      wheel(120);
+      advance(100);
+      expect(onNavigate).not.toHaveBeenCalledWith('skills', expect.anything());
+    });
+
+    it('stages the chapter the reader scrolled to in the linear page', async () => {
+      vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+        if (this.id === 'skills') return DOMRect.fromRect({ x: 0, y: top, width: 1440, height: 4320 });
+        const chapter = this instanceof HTMLElement ? this.dataset.skillChapter : undefined;
+        if (chapter !== undefined) return DOMRect.fromRect({ x: 0, y: top + 200 + Number(chapter) * 700, width: 1440, height: 700 });
+        return originalRect.call(this);
+      });
+      staged = false;
+      const onNavigate = navigate();
+      mount(onNavigate);
+      top = -2000;
+      wheel(120);
+      act(() => { window.dispatchEvent(new Event('scroll')); });
+      advance(20);
+      staged = true;
+      act(() => mediaListeners.get(SKILLS_STAGE_QUERY)?.forEach(listener => listener({ matches: true })));
+      advance(100);
+      await act(async () => {});
+      expect(stage()).toHaveAttribute('data-phase', 'reading');
+      expect(index()).toBe(3);
+    });
   });
 
   it('does not restart Skills when a static reader below the section resizes to desktop staging', () => {

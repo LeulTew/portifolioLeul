@@ -7,7 +7,7 @@ import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
-import { subscribeSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
+import { subscribeSectionNavigation, publishSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import {
   finishProjectsSkillsReturn, isProjectsReturnOwed, publishSkillsProjectsHandoff,
 } from '@/lib/projects/projectsScene';
@@ -16,7 +16,7 @@ import { landSectionFocus } from '@/lib/scroll/sectionLanding';
 import { claimView } from '@/lib/scroll/viewOwner';
 import { coverChapterBackground } from '../About/EducationRail/educationCover';
 import { createSkillsTimeline } from './skillsTimeline';
-import { SKILLS_STAGE_QUERY } from './skillsData';
+import { SKILLS_STAGE_QUERY, skillChapterId } from './skillsData';
 
 type Phase = 'outside' | 'entering' | 'reading' | 'crossing' | 'leaving';
 type Direction = -1 | 1;
@@ -24,6 +24,19 @@ interface Refs {
   host: RefObject<HTMLElement>;
   stage: RefObject<HTMLElement>;
 }
+
+/** The reader's own moves: any of them outranks a chapter still waiting to be resumed. */
+const READER_INPUTS = ['wheel', 'keydown', 'pointerdown', 'touchstart'] as const;
+/** How long after the reader's own input a scroll of the linear page is theirs to follow. */
+const READER_SCROLL_MS = 1500;
+/** The line, as a share of the window's height, a chapter has to pass to be the one being read. */
+const READING_LINE = 0.4;
+
+/** Focus went with a layout that has been replaced: nothing, the page, or an element no longer in it. */
+const focusLost = () => {
+  const active = document.activeElement;
+  return !active || active === document.body || !active.isConnected;
+};
 
 export function useSkillsStaged() {
   const reduced = usePrefersReducedMotion();
@@ -53,6 +66,15 @@ export function useSkillsPlayback(
   const [visible, setVisible] = useState(false);
   const requestRef = useRef<((direction: Direction) => void) | null>(null);
   const selectRef = useRef<((index: number) => void) | null>(null);
+  /**
+   * The chapter a reader of Skills is on, carried across a change between the
+   * staged reader and the linear page -- a motion preference turned on or off,
+   * or a window crossing the stage's size -- so the layout that mounts goes on
+   * with it. The staged reader otherwise came back empty, waiting for a gesture
+   * to claim it, and the linear page opened on another chapter (round 14,
+   * D-MOTION-001).
+   */
+  const resumeRef = useRef<number | null>(null);
   const step = useCallback((direction: Direction) => requestRef.current?.(direction), []);
   const select = useCallback((index: number) => selectRef.current?.(index), []);
 
@@ -89,6 +111,11 @@ export function useSkillsPlayback(
     let flight: { score: gsap.core.Timeline; target: number; complete: () => void } | null = null;
     let score: ReturnType<typeof createSkillsTimeline>;
     let departure: gsap.core.Timeline;
+    // Kept until the reader's own input or a navigation elsewhere: a track rebuilt under the
+    // resuming navigation takes it again, and that repeat lands on the same chapter.
+    let resumeAt = resumeRef.current;
+    resumeRef.current = null;
+    let resumeFrame = 0;
 
     const context = gsap.context(() => {
       score = createSkillsTimeline(panel);
@@ -227,12 +254,14 @@ export function useSkillsPlayback(
       directlyRequested = false;
       visited = true;
       writeAttribute(rail, 'data-skills-released', null);
-      current = side === 'before' ? 0 : current;
+      const resuming = resumeAt !== null;
+      current = resumeAt ?? (side === 'before' ? 0 : current);
       setActive(current);
       setSettledIndex(current);
       changePhase('entering');
       show(true);
-      if (immediateEntry) {
+      // A resumed reader was already reading: its chapter is shown as it was, without an entrance.
+      if (immediateEntry || resuming) {
         immediateEntry = false;
         departure.pause(0, true);
         score.timeline.pause(score.stops[current], true);
@@ -309,6 +338,7 @@ export function useSkillsPlayback(
       if (document.hidden || !shown || state === 'leaving') return;
       const stop = score.stops[index];
       if (stop === undefined) throw new RangeError(`Skills chapter ${index} does not exist.`);
+      resumeAt = null;
       if (index === current && state === 'reading') return;
       cancelAnimationFrame(frame);
       frame = 0;
@@ -353,7 +383,8 @@ export function useSkillsPlayback(
         wave = null;
         writeAttribute(rail, 'data-skills-released', null);
         side = target === 'home' || target === 'about' || target === 'skills' ? 'before' : 'after';
-        current = side === 'before' ? 0 : score.stops.length - 1;
+        if (target !== 'skills') resumeAt = null;
+        current = resumeAt ?? (side === 'before' ? 0 : score.stops.length - 1);
         setActive(current);
         setSettledIndex(current);
         bypass = target !== 'skills';
@@ -366,12 +397,16 @@ export function useSkillsPlayback(
             `button[data-ink-control="${target}"]:not([tabindex="-1"])`,
           )?.focus({ preventScroll: true });
           landSectionFocus(target);
+        } else if (resumeAt !== null && focusLost()) {
+          // Focus went with the layout it was in; it continues in the reader that replaced it.
+          landSectionFocus(target);
         }
         // Claim only after all previous owners have restored their covers.
         queueMicrotask(() => { if (alive) apply(); });
         return;
       }
       immediateEntry = false;
+      if (target !== 'skills') resumeAt = null;
       if (target === 'skills') {
         bypass = false;
         navigation = state === 'leaving' ? 'skills' : null;
@@ -426,13 +461,30 @@ export function useSkillsPlayback(
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', visibility);
+    const forget = () => { resumeAt = null; };
+    for (const type of READER_INPUTS) window.addEventListener(type, forget, { capture: true, passive: true });
     apply();
+    if (resumeAt !== null) {
+      // Taken as the navbar takes Skills, which settles every chapter around it -- two frames on,
+      // once the page has measured this layout, so a track rebuilding for it takes the
+      // navigation again after its rebuild instead of landing on the geometry it leaves (App).
+      resumeFrame = requestAnimationFrame(() => {
+        resumeFrame = requestAnimationFrame(() => {
+          resumeFrame = 0;
+          if (alive && resumeAt !== null) (onNavigate ?? publishSectionNavigation)('skills', { source: 'navbar' });
+        });
+      });
+    }
 
     return () => {
+      // The reader goes on with this chapter in whatever layout replaces this one.
+      resumeRef.current = shown && state !== 'leaving' ? current : resumeAt;
       alive = false;
       requestRef.current = null;
       selectRef.current = null;
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(resumeFrame);
+      for (const type of READER_INPUTS) window.removeEventListener(type, forget, { capture: true });
       unsubscribeGesture();
       unsubscribeEntryGesture();
       unsubscribeNavigation();
@@ -451,6 +503,76 @@ export function useSkillsPlayback(
       finishProjectsSkillsReturn();
       context.revert();
       score.dispose();
+    };
+  }, [host, stage, staged, onNavigate]);
+
+  // The linear page: lands on a chapter carried from the staged reader, and keeps the one being read.
+  useEffect(() => {
+    const rail = host.current;
+    const panel = stage.current;
+    if (staged || !rail || !panel) return;
+    let input = Number.NEGATIVE_INFINITY;
+    let sampling = 0;
+    let resuming = 0;
+    const sample = () => {
+      sampling = 0;
+      // Only the reader's own scrolling moves their place; a layout settling around it does not.
+      if (performance.now() - input > READER_SCROLL_MS) return;
+      const line = window.innerHeight * READING_LINE;
+      const area = rail.getBoundingClientRect();
+      if (area.top > line || area.bottom <= line) {
+        resumeRef.current = null;
+        return;
+      }
+      let chapter = 0;
+      panel.querySelectorAll<HTMLElement>('[data-skill-chapter]').forEach((article, index) => {
+        if (article.getBoundingClientRect().top <= line) chapter = index;
+      });
+      resumeRef.current = chapter;
+    };
+    const onScroll = () => {
+      if (!sampling) sampling = requestAnimationFrame(sample);
+    };
+    let stopLanding = () => {};
+    const onInput = () => {
+      input = performance.now();
+      cancelAnimationFrame(resuming);
+      resuming = 0;
+      stopLanding();
+    };
+    const chapter = resumeRef.current;
+    if (chapter !== null) {
+      // As the staged reader resumes: two frames on, through navigation (see above). Focus lost
+      // with the staged reader lands on the chapter's own title, where Tab continues from --
+      // and again when a track rebuilt under the navigation takes it again, since the rebuild
+      // detaches the layer the title is in.
+      const land = () => {
+        if (focusLost()) panel.querySelector<HTMLElement>(`#${skillChapterId(chapter)} [data-skill-landing]`)?.focus({ preventScroll: true });
+      };
+      resuming = requestAnimationFrame(() => {
+        resuming = requestAnimationFrame(() => {
+          resuming = 0;
+          (onNavigate ?? publishSectionNavigation)('skills',
+            chapter > 0 ? { source: 'navbar', anchor: skillChapterId(chapter) } : { source: 'navbar' });
+          land();
+          stopLanding = subscribeSectionNavigation(target => {
+            if (target === 'skills') land();
+            else stopLanding();
+          });
+        });
+      });
+    }
+    for (const type of READER_INPUTS) window.addEventListener(type, onInput, { capture: true, passive: true });
+    // Capture hears the 3D page's own scrolling element as well as the document.
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    const unsubscribeScroll = subscribeScrollProgress(onScroll);
+    return () => {
+      cancelAnimationFrame(sampling);
+      cancelAnimationFrame(resuming);
+      stopLanding();
+      unsubscribeScroll();
+      for (const type of READER_INPUTS) window.removeEventListener(type, onInput, { capture: true });
+      window.removeEventListener('scroll', onScroll, { capture: true });
     };
   }, [host, stage, staged, onNavigate]);
 

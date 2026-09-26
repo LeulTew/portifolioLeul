@@ -25,6 +25,13 @@
   font-size: max(14px, 0.875em);
 }
 
+/* The owner's part leads the implementation note, in the reader's ink rather than its muted copy. */
+.notes > section > .role {
+  margin-bottom: 0.45em;
+  color: var(--project-ink, inherit);
+  font-weight: 500;
+}
+
 .notes a,
 .visualLink {
   display: inline-flex;

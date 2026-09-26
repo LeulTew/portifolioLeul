@@ -14,8 +14,10 @@
  *
  * A landing can still be inert or hidden while its chapter settles, so focus
  * waits for one, for as long as the longest authored arrival, and gives way
- * to the reader's own next key or pointer press.
+ * to the reader's own next key, pointer, wheel or touch, and to a navigation
+ * elsewhere published meanwhile (round 14, TECH-045).
  */
+import { subscribeSectionNavigation } from './sectionNavigation';
 
 /**
  * How long a landing waits for its chapter, in milliseconds of visible time:
@@ -35,6 +37,9 @@ export const LANDING_WAIT_MS = 5000;
 
 /** The most one frame ages the wait: a hidden tab or a stalled frame counts as one frame. */
 export const LANDING_FRAME_CAP_MS = 100;
+
+/** The reader's own moves, any of which outranks a landing still waiting. */
+const READER_INPUTS = ['keydown', 'pointerdown', 'wheel', 'touchstart'] as const;
 
 let pending: (() => void) | null = null;
 
@@ -85,10 +90,11 @@ export function landSectionFocus(section: string, root: Document = document): ()
   };
   if (attempt(last)) return () => {};
 
+  let stopNavigation = () => {};
   const stop = () => {
     view.cancelAnimationFrame(frame);
-    root.removeEventListener('keydown', stop, true);
-    root.removeEventListener('pointerdown', stop, true);
+    stopNavigation();
+    for (const type of READER_INPUTS) root.removeEventListener(type, stop, true);
     if (pending === stop) pending = null;
   };
   const retry = (now: number) => {
@@ -96,8 +102,9 @@ export function landSectionFocus(section: string, root: Document = document): ()
     if (attempt(now)) stop();
     else frame = view.requestAnimationFrame(retry);
   };
-  root.addEventListener('keydown', stop, { capture: true, passive: true });
-  root.addEventListener('pointerdown', stop, { capture: true, passive: true });
+  for (const type of READER_INPUTS) root.addEventListener(type, stop, { capture: true, passive: true });
+  // A newer destination outranks this one; a repeat of this one, such as a replay, keeps it.
+  stopNavigation = subscribeSectionNavigation(target => { if (target !== section) stop(); });
   pending = stop;
   frame = view.requestAnimationFrame(retry);
   return stop;

@@ -341,7 +341,7 @@ export function FocusRail({
                   }}
                   className="space-y-6 w-full"
                 >
-                  <div className="space-y-4">
+                  <div className={cn("space-y-4", styles.lead)}>
                     {activeItem.meta && (
                       <span className={cn("text-xs font-bold uppercase tracking-wider block", styles.category)}>
                         {activeItem.meta}
@@ -362,7 +362,6 @@ export function FocusRail({
                         clipPath: isFocused ? "inset(0% 0% 0% 0%)" : "inset(0% 0% 100% 0%)",
                         opacity: isFocused ? 1 : 0,
                       }}
-                      style={{ marginTop: 16 }}
                       initial={false}
                       transition={{ 
                         type: "spring", 

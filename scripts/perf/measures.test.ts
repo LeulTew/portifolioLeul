@@ -153,6 +153,27 @@ describe('the journey a sample must have travelled', () => {
     early.splice(statements + 1, 0, ...chapters(3).map(record => at('journey', 'about', { about: 'statements', record })));
     expect(check(early)).toEqual(['Education settled on no record, not 0 > 1 > 2']);
   });
+  it('counts Education records only in the visit its ordered opening began', () => {
+    // Round 14 (TECH-046): records banked in an Education shown before statements paid for a later empty one.
+    const banked = completeJourney(chapters(6), []);
+    const statements = banked.findIndex(checkpoint => checkpoint.about === 'statements');
+    banked.splice(statements, 0, ...chapters(3).map(record => at('journey', 'about', { about: 'education', record })));
+    expect(check(banked)).toEqual([
+      'Education settled on no record, not 0 > 1 > 2', 'Education records were read outside the visit its ordered opening began',
+    ]);
+    // Nor in a second visit, after About let Education go.
+    const again = completeJourney(chapters(6), []);
+    const skills = again.findIndex(checkpoint => checkpoint.section === 'skills');
+    again.splice(skills, 0, at('journey', 'about', { about: 'green' }),
+      ...chapters(3).map(record => at('journey', 'about', { about: 'education', record })));
+    expect(check(again)).toEqual([
+      'Education settled on no record, not 0 > 1 > 2', 'Education records were read outside the visit its ordered opening began',
+    ]);
+    // Its own release, back to green on the way to Skills, is part of the journey.
+    const released = completeJourney();
+    released.splice(released.findIndex(checkpoint => checkpoint.section === 'skills'), 0, at('journey', 'about', { about: 'green' }));
+    expect(check(released)).toEqual([]);
+  });
   it('counts only what happened while the journey was measured', () => {
     const outside = completeJourney().map(checkpoint => ({ ...checkpoint, phase: 'settle' as const }));
     expect(check(outside)[0]).toBe('the journey never reached home (passed nothing)');

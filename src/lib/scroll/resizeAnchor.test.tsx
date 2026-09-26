@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useResizeAnchor } from './resizeAnchor';
+import { publishSectionNavigation } from './sectionNavigation';
 
 function Probe({ enabled = true }: { enabled?: boolean }) {
   useResizeAnchor(enabled);
@@ -133,6 +134,18 @@ describe('flat page resize anchoring', () => {
       act(() => motionListeners.forEach(listener => listener()));
       act(() => flush());
       act(() => { window.dispatchEvent(new Event('wheel')); });
+      layout = STAGED;
+      scrollBy.mockClear();
+      act(() => flush());
+      expect(scrollBy).not.toHaveBeenCalled();
+    });
+
+    it('gives the reader over to a navigation that places them itself', () => {
+      // Round 14 (D-MOTION-001): Skills resumes its chapter by navigation, which the hold undid.
+      render(<Probe />);
+      act(() => motionListeners.forEach(listener => listener()));
+      act(() => flush());
+      act(() => publishSectionNavigation('skills', { source: 'navbar' }));
       layout = STAGED;
       scrollBy.mockClear();
       act(() => flush());

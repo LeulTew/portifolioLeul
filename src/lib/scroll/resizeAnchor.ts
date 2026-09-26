@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { subscribeSectionNavigation } from './sectionNavigation';
 
 const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
@@ -96,14 +97,17 @@ export function useResizeAnchor(enabled: boolean): void {
     // otherwise act on the raw offset -- a position inside another chapter.
     window.addEventListener('resize', onResize, { capture: true });
     motion?.addEventListener?.('change', onMotion);
-    // The reader's own input ends a hold at once.
+    // The reader's own input ends a hold at once, and so does a navigation, which places
+    // the reader itself: Skills continuing its reader after the change (round 14, D-MOTION-001).
     for (const type of ['wheel', 'keydown', 'pointerdown', 'touchstart'] as const) {
       window.addEventListener(type, release, { capture: true, passive: true });
     }
+    const stopNavigation = subscribeSectionNavigation(release);
     return () => {
       cancelAnimationFrame(sampling);
       cancelAnimationFrame(settling);
       release();
+      stopNavigation();
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize, { capture: true });
       motion?.removeEventListener?.('change', onMotion);

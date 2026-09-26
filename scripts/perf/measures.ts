@@ -161,8 +161,10 @@ export const PAGE_PROBE = String.raw`(() => {
       ? read('[data-testid="education-stage"]', 'data-active-record') : '',
   });
   let current = state();
+  // Times stay as the clock gives them: a boundary rounded half a millisecond later than it began
+  // moved a whole frame that started just before it across (round 14, TECH-047).
   const mark = () => {
-    trace.checkpoints.push(Object.assign({ t: Math.round(performance.now()), phase: trace.phase }, current));
+    trace.checkpoints.push(Object.assign({ t: performance.now(), phase: trace.phase }, current));
   };
   const record = () => {
     const next = state();
@@ -202,7 +204,7 @@ export const PAGE_PROBE = String.raw`(() => {
   };
   const observers = [];
   observe('long-animation-frame', entry => {
-    const frame = { phase: phaseAt(entry.startTime), start: Math.round(entry.startTime), ms: entry.duration,
+    const frame = { phase: phaseAt(entry.startTime), start: entry.startTime, ms: entry.duration,
       blocking: entry.blockingDuration, context: contextAt(entry.startTime) };
     if (entry.renderStart) frame.render = Math.round(entry.startTime + entry.duration - entry.renderStart);
     if (entry.duration >= 150) {
@@ -217,7 +219,7 @@ export const PAGE_PROBE = String.raw`(() => {
   });
   observe('event', entry => {
     if (entry.interactionId) {
-      trace.events.push({ phase: phaseAt(entry.startTime), start: Math.round(entry.startTime), name: entry.name, ms: entry.duration });
+      trace.events.push({ phase: phaseAt(entry.startTime), start: entry.startTime, name: entry.name, ms: entry.duration });
     }
   }, { durationThreshold: 16 });
   observe('paint', entry => {
@@ -254,7 +256,7 @@ export const PAGE_PROBE = String.raw`(() => {
     } },
     enter: { value: phase => {
       trace.phase = phase;
-      trace.boundaries.push({ phase, t: Math.round(performance.now()) });
+      trace.boundaries.push({ phase, t: performance.now() });
       current = state();
       mark();
     } },
@@ -326,12 +328,25 @@ export function checkJourney(checkpoints: readonly Checkpoint[], skillChapters: 
     failures.push(`About never reached its ${ABOUT_BEATS[beat]} beat (saw ${beats.join(' > ') || 'nothing'})`);
   }
   if (educationRecords < 1) failures.push('the page shows no Education records');
-  // A record counts only while Education itself is open in About (round 13, TECH-042).
+  // A record counts only while Education itself is open in About (round 13, TECH-042), and only in
+  // the one visit its ordered opening began -- statements, green, then Education: records banked
+  // before that opening paid for an Education visit that read nothing (round 14, TECH-046).
   const reading = (checkpoint: Checkpoint) => checkpoint.section === 'about' && checkpoint.about === 'education' && Boolean(checkpoint.record);
-  const records = collapse(journey.filter(reading).map(checkpoint => checkpoint.record));
+  let opened = -1;
+  for (let index = 0, step = 0; index < journey.length && opened < 0; index++) {
+    if (journey[index].section !== 'about' || journey[index].about !== ABOUT_BEATS[step]) continue;
+    if (++step === ABOUT_BEATS.length) opened = index;
+  }
+  let closed = opened;
+  while (opened >= 0 && journey[closed + 1]?.section === 'about' && journey[closed + 1].about === 'education') closed++;
+  const opening = (index: number) => opened >= 0 && index >= opened && index <= closed;
+  const records = collapse(journey.filter((checkpoint, index) => reading(checkpoint) && opening(index)).map(checkpoint => checkpoint.record));
   const expectedRecords = Array.from({ length: educationRecords }, (_, index) => String(index));
   if (educationRecords >= 1 && records.join() !== expectedRecords.join()) {
     failures.push(`Education settled on ${records.join(' > ') || 'no record'}, not ${expectedRecords.join(' > ')}`);
+  }
+  if (journey.some((checkpoint, index) => reading(checkpoint) && !opening(index))) {
+    failures.push('Education records were read outside the visit its ordered opening began');
   }
   const readingSkills = (checkpoint: Checkpoint) => checkpoint.section === 'skills' && checkpoint.skills === 'reading';
   const lastRecord = journey.reduce((last, checkpoint, index) => (reading(checkpoint) ? index : last), -1);

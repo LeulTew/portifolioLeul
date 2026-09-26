@@ -39,8 +39,13 @@ describe('Skills editorial content', () => {
     expect(projectsData.map(project => project.title)).toContain(proof.project);
     const url = new URL(proof.url);
     expect(url.origin).toBe('https://github.com');
-    expect(url.pathname).toMatch(/^\/LeulTew\/[^/]+\/blob\/[a-f0-9]{40}\//);
-    expect(url.hash).toMatch(/^#L\d+-L\d+$/);
+    // A pinned line range of source, or a pinned commit whose diff is the evidence (round 14, D-UX-002).
+    if (/\/commit\//.test(url.pathname)) {
+      expect(url.pathname).toMatch(/^\/LeulTew\/[^/]+\/commit\/[a-f0-9]{40}$/);
+    } else {
+      expect(url.pathname).toMatch(/^\/LeulTew\/[^/]+\/blob\/[a-f0-9]{40}\//);
+      expect(url.hash).toMatch(/^#L\d+-L\d+$/);
+    }
     expect(proof.label.split(/\s+/).length).toBeLessThanOrEqual(6);
     expect(proof.claim.split(/\s+/).length).toBeLessThanOrEqual(20);
   });
