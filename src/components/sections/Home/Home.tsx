@@ -867,6 +867,24 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           the canvas. The exit belongs to the plate, not to this. */}
       <HeroAperture />
 
+      {/*
+        The page without WebGL still shows the world the 3D page opens on: a
+        still of the same island, rendered from the scene where it stands
+        (round 17 review: the flat Home kept the island's empty place).
+      */}
+      {flat && (
+        <img
+          className={`${styles.island} ${hasEntered ? styles.islandDrawn : ''}`}
+          src={`/images/home/island-${theme}-1200.webp`}
+          srcSet={`/images/home/island-${theme}-1200.webp 1200w, /images/home/island-${theme}-2400.webp 2400w`}
+          sizes="(max-width: 1199px) 58vw, 64vw"
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          data-testid="hero-island"
+        />
+      )}
+
       <div ref={introductionRef} className={styles.introductionStage}
         data-avatar-active={avatarActive || undefined} aria-hidden={avatarActive || undefined}>
       <div
@@ -949,8 +967,8 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
             style={at('role')}
             data-cue-layer="role"
           >
-            <span className="opacity-80">ARCHITECTING</span>
-            <KineticRotator words={['FULL-STACK APPS', 'THREE.JS 3D EXPERIENCES', 'INTELLIGENT SYSTEMS', 'HIGH-PERFORMANCE UI']} />
+            <span className="opacity-80">BUILDING</span>
+            <KineticRotator words={['AMHARIC SEARCH', 'BILINGUAL AI TOOLS', 'INTERACTIVE 3D', 'ROUTE OPTIMIZERS']} />
           </div>
         </div>
 
@@ -959,7 +977,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
           style={at('description')}
           data-cue-layer="description"
         >
-          Software engineer building web and mobile tools, interactive 3D and applied AI.
+          Software engineer making web and mobile tools, interactive 3D and applied AI.
         </p>
 
         {/* Magnetic CTA Buttons */}

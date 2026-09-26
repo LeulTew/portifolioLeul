@@ -123,8 +123,20 @@ describe('Home Section', () => {
   it('renders name, titles, and bio text', () => {
     render(<Home />);
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('ARCHITECTING')).toBeInTheDocument();
-    expect(screen.getByText('Software engineer building web and mobile tools, interactive 3D and applied AI.')).toBeInTheDocument();
+    expect(screen.getByText('BUILDING')).toBeInTheDocument();
+    // Round 17: the role line names the work itself -- Amharic search first -- not generic labels.
+    expect(screen.getByText('AMHARIC SEARCH')).toBeInTheDocument();
+    expect(screen.getByText('Software engineer making web and mobile tools, interactive 3D and applied AI.')).toBeInTheDocument();
+  });
+
+  it('shows the island still only on the page without WebGL, in the current theme', () => {
+    // Round 17: the flat Home kept the island's empty place.
+    const { unmount } = render(<Home flat theme="dark" />);
+    expect(screen.getByTestId('hero-island')).toHaveAttribute('src', '/images/home/island-dark-1200.webp');
+    expect(screen.getByTestId('hero-island')).toHaveAttribute('aria-hidden', 'true');
+    unmount();
+    render(<Home />);
+    expect(screen.queryByTestId('hero-island')).not.toBeInTheDocument();
   });
 
   it('renders magnetic CTA buttons and handles navigation callbacks', () => {
