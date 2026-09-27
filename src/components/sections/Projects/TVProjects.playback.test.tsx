@@ -8,6 +8,7 @@ import {
   isProjectsReturnOwed, setProjectsView, setTVScreenReady,
 } from '@/lib/projects/projectsScene';
 import { PROJECTS_APPROACH_MS, PROJECTS_TURN_MS } from '@/lib/projects/tvScreen';
+import { PROJECTS_STAGE_QUERY } from '@/lib/projects/projectsTiming';
 import { CONTACT_FLIGHT_MS } from '@/lib/camera/contactFlight';
 import {
   commitContactPose, getContactView, registerContactCamera, releaseContactSky,
@@ -66,6 +67,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  document.body.replaceChildren();
   gsap.ticker.sleep();
   resetScrollGesture();
   resetScrollProgress();
@@ -281,7 +283,7 @@ describe('the completed-beat TV chapter', () => {
     expect(phase()).toBe('reading');
   });
 
-  it('does not take a scrollbar drag back through the rail for a forward entry', () => {
+  it('does not take a scroll back through the rail, with no reader input, for a forward entry', () => {
     // The side read from the layout changes only where the rail is wholly past or ahead of the window.
     top = -2800;
     mount();
@@ -290,6 +292,119 @@ describe('the completed-beat TV chapter', () => {
     top = 40;
     act(() => setScrollProgress(0.85));
     expect(phase()).toBe('outside');
+  });
+
+  it('takes a drag of the scrollbar back from Contact as the reader asking for the TV', async () => {
+    // Round 22 (D-MOTION-006): dragged from Contact, the page rested on an empty Projects clearing.
+    const scroller = document.body.appendChild(document.createElement('div'));
+    Object.defineProperty(scroller, 'clientWidth', { value: 1432 });
+    scroller.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 1440, height: 900 });
+    vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scroller);
+    top = -2800;
+    mount();
+    await navbar('contact');
+    // The press lands on the scrollbar, beside the content, and the thumb carries the page up.
+    act(() => { scroller.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 1436, clientY: 860 })); });
+    top = -2200;
+    act(() => setScrollProgress(0.9));
+    top = -1300;
+    act(() => setScrollProgress(0.85));
+    expect(phase()).toBe('approaching');
+    act(() => { window.dispatchEvent(new PointerEvent('pointerup', { button: 0 })); });
+    await clock.run(CONTACT_FLIGHT_MS);
+    expect(phase()).toBe('reading');
+  });
+
+  it('does not take a press on the page itself, or a scroll of its own making, for a drag', async () => {
+    const scroller = document.body.appendChild(document.createElement('div'));
+    const content = document.createElement('div');
+    scroller.append(content);
+    Object.defineProperty(scroller, 'clientWidth', { value: 1432 });
+    scroller.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 1440, height: 900 });
+    vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scroller);
+    top = -2800;
+    mount();
+    await navbar('contact');
+    act(() => { content.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 600, clientY: 400 })); });
+    top = -1300;
+    act(() => setScrollProgress(0.85));
+    expect(phase()).toBe('outside');
+  });
+
+  describe('a reader carried across the TV being switched off and on by the window size', () => {
+    // Round 22 (TECH-066): the reader was resumed only against the geometry at remount.
+    let fits = true;
+    const listeners = new Set<(event: { matches: boolean }) => void>();
+    beforeEach(() => {
+      fits = true;
+      listeners.clear();
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        get matches() { return query === PROJECTS_STAGE_QUERY ? fits : !query.includes('reduced'); },
+        media: query,
+        addEventListener: (_: string, callback: (event: { matches: boolean }) => void) => {
+          if (query === PROJECTS_STAGE_QUERY) listeners.add(callback);
+        },
+        removeEventListener: (_: string, callback: (event: { matches: boolean }) => void) => listeners.delete(callback),
+      }));
+    });
+    const setFits = async (next: boolean) => {
+      await act(async () => { fits = next; listeners.forEach(listener => listener({ matches: next })); });
+    };
+    const readThenSwitchOff = async () => {
+      top = 80;
+      mount();
+      await navbar('projects');
+      expect(phase()).toBe('reading');
+      await setFits(false);
+      expect(phase()).toBe('outside');
+    };
+
+    it.each([['already settled', 80], ['still being rebuilt', 1417]] as const)(
+      'gives the reader back when the page it returns to is %s',
+      async (_label, atMount) => {
+        await readThenSwitchOff();
+        top = atMount;
+        await setFits(true);
+        top = 80;
+        act(() => window.dispatchEvent(new Event('resize')));
+        await clock.run(500);
+        expect(phase()).toBe('reading');
+      },
+    );
+
+    it('does not give it back after a choice made elsewhere while the TV was off', async () => {
+      await readThenSwitchOff();
+      await navbar('contact');
+      top = -2800;
+      await setFits(true);
+      act(() => window.dispatchEvent(new Event('resize')));
+      await clock.run(500);
+      expect(phase()).toBe('outside');
+    });
+
+    it('takes up Projects chosen while the TV was off', async () => {
+      top = -2800;
+      mount();
+      await setFits(false);
+      await navbar('projects');
+      top = 1417;
+      await setFits(true);
+      top = 80;
+      act(() => window.dispatchEvent(new Event('resize')));
+      await clock.run(500);
+      expect(phase()).toBe('reading');
+    });
+
+    it('lets the reader’s own input end a resume still waiting for its place', async () => {
+      await readThenSwitchOff();
+      top = 1417;
+      await setFits(true);
+      wheel(200);
+      top = 80;
+      act(() => window.dispatchEvent(new Event('resize')));
+      await clock.run(500);
+      expect(phase()).not.toBe('reading');
+    });
   });
 
   it('keeps ownership until the final sky camera frame is committed, not just scheduled', async () => {

@@ -556,9 +556,13 @@ export function useSkillsPlayback(
     // Every scroll moves the reader's place, a scrollbar drag however long included (round 15,
     // TECH-053) -- except while a resume stands, when the place is the layout's until the reader
     // moves: a rebuild's settling scrolls replaced the chapter being resumed (round 16, TECH-055).
+    // And not before this layout has had the reader's own input: a window crossing the staging
+    // size and back within a frame or two sampled the half-built page, where Skills lay across
+    // the line, and the staged reader resumed chapter 4 over Contact (round 22, D-MOTION-005).
+    let readerMoved = false;
     const sample = () => {
       sampling = 0;
-      if (placing || resuming !== null) return;
+      if (placing || resuming !== null || !readerMoved) return;
       const line = window.innerHeight * READING_LINE;
       const area = rail.getBoundingClientRect();
       if (area.top > line || area.bottom <= line) {
@@ -583,6 +587,7 @@ export function useSkillsPlayback(
     const retire = () => {
       cancelPlacement();
       resumeRef.current = null;
+      readerMoved = true;
       onScroll();
     };
     const stopNavigation = subscribeSectionNavigation((target, options) => {

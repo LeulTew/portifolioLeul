@@ -400,6 +400,19 @@ from a settled layout, one where it lies wholly past or wholly ahead of the
 window, until the reader's first gesture or a navigation fixes it. The TV,
 re-enabled at Contact after a resize, decided it was still ahead, and a
 reverse wheel crossed Projects without its reader (round 21, TECH-065).
+A reader a chapter held when the layout replaced it is given back where the
+settled page puts the chapter, not only in the replacement's first frame: the
+TV, re-enabled mid-rebuild, read its rail 2,828px down, spent its one chance,
+and App's restore to the reader landed on a TV left off (round 22, TECH-066).
+The reader's own input or a newer navigation, one made while the chapter was
+switched off included, decides instead.
+A linear chapter takes the reader's place only from a layout the reader has
+touched: a window crossing the staging size and back within a frame or two
+sampled the half-built page, and the staged Skills reader resumed chapter 4
+over Contact (round 22, D-MOTION-005). A drag of the page's own scrollbar is
+the reader's travel, as a wheel is: dragged back from Contact, the page rested
+on an empty Projects clearing because no gesture was reported (round 22,
+D-MOTION-006).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

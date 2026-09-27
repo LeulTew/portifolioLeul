@@ -191,6 +191,33 @@ export function terminateTree(
   };
 }
 
+/** Errors a file still held a moment longer by a process that is going raises on Windows. */
+const TRANSIENT_LOCK = new Set(['EBUSY', 'EPERM', 'EACCES', 'ENOTEMPTY']);
+
+/**
+ * Removes an owned directory, retrying while Windows still holds a file in it.
+ * `rm`'s own maxRetries was ignored by Bun: a held file failed the removal at
+ * once, where Node waited out the lock (round 22, TECH-064). The last error is
+ * the one reported.
+ */
+export async function removeOwnedDirectory(
+  path: string,
+  { attempts = 50, delayMs = 200, remove }: {
+    attempts?: number; delayMs?: number; remove: (path: string) => Promise<void>;
+  },
+): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await remove(path);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (!code || !TRANSIENT_LOCK.has(code) || attempt >= attempts) throw error;
+      await delay(delayMs);
+    }
+  }
+}
+
 /** Fails when something already listens on the port, before anything is started. */
 export function assertPortFree(port: number, host = '127.0.0.1'): Promise<void> {
   return new Promise((done, fail) => {
