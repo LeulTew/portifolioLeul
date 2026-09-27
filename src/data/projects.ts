@@ -95,6 +95,8 @@ const projectRecords: Project[] = [
     tech: "React, TypeScript, MediaPipe, Vite",
     image: "/projects/kitefew.webp",
     imageKind: "interface",
+    imageAlt: "Kitefew in play: the tracked fingertip's neon blade trail beside a flying orange, score 1 on a 1x streak, and the camera preview of the pointing hand",
+    imageNote: "Played by a recorded hand",
     githubUrl: "https://github.com/LeulTew/Kitefew",
     demoUrl: "https://kitefew.vercel.app/",
     categories: ["AI/DataScience", "Desktop & Games", "Web Development"],
