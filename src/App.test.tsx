@@ -313,6 +313,29 @@ describe("App Component", () => {
       expect(document.querySelector('[data-chapter-ink-layer] [data-ink-text="Scroll to explore"]')).not.toBeNull();
     });
 
+    it("steps the scroll invitation aside past Home on a reduced-motion page, whose chapters read as a linear page", () => {
+      // Round 35 (D-R35-001): it sat over Skills' proof link, as it once did on the flat page.
+      const tracking = vi.spyOn(sectionTracking, "useActiveSection").mockReturnValue("home");
+      // Swapped, not spied: the setup's matchMedia is itself a mock, and restoring a spy on it empties it.
+      const original = window.matchMedia;
+      window.matchMedia = (query: string) => ({
+        matches: query.includes("prefers-reduced-motion"), media: query, onchange: null,
+        addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+      try {
+        const { rerender } = render(<ThemeProvider><App /></ThemeProvider>);
+        const footer = () => screen.getByTestId("page-footer");
+        expect(footer()).toHaveTextContent("Scroll to explore");
+        tracking.mockReturnValue("skills");
+        rerender(<ThemeProvider><App /></ThemeProvider>);
+        expect(footer()).not.toHaveTextContent("Scroll to explore");
+        expect(footer()).toHaveTextContent(`© ${new Date().getFullYear()}`);
+      } finally {
+        window.matchMedia = original;
+      }
+    });
+
     it("provides an in-flow document-end copyright lane instead of a compact reading overlay", () => {
       render(<ThemeProvider><App /></ThemeProvider>);
       const footer = screen.getByTestId("compact-page-footer");

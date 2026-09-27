@@ -188,6 +188,8 @@ export function Skills({ onNavigate }: { onNavigate?: SectionNavigate } = {}) {
       id="skills"
       className={styles.skills}
       data-staged={staged}
+      // Laid out linearly, Skills lands on its own edge: the 80px above it is Education's green (round 35).
+      data-landing-edge="own"
       aria-label="Skills"
       style={{ '--skill-count': SKILL_CHAPTERS.length } as CSSProperties}
     >

@@ -12,6 +12,8 @@ import type { ScrollControlsState } from '@react-three/drei';
 import { Contact } from './components/sections/Contact/Contact';
 import { useTheme } from './components/sections/theme/useTheme';
 import { useGpuTier } from './lib/gateways/gpuTier';
+import { usePrefersReducedMotion } from './lib/gateways/animationGateway';
+import { landsOnOwnEdge } from './lib/scroll/landingEdge';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
 import { createTrackFocusRecovery } from './lib/scroll/preserveTrackFocus';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
@@ -165,6 +167,7 @@ function App() {
   const show3D = canRender3D && !webglRuntimeError;
   // The flat page scrolls the document itself; the 3D track preserves its own offset.
   useResizeAnchor(!show3D);
+  const reducedMotion = usePrefersReducedMotion();
   useEffect(() => {
     if (!show3D) trackFocus.cancel();
   }, [show3D, trackFocus]);
@@ -593,7 +596,8 @@ function App() {
       } else if (options?.edge === 'end') {
         adjustedOffset = Math.max(rawOffset + target.offsetHeight - container.clientHeight + 80, 0);
       } else {
-        adjustedOffset = Math.max(rawOffset - 80, 0);
+        // One pixel in: the scroll ratio can land a fraction above, drawing the green as a hairline.
+        adjustedOffset = Math.max(rawOffset + (landsOnOwnEdge(target) ? 1 : -80), 0);
       }
 
       const ratio = Math.min(1, Math.max(0, adjustedOffset / contentScrollable));
@@ -626,7 +630,8 @@ function App() {
     if (immediate) {
       const inset = options?.edge === 'end'
         ? target.offsetHeight - window.innerHeight + 80
-        : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source) : -80;
+        : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source)
+          : landsOnOwnEdge(target) ? 1 : -80;
       const top = landing ? landing.getBoundingClientRect().top + window.scrollY - 80
         : id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
       ownScroll(() => window.scrollTo({ top: Math.max(0, top), behavior: 'auto' }), { key: window });
@@ -753,7 +758,8 @@ function App() {
       <AvatarEncounter enabled={!isLoading && show3D} scrollElement={scrollElement} />
       <TVControls enabled={!isLoading && show3D} scrollElement={scrollElement} />
 
-      {!isLoading && <PageFooter flat={!show3D} />}
+      {/* Reduced motion reads the chapters as a linear page too, under the footer (round 35, D-R35-001). */}
+      {!isLoading && <PageFooter flat={!show3D || reducedMotion} />}
     </div>
   );
 }
