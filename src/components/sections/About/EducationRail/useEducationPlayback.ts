@@ -145,8 +145,8 @@ export function useEducationPlayback(
     const flag = (name: string, value: boolean) => {
       if (about) writeAttribute(about, name, value ? 'true' : null);
     };
-    const show = (visible: boolean) => {
-      if (visible && !uncover) uncover = coverEducationBackground(host, panel);
+    const show = (visible: boolean, scrollport?: HTMLElement | null) => {
+      if (visible && !uncover) uncover = coverEducationBackground(host, panel, 'education', scrollport);
       else if (!visible) {
         uncover?.();
         uncover = null;
@@ -256,12 +256,20 @@ export function useEducationPlayback(
       playing.invalidate().restart();
     };
     const claim = () => {
+      /*
+       * Every read first, then every write. Read after this claim's own writes, the scrollport
+       * and the reveal's computed units each forced a style pass over the whole chapter, two in
+       * the entrance's first frame, its longest of the journey (round 40). Read first, each costs
+       * only what the frame had changed before the claim; its writes are styled once, with the frame.
+       */
+      const scrollport = uncover ? undefined : findScrollContainer(host);
+      if (resumeAt === null) prepareReveal(wave === 'up' ? -1 : 1);
       handoffPending = false;
       flag('data-education-released', false);
       flag('data-education-returning', false);
       flag('data-education-owned', true);
       writeStyleProperty(panel, '--release', '0px');
-      show(true);
+      show(true, scrollport);
       if (resumeAt !== null) {
         // A resumed reader was already reading: the record is shown as it was, without the opening.
         current = resumeAt;
@@ -277,7 +285,6 @@ export function useEducationPlayback(
       writeAttribute(heading, 'data-settled', null);
       changePhase('opening');
       writeAttribute(outline, 'data-open', 'true');
-      prepareReveal(wave === 'up' ? -1 : 1);
       playing = open;
       open.play();
     };

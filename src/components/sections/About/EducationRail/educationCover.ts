@@ -1,14 +1,19 @@
 import { findScrollContainer } from '@/lib/scroll/scrollContainer';
 
-/** Stop painting covered DOM without changing geometry or hiding the native scrollport. */
+/**
+ * Stop painting covered DOM without changing geometry or hiding the native scrollport.
+ *
+ * `container` is the scrollport, if the caller has already read it: finding it reads computed
+ * style, and read after a claim's writes that forced a style pass over the whole chapter.
+ */
 export function coverChapterBackground(
   host: HTMLElement,
   stage: HTMLElement,
   owner: 'education' | 'skills' | 'projects' = 'education',
+  container: HTMLElement | null = findScrollContainer(host),
 ): () => void {
   const attribute = `data-${owner}-covered`;
   const main = host.closest('main');
-  const container = findScrollContainer(host);
   const parent = main?.parentElement;
   const content = parent && container && parent !== container && container.contains(parent)
     ? parent : main;

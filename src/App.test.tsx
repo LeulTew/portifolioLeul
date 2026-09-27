@@ -983,6 +983,18 @@ describe("App scroll position across a track resize", () => {
     expect(mockScroll.offset * (track.pages - 1) * track.clientHeight).toBeCloseTo(9100, 0);
   });
 
+  it("samples the reader's place without reading the track's layout on a frame of travel", () => {
+    // Round 40: the track's clientHeight, read after that frame's writes, forced a style pass per frame.
+    renderApp();
+    act(() => runFrames(4));
+    act(() => { window.dispatchEvent(new Event("resize")); });
+    const height = vi.spyOn(mockScroll.el, "clientHeight", "get");
+    try {
+      act(() => { for (let frame = 1; frame <= 30; frame++) setScrollProgress(frame / 100); });
+      expect(height).not.toHaveBeenCalled();
+    } finally { height.mockRestore(); }
+  });
+
   it("does not throw the reader back to the top when content grows", () => {
     // Regression: ScrollControls resets scrollTop to 1 whenever `pages`
     // changes, so a lazily loaded image mid-scroll yanked the page to the top.

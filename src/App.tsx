@@ -114,11 +114,14 @@ function App() {
    */
   const readingAnchorRef = useRef<ReadingAnchor | null>(null);
   /**
-   * Each chapter's top in the content, measured with the page and dropped the
-   * moment the content changes, so sampling the reader's place reads no layout
-   * per frame (a rect per scroll publication cost 672ms in round 8's profile).
+   * Each chapter's top in the content, and the window's height, measured with
+   * the page and dropped the moment the content changes, so sampling the
+   * reader's place reads no layout per frame (a rect per scroll publication cost
+   * 672ms in round 8's profile). The height too: the track's `clientHeight`,
+   * read after that frame's writes, forced a style pass on every frame of travel
+   * (round 40).
    */
-  const sectionTopsRef = useRef<{ id: string; top: number }[] | null>(null);
+  const sectionTopsRef = useRef<{ height: number; tops: { id: string; top: number }[] } | null>(null);
   /**
    * A navbar destination chosen while the track was about to rebuild. The
    * rebuild resets the track, and restoring the old offset afterwards threw
@@ -279,10 +282,13 @@ function App() {
     const contentHeight = node.scrollHeight || viewportHeight;
     // The content 1:1 onto the track: every section reachable, no dead scroll (see trackPages).
     const calculatedPages = contentPages(contentHeight, viewportHeight);
-    sectionTopsRef.current = STORY_SECTIONS.flatMap(id => {
-      const section = document.getElementById(id);
-      return section ? [{ id, top: section.offsetTop - (node.offsetTop || 0) }] : [];
-    });
+    sectionTopsRef.current = {
+      height: scrollElementRef.current?.clientHeight || viewportHeight,
+      tops: STORY_SECTIONS.flatMap(id => {
+        const section = document.getElementById(id);
+        return section ? [{ id, top: section.offsetTop - (node.offsetTop || 0) }] : [];
+      }),
+    };
 
     /*
      * Where the camera stands still, and where nothing is drawn at all.
@@ -522,9 +528,9 @@ function App() {
     if (!scrollElement) return;
     return subscribeScrollProgress(progress => {
       // Changed content, until it is measured again, would show the old place over new content.
-      const tops = sectionTopsRef.current;
-      if (!tops || pendingRestoreRef.current || settleTimerRef.current || restoreSyncFramesRef.current > 0) return;
-      const height = scrollElement.clientHeight || window.innerHeight || 1;
+      const measured = sectionTopsRef.current;
+      if (!measured || pendingRestoreRef.current || settleTimerRef.current || restoreSyncFramesRef.current > 0) return;
+      const { height, tops } = measured;
       const drawn = progress * Math.max(scrollPagesRef.current - 1, 0) * height;
       let anchor: ReadingAnchor | null = null;
       for (const { id, top } of tops) if (top <= drawn + height / 2) anchor = { id, fromTop: drawn - top };
