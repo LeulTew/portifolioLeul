@@ -166,8 +166,10 @@ navbar, no green above it and no invitation over its text (round 35). A last pas
 in a 900x560 window, sends the Contact form blank and then as a failed delivery,
 and asks that Name land clear of the navbar and that the failure notice show
 whole: each grows the page, and before round 37 the track rebuild that growth
-set off put the reader back over the answer. The check fails the email service
-itself, so no message is ever sent, whatever the build's configuration. It fails on any page error, and writes its
+set off put the reader back over the answer. The check fails every request that
+would leave the page's origin, whatever the build's configuration or the
+service's endpoint, and counts them: exactly one, to the email service, when the
+build has one, and none when it has not. No message is ever sent. It fails on any page error, and writes its
 measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
 narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
 GPU or a fallback. Before any journey it checks that the page opened its 3D
@@ -442,8 +444,10 @@ verify both published aliases on desktop and phone after deployment.
 
 ### Meet the character in the scene
 
-A small, wordless light cue appears only on hover or keyboard focus; the native
-model-aligned target remains clickable wherever the avatar is actionable
+A small, wordless light cue appears only on hover or keyboard focus, and
+keyboard focus also frames the figure with a wordless four-corner reticle over
+a halo of the control surface, so a keyboard reader sees what Enter acts on
+(round 37); the native model-aligned target remains clickable wherever the avatar is actionable
 in the exposed island, including Hero and Projects' revealed pre-TV view. It
 waits for the original Hero name entrance, but is not mounted in Hero or in the
 covered/inert main content. Its portal remains inside the real scrollport.
@@ -474,7 +478,7 @@ revealed controls omit the removed caption while retaining their edge positions.
 ### The green prism's hidden experiment
 
 The green prism uses the same subtle, wordless hover/focus glint in the exposed
-island. Accessible button names remain available to assistive technology,
+island, and the same reticle on keyboard focus. Accessible button names remain available to assistive technology,
 without visible labels, badges or icons. Deliberate activation lifts the existing object, lets the line tie into
 an open spatial knot, and unthreads it back into the exact original beam.
 It does not move the camera, open a panel, retime the character or modify the

@@ -67,7 +67,36 @@
 }
 
 .target:focus-visible {
+  --reticle: var(--avatar-focus);
+  --reticle-halo: var(--avatar-surface);
+  --arm: 16px;
   outline: none;
+  /*
+   * Keyboard focus frames what Enter acts on (round 37, D-R37-001): the cue's
+   * dot alone did not show a keyboard reader what had taken focus. Wordless,
+   * like the cue, so the scene's discoveries stay discoveries; the name is the
+   * button's accessible name. The corners sit on a halo of the control
+   * surface, so they read over pale fog and dark rock alike. Hover keeps the
+   * quieter cue: a pointer is already on the figure.
+   */
+  background:
+    linear-gradient(var(--reticle), var(--reticle)) left top / var(--arm) 2px,
+    linear-gradient(var(--reticle), var(--reticle)) left top / 2px var(--arm),
+    linear-gradient(var(--reticle), var(--reticle)) right top / var(--arm) 2px,
+    linear-gradient(var(--reticle), var(--reticle)) right top / 2px var(--arm),
+    linear-gradient(var(--reticle), var(--reticle)) left bottom / var(--arm) 2px,
+    linear-gradient(var(--reticle), var(--reticle)) left bottom / 2px var(--arm),
+    linear-gradient(var(--reticle), var(--reticle)) right bottom / var(--arm) 2px,
+    linear-gradient(var(--reticle), var(--reticle)) right bottom / 2px var(--arm),
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) left top / calc(var(--arm) + 2px) 4px,
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) left top / 4px calc(var(--arm) + 2px),
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) right top / calc(var(--arm) + 2px) 4px,
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) right top / 4px calc(var(--arm) + 2px),
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) left bottom / calc(var(--arm) + 2px) 4px,
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) left bottom / 4px calc(var(--arm) + 2px),
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) right bottom / calc(var(--arm) + 2px) 4px,
+    linear-gradient(var(--reticle-halo), var(--reticle-halo)) right bottom / 4px calc(var(--arm) + 2px);
+  background-repeat: no-repeat;
 }
 
 .cue {

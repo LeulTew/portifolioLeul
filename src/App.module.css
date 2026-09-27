@@ -20,11 +20,13 @@
 }
 
 .main > * {
+  /* Named, so a chapter can reckon what lies above its first screen. */
+  --section-lead: 100px;
   min-height: 100vh;
   width: 100%;
   position: relative;
   z-index: 1;
-  padding-top: 100px;
+  padding-top: var(--section-lead);
 }
 
 .footer {

@@ -44,6 +44,13 @@ describe('createSettledQueue', () => {
     expect(run).toHaveBeenCalledOnce();
   });
 
+  it('reads nothing while nothing waits, so a settled page pays no layout read per frame', () => {
+    const owed = vi.fn(() => false);
+    const queue = createSettledQueue(owed);
+    for (let frame = 0; frame < 60; frame++) queue.flush();
+    expect(owed).not.toHaveBeenCalled();
+  });
+
   it('drops what waits when cleared', () => {
     let owed = true;
     const queue = createSettledQueue(() => owed);

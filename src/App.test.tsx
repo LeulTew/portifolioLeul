@@ -811,31 +811,36 @@ describe("App scroll position across a track resize", () => {
     });
   });
 
+  /** Contact on screen, with a notice at its foot that grows the page past the rebuild's deadband. */
+  const growingNotice = () => {
+    const view = renderApp();
+    const contact = screen.getByTestId("contact-section");
+    contact.id = "contact";
+    Object.defineProperty(contact, "offsetTop", { configurable: true, value: 7000 });
+    act(() => runFrames(4));
+    const main = contact.closest("main")!;
+    let chapter: HTMLElement = contact;
+    while (chapter.parentElement !== main) chapter = chapter.parentElement!;
+    const notice = document.createElement("p");
+    contact.append(notice);
+    const rect = (top: number, bottom: number) =>
+      ({ top, bottom, left: 0, right: 100, width: 100, height: bottom - top, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(chapter, "getBoundingClientRect").mockReturnValue(rect(200, 1300));
+    vi.spyOn(notice, "getBoundingClientRect").mockReturnValue(rect(1100, 1180));
+    act(() => {
+      contentHeight = 11000;
+      window.dispatchEvent(new Event("resize"));
+      requestReveal(notice);
+    });
+    return view;
+  };
+
   it("makes a reveal asked for during a rebuild on the rebuilt page, not before it", () => {
     // Round 37: a failed send's notice grew Contact and was revealed, then the rebuild that growth
     // owed restored the place sampled before it, and the notice sat below the window.
     vi.useFakeTimers();
     try {
-      renderApp();
-      const contact = screen.getByTestId("contact-section");
-      contact.id = "contact";
-      Object.defineProperty(contact, "offsetTop", { configurable: true, value: 7000 });
-      act(() => runFrames(4));
-      const main = contact.closest("main")!;
-      let chapter: HTMLElement = contact;
-      while (chapter.parentElement !== main) chapter = chapter.parentElement!;
-      const notice = document.createElement("p");
-      contact.append(notice);
-      const rect = (top: number, bottom: number) =>
-        ({ top, bottom, left: 0, right: 100, width: 100, height: bottom - top, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
-      vi.spyOn(chapter, "getBoundingClientRect").mockReturnValue(rect(200, 1300));
-      vi.spyOn(notice, "getBoundingClientRect").mockReturnValue(rect(1100, 1180));
-
-      act(() => {
-        contentHeight = 11000;
-        window.dispatchEvent(new Event("resize"));
-        requestReveal(notice);
-      });
+      growingNotice();
       act(() => runFrames(3));
       const restored = mockScroll.el.scrollTop;
       act(() => vi.advanceTimersByTime(1));
@@ -843,6 +848,19 @@ describe("App scroll position across a track resize", () => {
       // The notice's bottom brought to 96px above the window's edge, on the rebuilt track.
       const shift = 1180 - (track.clientHeight - 96);
       expect(mockScroll.el.scrollTop).toBeCloseTo(restored + (shift * trackRange) / (contentHeight - track.clientHeight));
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("drops a reveal still waiting for its release when the page goes away", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = growingNotice();
+      // The rebuild has landed and the release is queued for the next task.
+      act(() => runFrames(3));
+      const restored = mockScroll.el.scrollTop;
+      unmount();
+      act(() => vi.advanceTimersByTime(1));
+      expect(mockScroll.el.scrollTop).toBe(restored);
     } finally { vi.useRealTimers(); }
   });
 
