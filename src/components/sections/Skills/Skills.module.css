@@ -694,12 +694,17 @@
  * fill the window, and the next chapter begins at its edge. At 3840x2160 a
  * chapter is shorter than the window, and the next chapter's heading was cut
  * by the window's edge (round 37, D-R37-002). A floor, never a cap: a chapter
- * taller than what is left of the window keeps its own height.
+ * taller than what is left of the window keeps its own height. The row keeps
+ * its content's height at the top of the floor, so the chapter sits under its
+ * header as at every other size and the room the floor adds closes the
+ * chapter, above its rule; centred, it opened a band under the header instead
+ * (round 38, D-R38-001).
  */
 .stage[data-staged='false'] .chapter:first-child {
   box-sizing: border-box;
   min-height: calc(100svh - var(--section-lead, 100px) - var(--skills-content-top) -
     var(--skills-title-size) - var(--skills-header-gap));
+  align-content: start;
 }
 
 .stage[data-staged='false'] .editorial {

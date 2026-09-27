@@ -121,6 +121,8 @@ describe('Skills chapter controls', () => {
     expect(rule(css, '.header')['padding-bottom']).toBe('var(--skills-header-gap)');
     // A floor, never a cap: a taller chapter keeps its height.
     expect(rule(css, ".stage[data-staged='false'] .chapter:first-child")['max-height']).toBeUndefined();
+    // Round 38 (D-R38-001): the content stays under the header; the added room closes the chapter.
+    expect(rule(css, ".stage[data-staged='false'] .chapter:first-child")['align-content']).toBe('start');
     // Every media query that moves the content's top moves the named value, not the padding.
     css.walkAtRules('media', media => media.walkRules('.content', found => {
       found.walkDecls('padding-top', () => { throw new Error(`${media.params} sets .content padding-top directly`); });

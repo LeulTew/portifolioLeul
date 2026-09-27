@@ -168,8 +168,10 @@ and asks that Name land clear of the navbar and that the failure notice show
 whole: each grows the page, and before round 37 the track rebuild that growth
 set off put the reader back over the answer. The check fails every request that
 would leave the page's origin, whatever the build's configuration or the
-service's endpoint, and counts them: exactly one, to the email service, when the
-build has one, and none when it has not. No message is ever sent. It fails on any page error, and writes its
+service's endpoint, and counts them: exactly one attempt on the email service
+when the build has one, and none when it has not. A JSON send is preflighted, so
+the attempt failed is its CORS preflight and the draft's POST is never made. No
+message is ever sent. It fails on any page error, and writes its
 measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
 narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
 GPU or a fallback. Before any journey it checks that the page opened its 3D

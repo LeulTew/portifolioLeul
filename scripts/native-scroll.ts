@@ -190,7 +190,9 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
 
       // Never a real message: every request that would leave the page's origin fails here, whatever
       // the build's configuration or the service's endpoint, and is counted. The CSP lets only the
-      // email service out, so a configured send makes exactly one, and an unconfigured one none.
+      // email service out, so a configured send makes exactly one attempt on it, and an unconfigured
+      // one none. A JSON send is preflighted: the attempt failed is the preflight, so the draft's POST
+      // is never even made (round 38, TECH-089).
       const pageOrigin = new URL(origin).origin;
       const blocked: string[] = [];
       await send('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
@@ -221,9 +223,9 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       check('failed send', 'its notice and draft link whole, clear of the navbar', failed,
         failed.alerts === 1 && !!failed.last && failed.last.top >= failed.bar && failed.last.bottom <= height);
       const configured = !/unavailable/.test(await evaluate<string>(`document.querySelector('#contact form [role="alert"]')?.textContent ?? ''`));
-      check('nothing sent', configured ? 'the one email request, failed here' : 'no request: the build has no email service',
+      check('nothing sent', configured ? 'one attempt on the email service, failed here' : 'no request: the build has no email service',
         { configured, blocked }, blocked.length === (configured ? 1 : 0) &&
-          blocked.every(request => request.startsWith('POST https://api.emailjs.com/')));
+          blocked.every(request => /^(OPTIONS|POST) https:\/\/api\.emailjs\.com\/api\/v1\.0\/email\/send$/.test(request)));
       // The failed send says so in the console, by design; nothing else may.
       const unexpected = errors.filter(error => !error.startsWith('Contact submission failed'));
       check('no page errors', 'none', unexpected, unexpected.length === 0);
