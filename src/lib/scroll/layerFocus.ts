@@ -302,7 +302,7 @@ function revealInOwnBox(element: HTMLElement, view: Window): void {
     const margin = OWN_BOX_MARGIN_PX * scale;
     let shift = inner.bottom > outer.bottom - margin ? inner.bottom - (outer.bottom - margin) : 0;
     if (inner.top - shift < outer.top + margin) shift = inner.top - (outer.top + margin);
-    if (Math.abs(shift) >= 1) box.scrollTop += shift / scale;
+    if (Math.abs(shift) >= 1) ownScroll(() => { box.scrollTop += shift / scale; });
     return;
   }
 }

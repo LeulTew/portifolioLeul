@@ -423,6 +423,12 @@ a settle, a glide, a forwarded wheel, a focus reveal -- runs through
 `ownScroll`, which moves a held drag's baseline with it: held still under an
 engaged TV, a forwarded scroll read as a request and the TV began to retreat
 (round 24, TECH-068). A new programmatic scroll write goes through it too.
+A held thumb can put the page back under itself after such a write; that return
+is not the reader either, so a drag keeps both places -- the thumb's and the
+page's own -- and travel is the reader's only once it leaves both (round 25,
+TECH-069). A native smooth scroll of the page's own ends with its scrollend, a
+new press on a scrollbar or a newer write, not after a fixed time regardless
+(round 25, TECH-070).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

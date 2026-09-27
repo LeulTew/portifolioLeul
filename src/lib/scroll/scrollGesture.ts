@@ -113,29 +113,43 @@ function onKeyDown(event: KeyboardEvent): void {
  * travel of the scroller whose own scrollbar was pressed counts, and only while
  * the press lasts: a scroll the page makes for itself is never the reader's.
  */
-interface ScrollbarDrag { scroller: Element; target: EventTarget | null; last: number; started: boolean }
+interface ScrollbarDrag {
+  scroller: Element;
+  target: EventTarget | null;
+  /** Where the thumb last put the page. */
+  last: number;
+  /** Where the page last put itself during the drag, until the reader moves on from it. */
+  owned: number | null;
+  started: boolean;
+}
 let drag: ScrollbarDrag | null = null;
 
 /** Drag travel below this is the thumb settling under the pointer. */
 const DRAG_THRESHOLD = 4;
 
-/** How long a native smooth scroll the page started for itself is taken to go on moving. */
+/** The longest a native smooth scroll the page started is taken to run, should it never report its end. */
 const OWN_SMOOTH_SCROLL_MS = 1500;
-let ownUntil = -Infinity;
+let smoothUntil = -Infinity;
 
 /**
  * Runs a scroll the page makes for itself -- a restore, a settle, a glide, a
  * forwarded wheel, a focus reveal -- so that a scrollbar held while it happens
  * does not report it as the reader's travel. Held still under an engaged TV, a
  * forwarded scroll of 160px read as a request and the TV began to retreat
- * (round 24, TECH-068). An instant write moves the drag's baseline with it; a
- * smooth one keeps every scroller's travel the page's own until it has had time
- * to finish. Whatever the reader moves the thumb by afterwards is still theirs.
+ * (round 24, TECH-068).
+ *
+ * The browser does not always leave the written place standing: a thumb still
+ * held puts the page back under it on the next scroll, and that return read as
+ * the reader dragging back (round 25, TECH-069). So the drag keeps both places
+ * -- where the thumb last put the page, and where the page put itself -- and
+ * travel is only the reader's once it leaves both. A native smooth scroll is
+ * the page's own until it ends, a new press on a scrollbar, or a newer write
+ * of the page's own, never for a fixed time regardless (round 25, TECH-070).
  */
 export function ownScroll<T>(write: () => T, { smooth = false }: { smooth?: boolean } = {}): T {
   const result = write();
-  if (drag) drag.last = drag.scroller.scrollTop;
-  if (smooth) ownUntil = Math.max(ownUntil, performance.now() + OWN_SMOOTH_SCROLL_MS);
+  if (drag) drag.owned = drag.scroller.scrollTop;
+  smoothUntil = smooth ? performance.now() + OWN_SMOOTH_SCROLL_MS : -Infinity;
   return result;
 }
 
@@ -156,7 +170,10 @@ function onPointerDown(event: PointerEvent): void {
   drag = null;
   if (event.button !== 0) return;
   const scroller = scrollbarUnder(event);
-  if (scroller) drag = { scroller, target: event.target, last: scroller.scrollTop, started: false };
+  if (!scroller) return;
+  // A press on a scrollbar stops a smooth scroll: what moves the page from here is the reader.
+  smoothUntil = -Infinity;
+  drag = { scroller, target: event.target, last: scroller.scrollTop, owned: null, started: false };
 }
 
 function onPointerMove(event: PointerEvent): void {
@@ -168,17 +185,27 @@ function endDrag(): void {
   drag = null;
 }
 
+function onScrollEnd(): void {
+  smoothUntil = -Infinity;
+}
+
 function onScroll(event: Event): void {
   if (!drag) return;
   const source = event.target === document ? document.scrollingElement : event.target;
   if (source !== drag.scroller) return;
-  if (performance.now() < ownUntil) {
-    drag.last = drag.scroller.scrollTop;
+  const top = drag.scroller.scrollTop;
+  if (performance.now() < smoothUntil) {
+    drag.owned = top;
     return;
   }
-  const travelled = drag.scroller.scrollTop - drag.last;
-  if (Math.abs(travelled) < DRAG_THRESHOLD) return;
-  drag.last = drag.scroller.scrollTop;
+  // Back under the thumb, or still where the page put itself: neither is the reader's travel.
+  const fromThumb = top - drag.last;
+  const fromOwn = drag.owned === null ? Infinity : top - drag.owned;
+  if (Math.abs(fromThumb) < DRAG_THRESHOLD || Math.abs(fromOwn) < DRAG_THRESHOLD) return;
+  const travelled = Math.abs(fromOwn) < Math.abs(fromThumb) ? fromOwn : fromThumb;
+  // Taken before the listeners hear it: a chapter they move settles the page from here.
+  drag.last = top;
+  drag.owned = null;
   emit(travelled > 0 ? 'down' : 'up', !drag.started, drag.target);
   drag.started = true;
 }
@@ -201,6 +228,7 @@ export function initScrollGesture(): () => void {
   window.addEventListener('blur', endDrag, { passive: true });
   // Capture hears every scroller's own scroll, as well as the document's.
   window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  window.addEventListener('scrollend', onScrollEnd, { capture: true, passive: true });
 
   return cleanupScrollGesture;
 }
@@ -219,8 +247,9 @@ function cleanupScrollGesture(): void {
   window.removeEventListener('pointercancel', endDrag, { capture: true });
   window.removeEventListener('blur', endDrag);
   window.removeEventListener('scroll', onScroll, { capture: true });
+  window.removeEventListener('scrollend', onScrollEnd, { capture: true });
   drag = null;
-  ownUntil = -Infinity;
+  smoothUntil = -Infinity;
   touchY = null;
   touchStarted = false;
   lastWheelAt = -Infinity;
