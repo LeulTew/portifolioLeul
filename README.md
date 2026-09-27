@@ -160,7 +160,9 @@ stops there, and the reader's own key or drag under the thumb outlasts anything
 the page queued (rounds 25-31). Two more journeys land the navbar on About and
 then move the page with no gesture at all -- as a track click or the browser's
 find does -- into About's hand-off and into Skills, and pass only when a chapter
-takes the reader (round 34). It fails on any page error, and writes its
+takes the reader (round 34). A reduced-motion pass reads the story as the linear
+page it becomes there and checks that Skills lands with its own box under the
+navbar, no green above it and no invitation over its text (round 35). It fails on any page error, and writes its
 measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
 narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
 GPU or a fallback. Before any journey it checks that the page opened its 3D
@@ -336,8 +338,9 @@ the part of it the screen looks at (`imageFocus`: insets in percent). The TV
 crops to it with `object-view-box`, anchored to the top so a taller screen shows
 more of the capture below rather than a matte above; the enlarged reader and
 "Full image" show the whole capture, and a browser without `object-view-box`
-simply shows the whole. Five dashboards use it: Mizan, Ignition, Amet AI,
-ProtoChem 3D and Amharic IR Improved.
+simply shows the whole. Nine dense captures use it: Mizan, Ignition, Amet AI,
+ProtoChem 3D, Amharic IR Improved, Elona Practice, AgendaFlow AI, System Design
+Guide and CS Exit Practice.
 
 On a 4K canvas at 100% scaling the interface steps up with the scene: the root
 type is 125% from 2880x1600 and 150% from 3400x1900, and chapter widths are

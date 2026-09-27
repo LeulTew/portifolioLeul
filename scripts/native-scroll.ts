@@ -31,7 +31,7 @@ const STATE = `(() => {
     skills: stage('skills-stage'), tv: stage('projects-stage'), contact: document.querySelector('#contact')?.dataset.contactState };
 })()`;
 
-async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outcome[]): Promise<void> {
+async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outcome[], reduced = false): Promise<void> {
   const { browserContextId } = await cdp.send<{ browserContextId: string }>('Target.createBrowserContext');
   const { targetId } = await cdp.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank', browserContextId });
   const errors: string[] = [];
@@ -67,6 +67,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false, screenWidth: WIDTH, screenHeight: HEIGHT,
     });
     await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('theme', ${JSON.stringify(theme)})` });
+    if (reduced) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     await send('Page.navigate', { url: `${origin}/` });
     await until(() => evaluate<boolean>(`/settled/.test(document.querySelector('[data-testid="hero-content"]')?.className || '')`),
       { timeoutMs: 120_000, intervalMs: 250, label: 'the hero settling' });
@@ -122,10 +123,30 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
     const key = async (name: string, code: number) => {
       for (const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, key: name, code: name, windowsVirtualKeyCode: code });
     };
+    const label = reduced ? `${theme}, reduced motion` : theme;
     const check = (journey: string, expected: string, measured: unknown, pass: boolean) => {
-      outcomes.push({ theme, journey, pass, expected, measured });
-      console.log(`${pass ? 'PASS' : 'FAIL'} ${theme.padEnd(5)} ${journey}: ${expected} -> ${JSON.stringify(measured)}`);
+      outcomes.push({ theme: label, journey, pass, expected, measured });
+      console.log(`${pass ? 'PASS' : 'FAIL'} ${label.padEnd(5)} ${journey}: ${expected} -> ${JSON.stringify(measured)}`);
     };
+
+    if (reduced) {
+      // Round 35 (D-R35-001): read as a linear page, Skills landed under a band of Education's green,
+      // and the footer's invitation sat over its proof link. What lies under the navbar is Skills' own.
+      await nav('skills');
+      await delay(3500);
+      // Geometry, not hit-testing: the chapter's own box reaches the top, and every green one has ended above it.
+      const landing = await evaluate<{ skillsTop: number; greenBottom: number; invitation: boolean; staged: string | undefined }>(`(() => {
+        const skills = document.getElementById('skills');
+        const greens = [...document.querySelectorAll('[data-green-bg]')].map(e => e.getBoundingClientRect()).filter(r => r.height > 0);
+        const invitation = [...document.querySelectorAll('[data-page-footer]')].some(f => /Scroll to explore/.test(f.textContent ?? ''));
+        return { skillsTop: Math.round(skills.getBoundingClientRect().top * 10) / 10,
+          greenBottom: Math.round(Math.max(-9999, ...greens.map(r => r.bottom)) * 10) / 10, invitation, staged: skills.dataset.staged };
+      })()`);
+      check('Skills landing, linear', 'Skills under the navbar, no green above it, no invitation over its text', landing,
+        landing.staged !== 'true' && landing.skillsTop <= 0 && landing.greenBottom <= 0 && !landing.invitation);
+      check('no page errors', 'none', errors, errors.length === 0);
+      return;
+    }
 
     // A drag past the last skill hands the reader to Projects, framed.
     await nav('skills');
@@ -288,6 +309,8 @@ async function main() {
     });
     // A theme that cannot go on is reported, and the next still runs.
     for (const theme of themes) await journeys(cdp, origin, theme, outcomes).catch(error => { failures.push(error); });
+    // Reduced motion reads the story as a linear page: its landings are checked once (round 35).
+    await journeys(cdp, origin, themes[0], outcomes, true).catch(error => { failures.push(error); });
   } catch (error) {
     failures.push(error);
   }

@@ -51,7 +51,8 @@ describe("projectsData", () => {
     };
     const focused = projectsData.filter(project => project.imageFocus);
     expect(focused.map(project => project.title))
-      .toEqual(expect.arrayContaining(["Mizan", "Ignition", "Amet AI", "ProtoChem 3D", "Amharic IR Improved"]));
+      .toEqual(expect.arrayContaining(["Mizan", "Ignition", "Amet AI", "ProtoChem 3D", "Amharic IR Improved",
+        "Elona Practice", "AgendaFlow AI", "System Design Guide", "CS Exit Practice"]));
     for (const project of focused) {
       const { top, right, bottom, left } = project.imageFocus!;
       for (const inset of [top, right, bottom, left]) expect(inset, project.title).toBeGreaterThanOrEqual(0);

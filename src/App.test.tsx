@@ -543,6 +543,26 @@ describe("App without a WebGL context", () => {
     }
   });
 
+  it.each([["linear", "false", 1], ["staged", "true", -80]])(
+    "lands %s Skills on its own edge only while linear, in the flat document", async (_layout, staged, inset) => {
+      // Round 35 (D-R35-001): linear, the 80px above Skills showed Education's green under the navbar.
+      const user = userEvent.setup();
+      const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+      try {
+        await renderSettled();
+        const target = screen.getByTestId("skills-section");
+        target.id = "skills";
+        target.dataset.landingEdge = "own";
+        target.dataset.staged = staged;
+        target.getBoundingClientRect = () => DOMRect.fromRect({ y: 5000, height: 4000 });
+        await user.click(screen.getByRole("button", { name: "Skills" }));
+        expect((scrollTo.mock.lastCall?.[0] as ScrollToOptions).top).toBe(5000 + window.scrollY + inset);
+      } finally {
+        scrollTo.mockRestore();
+      }
+    },
+  );
+
   it("lands a navigation that names an element of its section on that element, in the flat document", async () => {
     // Round 14 (D-MOTION-001): Skills resumes the chapter being read after a change of layout.
     const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
