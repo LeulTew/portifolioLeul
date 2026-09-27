@@ -13,7 +13,8 @@ import { Contact } from './components/sections/Contact/Contact';
 import { useTheme } from './components/sections/theme/useTheme';
 import { useGpuTier } from './lib/gateways/gpuTier';
 import { usePrefersReducedMotion } from './lib/gateways/animationGateway';
-import { landsOnOwnEdge } from './lib/scroll/landingEdge';
+import { landingInset } from './lib/scroll/navigationLanding';
+import { contentOutgrewTrack, contentPages, pagesChanged } from './lib/scroll/trackPages';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
 import { createTrackFocusRecovery } from './lib/scroll/preserveTrackFocus';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
@@ -45,14 +46,6 @@ import styles from './App.module.css';
 
 /** The world and its scroll track: downloaded only when the page can draw them (round 10, TECH-029). */
 const SpatialStage = lazy(loadSpatialStage);
-
-/**
- * Page-count churn below this is ignored. Every applied change makes
- * ScrollControls rebuild its track, so the threshold is set well above routine
- * layout jitter -- roughly 135px on a 900px viewport -- while staying small
- * enough that no section becomes unreachable.
- */
-const SCROLL_PAGE_EPSILON = 0.15;
 
 /** The story's chapters, in order: where a reader's place is anchored. */
 const STORY_SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
@@ -146,13 +139,9 @@ function App() {
    * Reveals asked for while the track is owed a rebuild: measured, re-measured, restored, or grown
    * past the rebuild's deadband and not yet reported. Made after it, or its restore undoes them.
    */
-  const settledReveals = useMemo(() => createSettledQueue(() => {
-    if (pendingRestoreRef.current || restoreSyncFramesRef.current > 0 || settleTimerRef.current) return true;
-    const node = mainRef.current;
-    if (!node) return false;
-    const height = window.innerHeight || 1;
-    return Math.abs(Math.max((node.scrollHeight || height) / height, 1) - scrollPagesRef.current) > SCROLL_PAGE_EPSILON;
-  }), []);
+  const settledReveals = useMemo(() => createSettledQueue(() =>
+    Boolean(pendingRestoreRef.current || settleTimerRef.current) || restoreSyncFramesRef.current > 0 ||
+      contentOutgrewTrack(mainRef.current, scrollPagesRef.current, window.innerHeight)), []);
 
   // The context is optional by type -- it has no sensible default -- and this
   // hook is the project's existing way of asserting the provider is there.
@@ -288,12 +277,8 @@ function App() {
     if (!node) return;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight || 1 : 1;
     const contentHeight = node.scrollHeight || viewportHeight;
-
-    // ScrollControls translates the html layer by -(pages - 1) * viewportHeight
-    // across the full scroll, so pages === contentHeight / viewportHeight maps
-    // the content 1:1 onto the scroll track. Every section stays reachable and
-    // the track ends exactly where the content does, with no dead scroll.
-    const calculatedPages = Math.max(contentHeight / viewportHeight, 1);
+    // The content 1:1 onto the track: every section reachable, no dead scroll (see trackPages).
+    const calculatedPages = contentPages(contentHeight, viewportHeight);
     sectionTopsRef.current = STORY_SECTIONS.flatMap(id => {
       const section = document.getElementById(id);
       return section ? [{ id, top: section.offsetTop - (node.offsetTop || 0) }] : [];
@@ -349,7 +334,7 @@ function App() {
 
     const previousPages = scrollPagesRef.current;
 
-    if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) {
+    if (!pagesChanged(calculatedPages, previousPages)) {
       setAvatarLayoutReady(!pendingRestoreRef.current && restoreSyncFramesRef.current === 0 &&
         !settleTimerRef.current);
       return;
@@ -578,9 +563,8 @@ function App() {
     // So would a layout already changed but not yet reported -- a motion-preference remount in
     // the frame before the content observer runs -- whose page count the track does not yet draw
     // (round 16, TECH-055).
-    const content = mainRef.current;
-    const unmeasured = Boolean(scrollElement) && content !== null &&
-      Math.abs(Math.max(content.scrollHeight / (window.innerHeight || 1), 1) - scrollPagesRef.current) > SCROLL_PAGE_EPSILON;
+    const unmeasured = Boolean(scrollElement) &&
+      contentOutgrewTrack(mainRef.current, scrollPagesRef.current, window.innerHeight);
     const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current) || unmeasured;
     navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
     restoreSyncFramesRef.current = 0;
@@ -597,25 +581,11 @@ function App() {
       // Skills landed 25px outside its entry at 1280x720 (round 15, TECH-049).
       const renderedPages = container.clientHeight > 0 ? container.scrollHeight / container.clientHeight - 1 : 1;
       const contentScrollable = Math.max((renderedPages - 1) * container.clientHeight, 1);
-      const rawOffset = id === 'home' ? 0 : target.offsetTop - (main.offsetTop || 0);
-
-      let adjustedOffset = 0;
-      if (id === 'home') {
-        adjustedOffset = 0;
-      } else if (landing) {
-        // Both boxes share the layer's translation, so their difference is the layout offset.
-        adjustedOffset = Math.max(rawOffset + landing.getBoundingClientRect().top - target.getBoundingClientRect().top - 80, 0);
-      } else if (id === 'about') {
-        // Only navbar intent lands inside the first readable beat. Natural
-        // handoffs retain the authored heading entry and completion gates.
-        const clientHeight = container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
-        adjustedOffset = rawOffset + aboutNavigationInset(clientHeight, options?.source);
-      } else if (options?.edge === 'end') {
-        adjustedOffset = Math.max(rawOffset + target.offsetHeight - container.clientHeight + 80, 0);
-      } else {
-        // One pixel in: the scroll ratio can land a fraction above, drawing the green as a hairline.
-        adjustedOffset = Math.max(rawOffset + (landsOnOwnEdge(target) ? 1 : -80), 0);
-      }
+      const inset = landingInset({
+        id, target, landing, options, aboutInset: aboutNavigationInset,
+        viewportHeight: container.clientHeight || window.innerHeight || 800,
+      });
+      const adjustedOffset = inset === null ? 0 : Math.max(target.offsetTop - (main.offsetTop || 0) + inset, 0);
 
       const ratio = Math.min(1, Math.max(0, adjustedOffset / contentScrollable));
 
@@ -645,12 +615,10 @@ function App() {
     }
 
     if (immediate) {
-      const inset = options?.edge === 'end'
-        ? target.offsetHeight - window.innerHeight + 80
-        : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source)
-          : landsOnOwnEdge(target) ? 1 : -80;
-      const top = landing ? landing.getBoundingClientRect().top + window.scrollY - 80
-        : id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
+      const inset = landingInset({
+        id, target, landing, options, aboutInset: aboutNavigationInset, viewportHeight: window.innerHeight,
+      });
+      const top = inset === null ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
       ownScroll(() => window.scrollTo({ top: Math.max(0, top), behavior: 'auto' }), { key: window });
       // An unchanged native position emits no scroll event on a repeated visit.
       window.dispatchEvent(new Event('scroll'));
