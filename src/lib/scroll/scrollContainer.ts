@@ -7,6 +7,7 @@
  * the document when the 3D layer is off, and then the window *is* the scroller.
  * So walk up from the element and take the first ancestor that can scroll.
  */
+import { ownScroll } from './scrollGesture';
 
 /** `null` means the window is the scroller. */
 export function findScrollContainer(element: Element | null): HTMLElement | null {
@@ -38,16 +39,18 @@ export function scrollContainerBy(
   const behavior: ScrollBehavior = 'auto';
 
   if (container) {
-    if (typeof container.scrollBy === 'function') {
-      container.scrollBy({ top: delta, behavior });
-    } else {
-      container.scrollTop += delta;
-    }
+    ownScroll(() => {
+      if (typeof container.scrollBy === 'function') {
+        container.scrollBy({ top: delta, behavior });
+      } else {
+        container.scrollTop += delta;
+      }
+    });
     return;
   }
 
   if (typeof window === 'undefined') return;
   if (typeof window.scrollBy === 'function') {
-    window.scrollBy({ top: delta, behavior });
+    ownScroll(() => window.scrollBy({ top: delta, behavior }));
   }
 }

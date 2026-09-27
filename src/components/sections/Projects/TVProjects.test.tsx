@@ -241,6 +241,24 @@ describe('the semantic TV project reader', () => {
     expect(toggle).toHaveFocus();
   });
 
+  it("keeps what the project offers in view beside its copy, not at the end of the copy's scroll", () => {
+    // Round 24: the selected projects' access notes pushed their links below a compact screen's fold.
+    render(<TVProjects />);
+    const project = projectsData.find(item => item.demoUrl && item.githubUrl && item.evidence?.access)!;
+    const select = screen.getByRole('combobox', { name: 'Choose a project' });
+    fireEvent.change(select, { target: { value: String(project.id) } });
+    for (const view of ['summary', 'details'] as const) {
+      if (view === 'details') fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+      const copy = screen.getByLabelText(`${project.title} ${view}`);
+      for (const name of ['See project', 'Source']) {
+        const link = screen.getByRole('link', { name });
+        expect(copy.contains(link)).toBe(false);
+        expect(link.closest('[data-project-id]')).not.toBeNull();
+        expect(copy.parentElement!.contains(link)).toBe(true);
+      }
+    }
+  });
+
   it('uses roving semantic category tabs and keeps keyboard focus with the selection', () => {
     render(<TVProjects />);
     const all = screen.getByRole('tab', { name: 'All' });

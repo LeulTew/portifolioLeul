@@ -11,6 +11,7 @@
  * section navigation, which settles the chapters in between like the navbar.
  */
 import { chromeClearance } from './chromeInset';
+import { ownScroll } from './scrollGesture';
 import { landSectionFocus } from './sectionLanding';
 import { subscribeSectionNavigation } from './sectionNavigation';
 import { viewOwner } from './viewOwner';
@@ -142,7 +143,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const trackRange = Math.max(track.scrollHeight - track.clientHeight, 1);
     const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
     const from = renderedScrollTop?.() ?? track.scrollTop;
-    track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange);
+    ownScroll(() => { track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange); });
   };
 
   /** `inPlace`: only within the chapter on screen; a chapter the reader left is never brought back. */
@@ -190,8 +191,10 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const content = main();
     if (!(box instanceof HTMLElement) || box === track || !content || !box.contains(content)) return;
     if (!box.scrollTop && !box.scrollLeft) return;
-    box.scrollTop = 0;
-    box.scrollLeft = 0;
+    ownScroll(() => {
+      box.scrollTop = 0;
+      box.scrollLeft = 0;
+    });
     reveal(root.activeElement);
   };
 
@@ -452,7 +455,7 @@ export function installDocumentFocus({ main, navigate }: {
     view.cancelAnimationFrame(frame);
     frame = view.requestAnimationFrame(() => {
       frame = view.requestAnimationFrame(() => {
-        if (root.activeElement === element) element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        if (root.activeElement === element) ownScroll(() => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
       });
     });
   };
@@ -460,7 +463,7 @@ export function installDocumentFocus({ main, navigate }: {
   // Native validation aligns the field under the bar; its label, above it, is shown with it.
   const validation = validationPass(root, view, field => Boolean(main()?.contains(field)), field => {
     const hidden = chromeClearance() - revealBox(field).top;
-    if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+    if (hidden >= 1) ownScroll(() => view.scrollBy({ top: -hidden, behavior: 'auto' }));
   });
   // Requested feedback is brought in whole, then clear of the bar if that put it under it --
   // but only in the chapter on screen: a late answer never pulls the reader back to its section.
@@ -471,9 +474,9 @@ export function installDocumentFocus({ main, navigate }: {
     const section = sectionOf(content, element);
     const area = section?.getBoundingClientRect();
     if (!area || area.bottom <= 0 || area.top >= view.innerHeight) return;
-    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    ownScroll(() => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
     const hidden = chromeClearance() - revealBox(element).top;
-    if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+    if (hidden >= 1) ownScroll(() => view.scrollBy({ top: -hidden, behavior: 'auto' }));
   };
 
   root.addEventListener('keydown', key, { capture: true, passive: true });

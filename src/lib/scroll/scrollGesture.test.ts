@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   initScrollGesture,
+  ownScroll,
   resetScrollGesture,
   subscribeScrollGesture,
   type ScrollDirection,
@@ -98,6 +99,39 @@ describe('scrollGesture', () => {
       travel(page, 3000);
       expect(seen).toEqual(['up']);
       off();
+    });
+
+    it("does not report a scroll the page makes for itself while the thumb is held", () => {
+      // Round 24 (TECH-068): held still under an engaged TV, a forwarded scroll read as a request to retreat.
+      const page = scroller();
+      const off = listen();
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 4840; });
+      page.dispatchEvent(new Event('scroll'));
+      expect(seen).toEqual([]);
+      // What the reader moves the thumb by afterwards is still theirs.
+      travel(page, 4700);
+      expect(seen).toEqual(['up']);
+      off();
+    });
+
+    it('keeps a smooth scroll of the page its own while it runs, whichever scroller moves', () => {
+      vi.useFakeTimers({ toFake: ['performance'] });
+      try {
+        const page = scroller();
+        const off = listen();
+        press(page, 1436);
+        ownScroll(() => {}, { smooth: true });
+        travel(page, 4600);
+        travel(page, 4200);
+        expect(seen).toEqual([]);
+        vi.advanceTimersByTime(1600);
+        travel(page, 4000);
+        expect(seen).toEqual(['up']);
+        off();
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

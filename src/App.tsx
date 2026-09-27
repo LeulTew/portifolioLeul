@@ -28,6 +28,7 @@ import { glideScrollTo, type Glide } from './lib/scroll/glideScroll';
 import { publishSectionNavigation, type SectionNavigationOptions } from './lib/scroll/sectionNavigation';
 import { subscribeScrollProgress } from './lib/scroll/scrollProgress';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
+import { ownScroll } from './lib/scroll/scrollGesture';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
 import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
 import { installStoryKeys } from './lib/scroll/storyKeys';
@@ -464,7 +465,7 @@ function App() {
       return null;
     }
     const offset = restoreTo(nextPages) ?? 0;
-    track.scrollTop = offset * scrollable;
+    ownScroll(() => { track.scrollTop = offset * scrollable; });
     restoredOffsetRef.current = offset;
     restoreSyncFramesRef.current = 2;
     return offset;
@@ -613,7 +614,7 @@ function App() {
         glideRef.current = null;
         if (scrollStateRef.current) settleScrollPosition(scrollStateRef.current, ratio);
         else {
-          container.scrollTop = ratio * containerScrollable;
+          ownScroll(() => { container.scrollTop = ratio * containerScrollable; });
           container.dispatchEvent(new Event('scroll'));
         }
         return;
@@ -628,7 +629,7 @@ function App() {
         : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source) : -80;
       const top = landing ? landing.getBoundingClientRect().top + window.scrollY - 80
         : id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      ownScroll(() => window.scrollTo({ top: Math.max(0, top), behavior: 'auto' }));
       // An unchanged native position emits no scroll event on a repeated visit.
       window.dispatchEvent(new Event('scroll'));
       return;
@@ -636,17 +637,18 @@ function App() {
 
     const glide: ScrollBehavior = typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const smooth = glide === 'smooth';
     if (id === 'about') {
       const aboutEl = document.getElementById('about');
       if (aboutEl && typeof window !== 'undefined') {
         const top = aboutEl.offsetTop + aboutNavigationInset(window.innerHeight);
-        window.scrollTo({ top, behavior: glide });
+        ownScroll(() => window.scrollTo({ top, behavior: glide }), { smooth });
         return;
       }
     }
 
     // The document's scroll padding clears the navbar for focus reveals; this landing keeps the section's own edge.
-    window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide });
+    ownScroll(() => window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide }), { smooth });
   }, [scrollElement, trackFocus, cancelReplay]);
   useEffect(() => { scrollToSectionRef.current = scrollToSection; }, [scrollToSection]);
 

@@ -418,7 +418,11 @@ release, from the gesture layer, to every chapter alike: dragged back from
 Contact the page rested on an empty Projects clearing, and from an active
 Skills or TV reader the chapter never began to leave (round 22, D-MOTION-006;
 round 23, D-MOTION-007). Only the pressed scroller's own travel counts; a scroll
-the page makes for itself is never the reader's.
+the page makes for itself is never the reader's. Every such scroll -- a restore,
+a settle, a glide, a forwarded wheel, a focus reveal -- runs through
+`ownScroll`, which moves a held drag's baseline with it: held still under an
+engaged TV, a forwarded scroll read as a request and the TV began to retreat
+(round 24, TECH-068). A new programmatic scroll write goes through it too.
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

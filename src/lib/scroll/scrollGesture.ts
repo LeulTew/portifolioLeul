@@ -119,6 +119,26 @@ let drag: ScrollbarDrag | null = null;
 /** Drag travel below this is the thumb settling under the pointer. */
 const DRAG_THRESHOLD = 4;
 
+/** How long a native smooth scroll the page started for itself is taken to go on moving. */
+const OWN_SMOOTH_SCROLL_MS = 1500;
+let ownUntil = -Infinity;
+
+/**
+ * Runs a scroll the page makes for itself -- a restore, a settle, a glide, a
+ * forwarded wheel, a focus reveal -- so that a scrollbar held while it happens
+ * does not report it as the reader's travel. Held still under an engaged TV, a
+ * forwarded scroll of 160px read as a request and the TV began to retreat
+ * (round 24, TECH-068). An instant write moves the drag's baseline with it; a
+ * smooth one keeps every scroller's travel the page's own until it has had time
+ * to finish. Whatever the reader moves the thumb by afterwards is still theirs.
+ */
+export function ownScroll<T>(write: () => T, { smooth = false }: { smooth?: boolean } = {}): T {
+  const result = write();
+  if (drag) drag.last = drag.scroller.scrollTop;
+  if (smooth) ownUntil = Math.max(ownUntil, performance.now() + OWN_SMOOTH_SCROLL_MS);
+  return result;
+}
+
 function scrollbarUnder(event: PointerEvent): Element | null {
   const target = event.target;
   if (!(target instanceof Element)) return null;
@@ -152,6 +172,10 @@ function onScroll(event: Event): void {
   if (!drag) return;
   const source = event.target === document ? document.scrollingElement : event.target;
   if (source !== drag.scroller) return;
+  if (performance.now() < ownUntil) {
+    drag.last = drag.scroller.scrollTop;
+    return;
+  }
   const travelled = drag.scroller.scrollTop - drag.last;
   if (Math.abs(travelled) < DRAG_THRESHOLD) return;
   drag.last = drag.scroller.scrollTop;
@@ -196,6 +220,7 @@ function cleanupScrollGesture(): void {
   window.removeEventListener('blur', endDrag);
   window.removeEventListener('scroll', onScroll, { capture: true });
   drag = null;
+  ownUntil = -Infinity;
   touchY = null;
   touchStarted = false;
   lastWheelAt = -Infinity;

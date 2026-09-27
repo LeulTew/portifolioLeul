@@ -329,7 +329,15 @@
   pointer-events: none;
 }
 
+/* The copy's column: the copy scrolls in its row; what the project offers keeps the row under it. */
+.reader {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
 .copy {
+  grid-area: 1 / 1;
   min-height: 0;
   font-size: clamp(14px, 2.3cqw, 28px);
   line-height: 1.5;
@@ -403,6 +411,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0 18px;
+  padding-right: 3%;
+  border-top: 1px solid var(--project-rule);
 }
 
 .links a {
@@ -683,11 +693,14 @@
   mask-image: linear-gradient(to bottom, #000 calc(100% - 2.75em), transparent);
 }
 
-.work:has(> .copy[data-overflow='more'])::after {
+/* The mark sits in the copy's own cell, above the links row, not over it. */
+.reader:has(> .copy[data-overflow='more'])::after {
   content: '';
-  position: absolute;
-  right: 3%;
-  bottom: 6px;
+  grid-area: 1 / 1;
+  align-self: end;
+  justify-self: end;
+  position: relative;
+  margin: 0 3% 6px 0;
   width: 10px;
   height: 10px;
   border-right: 2px solid var(--project-accent);
