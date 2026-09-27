@@ -406,13 +406,19 @@ TV, re-enabled mid-rebuild, read its rail 2,828px down, spent its one chance,
 and App's restore to the reader landed on a TV left off (round 22, TECH-066).
 The reader's own input or a newer navigation, one made while the chapter was
 switched off included, decides instead.
-A linear chapter takes the reader's place only from a layout the reader has
-touched: a window crossing the staging size and back within a frame or two
-sampled the half-built page, and the staged Skills reader resumed chapter 4
-over Contact (round 22, D-MOTION-005). A drag of the page's own scrollbar is
-the reader's travel, as a wheel is: dragged back from Contact, the page rested
-on an empty Projects clearing because no gesture was reported (round 22,
-D-MOTION-006).
+A linear chapter takes the reader's place only from a settled layout, or one
+the reader has moved: a window crossing the staging size and back within a
+frame or two sampled the half-built page, and the staged Skills reader resumed
+chapter 4 over Contact (round 22, D-MOTION-005). Settled is a quiet interval
+after the layout mounted or last resized, not the reader's input -- the
+browser's own find reached Databases with no input to the page, and was lost
+while only input counted (round 23, TECH-067). A drag of a scrollbar is the reader's
+travel, as a wheel is, and reported the same way -- one wave from press to
+release, from the gesture layer, to every chapter alike: dragged back from
+Contact the page rested on an empty Projects clearing, and from an active
+Skills or TV reader the chapter never began to leave (round 22, D-MOTION-006;
+round 23, D-MOTION-007). Only the pressed scroller's own travel counts; a scroll
+the page makes for itself is never the reader's.
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

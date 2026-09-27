@@ -117,31 +117,6 @@ export function useProjectsPlayback(
      */
     let resuming = resumeRef.current;
     resumeRef.current = false;
-    /*
-     * A drag of the page's own scrollbar is reader travel no wheel or key reports: from Contact
-     * the page reached Projects and rested there, the TV never asked in (round 22, D-MOTION-006).
-     * Only a press on the scrollbar itself counts, never a scroll of the page's own making.
-     */
-    let dragging = false;
-    let dragTop: number | null = null;
-    const onScrollbarPress = (event: PointerEvent) => {
-      const scroller = findScrollContainer(rail);
-      if (!scroller || event.target !== scroller || event.button !== 0) return;
-      const box = scroller.getBoundingClientRect();
-      if (event.clientX - box.left < scroller.clientWidth) return;
-      dragging = true;
-      dragTop = railPosition.readRect().top;
-      bypass = false;
-      pendingNavigation = null;
-      resuming = false;
-    };
-    const onScrollbarRelease = () => {
-      dragging = false;
-      dragTop = null;
-    };
-    window.addEventListener('pointerdown', onScrollbarPress, { capture: true, passive: true });
-    window.addEventListener('pointerup', onScrollbarRelease, { capture: true, passive: true });
-    window.addEventListener('pointercancel', onScrollbarRelease, { capture: true, passive: true });
     let wave: ScrollDirection | null = null;
     let bypass = false;
     let continuedReturn = false;
@@ -339,13 +314,6 @@ export function useProjectsPlayback(
     };
 
     function apply() {
-      if (dragging && !active) {
-        // The page moving under the scrollbar thumb is the reader's own travel: its direction is
-        // the gesture a wheel would have given (round 22, D-MOTION-006).
-        const { top: now } = railPosition.readRect();
-        if (dragTop !== null && Math.abs(now - dragTop) > 2) wave = now > dragTop ? 'up' : 'down';
-        dragTop = now;
-      }
       if (!alive || document.hidden || !rail?.isConnected || active || bypass ||
           previous.some(hasChapterOwnership)) return;
       const { top, height } = railPosition.readRect();
@@ -536,9 +504,6 @@ export function useProjectsPlayback(
       window.removeEventListener('input', focusEditing);
       window.removeEventListener('scroll', apply);
       window.removeEventListener('resize', resized);
-      window.removeEventListener('pointerdown', onScrollbarPress, { capture: true });
-      window.removeEventListener('pointerup', onScrollbarRelease, { capture: true });
-      window.removeEventListener('pointercancel', onScrollbarRelease, { capture: true });
       document.removeEventListener('visibilitychange', visibility);
     };
   }, [host, stage, surface, enabled, onNavigate]);
