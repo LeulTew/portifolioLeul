@@ -8,7 +8,10 @@
  * unless every journey ends where `.claude/rules/scroll-choreography.md` says
  * it must, with no page error. The chapter hand-offs a thumb drag makes, and
  * what the page may do while the reader holds the thumb (rounds 25-31), are
- * each one journey. A report lands in perf-reports/.
+ * each one journey. A last pass, in a 900x560 window, sends the Contact form
+ * blank and then as a failed delivery (the email service is failed by the
+ * check itself, so nothing is ever sent), and asks that each answer be shown
+ * whole. A report lands in perf-reports/.
  *
  *   bun run build && bun run native:scroll [--theme light|dark] [--chrome <path>] [--chrome-arg <switch>]... [--url <origin> | --port 4320]
  */
@@ -20,6 +23,10 @@ import { NativeScrollUsageError, parseNativeScrollOptions } from './perf/nativeS
 
 const WIDTH = 1440;
 const HEIGHT = 900;
+/** The compact window a blank send put Name under the navbar in (round 8, D-A11Y-002). */
+const FORM = { width: 900, height: 560 };
+
+type Mode = 'story' | 'reduced' | 'form';
 
 interface State { top: number; nav?: string; skills?: string; tv?: string; contact?: string }
 interface Outcome { theme: string; journey: string; pass: boolean; expected: string; measured: unknown }
@@ -31,7 +38,9 @@ const STATE = `(() => {
     skills: stage('skills-stage'), tv: stage('projects-stage'), contact: document.querySelector('#contact')?.dataset.contactState };
 })()`;
 
-async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outcome[], reduced = false): Promise<void> {
+async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outcome[], mode: Mode = 'story'): Promise<void> {
+  const reduced = mode === 'reduced';
+  const { width, height } = mode === 'form' ? FORM : { width: WIDTH, height: HEIGHT };
   const { browserContextId } = await cdp.send<{ browserContextId: string }>('Target.createBrowserContext');
   const { targetId } = await cdp.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank', browserContextId });
   const errors: string[] = [];
@@ -64,7 +73,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
     await send('Page.bringToFront');
     await send('Emulation.setScrollbarsHidden', { hidden: false });
     await send('Emulation.setDeviceMetricsOverride', {
-      width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false, screenWidth: WIDTH, screenHeight: HEIGHT,
+      width, height, deviceScaleFactor: 1, mobile: false, screenWidth: width, screenHeight: height,
     });
     await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('theme', ${JSON.stringify(theme)})` });
     if (reduced) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
@@ -123,7 +132,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
     const key = async (name: string, code: number) => {
       for (const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, key: name, code: name, windowsVirtualKeyCode: code });
     };
-    const label = reduced ? `${theme}, reduced motion` : theme;
+    const label = reduced ? `${theme}, reduced motion` : mode === 'form' ? `${theme}, ${width}x${height}` : theme;
     const check = (journey: string, expected: string, measured: unknown, pass: boolean) => {
       outcomes.push({ theme: label, journey, pass, expected, measured });
       console.log(`${pass ? 'PASS' : 'FAIL'} ${label.padEnd(5)} ${journey}: ${expected} -> ${JSON.stringify(measured)}`);
@@ -145,6 +154,65 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       check('Skills landing, linear', 'Skills under the navbar, no green above it, no invitation over its text', landing,
         landing.staged !== 'true' && landing.skillsTop <= 0 && landing.greenBottom <= 0 && !landing.invitation);
       check('no page errors', 'none', errors, errors.length === 0);
+      return;
+    }
+
+    if (mode === 'form') {
+      // Round 37: a blank send's field errors, and a failed send's notice, grew Contact and were
+      // revealed; the rebuild that growth owed then restored the place from before it, and put
+      // Name back under the navbar and the notice below the window. Each is shown after it.
+      const view = `(() => { const bar = document.querySelector('nav').getBoundingClientRect().bottom;
+        const box = e => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom) }; };
+        const label = box(document.querySelector('label[for="name"]')), name = box(document.getElementById('name'));
+        const alerts = [...document.querySelectorAll('#contact [role="alert"]')];
+        return { bar: Math.round(bar), active: document.activeElement?.id || document.activeElement?.tagName, label, name,
+          alerts: alerts.length, last: alerts.length ? box(alerts[alerts.length - 1]) : null };
+      })()`;
+      type View = { bar: number; active: string; label: { top: number }; name: { bottom: number }; alerts: number;
+        last: { top: number; bottom: number } | null };
+      await nav('contact');
+      await delay(3500);
+      // The reader's own wheel, to where Send is in reach and Name has gone up under the bar.
+      await send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: width / 2, y: height / 2, deltaX: 0, deltaY: 300 });
+      await delay(2500);
+      const submit = await evaluate<{ x: number; y: number; bottom: number }>(`(() => {
+        const r = document.querySelector('#contact form button[type="submit"]').getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, bottom: r.bottom }; })()`);
+      if (submit.bottom > height) throw new Error(`Send is out of reach at ${width}x${height}: ${JSON.stringify(submit)}`);
+      await mouse('mouseMoved', submit.x, submit.y);
+      await delay(200);
+      await press(submit.x, submit.y);
+      await release(submit.x, submit.y);
+      await delay(2500);
+      const blank = await evaluate<View>(view);
+      check('blank send', 'three field errors; Name focused, whole, its label clear of the navbar', blank,
+        blank.alerts === 3 && blank.active === 'name' && blank.label.top >= blank.bar && blank.name.bottom <= height);
+
+      // Never a real message: whatever the build's configuration, the email service fails here.
+      await send('Fetch.enable', { patterns: [{ urlPattern: '*api.emailjs.com*' }] });
+      const stopFailing = cdp.on('Fetch.requestPaused', (params, session) => {
+        if (session === sessionId) void send('Fetch.failRequest', { requestId: params.requestId, errorReason: 'Failed' });
+      });
+      try {
+        for (const [id, text] of [['name', 'Ada'], ['email', 'ada@example.com'], ['message', 'From the native check']]) {
+          await evaluate(`document.getElementById('${id}').focus({ preventScroll: true })`);
+          await send('Input.insertText', { text });
+        }
+        await evaluate(`document.getElementById('name').focus({ preventScroll: true })`);
+        for (const type of ['keyDown', 'keyUp']) {
+          await send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, ...(type === 'keyDown' ? { text: '\r' } : {}) });
+        }
+        await delay(3000);
+      } finally {
+        stopFailing();
+        await send('Fetch.disable');
+      }
+      const failed = await evaluate<View>(view);
+      check('failed send', 'its notice and draft link whole, clear of the navbar', failed,
+        failed.alerts === 1 && !!failed.last && failed.last.top >= failed.bar && failed.last.bottom <= height);
+      // The failed send says so in the console, by design; nothing else may.
+      const unexpected = errors.filter(error => !error.startsWith('Contact submission failed'));
+      check('no page errors', 'none', unexpected, unexpected.length === 0);
       return;
     }
 
@@ -310,7 +378,9 @@ async function main() {
     // A theme that cannot go on is reported, and the next still runs.
     for (const theme of themes) await journeys(cdp, origin, theme, outcomes).catch(error => { failures.push(error); });
     // Reduced motion reads the story as a linear page: its landings are checked once (round 35).
-    await journeys(cdp, origin, themes[0], outcomes, true).catch(error => { failures.push(error); });
+    await journeys(cdp, origin, themes[0], outcomes, 'reduced').catch(error => { failures.push(error); });
+    // The form's feedback, in the compact window where it has to be brought into view (round 37).
+    await journeys(cdp, origin, themes[0], outcomes, 'form').catch(error => { failures.push(error); });
   } catch (error) {
     failures.push(error);
   }

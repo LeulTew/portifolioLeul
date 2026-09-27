@@ -25,7 +25,7 @@ Use prefix-based commit messages: `<prefix>(<scope>): <description>`
   - `bun run lint` (ESLint verification)
   - `bun run typecheck` (app and tooling configs; bare `tsc --noEmit` reads the empty solution tsconfig and checks nothing)
   - `bun run perf:budget` after `bun run build` for any change to per-frame work, rendering, scroll choreography or loading (median of three 4x-throttled journeys from Home to a usable Contact, parked Contact and typing, against `scripts/perf-budget.json`; a sample that does not travel the whole story fails the run). Add `--cold` for any change to loading or first use: it gates startup on fresh profiles. See README > Performance budget.
-- `bun run native:scroll` after `bun run build` for any change to scroll ownership, chapter hand-offs or programmatic scrolling: a headed Chrome presses the real scrollbar thumb, in light and dark, and asserts every hand-off and held-thumb journey. jsdom has no scrollbar to hold. See README > Native scrollbar check.
+- `bun run native:scroll` after `bun run build` for any change to scroll ownership, chapter hand-offs or programmatic scrolling: a headed Chrome presses the real scrollbar thumb, in light and dark, and asserts every hand-off and held-thumb journey, and that the Contact form's feedback is shown whole in a 900x560 window. jsdom has no scrollbar to hold. See README > Native scrollbar check.
   - Harness changes live in `scripts/perf/` with their adverse-path tests (`scripts/**/*.test.ts` runs with the suite).
 - Verify locally with Bun before completing any task, issue, or PR.
 - Never run destructive git commands like `git reset --hard` without explicit user instruction.

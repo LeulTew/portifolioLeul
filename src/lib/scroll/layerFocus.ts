@@ -120,9 +120,11 @@ export interface LayerFocusOptions {
   navigate: (section: string) => void;
   /** Where the damped layer is drawn now, in track pixels; defaults to the track's target. */
   renderedScrollTop?: () => number;
+  /** Holds a reveal while the track is owed a rebuild, whose restore would undo it; defaults to now. */
+  whenSettled?: (run: () => void) => void;
 }
 
-export function installLayerFocus({ track, main, navigate, renderedScrollTop }: LayerFocusOptions): () => void {
+export function installLayerFocus({ track, main, navigate, renderedScrollTop, whenSettled = run => run() }: LayerFocusOptions): () => void {
   const root = track.ownerDocument;
   const view = root.defaultView;
   if (!view) return () => {};
@@ -139,8 +141,9 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
 
   const nudge = (element: HTMLElement, inPlace = false, reader = readerIntent()) => {
     const asked = generation;
-    // Measured when it runs, as the latest reveal of this track (round 27, TECH-076).
-    ownScroll(() => {
+    // Measured when it runs, as the latest reveal of this track (round 27, TECH-076), and on the
+    // page a rebuild owed leaves: made before it, the rebuild's restore took it back (round 37).
+    whenSettled(() => ownScroll(() => {
       const content = main();
       if (asked !== generation || !element.isConnected || !content) return;
       const height = track.clientHeight || view.innerHeight;
@@ -161,7 +164,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
       const from = renderedScrollTop?.() ?? track.scrollTop;
       track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange);
-    }, { key: revealKey, intent: reader });
+    }, { key: revealKey, intent: reader }));
   };
 
   /** `inPlace`: only within the chapter on screen; a chapter the reader left is never brought back. */

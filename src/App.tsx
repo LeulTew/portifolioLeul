@@ -32,6 +32,7 @@ import { subscribeScrollProgress } from './lib/scroll/scrollProgress';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { ownScroll } from './lib/scroll/scrollGesture';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
+import { createSettledQueue } from './lib/scroll/settledQueue';
 import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
 import { installStoryKeys } from './lib/scroll/storyKeys';
 import { useResizeAnchor } from './lib/scroll/resizeAnchor';
@@ -141,6 +142,17 @@ function App() {
   const restoreSyncFramesRef = useRef(0);
   const restoredOffsetRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Reveals asked for while the track is owed a rebuild: measured, re-measured, restored, or grown
+   * past the rebuild's deadband and not yet reported. Made after it, or its restore undoes them.
+   */
+  const settledReveals = useMemo(() => createSettledQueue(() => {
+    if (pendingRestoreRef.current || restoreSyncFramesRef.current > 0 || settleTimerRef.current) return true;
+    const node = mainRef.current;
+    if (!node) return false;
+    const height = window.innerHeight || 1;
+    return Math.abs(Math.max((node.scrollHeight || height) / height, 1) - scrollPagesRef.current) > SCROLL_PAGE_EPSILON;
+  }), []);
 
   // The context is optional by type -- it has no sensible default -- and this
   // hook is the project's existing way of asserting the provider is there.
@@ -411,7 +423,7 @@ function App() {
       }
     }, 0);
   }, [cancelReplay]);
-  const applyPendingRestore = useCallback((): number | null => {
+  const restoreFrame = useCallback((): number | null => {
     const track = scrollElementRef.current;
     const pending = pendingRestoreRef.current;
     /**
@@ -473,6 +485,11 @@ function App() {
     restoreSyncFramesRef.current = 2;
     return offset;
   }, [trackFocus, replayNavigation]);
+  const applyPendingRestore = useCallback((): number | null => {
+    const restored = restoreFrame();
+    settledReveals.flush();
+    return restored;
+  }, [restoreFrame, settledReveals]);
 
   const attachMain = useCallback((node: HTMLElement | null) => {
     contentObserverRef.current?.disconnect();
@@ -659,13 +676,14 @@ function App() {
   // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
   useEffect(() => {
     if (!show3D) {
+      settledReveals.clear();
       return installDocumentFocus({
         main: () => mainRef.current,
         navigate: section => scrollToSection(section, { source: 'navbar' }),
       });
     }
     if (!scrollElement) return;
-    return installLayerFocus({
+    const stop = installLayerFocus({
       track: scrollElement,
       main: () => mainRef.current,
       navigate: section => scrollToSection(section, { source: 'navbar' }),
@@ -674,8 +692,13 @@ function App() {
         const range = Math.max(scrollElement.scrollHeight - scrollElement.clientHeight, 0);
         return state ? state.offset * range : scrollElement.scrollTop;
       },
+      whenSettled: run => settledReveals.whenSettled(run),
     });
-  }, [show3D, scrollElement, scrollToSection]);
+    return () => {
+      stop();
+      settledReveals.clear();
+    };
+  }, [show3D, scrollElement, scrollToSection, settledReveals]);
 
   // Scroll keys pressed with focus outside drei's track still walk the story.
   useEffect(() => (show3D && scrollElement ? installKeyboardScroll(scrollElement) : undefined),

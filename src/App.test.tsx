@@ -7,6 +7,7 @@ import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
 import { setScrollProgress, subscribeScrollProgress } from "./lib/scroll/scrollProgress";
 import { subscribeSectionNavigation } from "./lib/scroll/sectionNavigation";
+import { requestReveal } from "./lib/scroll/layerFocus";
 import * as sectionTracking from "./lib/scroll/useActiveSection";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -808,6 +809,41 @@ describe("App scroll position across a track resize", () => {
         expect(mockScroll.offset).toBeCloseTo((4000 - 1000 + 80) / 10000);
       } finally { stop(); }
     });
+  });
+
+  it("makes a reveal asked for during a rebuild on the rebuilt page, not before it", () => {
+    // Round 37: a failed send's notice grew Contact and was revealed, then the rebuild that growth
+    // owed restored the place sampled before it, and the notice sat below the window.
+    vi.useFakeTimers();
+    try {
+      renderApp();
+      const contact = screen.getByTestId("contact-section");
+      contact.id = "contact";
+      Object.defineProperty(contact, "offsetTop", { configurable: true, value: 7000 });
+      act(() => runFrames(4));
+      const main = contact.closest("main")!;
+      let chapter: HTMLElement = contact;
+      while (chapter.parentElement !== main) chapter = chapter.parentElement!;
+      const notice = document.createElement("p");
+      contact.append(notice);
+      const rect = (top: number, bottom: number) =>
+        ({ top, bottom, left: 0, right: 100, width: 100, height: bottom - top, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+      vi.spyOn(chapter, "getBoundingClientRect").mockReturnValue(rect(200, 1300));
+      vi.spyOn(notice, "getBoundingClientRect").mockReturnValue(rect(1100, 1180));
+
+      act(() => {
+        contentHeight = 11000;
+        window.dispatchEvent(new Event("resize"));
+        requestReveal(notice);
+      });
+      act(() => runFrames(3));
+      const restored = mockScroll.el.scrollTop;
+      act(() => vi.advanceTimersByTime(1));
+      const trackRange = mockScroll.el.scrollHeight - track.clientHeight;
+      // The notice's bottom brought to 96px above the window's edge, on the rebuilt track.
+      const shift = 1180 - (track.clientHeight - 96);
+      expect(mockScroll.el.scrollTop).toBeCloseTo(restored + (shift * trackRange) / (contentHeight - track.clientHeight));
+    } finally { vi.useRealTimers(); }
   });
 
   it("settles navbar intent and physical/damped position together without traversing intermediate sections", () => {

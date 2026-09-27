@@ -400,6 +400,11 @@ from a settled layout, one where it lies wholly past or wholly ahead of the
 window, until the reader's first gesture or a navigation fixes it. The TV,
 re-enabled at Contact after a resize, decided it was still ahead, and a
 reverse wheel crossed Projects without its reader (round 21, TECH-065).
+A reveal asked for while the track is owed a rebuild -- measured, restored,
+or grown past the deadband and not yet reported -- is made after it, on the
+rebuilt page: a failed send's notice and a blank send's field errors grew
+Contact, were revealed, and the rebuild that growth owed restored the place
+sampled before it, leaving them below the window at 900x560 (round 37).
 A reader a chapter held when the layout replaced it is given back where the
 settled page puts the chapter, not only in the replacement's first frame: the
 TV, re-enabled mid-rebuild, read its rail 2,828px down, spent its one chance,

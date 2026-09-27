@@ -270,17 +270,44 @@ describe('ContactForm', () => {
     expect(sendContactMessage).toHaveBeenCalledTimes(2);
   });
 
-  it('prevents form submission with empty required fields', async () => {
+  it('blocks an empty send in its own voice, with the browser\'s bubbles held back', async () => {
     const user = userEvent.setup({ delay: null });
     render(<ContactForm />);
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    const fields = [name, screen.getByRole('textbox', { name: 'Email' }), screen.getByRole('textbox', { name: 'Message' })];
+    const reported = new Map<EventTarget, boolean>();
+    // Added after React's own listener, so it sees whether the report was taken over.
+    const listen = (event: Event) => reported.set(event.target!, (reported.get(event.target!) ?? true) && event.defaultPrevented);
+    for (const field of fields) field.addEventListener('invalid', listen);
 
-    const submitButton = screen.getByRole('button', { name: /send message/i });
+    await user.click(screen.getByRole('button', { name: /send message/i }));
 
-    await user.click(submitButton);
-
-    // Form should not submit (no success/error messages appear)
+    expect(fields.every(field => field.matches(':invalid'))).toBe(true);
+    expect(fields.map(field => reported.get(field))).toEqual([true, true, true]);
+    expect(screen.getAllByRole('alert').map(alert => alert.textContent))
+      .toEqual(['Name is required', 'Email is required', 'Message is required']);
+    expect(name).toHaveFocus();
+    expect(name).toHaveAttribute('aria-invalid', 'true');
     expect(screen.queryByText('The email service accepted your message.')).not.toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(sendContactMessage).not.toHaveBeenCalled();
+  });
+
+  it('reports an address only the browser rejects, and does not send it', async () => {
+    configureEmailJs();
+    const user = userEvent.setup({ delay: null });
+    render(<ContactForm />);
+    const email = screen.getByRole('textbox', { name: 'Email' });
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Ada');
+    // Passes the form's own pattern; an underscore is not allowed in a domain.
+    await user.type(email, 'ada@exa_mple.com');
+    await user.type(screen.getByRole('textbox', { name: 'Message' }), 'Hello');
+
+    await user.click(screen.getByRole('button', { name: /send message/i }));
+
+    expect(email).toHaveAccessibleDescription('Please enter a valid email address');
+    expect(email).toHaveFocus();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(sendContactMessage).not.toHaveBeenCalled();
   });
 
   it.each([

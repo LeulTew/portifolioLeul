@@ -16,6 +16,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
     errors,
     handleChange,
     handleSubmit,
+    handleInvalid,
     isSubmitting,
     submitStatus,
     submitError,
@@ -107,6 +108,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
                 className={styles.input}
                 value={formData.name}
                 onChange={handleChange}
+                onInvalid={handleInvalid}
                 placeholder="Your name"
               />
               {errors.name && <p id="contact-name-error" className={`${styles.message} ${styles.error}`} role="alert">{errors.name}</p>}
@@ -128,6 +130,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
                 className={styles.input}
                 value={formData.email}
                 onChange={handleChange}
+                onInvalid={handleInvalid}
                 placeholder="you@example.com"
               />
               {errors.email && <p id="contact-email-error" className={`${styles.message} ${styles.error}`} role="alert">{errors.email}</p>}
@@ -148,6 +151,7 @@ export function ContactForm({ flightEnabled = true }: { flightEnabled?: boolean 
               className={styles.textarea}
               value={formData.message}
               onChange={handleChange}
+              onInvalid={handleInvalid}
               placeholder="What would you like to build?"
             />
             {counting && <p id="contact-message-count" className={`${styles.message} ${styles.count}`}>

@@ -162,7 +162,12 @@ then move the page with no gesture at all -- as a track click or the browser's
 find does -- into About's hand-off and into Skills, and pass only when a chapter
 takes the reader (round 34). A reduced-motion pass reads the story as the linear
 page it becomes there and checks that Skills lands with its own box under the
-navbar, no green above it and no invitation over its text (round 35). It fails on any page error, and writes its
+navbar, no green above it and no invitation over its text (round 35). A last pass,
+in a 900x560 window, sends the Contact form blank and then as a failed delivery,
+and asks that Name land clear of the navbar and that the failure notice show
+whole: each grows the page, and before round 37 the track rebuild that growth
+set off put the reader back over the answer. The check fails the email service
+itself, so no message is ever sent, whatever the build's configuration. It fails on any page error, and writes its
 measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
 narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
 GPU or a fallback. Before any journey it checks that the page opened its 3D
