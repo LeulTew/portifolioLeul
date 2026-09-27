@@ -48,7 +48,7 @@ Representative shipped file sizes are:
 
 | Asset | File | Size on disk | Loading |
 | :---- | :--- | -----------: | :------ |
-| Terrain | `terrain-opt.glb` | 3.85 MB | Opening scene; smaller software-renderer variant available |
+| Terrain | `terrain-opt.glb` | 859 KB | Opening scene; smaller software-renderer variant available |
 | Animated avatar | `me-animated-lite.glb` | 847 KB | Opening scene; smaller software-renderer variant available |
 | Water normals | `waternormals.jpg` | 249 KB | Opening scene |
 | Portrait | `leul-profile.webp` | 42 KB | Hero |
@@ -124,9 +124,11 @@ The gates were calibrated on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti
 through ANGLE/D3D11, Chrome 153): returning-visit medians of 43 long frames,
 0.8s of blocking and a 279ms worst frame over a 42-second journey; cold medians
 of an 11.4-second throttled startup, 6.1 MB transferred and 3.0s of blocking
-during load. The local preview serves files uncompressed, so the transfer
+during load. Welding the terrain (round 31) took the cold transfer to 3.3 MB and,
+on the same machine under load from other work, the cold journey median to 23
+long frames and 0.4s of blocking. The local preview serves files uncompressed, so the transfer
 figure overstates what a visitor downloads: production serves brotli, which
-takes the island terrain from 3.76 MB to 2.8 MB. CPU throttling slows the main
+takes the welded island terrain from 859 KB to about 570 KB. CPU throttling slows the main
 thread, not the GPU, so it is a proxy for weak hardware rather than a
 measurement of it; another machine should record its own baseline instead of
 loosening these numbers. Under the throttle the world lowers its own quality
@@ -153,12 +155,22 @@ the core and every triangle touching the avatar's complete foot-contact zone,
 the padded TV footprint, or the prism. This changes the actual top edge and land
 volume, not just the faces of the old rectangular tile. Interior position and
 normal streams, original UV coordinates, embedded texture bytes, mesh counts and
-vertex/triangle counts are preserved. One outer diagonal is flipped in the
+vertex/triangle counts are preserved by the shaping; the optimized asset is
+then welded, as below. One outer diagonal is flipped in the
 optimized asset to prevent a measured 3D reversal in a long, thin source face;
 its two replacement faces carry the existing vertices and UVs. No protected
 or unchanged vertex participates. Meshopt is used for lossless buffer encoding without global
 requantization. Both optimized and software assets are baked independently.
 Original terrain heights and the already submerged forward fringe are retained.
+
+The optimized source repeats one normal on each face's three corners, so no two
+faces could share a vertex: 341,574 vertices for 76,862 distinct corners. Both
+terrains are shaded flat at runtime, as the skirt is, so the bake drops that
+stream, welds the corners and reorders the faces for the vertex cache: 3.85 MB
+becomes 859 KB, and the delivered faces are checked to be the shaped ones, bit
+for bit. The source normals lie within 0.5° of their faces' planes at the median
+and 5° at the 99th percentile; rendered side by side with the stored normals,
+no view differs by more than 2 of 255 levels at the 99.9th percentile.
 
 `SceneEdgeContinuity` joins each final decoded boundary with its matching static,
 faceted shoulder and sloped submerged foot. It borrows Terrain's already-uploaded
