@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { subscribeSectionNavigation } from './sectionNavigation';
+import { ownScroll } from './scrollGesture';
 
 const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
@@ -61,7 +62,7 @@ export function useResizeAnchor(enabled: boolean): void {
       const rect = document.getElementById(anchor.id)?.getBoundingClientRect();
       if (!rect || rect.height <= 0) return;
       const drift = rect.top + anchor.ratio * rect.height - window.innerHeight / 2;
-      if (Math.abs(drift) >= 1) window.scrollBy({ top: drift, behavior: 'instant' });
+      if (Math.abs(drift) >= 1) ownScroll(() => window.scrollBy({ top: drift, behavior: 'instant' }));
     };
     const onResize = () => {
       restore();

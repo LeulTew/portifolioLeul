@@ -49,6 +49,7 @@ import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { firstGlyphInkOffset, fontShorthand } from '@/lib/motion/glyphInk';
 import { HeroAperture } from './HeroAperture';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
+import { ownScroll } from '@/lib/scroll/scrollGesture';
 import { HeroCloud } from './HeroCloud';
 import { cloudBounds, measureHeroContent } from './heroContentBounds';
 import { setAvatarHeroReady, useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
@@ -829,10 +830,10 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       return;
     }
     const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    document.getElementById('about')?.scrollIntoView({ 
+    ownScroll(() => document.getElementById('about')?.scrollIntoView({ 
       behavior: prefersReduced ? 'auto' : 'smooth', 
       block: 'start' 
-    });
+    }), { smooth: !prefersReduced });
     landSectionFocus('about');
   };
 
@@ -843,10 +844,10 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
       return;
     }
     const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    document.getElementById('contact')?.scrollIntoView({ 
+    ownScroll(() => document.getElementById('contact')?.scrollIntoView({ 
       behavior: prefersReduced ? 'auto' : 'smooth', 
       block: 'start' 
-    });
+    }), { smooth: !prefersReduced });
     landSectionFocus('contact');
   };
 

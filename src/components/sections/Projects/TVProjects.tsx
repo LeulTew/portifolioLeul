@@ -12,6 +12,7 @@ import { useAvatarEncounterPresenting } from '@/lib/avatar/avatarEncounter';
 import { registerTVReader, setTVPagingAvailable, useTVState } from '@/lib/tv/tvState';
 import type { SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
+import { ownScroll } from '@/lib/scroll/scrollGesture';
 import { useOverflowHint } from '@/lib/dom/overflowHint';
 import { isFeaturedProject, projectTier, projectsData, type Project } from '@/data/projects';
 import { useProjectsFits, useProjectsPlayback } from './useProjectsPlayback';
@@ -177,7 +178,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
   };
 
   useEffect(() => {
-    if (content.current) content.current.scrollTop = 0;
+    const copy = content.current;
+    if (copy) ownScroll(() => { copy.scrollTop = 0; });
     paging.current?.reset();
   }, [project?.id, details]);
   useOverflowHint(content, `${project?.id}:${details}:${expanded}`);
@@ -270,6 +272,12 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               >
                 <ProjectImage key={project.id} project={project} />
               </div>}
+              {/*
+                What the project offers stays in view beside its copy, not at the end of it: the
+                selected projects' access notes pushed their links below a compact screen's fold,
+                and the visitor had to scroll or enlarge the screen to find them (round 24).
+              */}
+              <div className={styles.reader}>
               <div
                 ref={content} className={styles.copy} data-projects-scrollable=""
                 tabIndex={interactive ? 0 : -1}
@@ -292,19 +300,20 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
                     {project.evidence.access}
                   </p>}
                 </>}
-                <div className={styles.links} data-broadcast-copy="">
-                  {project.demoUrl && <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
-                    See project <ArrowUpRight size={17} aria-hidden="true" />
-                  </a>}
-                  {project.githubUrl && <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-                    {project.demoUrl ? 'Source' : 'See project'} <ArrowUpRight size={17} aria-hidden="true" />
-                  </a>}
-                </div>
                 {!details && <p className={styles.stack} data-broadcast-copy="">{project.tech}</p>}
                 {details && <div data-broadcast-copy="">
                   <ProjectVisualLink project={project} />
                   <ProjectVisualNote project={project} />
                 </div>}
+              </div>
+              {(project.demoUrl || project.githubUrl) && <div className={styles.links} data-broadcast-copy="">
+                {project.demoUrl && <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
+                  See project <ArrowUpRight size={17} aria-hidden="true" />
+                </a>}
+                {project.githubUrl && <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
+                  {project.demoUrl ? 'Source' : 'See project'} <ArrowUpRight size={17} aria-hidden="true" />
+                </a>}
+              </div>}
               </div>
             </div>
           ) : <p className={styles.empty}>No projects in this category. Choose All to browse the work.</p>}

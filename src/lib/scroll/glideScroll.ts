@@ -1,4 +1,5 @@
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
+import { ownScroll } from './scrollGesture';
 
 /**
  * Scrolls a container to a position, smoothly, without asking the browser to
@@ -61,7 +62,7 @@ export function glideScrollTo(
 
   // Nothing to travel: still tidy up the listeners we never added.
   if (distance === 0 || durationMs <= 0) {
-    container.scrollTop = to;
+    ownScroll(() => { container.scrollTop = to; });
     done = true;
     return { cancel: () => {} };
   }
@@ -78,7 +79,7 @@ export function glideScrollTo(
 
     const elapsed = now() - start;
     const t = Math.min(1, Math.max(0, elapsed / durationMs));
-    container.scrollTop = from + distance * easeInOutCubic(t);
+    ownScroll(() => { container.scrollTop = from + distance * easeInOutCubic(t); });
 
     if (t >= 1) {
       stop();
