@@ -89,7 +89,7 @@ const SCENE_PENDING_CEILING = 0.97;
  * loader opened onto exactly the half-built page it exists to hide. Well past
  * any real build now, and still comfortably inside `LOADER_FAILSAFE_MS`.
  */
-const SCENE_GRACE_MS = 10_000;
+export const SCENE_GRACE_MS = 10_000;
 
 export function useAssetLoadingProgress(
   options: UseAssetLoadingProgressOptions = {}

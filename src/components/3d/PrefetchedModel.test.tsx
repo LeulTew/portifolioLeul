@@ -3,7 +3,7 @@ import { StrictMode, Suspense, useLayoutEffect } from 'react';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Cache } from 'three';
+import { Cache, PerspectiveCamera, Scene } from 'three';
 import { GLTFLoader } from 'three-stdlib';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
@@ -13,7 +13,7 @@ import { PrefetchedModel } from './PrefetchedModel';
 import { SceneReady } from './SceneReady';
 
 let activeRun: ReturnType<typeof createCriticalAssetRun>;
-const frames = vi.hoisted(() => new Set<() => void>());
+const frames = vi.hoisted(() => new Set<(state: unknown) => void>());
 vi.mock('@/lib/assets/criticalAssets', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/assets/criticalAssets')>();
   return {
@@ -27,7 +27,7 @@ vi.mock('@react-three/fiber', async importOriginal => {
   const { useLayoutEffect } = await import('react');
   return {
     ...actual,
-    useFrame: (callback: () => void) => useLayoutEffect(() => {
+    useFrame: (callback: (state: unknown) => void) => useLayoutEffect(() => {
       frames.add(callback);
       return () => { frames.delete(callback); };
     }, [callback]),
@@ -103,6 +103,12 @@ async function fixture({ held = true, firstFailure = false, persistentFailure = 
   };
 }
 
+/** A renderer whose programs are compiled as soon as they are asked for. */
+const compiledWorld = {
+  gl: { compileAsync: async () => undefined, getRenderTarget: () => null, setRenderTarget: () => {}, info: { programs: [] } },
+  scene: new Scene(), camera: new PerspectiveCamera(),
+};
+
 function VisibleModel({ url }: { url: string }) {
   const model = useGLTF(url, false);
   return <span data-testid={url}>{model.scene.type}</span>;
@@ -175,7 +181,7 @@ describe('native prefetch gates only model consumers', () => {
       expect(mounted).toHaveBeenCalled();
       expect(isSceneReady()).toBe(false);
       expect(parse).not.toHaveBeenCalled();
-      act(() => { for (const frame of frames) frame(); });
+      act(() => { for (const frame of frames) frame(compiledWorld); });
       expect(tick).toHaveBeenCalledOnce();
       expect(isSceneReady()).toBe(false);
       await waitFor(() => expect(source.requests).toHaveLength(2));
@@ -190,7 +196,11 @@ describe('native prefetch gates only model consumers', () => {
       expect(await screen.findByTestId(source.models[0])).toBeVisible();
       await waitFor(() => expect(frames.size).toBe(2));
       expect(parse).toHaveBeenCalledTimes(2);
-      act(() => { for (const frame of frames) frame(); });
+      // The world compiles its programs before it reports itself up (round 31).
+      act(() => { for (const frame of frames) frame(compiledWorld); });
+      expect(isSceneReady()).toBe(false);
+      await act(async () => {});
+      act(() => { for (const frame of frames) frame(compiledWorld); });
       expect(isSceneReady()).toBe(true);
       activeRun.releaseModels(source.assets);
       for (const url of source.models) expect(Cache.get(url)).toBeUndefined();

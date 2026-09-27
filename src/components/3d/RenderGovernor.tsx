@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { invalidateStillWorld, isFrameDrawn, resetFrameGate, setFrameBudget } from '@/lib/render/frameGate';
+import { isWorldHeld } from '@/lib/render/sceneReady';
 
 /**
  * Takes ownership of the render call, so frames the gate has ruled out are
@@ -67,6 +68,8 @@ export function RenderGovernor({ maxFps = 60, quality = 0 }: RenderGovernorProps
   }, [gl]);
 
   useFrame((state) => {
+    // Behind the loader while the opening programs compile: a draw now would stall on them.
+    if (isWorldHeld()) return;
     if (!isFrameDrawn(state.clock.elapsedTime)) return;
     gl.render(scene, camera);
   }, RENDER_PRIORITY);

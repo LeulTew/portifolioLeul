@@ -22,6 +22,22 @@ let registered = false;
 let ready = false;
 const listeners = new Set<Listener>();
 
+/*
+ * The world is not drawn while its opening programs compile (round 31). A
+ * program compiled the first time it is drawn stalls the main thread until the
+ * GPU process has finished it: about a second of a throttled startup, the
+ * loader frozen for all of it. Asked for up front, off the main thread, and
+ * drawn once they are done, they cost the page nothing. The loader covers
+ * the world meanwhile. Neither wait is allowed to outlast the loader's own.
+ */
+/** How long a registered world stays undrawn while its opening resources arrive. */
+export const WORLD_HOLD_MS = 30_000;
+/** How long compiling its programs may take before it is drawn regardless. */
+export const WORLD_COMPILE_MS = 8_000;
+let registeredAt = 0;
+let compileStartedAt = 0;
+let compiled = false;
+
 function notify(): void {
   for (const listener of listeners) listener();
 }
@@ -30,7 +46,27 @@ function notify(): void {
 export function registerScene(): void {
   if (registered) return;
   registered = true;
+  registeredAt = performance.now();
   notify();
+}
+
+/** The scene has its resources and has asked for its programs. */
+export function beginWorldCompile(): void {
+  compileStartedAt ||= performance.now();
+}
+
+/** Its programs are compiled, or will not be waited for: the world may be drawn. */
+export function setWorldCompiled(): void {
+  compiled = true;
+}
+
+/** True while a registered world waits, undrawn, for its opening programs. */
+export function isWorldHeld(): boolean {
+  if (!registered || compiled || ready) return false;
+  const now = performance.now();
+  return compileStartedAt
+    ? now - compileStartedAt < WORLD_COMPILE_MS
+    : now - registeredAt < WORLD_HOLD_MS;
 }
 
 /** Called once the scene has its resources and has drawn a frame. */
@@ -62,5 +98,8 @@ export function subscribeSceneReady(listener: Listener): () => void {
 export function resetSceneReady(): void {
   registered = false;
   ready = false;
+  registeredAt = 0;
+  compileStartedAt = 0;
+  compiled = false;
   listeners.clear();
 }
