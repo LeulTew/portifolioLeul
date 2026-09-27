@@ -10,14 +10,14 @@
  * what the page may do while the reader holds the thumb (rounds 25-31), are
  * each one journey. A report lands in perf-reports/.
  *
- *   bun run build && bun run native:scroll [--theme light|dark] [--chrome <path>] [--url <origin> | --port 4320]
+ *   bun run build && bun run native:scroll [--theme light|dark] [--chrome <path>] [--chrome-arg <switch>]... [--url <origin> | --port 4320]
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Scope, delay, until, type Cdp } from './perf/harness';
 import { chromeExecutable, launchChrome, servePreview } from './perf/launch';
 
-const USAGE = 'Usage: bun run native:scroll [--theme light|dark] [--chrome <path>] [--url <origin> | --port <port>]';
+const USAGE = 'Usage: bun run native:scroll [--theme light|dark] [--chrome <path>] [--chrome-arg <switch>]... [--url <origin> | --port <port>]';
 const WIDTH = 1440;
 const HEIGHT = 900;
 
@@ -33,7 +33,9 @@ function options(argv: string[]) {
   if (theme && theme !== 'light' && theme !== 'dark') throw new Error(`--theme must be light or dark\n${USAGE}`);
   const port = Number(read('--port') ?? 4320);
   if (!Number.isInteger(port) || port <= 0) throw new Error(`--port must be a port number\n${USAGE}`);
-  return { url: read('--url'), port, chrome: read('--chrome'), themes: theme ? [theme] : ['light', 'dark'] };
+  // Extra Chrome switches, for diagnosing a GPU or a fallback: `--chrome-arg --disable-3d-apis`.
+  const args = argv.flatMap((flag, index) => (flag === '--chrome-arg' && argv[index + 1] ? [argv[index + 1]] : []));
+  return { url: read('--url'), port, chrome: read('--chrome'), args, themes: theme ? [theme] : ['light', 'dark'] };
 }
 
 const STATE = `(() => {
@@ -43,11 +45,11 @@ const STATE = `(() => {
     skills: stage('skills-stage'), tv: stage('projects-stage'), contact: document.querySelector('#contact')?.dataset.contactState };
 })()`;
 
-async function journeys(cdp: Cdp, origin: string, theme: string): Promise<Outcome[]> {
+async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outcome[]): Promise<void> {
   const { browserContextId } = await cdp.send<{ browserContextId: string }>('Target.createBrowserContext');
   const { targetId } = await cdp.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank', browserContextId });
-  const outcomes: Outcome[] = [];
   const errors: string[] = [];
+  const warnings: string[] = [];
   let unsubscribe = () => {};
   try {
     const { sessionId } = await cdp.send<{ sessionId: string }>('Target.attachToTarget', { targetId, flatten: true });
@@ -64,11 +66,16 @@ async function journeys(cdp: Cdp, origin: string, theme: string): Promise<Outcom
       }),
       cdp.on('Runtime.consoleAPICalled', (params, session) => {
         const { type, args } = params as unknown as Logged;
-        if (session === sessionId && type === 'error') errors.push(args.map(arg => String(arg.value ?? arg.description)).join(' '));
+        if (session !== sessionId) return;
+        const text = args.map(arg => String(arg.value ?? arg.description)).join(' ');
+        if (type === 'error') errors.push(text);
+        if (type === 'warning') warnings.push(text);
       }),
     ];
     unsubscribe = () => stops.forEach(stop => stop());
     for (const domain of ['Page', 'Runtime']) await send(`${domain}.enable`);
+    // In front, so no other window covers it: a covered window is throttled like a background tab.
+    await send('Page.bringToFront');
     await send('Emulation.setScrollbarsHidden', { hidden: false });
     await send('Emulation.setDeviceMetricsOverride', {
       width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false, screenWidth: WIDTH, screenHeight: HEIGHT,
@@ -78,10 +85,23 @@ async function journeys(cdp: Cdp, origin: string, theme: string): Promise<Outcom
     await until(() => evaluate<boolean>(`/settled/.test(document.querySelector('[data-testid="hero-content"]')?.className || '')`),
       { timeoutMs: 120_000, intervalMs: 250, label: 'the hero settling' });
     await delay(1500);
+    // Every journey is the 3D story's. A page that opened flat -- no WebGL, or a stage that arrived too
+    // late -- has no scrollport to press, and says why in its console (round 33, TECH-088).
+    const stage = await evaluate<{ canvas: boolean; visibility: string; renderer: string }>(`(() => {
+      const gl = document.createElement('canvas').getContext('webgl2');
+      const debug = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      return { canvas: !!document.querySelector('canvas'), visibility: document.visibilityState,
+        renderer: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl ? 'masked' : 'no WebGL' };
+    })()`);
     // The story's scrollport: the tallest scrollable box.
-    await evaluate(`window.__scroller = [...document.querySelectorAll('div')].filter(e => e.clientHeight > innerHeight * .8 &&
+    const found = await evaluate<boolean>(`!!(window.__scroller = [...document.querySelectorAll('div')].filter(e => e.clientHeight > innerHeight * .8 &&
       e.scrollHeight > e.clientHeight + 100 && /auto|scroll/.test(getComputedStyle(e).overflowY))
-      .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0]; 0`);
+      .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0])`);
+    if (!stage.canvas || !found) {
+      throw new Error(`${theme}: the page opened without its 3D stage, so there is no scrollport to press ` +
+        `(canvas ${stage.canvas}, scrollport ${found}, visibility ${stage.visibility}, renderer ${stage.renderer}). ` +
+        `Console: ${warnings.concat(errors).join(' | ') || 'nothing'}`);
+    }
 
     const state = () => evaluate<State>(STATE);
     const phase = (id: string, value: string, extra = 'true') => until(() => evaluate<boolean>(
@@ -225,7 +245,13 @@ async function journeys(cdp: Cdp, origin: string, theme: string): Promise<Outcom
       dragged > 10 && Math.abs(now.top - dragged) <= 4 && now.nav !== 'Contact');
 
     check('no page errors', 'none', errors, errors.length === 0);
-    return outcomes;
+  } catch (error) {
+    // What the page said is usually why a journey could not go on.
+    const said = warnings.concat(errors);
+    if (said.length && !String((error as Error).message).includes('Console:')) {
+      (error as Error).message += `. Console: ${said.join(' | ')}`;
+    }
+    throw error;
   } finally {
     unsubscribe();
     await cdp.send('Target.closeTarget', { targetId }).catch(() => {});
@@ -234,29 +260,36 @@ async function journeys(cdp: Cdp, origin: string, theme: string): Promise<Outcom
 }
 
 async function main() {
-  const { url, port, chrome, themes } = options(process.argv.slice(2));
+  const { url, port, chrome, args, themes } = options(process.argv.slice(2));
   const scope = new Scope();
   const interrupt = () => { void scope.close().finally(() => process.exit(130)); };
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
   const outcomes: Outcome[] = [];
-  let failure: unknown;
+  const failures: unknown[] = [];
   try {
     const origin = url ?? await servePreview(scope, port);
-    const cdp = await launchChrome(scope, { executable: chromeExecutable(chrome), headed: true, width: WIDTH, height: HEIGHT + 120 });
-    for (const theme of themes) outcomes.push(...await journeys(cdp, origin, theme));
+    const cdp = await launchChrome(scope, {
+      executable: chromeExecutable(chrome), headed: true, width: WIDTH, height: HEIGHT + 120,
+      // Headed, so a window on top of it would occlude it: occluded, Chrome throttles its timers and
+      // frames, and the stage can miss the app's own deadline and open the page flat (round 33, TECH-088).
+      flags: ['--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding',
+        '--disable-background-timer-throttling', '--disable-features=CalculateNativeWinOcclusion', ...args],
+    });
+    // A theme that cannot go on is reported, and the next still runs.
+    for (const theme of themes) await journeys(cdp, origin, theme, outcomes).catch(error => { failures.push(error); });
   } catch (error) {
-    failure = error;
+    failures.push(error);
   }
   const cleanup = (await scope.close()).map(error => `cleanup: ${error.message}`);
-  const pass = !failure && cleanup.length === 0 && outcomes.length > 0 && outcomes.every(outcome => outcome.pass);
+  const pass = failures.length === 0 && cleanup.length === 0 && outcomes.length > 0 && outcomes.every(outcome => outcome.pass);
   await mkdir(resolve('perf-reports'), { recursive: true });
   const report = resolve('perf-reports', `native-scroll-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
   await writeFile(report, JSON.stringify({
     date: new Date().toISOString(), origin: url ?? `owned vite preview on ${port}`, outcomes, cleanup,
-    failure: failure ? String((failure as Error).stack ?? failure) : null, pass,
+    failures: failures.map(failure => String((failure as Error).stack ?? failure)), pass,
   }, null, 2));
-  if (failure) console.error(failure);
+  for (const failure of failures) console.error(failure);
   for (const line of cleanup) console.error(line);
   console.log(`${pass ? 'PASS' : 'FAIL'}: ${outcomes.filter(outcome => outcome.pass).length}/${outcomes.length} journeys; ${report}`);
   process.exitCode = pass ? 0 : 1;

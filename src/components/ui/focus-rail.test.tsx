@@ -20,7 +20,7 @@ const mockItems: FocusRailItem[] = [
     description: "Beta description text",
     imageSrc: "/images/projects/beta.webp",
     demoUrl: "https://beta.example.com",
-    meta: "AI/DataScience",
+    meta: "AI/Data Science",
   },
 ];
 

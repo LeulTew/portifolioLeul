@@ -38,6 +38,34 @@ describe("projectsData", () => {
     }
   });
 
+  it("frames the decisive part of each dense capture the TV screen crops to, in the capture's own shape", () => {
+    // Round 33 (D-R33-001): the crop must keep a real part of the capture, landscape like the screen.
+    const size = (bytes: Buffer) => {
+      const chunk = bytes.subarray(12, 16).toString();
+      if (chunk === "VP8 ") return { width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
+      if (chunk === "VP8L") {
+        const bits = bytes.readUInt32LE(21);
+        return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+      }
+      return { width: bytes.readUIntLE(24, 3) + 1, height: bytes.readUIntLE(27, 3) + 1 };
+    };
+    const focused = projectsData.filter(project => project.imageFocus);
+    expect(focused.map(project => project.title))
+      .toEqual(expect.arrayContaining(["Mizan", "Ignition", "Amet AI", "ProtoChem 3D", "Amharic IR Improved"]));
+    for (const project of focused) {
+      const { top, right, bottom, left } = project.imageFocus!;
+      for (const inset of [top, right, bottom, left]) expect(inset, project.title).toBeGreaterThanOrEqual(0);
+      const across = 100 - left - right;
+      const down = 100 - top - bottom;
+      expect(across, project.title).toBeGreaterThanOrEqual(35);
+      expect(down, project.title).toBeGreaterThanOrEqual(35);
+      const { width, height } = size(readFileSync(resolve("public", ...project.image.split("/").filter(Boolean))));
+      const aspect = (width * across) / (height * down);
+      expect(aspect, project.title).toBeGreaterThanOrEqual(1.4);
+      expect(aspect, project.title).toBeLessThanOrEqual(2.2);
+    }
+  });
+
   it("says what every preview image is, and tells artwork from a genuine interface capture", () => {
     // Round 8 (D-BRAND-002): captures, mockups and artwork sat in one hierarchy, unlabelled.
     for (const project of projectsData) {
@@ -95,7 +123,7 @@ describe("projectsData", () => {
       return `${project.description} ${project.longDescription ?? ""} ${project.tech}`;
     };
     expect(copy("Dream Weaver")).not.toMatch(/gemini|interpret|psycholog/i);
-    expect(byTitle("Dream Weaver").categories).not.toContain("AI/DataScience");
+    expect(byTitle("Dream Weaver").categories).not.toContain("AI/Data Science");
     expect(copy("Ethio Trading")).not.toMatch(/real-time|secure messaging|backend integration/i);
     expect(copy("Elona Practice")).toMatch(/Chemistry of Natural Products/);
     expect(copy("Bookbot")).toMatch(/word/i);

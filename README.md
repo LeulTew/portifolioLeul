@@ -159,7 +159,14 @@ thumb, a CTA asked for under it lands on release, a glide pressed while it runs
 stops there, and the reader's own key or drag under the thumb outlasts anything
 the page queued (rounds 25-31). It fails on any page error, and writes its
 measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
-narrow it. With the round-30 fix reverted it fails exactly where that round's
+narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
+GPU or a fallback. Before any journey it checks that the page opened its 3D
+stage: a page that fell back to the flat layout -- no WebGL, or a stage that
+missed the app's own 10s deadline on an overloaded machine -- has no scrollport
+to press, and the run fails at once with the renderer and the page's console
+warnings, not a timeout. Its window is exempt from Chrome's occlusion and
+background throttling, so another window over it cannot slow the page into that
+fallback (round 33). With the round-30 fix reverted it fails exactly where that round's
 reviewer did: 35px of drag thrown to Contact.
 
 ### Adaptive world quality
@@ -320,6 +327,19 @@ enlarge control fills the window between the navbar and the scene controls with
 the same reader, over a scrim. Its own previous/next take over from the physical
 keys it covers. The same control, Esc, a click beside it or leaving the reader
 returns it to the TV.
+
+A dense capture shrunk whole to that screen cannot be read, so a project may name
+the part of it the screen looks at (`imageFocus`: insets in percent). The TV
+crops to it with `object-view-box`, anchored to the top so a taller screen shows
+more of the capture below rather than a matte above; the enlarged reader and
+"Full image" show the whole capture, and a browser without `object-view-box`
+simply shows the whole. Five dashboards use it: Mizan, Ignition, Amet AI,
+ProtoChem 3D and Amharic IR Improved.
+
+On a 4K canvas at 100% scaling the interface steps up with the scene: the root
+type is 125% from 2880x1600 and 150% from 3400x1900, and chapter widths are
+capped in rem so each step reaches them. Below 2880px nothing changes. The TV
+screen and Skills keep their own container-relative measurement.
 
 The project counter is also a native 48px selection control. It jumps directly
 to any title in the current category, supports the browser's keyboard type-ahead,

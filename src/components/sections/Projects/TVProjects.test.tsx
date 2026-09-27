@@ -52,7 +52,24 @@ describe('the semantic TV project reader', () => {
     fireEvent.pointerLeave(frame);
     expect(frame).not.toHaveAttribute('data-inspecting');
   });
-  it.each(['Luna', 'Portfolio Leul'])('keeps the %s visual provenance on the image and available in Details', title => {
+  it('looks at the decisive part of a dense capture on the small screen, and at all of any other', () => {
+    // Round 33 (D-R33-001): a whole dashboard shrunk to the TV's screen could not be read.
+    render(<TVProjects />);
+    const picker = screen.getByRole('combobox', { name: 'Choose a project' });
+    for (const title of ['Ignition', 'Kitefew']) {
+      const project = projectsData.find(item => item.title === title)!;
+      fireEvent.change(picker, { target: { value: String(project.id) } });
+      const image = screen.getByRole('img', { name: project.imageAlt ?? `${title} preview` });
+      if (project.imageFocus) {
+        const { top, right, bottom, left } = project.imageFocus;
+        expect(image.style.getPropertyValue('--image-focus')).toBe(`inset(${top}% ${right}% ${bottom}% ${left}%)`);
+      } else expect(image.style.getPropertyValue('--image-focus')).toBe('');
+    }
+    expect(projectsData.find(item => item.title === 'Ignition')!.imageFocus).toBeDefined();
+    expect(projectsData.find(item => item.title === 'Kitefew')!.imageFocus).toBeUndefined();
+  });
+
+  it.each(['Luna', 'Portfolio Leul', 'Kitefew'])('keeps the %s visual provenance on the image and available in Details', title => {
     render(<TVProjects />);
     const project = projectsData.find(item => item.title === title)!;
     const provenance = IMAGE_KIND_LABEL[project.imageKind] + (project.imageNote ? ` · ${project.imageNote}` : '');
@@ -63,7 +80,8 @@ describe('the semantic TV project reader', () => {
     expect(image).toHaveAttribute('src', project.image);
     expect(image.closest('[data-broadcast-image]')).toContainElement(screen.getByText(provenance));
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
-    expect(screen.getByLabelText(`${title} details`)).toContainElement(screen.getByText(provenance));
+    // The reader's scroll box is a named region, not a bare labelled div (round 33, D-R33-003).
+    expect(screen.getByRole('region', { name: `${title} details` })).toContainElement(screen.getByText(provenance));
     expect(screen.getAllByText(provenance)).toHaveLength(1);
     // Adjacency is what applies the focus-ring clearance in ProjectEvidence.module.css.
     expect(screen.getByRole('link', { name: `Open ${title} portfolio image at full size (new tab)` })

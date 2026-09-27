@@ -43,7 +43,7 @@
 .content {
   position: relative;
   width: 100%;
-  max-width: 1440px;
+  max-width: 90rem;
   margin: 0 auto;
   pointer-events: auto;
 }

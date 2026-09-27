@@ -49,8 +49,10 @@ export async function servePreview(scope: Scope, port: number): Promise<string> 
 }
 
 /** A Chrome of its own, on a profile of its own; both go when the scope closes. */
-export async function launchChrome(scope: Scope, { executable, headed, width, height }: {
+export async function launchChrome(scope: Scope, { executable, headed, width, height, flags = [] }: {
   executable: string; headed: boolean; width: number; height: number;
+  /** More switches, after the owned ones. */
+  flags?: string[];
 }): Promise<Cdp> {
   const profile = await mkdtemp(join(tmpdir(), 'perf-budget-'));
   // Windows lets go of a closed Chrome's files a moment after its processes exit.
@@ -63,7 +65,7 @@ export async function launchChrome(scope: Scope, { executable, headed, width, he
     // No crash handler, updater or background fetches: nothing that outlives Chrome or competes with the page.
     '--disable-breakpad', '--disable-crash-reporter', '--disable-background-networking',
     '--disable-component-update', '--disable-sync', '--no-service-autorun',
-    'about:blank',
+    ...flags, 'about:blank',
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   const chrome = ownProcess(child, 'Chrome', {
     // A loaded machine takes a while to reap a whole browser; a forced tree stop is final, only slow.

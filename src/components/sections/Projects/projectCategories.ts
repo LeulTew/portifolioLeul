@@ -1,4 +1,4 @@
 export const PROJECT_CATEGORIES = [
-  'All', 'Web Development', 'AI/DataScience', 'Mobile Apps',
+  'All', 'Web Development', 'AI/Data Science', 'Mobile Apps',
   'Graphics & Algorithms', 'Desktop & Games',
 ] as const;

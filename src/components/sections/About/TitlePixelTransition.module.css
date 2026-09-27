@@ -44,7 +44,7 @@
   color: inherit;
   opacity: 0.9;
   margin: 1.25rem 0 0;
-  max-width: 720px;
+  max-width: 45rem;
   position: relative;
   z-index: 2;
   clip-path: inset(calc((1 - var(--sub-in, 1)) * 100%) 0 -0.2em 0);

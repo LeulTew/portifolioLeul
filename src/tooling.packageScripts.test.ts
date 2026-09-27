@@ -12,10 +12,14 @@ const scripts = (JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { 
 const files = Object.entries(scripts).flatMap(([name, command]) =>
   [...command.matchAll(/(?:^|\s)((?:scripts|src)\/[\w./-]+\.(?:ts|mts|mjs|js|json))\b/g)].map(match => [name, match[1]] as const));
 
-/** Whether git would leave the path out of a commit: `check-ignore` exits 0 for ignored, 1 for not. */
+/**
+ * Whether an ignore rule covers the path, tracked or not (`--no-index`): a tracked file under a
+ * rule is one rename or fresh clone-and-recreate away from dropping out again (round 33, TECH-087).
+ * `check-ignore` exits 0 for ignored, 1 for not.
+ */
 function ignored(path: string): boolean {
   try {
-    execFileSync('git', ['check-ignore', '--quiet', path], { stdio: 'ignore' });
+    execFileSync('git', ['check-ignore', '--quiet', '--no-index', path], { stdio: 'ignore' });
     return true;
   } catch (error) {
     if ((error as { status?: number }).status === 1) return false;
