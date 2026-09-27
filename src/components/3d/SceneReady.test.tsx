@@ -207,4 +207,24 @@ describe('the opening programs compile before the world is drawn (round 31)', ()
     tick();
     expect(isSceneReady()).toBe(true);
   });
+
+  it('never holds a world that was already up when its scene mounts again', async () => {
+    // A remounted scene -- the Canvas rebuilt after a lost context, say -- recompiles as it draws;
+    // the reader is already on the page, so nothing waits for it.
+    await resourcedScene();
+    const first = world();
+    first.tick();
+    for (let pass = 0; pass < 2; pass++) await act(async () => { first.compiles[pass].finish(); });
+    first.tick();
+    expect(isSceneReady()).toBe(true);
+    cleanup();
+    frames.clear();
+    render(<Suspense fallback={null}><SceneReady models={[models[0]]} textures={[]} /></Suspense>);
+    await waitFor(() => expect(frames.size).toBe(1));
+    expect(isWorldHeld()).toBe(false);
+    const second = world();
+    second.tick();
+    expect(isWorldHeld()).toBe(false);
+    expect(isSceneReady()).toBe(true);
+  });
 });

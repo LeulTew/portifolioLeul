@@ -48,14 +48,17 @@ export async function createTerrainIO(): Promise<NodeIO> {
 
 export function readTerrainSource(source: typeof TERRAIN_SOURCES[number]): Uint8Array {
   let bytes: Buffer;
+  // A private copy without history (a reviewer's mutation check) may name the repository that has it.
+  const repository = process.env.TERRAIN_SOURCE_REPOSITORY || TERRAIN_REPOSITORY;
   try {
     bytes = execFileSync('git', ['show', `${TERRAIN_SOURCE_REF}:public/models/${source.file}`], {
-      cwd: TERRAIN_REPOSITORY, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: repository, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch (cause) {
     throw new Error(
       `Cannot read pristine ${source.file} at ${TERRAIN_SOURCE_REF}. ` +
-      `Restore history with "git fetch origin ${TERRAIN_SOURCE_REF}" and rerun "bun run bake:island". ` +
+      `Restore history with "git fetch origin ${TERRAIN_SOURCE_REF}" and rerun "bun run bake:island", ` +
+      'or set TERRAIN_SOURCE_REPOSITORY to a checkout that has it. ' +
       'The current, potentially already-shaped asset will NOT be used as input.',
       { cause },
     );

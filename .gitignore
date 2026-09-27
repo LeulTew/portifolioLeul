@@ -48,6 +48,7 @@ scripts/*
 !scripts/bake-hero-cloud.mjs
 !scripts/perf-budget.ts
 !scripts/perf-budget.json
+!scripts/native-scroll.ts
 !scripts/perf/
 # Local performance budget reports (bun run perf:budget)
 perf-reports/

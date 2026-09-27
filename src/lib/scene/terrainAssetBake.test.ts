@@ -238,3 +238,22 @@ describe('committed organic terrain assets', () => {
     expect(assets[0].after.every(record => record.indices)).toBe(true);
   });
 });
+
+describe('the pristine terrain source', () => {
+  it('can be read from another checkout, and says how when it cannot be read at all', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const previous = process.env.TERRAIN_SOURCE_REPOSITORY;
+    const empty = mkdtempSync(join(tmpdir(), 'no-history-'));
+    try {
+      process.env.TERRAIN_SOURCE_REPOSITORY = TERRAIN_REPOSITORY;
+      expect(sha256(readTerrainSource(TERRAIN_SOURCES[0]))).toBe(TERRAIN_SOURCES[0].sha256);
+      process.env.TERRAIN_SOURCE_REPOSITORY = empty;
+      expect(() => readTerrainSource(TERRAIN_SOURCES[0])).toThrow(/TERRAIN_SOURCE_REPOSITORY/);
+    } finally {
+      if (previous === undefined) delete process.env.TERRAIN_SOURCE_REPOSITORY;
+      else process.env.TERRAIN_SOURCE_REPOSITORY = previous;
+      rmSync(empty, { recursive: true, force: true });
+    }
+  });
+});
