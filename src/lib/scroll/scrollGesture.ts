@@ -140,6 +140,23 @@ export interface OwnScrollOptions {
    * TECH-075/076/077).
    */
   key?: unknown;
+  /**
+   * The reader's intent the write answers, from `readerIntent()` when its
+   * producer began. The reader's own input under a held thumb moves the intent
+   * on, and a write answering an older one is refused, however late its
+   * producer's next frame or callback comes: a glide still running under the
+   * thumb put back a destination the reader had dragged away from (round 30,
+   * TECH-085).
+   */
+  intent?: number;
+}
+
+/** Advanced whenever the reader's own input takes over from what the page was doing. */
+let intent = 0;
+
+/** The reader's current intent, for a producer to carry with the writes it goes on making. */
+export function readerIntent(): number {
+  return intent;
 }
 
 /**
@@ -159,7 +176,9 @@ export interface OwnScrollOptions {
  * run, in order, when the thumb is let go; a write that works out where to go
  * from the page's geometry does so inside `write`, so it measures then.
  */
-export function ownScroll(write: () => void, { key }: OwnScrollOptions = {}): void {
+export function ownScroll(write: () => void, { key, intent: asked }: OwnScrollOptions = {}): void {
+  // Answering an intent the reader has since moved on from: nothing to do, held or not.
+  if (asked !== undefined && asked !== intent) return;
   if (!drag) {
     write();
     return;
@@ -184,8 +203,9 @@ export function isScrollHeld(): boolean {
 }
 
 /**
- * Hears a press on a scrollbar, the reader taking the page in hand: whatever
- * the page was moving for itself stops where it is (round 26, TECH-073).
+ * Hears the reader taking the page in hand: a press on a scrollbar, or their own
+ * input while one is held. Whatever the page was moving for itself stops where it
+ * is (round 26, TECH-073; round 30, TECH-085).
  */
 export function subscribeScrollbarPress(listener: () => void): () => void {
   pressListeners.add(listener);
@@ -240,7 +260,18 @@ function endDrag(): void {
  * run over the reader's later travel (round 29, TECH-081/082).
  */
 function retireHeldWrites(): void {
-  if (drag) heldWrites.length = 0;
+  if (drag) takeOver();
+}
+
+/**
+ * The reader has taken over under a held thumb. What was queued goes, the
+ * intent moves on so a producer's later frames and callbacks cannot queue
+ * again, and whatever is still moving stops (round 30, TECH-085).
+ */
+function takeOver(): void {
+  heldWrites.length = 0;
+  intent++;
+  pressListeners.forEach(listener => listener());
 }
 
 function onReaderKey(event: KeyboardEvent): void {
@@ -256,7 +287,7 @@ function onScroll(event: Event): void {
   if (Math.abs(travelled) < DRAG_THRESHOLD) return;
   drag.last = top;
   // The thumb moving is the reader's travel: nothing asked for before it still stands.
-  heldWrites.length = 0;
+  takeOver();
   emit(travelled > 0 ? 'down' : 'up', !drag.started, drag.target);
   drag.started = true;
 }

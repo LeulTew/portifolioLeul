@@ -11,7 +11,7 @@
  * section navigation, which settles the chapters in between like the navbar.
  */
 import { chromeClearance } from './chromeInset';
-import { forgetHeldScroll, ownScroll } from './scrollGesture';
+import { forgetHeldScroll, ownScroll, readerIntent } from './scrollGesture';
 import { landSectionFocus } from './sectionLanding';
 import { subscribeSectionNavigation } from './sectionNavigation';
 import { viewOwner } from './viewOwner';
@@ -137,7 +137,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   const revealKey = {};
   let generation = 0;
 
-  const nudge = (element: HTMLElement, inPlace = false) => {
+  const nudge = (element: HTMLElement, inPlace = false, reader = readerIntent()) => {
     const asked = generation;
     // Measured when it runs, as the latest reveal of this track (round 27, TECH-076).
     ownScroll(() => {
@@ -161,7 +161,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
       const from = renderedScrollTop?.() ?? track.scrollTop;
       track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange);
-    }, { key: revealKey });
+    }, { key: revealKey, intent: reader });
   };
 
   /** `inPlace`: only within the chapter on screen; a chapter the reader left is never brought back. */
@@ -177,6 +177,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const offscreen = area.bottom <= 0 || area.top >= height;
     if (inPlace && (offscreen || content.closest('[inert]'))) return;
     view.cancelAnimationFrame(frame);
+    // The reader's intent at the reveal's request, not at its frames (round 30, TECH-085).
+    const reader = readerIntent();
     if (section.id && offscreen) {
       issuing = true;
       try {
@@ -187,9 +189,9 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       // Still the reader's focus two frames on, and no newer navigation between: a later choice
       // owns the view, and this nudge must not scroll back over it (round 12, TECH-038).
       frame = view.requestAnimationFrame(() => {
-        frame = view.requestAnimationFrame(() => { if (root.activeElement === element) nudge(element); });
+        frame = view.requestAnimationFrame(() => { if (root.activeElement === element) nudge(element, false, reader); });
       });
-    } else nudge(element, inPlace);
+    } else nudge(element, inPlace, reader);
   };
   /*
    * Native validation focuses the first invalid field and scrolls it into
@@ -490,13 +492,15 @@ export function installDocumentFocus({ main, navigate }: {
       issuing = false;
     }
     view.cancelAnimationFrame(frame);
+    // Asked now, at the focus change: the reader's travel before the frames come supersedes it (round 30, TECH-085).
+    const asked = generation;
+    const reader = readerIntent();
     frame = view.requestAnimationFrame(() => {
       frame = view.requestAnimationFrame(() => {
-        const asked = generation;
         // Checked when it runs: still the focused stop, and no newer intent since (round 29, TECH-082).
         ownScroll(() => {
           if (asked === generation && root.activeElement === element) element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        }, { key: revealKey });
+        }, { key: revealKey, intent: reader });
       });
     });
   };

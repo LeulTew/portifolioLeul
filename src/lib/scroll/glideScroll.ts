@@ -1,5 +1,5 @@
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
-import { forgetHeldScroll, isScrollHeld, ownScroll, subscribeScrollbarPress } from './scrollGesture';
+import { forgetHeldScroll, isScrollHeld, ownScroll, readerIntent, subscribeScrollbarPress } from './scrollGesture';
 
 /**
  * Scrolls a container to a position, smoothly, without asking the browser to
@@ -54,6 +54,8 @@ export function glideScrollTo(
   const key = {};
   /** The last frame's write, while it still waits for a held thumb: the glide is not over until it runs. */
   let landing = false;
+  // The reader's intent the glide answers: once their own travel moves it on, no frame of this glide lands (round 30, TECH-085).
+  const reader = readerIntent();
 
   const detach = () => {
     stopPress?.();
@@ -81,7 +83,7 @@ export function glideScrollTo(
 
   // Nothing to travel: one write, still retired by cancelling while it waits (round 29, TECH-084).
   if (distance === 0 || durationMs <= 0) {
-    ownScroll(() => { container.scrollTop = to; }, { key });
+    ownScroll(() => { container.scrollTop = to; }, { key, intent: reader });
     done = true;
     return { cancel: () => forgetHeldScroll(key) };
   }
@@ -108,7 +110,7 @@ export function glideScrollTo(
         landing = false;
         detach();
       }
-    }, { key });
+    }, { key, intent: reader });
 
     if (last) {
       done = true;
