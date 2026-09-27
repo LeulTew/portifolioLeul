@@ -177,7 +177,9 @@ describe('local Vite exposure', () => {
     expect(result.host).toBe('127.0.0.1');
     expect(result.allowedHosts).not.toBe(true);
     expect(result.strict).toBe(true);
-    expect(result.allow).toEqual([process.cwd().replaceAll('\\', '/')]);
+    // Vite always allows its own client; only a linked node_modules puts that outside the checkout.
+    const viteClient = realpathSync(path.resolve('node_modules', 'vite', 'dist', 'client')).replaceAll('\\', '/');
+    expect(result.allow.filter(root => root !== viteClient)).toEqual([process.cwd().replaceAll('\\', '/')]);
     expect(result.files.entry).toBe(true);
     expect(result.files.outside).toBe(false);
   });
