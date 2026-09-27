@@ -70,6 +70,18 @@ Byte-progress prefetch keeps its awaited native stream reader. Failed
 optional prefetches settle visibly and remain recoverable through the ordinary
 scene loader; they are not treated as successful scene readiness.
 
+Once the opening resources are decoded, every material is compiled off the main
+thread (`renderer.compileAsync`, KHR_parallel_shader_compile) for the canvas
+and again for a render target, since the water's reflection draws the scene
+linear and untoned, which is another program. Each program's first use -- its
+uniforms and attributes read back -- follows, one program per task. The world
+is not drawn meanwhile; the opaque loader covers it. A program first compiled
+and used by a draw had held the main thread until the GPU finished it: about a
+second of one task in a throttled cold start. The hold gives up after 8s of
+compiling (30s waiting for resources), inside the loader's own 10s grace, and a
+failed compile draws the world regardless (`src/lib/render/precompileWorld.ts`,
+`src/lib/render/sceneReady.ts`).
+
 `patches/three@0.161.0.patch` also fixes the pinned upstream FileLoader's missing
 body-read rejection forwarding. Without it, an interrupted HTTP-200 response
 could leave every subscriber and subsequent retry waiting on the same failed
@@ -124,15 +136,31 @@ The gates were calibrated on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti
 through ANGLE/D3D11, Chrome 153): returning-visit medians of 43 long frames,
 0.8s of blocking and a 279ms worst frame over a 42-second journey; cold medians
 of an 11.4-second throttled startup, 6.1 MB transferred and 3.0s of blocking
-during load. Welding the terrain (round 31) took the cold transfer to 3.3 MB and,
-on the same machine under load from other work, the cold journey median to 23
-long frames and 0.4s of blocking. The local preview serves files uncompressed, so the transfer
+during load. Welding the terrain and compiling the opening programs off the main
+thread (round 31) took the cold medians, on the same machine under load from
+other work, to a 9.0-second startup, 3.3 MB transferred and 1.5s of blocking,
+and the cold journey to 19 long frames and 0.5s of blocking. The local preview serves files uncompressed, so the transfer
 figure overstates what a visitor downloads: production serves brotli, which
 takes the welded island terrain from 859 KB to about 570 KB. CPU throttling slows the main
 thread, not the GPU, so it is a proxy for weak hardware rather than a
 measurement of it; another machine should record its own baseline instead of
 loosening these numbers. Under the throttle the world lowers its own quality
 (below), and the report shows when.
+
+### Native scrollbar check
+
+`bun run build && bun run native:scroll` serves `dist` the same way and drives a
+**headed** Chrome -- headless Chrome draws overlay scrollbars, not the 8px thumb
+a reader presses -- with real mouse input on the page's scrollbar, in light and
+dark. It asserts each chapter hand-off a thumb drag makes (past the last skill
+to Projects framed, back from the TV's reader, back from Contact to the reader)
+and what the page may do while the thumb is held: nothing moves under a still
+thumb, a CTA asked for under it lands on release, a glide pressed while it runs
+stops there, and the reader's own key or drag under the thumb outlasts anything
+the page queued (rounds 25-31). It fails on any page error, and writes its
+measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
+narrow it. With the round-30 fix reverted it fails exactly where that round's
+reviewer did: 35px of drag thrown to Contact.
 
 ### Adaptive world quality
 

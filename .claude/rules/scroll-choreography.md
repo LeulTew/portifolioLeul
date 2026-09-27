@@ -449,7 +449,10 @@ lost and invented requests; Chrome sends no pointer movement during a thumb
 drag to tell them apart by (rounds 25-26, TECH-069/070/072/073). With nothing
 written under the thumb, every movement while it is held is the reader's. A
 syntax-aware census test fails on any application scroll write outside
-`ownScroll` (round 26, TECH-074).
+`ownScroll` (round 26, TECH-074). jsdom has no scrollbar to hold: verify any
+change here with `bun run build && bun run native:scroll`, which presses the
+real thumb in a headed Chrome and asserts every hand-off and held-thumb journey
+above (round 31).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

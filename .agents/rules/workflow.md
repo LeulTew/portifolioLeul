@@ -24,6 +24,8 @@ Use prefix-based commit messages: `<prefix>(<scope>): <description>`
   - `bun run build` (Vite production bundle compilation)
   - `bun run lint` (ESLint verification)
   - `bun run typecheck` (app and tooling configs; bare `tsc --noEmit` reads the empty solution tsconfig and checks nothing)
+- `bun run perf:budget` (add `--cold` for loading or first use) after a build, for any change to per-frame work, rendering, scroll choreography or loading
+- `bun run native:scroll` after a build, for any change to scroll ownership or chapter hand-offs: a headed Chrome presses the real scrollbar thumb and asserts every hand-off and held-thumb journey
 - Verify locally with Bun before completing any task, issue, or PR.
 - Never run destructive git commands like `git reset --hard` without explicit user instruction.
 

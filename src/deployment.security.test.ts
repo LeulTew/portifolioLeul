@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -270,7 +270,8 @@ describe('patched toolchain resolution', () => {
     ['jsdom', 'ws', '8.21.0'],
     ['happy-dom', 'ws', '8.21.0'],
   ])('%s actually resolves %s to %s, without a stale installed copy shadowing the lock', (owner, dependency, version) => {
-    const modules = path.resolve('node_modules');
+    // Resolution answers in real paths: a linked node_modules (a junction, a symlinked store) is its target.
+    const modules = realpathSync(path.resolve('node_modules'));
     const ownerRequire = createRequire(path.join(modules, ...owner.split('/'), 'package.json'));
     let directory = path.dirname(ownerRequire.resolve(dependency));
     while (directory.startsWith(`${modules}${path.sep}`)) {
