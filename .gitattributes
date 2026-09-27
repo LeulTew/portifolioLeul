@@ -1,0 +1,2 @@
+# Much of the tree is committed with CRLF; a CR before the newline is not trailing whitespace.
+* whitespace=cr-at-eol
