@@ -14,6 +14,7 @@ import { stageVisible, trackOffset } from './railTransit';
 import { findScrollContainer, scrollContainerBy } from '@/lib/scroll/scrollContainer';
 import { EDUCATION_RAIL_ID, educationRecordId } from './educationPlace';
 import { RAIL_BREAKPOINT } from './useRailStaging';
+import { LAYOUT_SETTLE_MS } from '@/lib/scroll/layoutSettle';
 
 type Phase = 'outside' | 'opening' | 'reading' | 'crossing' | 'closing';
 
@@ -487,12 +488,21 @@ export function useEducationPlayback(
       placing = 0;
       resuming = null;
     };
-    // Every scroll moves the reader's place, except while a resume stands, and not before this
-    // layout has had the reader's own input or a destination (round 22, D-MOTION-005; see Skills).
+    // Every scroll moves the reader's place, except while a resume stands, and not from a layout
+    // still settling unless the reader has moved it (round 22, D-MOTION-005; round 23, TECH-067; see Skills).
     let readerMoved = false;
+    let layoutAt = performance.now();
+    let settling: ReturnType<typeof setTimeout> | undefined;
+    const relayout = () => { layoutAt = performance.now(); };
     const sample = () => {
       sampling = 0;
-      if (placing || resuming !== null || !readerMoved) return;
+      if (placing || resuming !== null) return;
+      const unsettled = LAYOUT_SETTLE_MS - (performance.now() - layoutAt);
+      if (!readerMoved && unsettled > 0) {
+        clearTimeout(settling);
+        settling = setTimeout(onScroll, unsettled);
+        return;
+      }
       const line = window.innerHeight * READING_LINE;
       const area = host.getBoundingClientRect();
       if (area.top > line || area.bottom <= line) {
@@ -533,14 +543,17 @@ export function useEducationPlayback(
     }
     for (const type of READER_INPUTS) window.addEventListener(type, retire, { capture: true, passive: true });
     window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    window.addEventListener('resize', relayout, { passive: true });
     const unsubscribeScroll = subscribeScrollProgress(onScroll);
     return () => {
       cancelAnimationFrame(sampling);
+      clearTimeout(settling);
       cancelPlacement();
       stopNavigation();
       unsubscribeScroll();
       for (const type of READER_INPUTS) window.removeEventListener(type, retire, { capture: true });
       window.removeEventListener('scroll', onScroll, { capture: true });
+      window.removeEventListener('resize', relayout);
     };
   }, [rail, staged, onNavigate]);
 

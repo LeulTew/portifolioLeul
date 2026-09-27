@@ -37,6 +37,70 @@ describe('scrollGesture', () => {
     off();
   });
 
+  describe('a drag of a scrollbar', () => {
+    // Round 22-23 (D-MOTION-006/007): the thumb moved the page past every chapter that waits for a gesture.
+    const scroller = () => {
+      const element = document.body.appendChild(document.createElement('div'));
+      Object.defineProperties(element, {
+        clientWidth: { value: 1432 }, clientHeight: { value: 900 }, scrollHeight: { value: 15795 }, clientLeft: { value: 0 },
+      });
+      element.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 1440, height: 900 });
+      element.scrollTop = 5000;
+      return element;
+    };
+    const press = (target: Element, clientX: number) =>
+      target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX, clientY: 400 }));
+    const travel = (element: HTMLElement, to: number) => {
+      element.scrollTop = to;
+      element.dispatchEvent(new Event('scroll'));
+    };
+
+    it('is one wave from press to release, in the direction the page travels', () => {
+      const page = scroller();
+      const starts: ScrollDirection[] = [];
+      const offStarts = subscribeScrollGesture(direction => starts.push(direction), { startsOnly: true });
+      const off = listen();
+      press(page, 1436);
+      travel(page, 4800);
+      travel(page, 4600);
+      travel(page, 4602);
+      travel(page, 4900);
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      travel(page, 6000);
+      expect(seen).toEqual(['up', 'up', 'down']);
+      expect(starts).toEqual(['up']);
+      off();
+      offStarts();
+    });
+
+    it('is not a press on the content, a scroll with nothing pressed, or another scroller', () => {
+      const page = scroller();
+      const other = scroller();
+      const content = page.appendChild(document.createElement('div'));
+      const off = listen();
+      travel(page, 4000);
+      press(content, 1436);
+      travel(page, 3000);
+      press(page, 600);
+      travel(page, 2000);
+      press(page, 1436);
+      travel(other, 100);
+      expect(seen).toEqual([]);
+      off();
+    });
+
+    it('ends at a move with no button held, when the release was never heard', () => {
+      const page = scroller();
+      const off = listen();
+      press(page, 1436);
+      travel(page, 4000);
+      window.dispatchEvent(new PointerEvent('pointermove', { buttons: 0 }));
+      travel(page, 3000);
+      expect(seen).toEqual(['up']);
+      off();
+    });
+  });
+
   it('never cancels a wheel event', () => {
     const off = listen();
     const event = new WheelEvent('wheel', { deltaY: 120, cancelable: true });
@@ -92,6 +156,11 @@ describe('scrollGesture', () => {
     for (const [, , options] of scrollish) {
       expect(options).toMatchObject({ passive: true });
     }
+    // The scrollbar's press, travel and release are heard the same way: never cancellable.
+    const drag = add.mock.calls.filter(([type]) =>
+      ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'scroll', 'blur'].includes(type as string));
+    expect(drag.length).toBe(6);
+    for (const [, , options] of drag) expect(options).toMatchObject({ passive: true });
     add.mockRestore();
   });
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import gsap from 'gsap';
 import { usePrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { phaseFrameDelta } from '@/lib/motion/triggeredPhase';
+import { LAYOUT_SETTLE_MS } from '@/lib/scroll/layoutSettle';
 import { writeAttribute, cachedElement } from '@/lib/dom/cachedElement';
 import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
@@ -556,13 +557,24 @@ export function useSkillsPlayback(
     // Every scroll moves the reader's place, a scrollbar drag however long included (round 15,
     // TECH-053) -- except while a resume stands, when the place is the layout's until the reader
     // moves: a rebuild's settling scrolls replaced the chapter being resumed (round 16, TECH-055).
-    // And not before this layout has had the reader's own input: a window crossing the staging
-    // size and back within a frame or two sampled the half-built page, where Skills lay across
-    // the line, and the staged reader resumed chapter 4 over Contact (round 22, D-MOTION-005).
+    // And not from a layout still settling, unless the reader has moved it: a window crossing the
+    // staging size and back within a frame or two sampled the half-built page, where Skills lay
+    // across the line, and the staged reader resumed chapter 4 over Contact (round 22,
+    // D-MOTION-005). Settled is time, not input: a place reached by the browser's own find, with
+    // no input to the page, was lost when only input counted (round 23, TECH-067).
     let readerMoved = false;
+    let layoutAt = performance.now();
+    let settling: ReturnType<typeof setTimeout> | undefined;
+    const relayout = () => { layoutAt = performance.now(); };
     const sample = () => {
       sampling = 0;
-      if (placing || resuming !== null || !readerMoved) return;
+      if (placing || resuming !== null) return;
+      const unsettled = LAYOUT_SETTLE_MS - (performance.now() - layoutAt);
+      if (!readerMoved && unsettled > 0) {
+        clearTimeout(settling);
+        settling = setTimeout(onScroll, unsettled);
+        return;
+      }
       const line = window.innerHeight * READING_LINE;
       const area = rail.getBoundingClientRect();
       if (area.top > line || area.bottom <= line) {
@@ -614,14 +626,17 @@ export function useSkillsPlayback(
     for (const type of READER_INPUTS) window.addEventListener(type, retire, { capture: true, passive: true });
     // Capture hears the 3D page's own scrolling element as well as the document.
     window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    window.addEventListener('resize', relayout, { passive: true });
     const unsubscribeScroll = subscribeScrollProgress(onScroll);
     return () => {
       cancelAnimationFrame(sampling);
+      clearTimeout(settling);
       cancelPlacement();
       stopNavigation();
       unsubscribeScroll();
       for (const type of READER_INPUTS) window.removeEventListener(type, retire, { capture: true });
       window.removeEventListener('scroll', onScroll, { capture: true });
+      window.removeEventListener('resize', relayout);
     };
   }, [host, stage, staged, onNavigate]);
 

@@ -104,6 +104,61 @@ function onKeyDown(event: KeyboardEvent): void {
   if (intent && intent.extent !== 'document') emit(intent.direction, !event.repeat, event.target);
 }
 
+/*
+ * A drag of a scrollbar is the reader travelling, as a wheel is -- and reported
+ * like one, one wave from press to release. Without it the scrollbar moved the
+ * page past every chapter that waits for a gesture: dragged back from Contact,
+ * Projects rested empty; from an active Skills or TV reader the chapter never
+ * began to leave (round 22, D-MOTION-006; round 23, D-MOTION-007). Only the
+ * travel of the scroller whose own scrollbar was pressed counts, and only while
+ * the press lasts: a scroll the page makes for itself is never the reader's.
+ */
+interface ScrollbarDrag { scroller: Element; target: EventTarget | null; last: number; started: boolean }
+let drag: ScrollbarDrag | null = null;
+
+/** Drag travel below this is the thumb settling under the pointer. */
+const DRAG_THRESHOLD = 4;
+
+function scrollbarUnder(event: PointerEvent): Element | null {
+  const target = event.target;
+  if (!(target instanceof Element)) return null;
+  const root = document.documentElement;
+  if (target === root || target === document.body) {
+    const page = document.scrollingElement;
+    return page && event.clientX >= root.clientWidth && page.scrollHeight > page.clientHeight ? page : null;
+  }
+  if (target.scrollHeight <= target.clientHeight) return null;
+  const box = target.getBoundingClientRect();
+  return event.clientX - box.left - target.clientLeft >= target.clientWidth ? target : null;
+}
+
+function onPointerDown(event: PointerEvent): void {
+  drag = null;
+  if (event.button !== 0) return;
+  const scroller = scrollbarUnder(event);
+  if (scroller) drag = { scroller, target: event.target, last: scroller.scrollTop, started: false };
+}
+
+function onPointerMove(event: PointerEvent): void {
+  // A release the page never heard ends the drag at the next move without a button held.
+  if (drag && event.buttons === 0) drag = null;
+}
+
+function endDrag(): void {
+  drag = null;
+}
+
+function onScroll(event: Event): void {
+  if (!drag) return;
+  const source = event.target === document ? document.scrollingElement : event.target;
+  if (source !== drag.scroller) return;
+  const travelled = drag.scroller.scrollTop - drag.last;
+  if (Math.abs(travelled) < DRAG_THRESHOLD) return;
+  drag.last = drag.scroller.scrollTop;
+  emit(travelled > 0 ? 'down' : 'up', !drag.started, drag.target);
+  drag.started = true;
+}
+
 /** Starts listening. Safe to call more than once. */
 export function initScrollGesture(): () => void {
   if (typeof window === 'undefined' || started) return () => {};
@@ -115,6 +170,13 @@ export function initScrollGesture(): () => void {
   window.addEventListener('touchmove', onTouchMove, { passive: true });
   window.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('keydown', onKeyDown, { passive: true });
+  window.addEventListener('pointerdown', onPointerDown, { capture: true, passive: true });
+  window.addEventListener('pointermove', onPointerMove, { capture: true, passive: true });
+  window.addEventListener('pointerup', endDrag, { capture: true, passive: true });
+  window.addEventListener('pointercancel', endDrag, { capture: true, passive: true });
+  window.addEventListener('blur', endDrag, { passive: true });
+  // Capture hears every scroller's own scroll, as well as the document's.
+  window.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
   return cleanupScrollGesture;
 }
@@ -127,6 +189,13 @@ function cleanupScrollGesture(): void {
   window.removeEventListener('touchmove', onTouchMove);
   window.removeEventListener('touchend', onTouchEnd);
   window.removeEventListener('keydown', onKeyDown);
+  window.removeEventListener('pointerdown', onPointerDown, { capture: true });
+  window.removeEventListener('pointermove', onPointerMove, { capture: true });
+  window.removeEventListener('pointerup', endDrag, { capture: true });
+  window.removeEventListener('pointercancel', endDrag, { capture: true });
+  window.removeEventListener('blur', endDrag);
+  window.removeEventListener('scroll', onScroll, { capture: true });
+  drag = null;
   touchY = null;
   touchStarted = false;
   lastWheelAt = -Infinity;

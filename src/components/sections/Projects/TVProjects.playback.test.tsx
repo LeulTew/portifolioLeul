@@ -111,6 +111,23 @@ const handoff = () => {
   act(() => { publishSkillsProjectsHandoff('withdrawing'); });
   act(() => { publishSkillsProjectsHandoff('revealed'); });
 };
+/** The page's own scroller, with a real scrollbar past its 1432px of content. */
+const pageScroller = (scrollTop = 14810) => {
+  const scroller = document.body.appendChild(document.createElement('div'));
+  Object.defineProperties(scroller, {
+    clientWidth: { value: 1432 }, clientHeight: { value: 900 }, scrollHeight: { value: 15795 }, clientLeft: { value: 0 },
+  });
+  scroller.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 1440, height: 900 });
+  scroller.scrollTop = scrollTop;
+  return scroller;
+};
+/** The thumb carries the page: the scroller moves, the rail with it, and the page publishes its place. */
+const drag = (scroller: HTMLElement, scrollTop: number, railTop: number) => {
+  scroller.scrollTop = scrollTop;
+  top = railTop;
+  act(() => { scroller.dispatchEvent(new Event('scroll')); });
+  act(() => setScrollProgress(scrollTop / 15795));
+};
 const returnInput = (kind: 'held key' | 'wheel', repeat = true) => {
   if (kind === 'wheel') wheel(-200);
   else {
@@ -296,19 +313,14 @@ describe('the completed-beat TV chapter', () => {
 
   it('takes a drag of the scrollbar back from Contact as the reader asking for the TV', async () => {
     // Round 22 (D-MOTION-006): dragged from Contact, the page rested on an empty Projects clearing.
-    const scroller = document.body.appendChild(document.createElement('div'));
-    Object.defineProperty(scroller, 'clientWidth', { value: 1432 });
-    scroller.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 1440, height: 900 });
-    vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scroller);
+    const scroller = pageScroller();
     top = -2800;
     mount();
     await navbar('contact');
     // The press lands on the scrollbar, beside the content, and the thumb carries the page up.
     act(() => { scroller.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 1436, clientY: 860 })); });
-    top = -2200;
-    act(() => setScrollProgress(0.9));
-    top = -1300;
-    act(() => setScrollProgress(0.85));
+    drag(scroller, 14210, -2200);
+    drag(scroller, 13310, -1300);
     expect(phase()).toBe('approaching');
     act(() => { window.dispatchEvent(new PointerEvent('pointerup', { button: 0 })); });
     await clock.run(CONTACT_FLIGHT_MS);
@@ -316,19 +328,25 @@ describe('the completed-beat TV chapter', () => {
   });
 
   it('does not take a press on the page itself, or a scroll of its own making, for a drag', async () => {
-    const scroller = document.body.appendChild(document.createElement('div'));
-    const content = document.createElement('div');
-    scroller.append(content);
-    Object.defineProperty(scroller, 'clientWidth', { value: 1432 });
-    scroller.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 1440, height: 900 });
-    vi.spyOn(scrollContainer, 'findScrollContainer').mockReturnValue(scroller);
+    const scroller = pageScroller();
+    const content = scroller.appendChild(document.createElement('div'));
     top = -2800;
     mount();
     await navbar('contact');
     act(() => { content.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 600, clientY: 400 })); });
-    top = -1300;
-    act(() => setScrollProgress(0.85));
+    drag(scroller, 13310, -1300);
     expect(phase()).toBe('outside');
+  });
+
+  it("lets a scrollbar drag ask an engaged TV for its retreat, as a wheel does", async () => {
+    // Round 23 (D-MOTION-007): the thumb moved the page thousands of pixels and the TV never began to leave.
+    const scroller = pageScroller(11745);
+    mount();
+    await navbar('projects');
+    expect(phase()).toBe('reading');
+    act(() => { scroller.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 1436, clientY: 690 })); });
+    drag(scroller, 11600, top);
+    expect(phase()).not.toBe('reading');
   });
 
   describe('a reader carried across the TV being switched off and on by the window size', () => {
