@@ -33,6 +33,9 @@ describe('deployment response security', () => {
       'X-Frame-Options': 'DENY',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
+      // Declared, not left to the host: the value Vercel serves by default, so it holds on any host
+      // and a review of this file sees the whole set (round 39, TECH-090).
+      'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
     });
     expect(policy.get('default-src')).toEqual(["'self'"]);
     for (const directive of ['base-uri', 'object-src', 'frame-src', 'frame-ancestors', 'script-src-attr']) {
