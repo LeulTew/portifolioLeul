@@ -178,6 +178,11 @@ export function forgetHeldScroll(key: unknown): void {
   if (index >= 0) heldWrites.splice(index, 1);
 }
 
+/** Whether a scrollbar thumb is held now, so a write would wait for its release. */
+export function isScrollHeld(): boolean {
+  return drag !== null;
+}
+
 /**
  * Hears a press on a scrollbar, the reader taking the page in hand: whatever
  * the page was moving for itself stops where it is (round 26, TECH-073).

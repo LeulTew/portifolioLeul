@@ -11,7 +11,7 @@
  * section navigation, which settles the chapters in between like the navbar.
  */
 import { chromeClearance } from './chromeInset';
-import { ownScroll } from './scrollGesture';
+import { forgetHeldScroll, ownScroll } from './scrollGesture';
 import { landSectionFocus } from './sectionLanding';
 import { subscribeSectionNavigation } from './sectionNavigation';
 import { viewOwner } from './viewOwner';
@@ -129,13 +129,28 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   let frame = 0;
   /** True while this module's own navigation is being published. */
   let issuing = false;
+  /**
+   * This module's reveals: their own key, so retiring one never drops another producer's write
+   * to the track, and a generation that a newer intent advances. A reveal still waiting for a
+   * held thumb is the reader's no longer once they have moved on (round 28, TECH-080).
+   */
+  const revealKey = {};
+  let generation = 0;
 
-  const nudge = (element: HTMLElement) => {
+  const nudge = (element: HTMLElement, inPlace = false) => {
+    const asked = generation;
     // Measured when it runs, as the latest reveal of this track (round 27, TECH-076).
     ownScroll(() => {
       const content = main();
-      if (!element.isConnected || !content) return;
+      if (asked !== generation || !element.isConnected || !content) return;
       const height = track.clientHeight || view.innerHeight;
+      // An in-place reveal never brings back a chapter the reader has left while it waited.
+      if (inPlace) {
+        let section: HTMLElement = element;
+        while (section.parentElement && section.parentElement !== content) section = section.parentElement;
+        const area = section.getBoundingClientRect();
+        if (area.bottom <= 0 || area.top >= height || content.closest('[inert]')) return;
+      }
       const box = revealBox(element);
       const margin = Math.min(REVEAL_MARGIN_PX, height * 0.12);
       const top = Math.max(margin, chromeClearance());
@@ -146,7 +161,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
       const from = renderedScrollTop?.() ?? track.scrollTop;
       track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange);
-    }, { key: track });
+    }, { key: revealKey });
   };
 
   /** `inPlace`: only within the chapter on screen; a chapter the reader left is never brought back. */
@@ -174,7 +189,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       frame = view.requestAnimationFrame(() => {
         frame = view.requestAnimationFrame(() => { if (root.activeElement === element) nudge(element); });
       });
-    } else nudge(element);
+    } else nudge(element, inPlace);
   };
   /*
    * Native validation focuses the first invalid field and scrolls it into
@@ -187,6 +202,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   const stopNewerIntent = onNewerIntent(root, () => issuing, () => {
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    generation++;
+    forgetHeldScroll(revealKey);
   });
 
   const hold = (event: Event) => {
@@ -471,11 +488,16 @@ export function installDocumentFocus({ main, navigate }: {
   };
 
   // Native validation aligns the field under the bar; its label, above it, is shown with it.
+  // Its own key and a generation newer intent advances, as in the 3D page (round 28, TECH-080).
+  const revealKey = {};
+  let generation = 0;
   const validation = validationPass(root, view, field => Boolean(main()?.contains(field)), field => {
+    const asked = generation;
     ownScroll(() => {
+      if (asked !== generation) return;
       const hidden = chromeClearance() - revealBox(field).top;
       if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
-    }, { key: root });
+    }, { key: revealKey });
   });
   // Requested feedback is brought in whole, then clear of the bar if that put it under it --
   // but only in the chapter on screen: a late answer never pulls the reader back to its section.
@@ -486,11 +508,15 @@ export function installDocumentFocus({ main, navigate }: {
     const section = sectionOf(content, element);
     const area = section?.getBoundingClientRect();
     if (!area || area.bottom <= 0 || area.top >= view.innerHeight) return;
+    const asked = generation;
     ownScroll(() => {
+      // Still the chapter on screen when it runs: the reader may have left it while it waited.
+      const now = section?.getBoundingClientRect();
+      if (asked !== generation || !element.isConnected || !now || now.bottom <= 0 || now.top >= view.innerHeight) return;
       element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       const hidden = chromeClearance() - revealBox(element).top;
       if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
-    }, { key: root });
+    }, { key: revealKey });
   };
 
   root.addEventListener('keydown', key, { capture: true, passive: true });
@@ -501,6 +527,8 @@ export function installDocumentFocus({ main, navigate }: {
   const stopNewerIntent = onNewerIntent(root, () => issuing, () => {
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    generation++;
+    forgetHeldScroll(revealKey);
   });
   return () => {
     stopNewerIntent();

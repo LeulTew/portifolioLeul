@@ -1,5 +1,5 @@
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
-import { forgetHeldScroll, ownScroll, subscribeScrollbarPress } from './scrollGesture';
+import { forgetHeldScroll, isScrollHeld, ownScroll, subscribeScrollbarPress } from './scrollGesture';
 
 /**
  * Scrolls a container to a position, smoothly, without asking the browser to
@@ -52,18 +52,31 @@ export function glideScrollTo(
   let stopPress: (() => void) | null = null;
   // One key for all this glide's frames: a newer frame replaces a held one, and stopping forgets it (round 27, TECH-075).
   const key = {};
+  /** The last frame's write, while it still waits for a held thumb: the glide is not over until it runs. */
+  let landing = false;
 
-  const stop = () => {
-    if (done) return;
-    done = true;
-    if (frame) cancelAnimationFrame(frame);
-    frame = 0;
-    forgetHeldScroll(key);
+  const detach = () => {
     stopPress?.();
     stopPress = null;
     for (const type of INTERRUPTS) {
       window.removeEventListener(type, stop, { capture: true } as EventListenerOptions);
     }
+  };
+  const stop = () => {
+    // A timer that ran out under a held thumb has not landed yet: cancelling or the reader's own
+    // input still retires the write it left (round 28, TECH-078).
+    if (landing) {
+      landing = false;
+      forgetHeldScroll(key);
+      detach();
+      return;
+    }
+    if (done) return;
+    done = true;
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    forgetHeldScroll(key);
+    detach();
   };
 
   // Nothing to travel: still tidy up the listeners we never added.
@@ -88,16 +101,20 @@ export function glideScrollTo(
     const elapsed = now() - start;
     const t = Math.min(1, Math.max(0, elapsed / durationMs));
     const at = from + distance * easeInOutCubic(t);
-    ownScroll(() => { container.scrollTop = at; }, { key });
-
-    if (t >= 1) {
-      // The last frame, if held, still lands: the glide has arrived, not been abandoned.
-      done = true;
-      stopPress?.();
-      stopPress = null;
-      for (const type of INTERRUPTS) {
-        window.removeEventListener(type, stop, { capture: true } as EventListenerOptions);
+    const last = t >= 1;
+    ownScroll(() => {
+      container.scrollTop = at;
+      if (last && landing) {
+        landing = false;
+        detach();
       }
+    }, { key });
+
+    if (last) {
+      done = true;
+      // Written already, or waiting for the thumb: until it runs, the glide can still be retired.
+      if (!isScrollHeld()) detach();
+      else landing = true;
       return;
     }
     frame = requestAnimationFrame(step);

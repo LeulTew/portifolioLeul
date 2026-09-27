@@ -429,7 +429,11 @@ is at the press. A held write measures the page when it runs, and
 carries a key for its purpose so only the latest runs: a glide's frames, a
 focus reveal and a resize anchor's settle had each measured against a page
 that had not moved yet, and a cancelled glide still ran (round 27,
-TECH-075/076/077). The browser puts the page back under a held thumb at places
+TECH-075/076/077). A held write also ends with the intent that asked
+for it: the reader's newer input, a cancellation or an unmount retires it, and
+an in-place reveal checks its chapter is still on screen when it runs; a
+glide whose clock ran out under the thumb has not landed until its write has
+(round 28, TECH-078/079/080). The browser puts the page back under a held thumb at places
 neither chose, and telling those from the reader's travel by position reversed,
 lost and invented requests; Chrome sends no pointer movement during a thumb
 drag to tell them apart by (rounds 25-26, TECH-069/070/072/073). With nothing

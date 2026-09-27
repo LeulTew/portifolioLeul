@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { subscribeSectionNavigation } from './sectionNavigation';
-import { ownScroll } from './scrollGesture';
+import { forgetHeldScroll, ownScroll } from './scrollGesture';
 
 const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
@@ -87,6 +87,8 @@ export function useResizeAnchor(enabled: boolean): void {
       // the next scroll samples the anchor afresh.
       cancelAnimationFrame(settling);
       settling = 0;
+      // So would a settle still waiting for a held thumb: the reader has moved on (round 28, TECH-079).
+      forgetHeldScroll(key);
     };
     const hold = (now: number) => {
       if (!holding) return;
