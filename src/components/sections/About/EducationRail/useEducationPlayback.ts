@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import gsap from 'gsap';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
+import { subscribeNavigationLeft } from '@/lib/scroll/navigationLeft';
 import { subscribeSectionNavigation, publishSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { writeAttribute, writeStyleProperty, cachedElement } from '@/lib/dom/cachedElement';
 import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
@@ -341,6 +342,16 @@ export function useEducationPlayback(
         request(direction === 'down' ? 1 : -1);
       }
     }, { startsOnly: true });
+    // A move with no gesture away from a navigation's landing ends its step aside, as a gesture
+    // would: a jump into the hand-off after the navbar's About rested on blank green (round 34, D-R34-001).
+    const unsubscribeLeft = subscribeNavigationLeft(direction => {
+      if (state !== 'outside') return;
+      wave = direction;
+      bypass = false;
+      navigation = null;
+      if (direction === 'down') handoffPending = true;
+      apply();
+    });
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       // Its own resume, and the replay of it after a rebuild, are not a new destination.
       if (target === 'about' && options?.resume) return;
@@ -457,6 +468,7 @@ export function useEducationPlayback(
       alive = false;
       requestRef.current = null;
       unsubscribeGesture();
+      unsubscribeLeft();
       unsubscribeNavigation();
       unsubscribeScroll();
       observer.disconnect();

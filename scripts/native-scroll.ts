@@ -16,27 +16,13 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Scope, delay, until, type Cdp } from './perf/harness';
 import { chromeExecutable, launchChrome, servePreview } from './perf/launch';
+import { NativeScrollUsageError, parseNativeScrollOptions } from './perf/nativeScrollOptions';
 
-const USAGE = 'Usage: bun run native:scroll [--theme light|dark] [--chrome <path>] [--chrome-arg <switch>]... [--url <origin> | --port <port>]';
 const WIDTH = 1440;
 const HEIGHT = 900;
 
 interface State { top: number; nav?: string; skills?: string; tv?: string; contact?: string }
 interface Outcome { theme: string; journey: string; pass: boolean; expected: string; measured: unknown }
-
-function options(argv: string[]) {
-  const read = (flag: string) => {
-    const index = argv.indexOf(flag);
-    return index >= 0 ? argv[index + 1] : undefined;
-  };
-  const theme = read('--theme');
-  if (theme && theme !== 'light' && theme !== 'dark') throw new Error(`--theme must be light or dark\n${USAGE}`);
-  const port = Number(read('--port') ?? 4320);
-  if (!Number.isInteger(port) || port <= 0) throw new Error(`--port must be a port number\n${USAGE}`);
-  // Extra Chrome switches, for diagnosing a GPU or a fallback: `--chrome-arg --disable-3d-apis`.
-  const args = argv.flatMap((flag, index) => (flag === '--chrome-arg' && argv[index + 1] ? [argv[index + 1]] : []));
-  return { url: read('--url'), port, chrome: read('--chrome'), args, themes: theme ? [theme] : ['light', 'dark'] };
-}
 
 const STATE = `(() => {
   const stage = id => document.querySelector('[data-testid="' + id + '"]')?.dataset.phase;
@@ -244,6 +230,30 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
     check('CTA, then the thumb', 'where the thumb left the page, not Contact', { dragged, after: now },
       dragged > 10 && Math.abs(now.top - dragged) <= 4 && now.nav !== 'Contact');
 
+    // Round 34 (D-R34-001): after the navbar's About, a move with no gesture -- a track click, the
+    // browser's find -- into About's hand-off or into Skills must still end in a chapter read.
+    const reading = (ids: readonly string[]) => until(() => evaluate<boolean>(
+      `${JSON.stringify(ids)}.some(id => document.querySelector('[data-testid="' + id + '"]')?.dataset.phase === 'reading')`),
+      { timeoutMs: 20_000, label: `${ids.join(' or ')} reading` }).then(() => true, () => false);
+    // Travel never skips a chapter: past About, the story owes Education first, as a thumb drag over it does.
+    for (const [label, stages, share] of [
+      ['into About\'s hand-off', ['education-stage'], 0.33],
+      ['into Skills', ['education-stage', 'skills-stage'], 1.5],
+    ] as const) {
+      await nav('about');
+      await delay(4500);
+      const from = (await state()).top;
+      // A place measured from the page, in the scroller's own units: this far down from About's landing.
+      const to = await evaluate<number>(`(() => { const s = window.__scroller, skills = document.getElementById('skills').getBoundingClientRect();
+        const content = s.scrollHeight - s.clientHeight, main = document.querySelector('main').scrollHeight - innerHeight;
+        return Math.round(s.scrollTop + skills.top * ${share} * content / main); })()`);
+      await evaluate(`window.__scroller.scrollTop = ${to}; 0`);
+      const read = await reading(stages);
+      now = await state();
+      const education = await evaluate<string>(`document.querySelector('[data-testid="education-stage"]')?.dataset.phase ?? ''`);
+      check(`a jump with no gesture ${label}`, `${stages.join(' or ')} reading`, { from, to, after: now, education, read }, read);
+    }
+
     check('no page errors', 'none', errors, errors.length === 0);
   } catch (error) {
     // What the page said is usually why a journey could not go on.
@@ -260,7 +270,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
 }
 
 async function main() {
-  const { url, port, chrome, args, themes } = options(process.argv.slice(2));
+  const { url, port, chrome, args, themes } = parseNativeScrollOptions(process.argv.slice(2));
   const scope = new Scope();
   const interrupt = () => { void scope.close().finally(() => process.exit(130)); };
   process.once('SIGINT', interrupt);
@@ -296,6 +306,7 @@ async function main() {
 }
 
 main().then(() => process.exit(), error => {
-  console.error(error);
-  process.exit(1);
+  // A usage mistake is said plainly and exits 2, as the perf budget's does.
+  console.error(error instanceof NativeScrollUsageError ? error.message : error);
+  process.exit(error instanceof NativeScrollUsageError ? 2 : 1);
 });

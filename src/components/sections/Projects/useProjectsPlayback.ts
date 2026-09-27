@@ -5,6 +5,7 @@ import { phaseFrameDelta } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
+import { subscribeNavigationLeft } from '@/lib/scroll/navigationLeft';
 import {
   publishSectionNavigation, subscribeSectionNavigation,
   type SectionNavigate, type SectionNavigationOptions,
@@ -399,6 +400,15 @@ export function useProjectsPlayback(
       pendingNavigation = null;
       apply();
     }, { startsOnly: true, ignoreTarget: ignoreSceneTarget });
+    // A move with no gesture away from a navigation's landing is an entry too (round 34, D-R34-001).
+    const unsubscribeLeft = subscribeNavigationLeft(direction => {
+      if (active || document.hidden) return;
+      resuming = false;
+      wave = direction;
+      bypass = false;
+      pendingNavigation = null;
+      apply();
+    });
     const forwardReturnKey = (event: KeyboardEvent) => {
       if (!active && side === 'after' && isContactEditingTarget(event.target)) {
         focusEditing(event);
@@ -494,6 +504,7 @@ export function useProjectsPlayback(
       unsubscribeHandoff();
       unsubscribeGesture();
       unsubscribeEntry();
+      unsubscribeLeft();
       unsubscribeNavigation();
       unsubscribeContactPose();
       unsubscribeScroll();

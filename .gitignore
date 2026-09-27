@@ -63,3 +63,6 @@ vite.config.js
 vite.config.d.ts
 vitest.config.js
 vitest.config.d.ts
+
+# Browser-automation output (Playwright MCP snapshots).
+.playwright-mcp/

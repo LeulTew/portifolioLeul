@@ -8,6 +8,7 @@ import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
+import { subscribeNavigationLeft } from '@/lib/scroll/navigationLeft';
 import { subscribeSectionNavigation, publishSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import {
   finishProjectsSkillsReturn, isProjectsReturnOwed, publishSkillsProjectsHandoff,
@@ -391,6 +392,15 @@ export function useSkillsPlayback(
       navigation = null;
       apply();
     }, { startsOnly: true });
+    // A move with no gesture away from a navigation's landing is an entry too: after the navbar's
+    // About, a jump into Skills rested on an empty chapter (round 34, D-R34-001).
+    const unsubscribeLeft = subscribeNavigationLeft(direction => {
+      if (state !== 'outside') return;
+      wave = direction;
+      bypass = false;
+      navigation = null;
+      apply();
+    });
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (options?.source === 'navbar') {
         const ownedFocus = panel.contains(document.activeElement);
@@ -511,6 +521,7 @@ export function useSkillsPlayback(
       for (const type of READER_INPUTS) window.removeEventListener(type, forget, { capture: true });
       unsubscribeGesture();
       unsubscribeEntryGesture();
+      unsubscribeLeft();
       unsubscribeNavigation();
       unsubscribeScroll();
       observer.disconnect();

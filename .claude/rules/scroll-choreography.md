@@ -454,6 +454,18 @@ change here with `bun run build && bun run native:scroll`, which presses the
 real thumb in a headed Chrome and asserts every hand-off and held-thumb journey
 above (round 31).
 
+**A navigation's step aside ends when the reader moves on, by any means
+(2026-09-27):** a staged chapter steps aside for a navigation so a jump across
+it is not taken over mid-flight. That hold ends at the reader's next gesture,
+and also once the page has rested where the navigation left it and then moved a
+clear distance (a third of the window) with no gesture at all -- a scrollbar
+track click, the browser's find, a restored position. The chapters hear that
+move as the start of a gesture in its direction (`navigationLeft.ts`). Only a
+gesture had ended it, so after the navbar's About a jump into About's hand-off
+or into Skills rested on a blank green or empty chapter for good (round 34,
+D-R34-001). Travel still never skips a chapter: past About, Education is owed
+first, as a thumb drag over it gives.
+
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the
 linear one has left the window, not only at its own edge. At the 900px

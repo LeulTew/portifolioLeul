@@ -157,7 +157,10 @@ to Projects framed, back from the TV's reader, back from Contact to the reader)
 and what the page may do while the thumb is held: nothing moves under a still
 thumb, a CTA asked for under it lands on release, a glide pressed while it runs
 stops there, and the reader's own key or drag under the thumb outlasts anything
-the page queued (rounds 25-31). It fails on any page error, and writes its
+the page queued (rounds 25-31). Two more journeys land the navbar on About and
+then move the page with no gesture at all -- as a track click or the browser's
+find does -- into About's hand-off and into Skills, and pass only when a chapter
+takes the reader (round 34). It fails on any page error, and writes its
 measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
 narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
 GPU or a fallback. Before any journey it checks that the page opened its 3D
