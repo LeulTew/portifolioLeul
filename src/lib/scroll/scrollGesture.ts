@@ -118,8 +118,6 @@ interface ScrollbarDrag {
   target: EventTarget | null;
   /** Where the thumb last put the page. */
   last: number;
-  /** Where the page last put itself during the drag, until the reader moves on from it. */
-  owned: number | null;
   started: boolean;
 }
 let drag: ScrollbarDrag | null = null;
@@ -127,30 +125,48 @@ let drag: ScrollbarDrag | null = null;
 /** Drag travel below this is the thumb settling under the pointer. */
 const DRAG_THRESHOLD = 4;
 
-/** The longest a native smooth scroll the page started is taken to run, should it never report its end. */
-const OWN_SMOOTH_SCROLL_MS = 1500;
-let smoothUntil = -Infinity;
+/** The page's own scroll writes held back while a thumb is held, in order. */
+const heldWrites: (() => void)[] = [];
+/** A runaway producer is not given an unbounded queue; the latest writes are kept. */
+const HELD_WRITES_MAX = 32;
+const pressListeners = new Set<() => void>();
 
 /**
  * Runs a scroll the page makes for itself -- a restore, a settle, a glide, a
- * forwarded wheel, a focus reveal -- so that a scrollbar held while it happens
- * does not report it as the reader's travel. Held still under an engaged TV, a
- * forwarded scroll of 160px read as a request and the TV began to retreat
- * (round 24, TECH-068).
+ * forwarded wheel, a focus reveal -- so that it is never taken for the reader's
+ * travel. Held still under an engaged TV, a forwarded scroll of 160px read as a
+ * request and the TV began to retreat (round 24, TECH-068).
  *
- * The browser does not always leave the written place standing: a thumb still
- * held puts the page back under it on the next scroll, and that return read as
- * the reader dragging back (round 25, TECH-069). So the drag keeps both places
- * -- where the thumb last put the page, and where the page put itself -- and
- * travel is only the reader's once it leaves both. A native smooth scroll is
- * the page's own until it ends, a new press on a scrollbar, or a newer write
- * of the page's own, never for a fixed time regardless (round 25, TECH-070).
+ * While a scrollbar thumb is held, the write waits for its release. The browser
+ * does not let a write stand under a held thumb: it puts the page back under
+ * the thumb, at places neither the thumb nor the page chose, and every attempt
+ * to tell those returns from the reader's own travel from the positions alone
+ * either invented requests or reversed and lost real ones -- Chrome sends the
+ * page no pointer movement during a thumb drag to tell them apart by (round 25,
+ * TECH-069/070; round 26, TECH-072/073). With nothing written under the thumb,
+ * every movement of the page while it is held is the reader's. The held writes
+ * run, in order, when the thumb is let go.
  */
-export function ownScroll<T>(write: () => T, { smooth = false }: { smooth?: boolean } = {}): T {
-  const result = write();
-  if (drag) drag.owned = drag.scroller.scrollTop;
-  smoothUntil = smooth ? performance.now() + OWN_SMOOTH_SCROLL_MS : -Infinity;
-  return result;
+export function ownScroll(write: () => void): void {
+  if (!drag) {
+    write();
+    return;
+  }
+  heldWrites.push(write);
+  if (heldWrites.length > HELD_WRITES_MAX) heldWrites.splice(0, heldWrites.length - HELD_WRITES_MAX);
+}
+
+/**
+ * Hears a press on a scrollbar, the reader taking the page in hand: whatever
+ * the page was moving for itself stops where it is (round 26, TECH-073).
+ */
+export function subscribeScrollbarPress(listener: () => void): () => void {
+  pressListeners.add(listener);
+  initScrollGesture();
+  return () => {
+    pressListeners.delete(listener);
+    if (listeners.size === 0 && pressListeners.size === 0) cleanupScrollGesture();
+  };
 }
 
 function scrollbarUnder(event: PointerEvent): Element | null {
@@ -167,26 +183,24 @@ function scrollbarUnder(event: PointerEvent): Element | null {
 }
 
 function onPointerDown(event: PointerEvent): void {
-  drag = null;
+  endDrag();
   if (event.button !== 0) return;
   const scroller = scrollbarUnder(event);
   if (!scroller) return;
-  // A press on a scrollbar stops a smooth scroll: what moves the page from here is the reader.
-  smoothUntil = -Infinity;
-  drag = { scroller, target: event.target, last: scroller.scrollTop, owned: null, started: false };
+  drag = { scroller, target: event.target, last: scroller.scrollTop, started: false };
+  pressListeners.forEach(listener => listener());
 }
 
 function onPointerMove(event: PointerEvent): void {
   // A release the page never heard ends the drag at the next move without a button held.
-  if (drag && event.buttons === 0) drag = null;
+  if (drag && event.buttons === 0) endDrag();
 }
 
 function endDrag(): void {
+  if (!drag) return;
   drag = null;
-}
-
-function onScrollEnd(): void {
-  smoothUntil = -Infinity;
+  const writes = heldWrites.splice(0);
+  for (const write of writes) write();
 }
 
 function onScroll(event: Event): void {
@@ -194,22 +208,12 @@ function onScroll(event: Event): void {
   const source = event.target === document ? document.scrollingElement : event.target;
   if (source !== drag.scroller) return;
   const top = drag.scroller.scrollTop;
-  if (performance.now() < smoothUntil) {
-    drag.owned = top;
-    return;
-  }
-  // Back under the thumb, or still where the page put itself: neither is the reader's travel.
-  const fromThumb = top - drag.last;
-  const fromOwn = drag.owned === null ? Infinity : top - drag.owned;
-  if (Math.abs(fromThumb) < DRAG_THRESHOLD || Math.abs(fromOwn) < DRAG_THRESHOLD) return;
-  const travelled = Math.abs(fromOwn) < Math.abs(fromThumb) ? fromOwn : fromThumb;
-  // Taken before the listeners hear it: a chapter they move settles the page from here.
+  const travelled = top - drag.last;
+  if (Math.abs(travelled) < DRAG_THRESHOLD) return;
   drag.last = top;
-  drag.owned = null;
   emit(travelled > 0 ? 'down' : 'up', !drag.started, drag.target);
   drag.started = true;
 }
-
 /** Starts listening. Safe to call more than once. */
 export function initScrollGesture(): () => void {
   if (typeof window === 'undefined' || started) return () => {};
@@ -228,7 +232,6 @@ export function initScrollGesture(): () => void {
   window.addEventListener('blur', endDrag, { passive: true });
   // Capture hears every scroller's own scroll, as well as the document's.
   window.addEventListener('scroll', onScroll, { capture: true, passive: true });
-  window.addEventListener('scrollend', onScrollEnd, { capture: true, passive: true });
 
   return cleanupScrollGesture;
 }
@@ -247,9 +250,8 @@ function cleanupScrollGesture(): void {
   window.removeEventListener('pointercancel', endDrag, { capture: true });
   window.removeEventListener('blur', endDrag);
   window.removeEventListener('scroll', onScroll, { capture: true });
-  window.removeEventListener('scrollend', onScrollEnd, { capture: true });
-  drag = null;
-  smoothUntil = -Infinity;
+  // Nothing written for the page is lost with the listeners.
+  endDrag();
   touchY = null;
   touchStarted = false;
   lastWheelAt = -Infinity;
@@ -266,13 +268,14 @@ export function subscribeScrollGesture(
   return () => {
     listeners.delete(listener);
     // Nothing is asking any more, so stop listening. Otherwise a section that
-    // unmounts leaves five window listeners running for the life of the page.
-    if (listeners.size === 0) cleanupScrollGesture();
+    // unmounts leaves its window listeners running for the life of the page.
+    if (listeners.size === 0 && pressListeners.size === 0) cleanupScrollGesture();
   };
 }
 
 /** Test helper: drops every listener and stops the window listeners. */
 export function resetScrollGesture(): void {
   listeners.clear();
+  pressListeners.clear();
   cleanupScrollGesture();
 }

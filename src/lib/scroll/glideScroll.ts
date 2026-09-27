@@ -1,5 +1,5 @@
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
-import { ownScroll } from './scrollGesture';
+import { ownScroll, subscribeScrollbarPress } from './scrollGesture';
 
 /**
  * Scrolls a container to a position, smoothly, without asking the browser to
@@ -49,12 +49,15 @@ export function glideScrollTo(
 
   let frame = 0;
   let done = false;
+  let stopPress: (() => void) | null = null;
 
   const stop = () => {
     if (done) return;
     done = true;
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
+    stopPress?.();
+    stopPress = null;
     for (const type of INTERRUPTS) {
       window.removeEventListener(type, stop, { capture: true } as EventListenerOptions);
     }
@@ -70,6 +73,8 @@ export function glideScrollTo(
   for (const type of INTERRUPTS) {
     window.addEventListener(type, stop, { passive: true, capture: true });
   }
+  // A press on a scrollbar is the reader taking the page too (round 26, TECH-073).
+  stopPress = subscribeScrollbarPress(stop);
 
   const start = now();
 

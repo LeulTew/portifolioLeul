@@ -637,18 +637,17 @@ function App() {
 
     const glide: ScrollBehavior = typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-    const smooth = glide === 'smooth';
     if (id === 'about') {
       const aboutEl = document.getElementById('about');
       if (aboutEl && typeof window !== 'undefined') {
         const top = aboutEl.offsetTop + aboutNavigationInset(window.innerHeight);
-        ownScroll(() => window.scrollTo({ top, behavior: glide }), { smooth });
+        ownScroll(() => window.scrollTo({ top, behavior: glide }));
         return;
       }
     }
 
     // The document's scroll padding clears the navbar for focus reveals; this landing keeps the section's own edge.
-    ownScroll(() => window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide }), { smooth });
+    ownScroll(() => window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide }));
   }, [scrollElement, trackFocus, cancelReplay]);
   useEffect(() => { scrollToSectionRef.current = scrollToSection; }, [scrollToSection]);
 

@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, sep } from 'node:path';
+import { join } from 'node:path';
 import {
   initScrollGesture,
   ownScroll,
   resetScrollGesture,
+  subscribeScrollbarPress,
   subscribeScrollGesture,
   type ScrollDirection,
 } from './scrollGesture';
+import { CENSUS_EXCLUDED, CENSUS_SOURCE, findUnownedScrollWriters } from '@/test/scrollWriterCensus';
 
 /**
  * A gesture is an intention, never a permission.
@@ -111,47 +113,45 @@ describe('scrollGesture', () => {
       ownScroll(() => { page.scrollTop = 4840; });
       page.dispatchEvent(new Event('scroll'));
       expect(seen).toEqual([]);
-      // What the reader moves the thumb by afterwards is still theirs.
+      // What the reader moves the thumb by is still theirs, measured from the thumb.
       travel(page, 4700);
       expect(seen).toEqual(['up']);
       off();
     });
 
-    it('keeps a smooth scroll of the page its own while it runs, whichever scroller moves', () => {
-      vi.useFakeTimers({ toFake: ['performance'] });
-      try {
-        const page = scroller();
-        const off = listen();
-        press(page, 1436);
-        ownScroll(() => {}, { smooth: true });
-        travel(page, 4600);
-        travel(page, 4200);
-        expect(seen).toEqual([]);
-        vi.advanceTimersByTime(1600);
-        travel(page, 4000);
-        expect(seen).toEqual(['up']);
-        off();
-      } finally {
-        vi.useRealTimers();
-      }
-    });
-
-    it('does not take the browser putting the page back under a held thumb for the reader dragging', () => {
-      // Round 25 (TECH-069): after a write of the page's own, the held thumb set the page back where it
-      // had it, and that return read as a drag the other way.
+    it('writes nothing under a held thumb, and makes the held writes, in order, on release', () => {
+      // Round 25-26 (TECH-069/072/073): the browser put the page back under the thumb at places neither
+      // chose, and telling those from the reader's travel by position reversed, lost and invented requests.
       const page = scroller();
       const off = listen();
       press(page, 1436);
       ownScroll(() => { page.scrollTop = 4840; });
+      ownScroll(() => { page.scrollTop += 10; });
+      expect(page.scrollTop).toBe(5000);
+      travel(page, 4900);
+      expect(seen).toEqual(['up']);
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4850);
       page.dispatchEvent(new Event('scroll'));
-      travel(page, 5000);
-      expect(seen).toEqual([]);
-      travel(page, 5100);
-      expect(seen).toEqual(['down']);
+      expect(seen).toEqual(['up']);
       off();
     });
 
-    it('does not report a chapter settling the page from inside the drag it answered, nor the thumb taking it back', () => {
+    it('keeps the direction of a small genuine drag whatever the page asked for meanwhile', () => {
+      // Round 26 (TECH-072): after an own write to 4840, a 6px thumb move up read as down.
+      const page = scroller();
+      const off = listen();
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 4840; });
+      travel(page, 4994);
+      ownScroll(() => { page.scrollTop = 5160; });
+      travel(page, 4900);
+      travel(page, 5000);
+      expect(seen).toEqual(['up', 'up', 'down']);
+      off();
+    });
+
+    it('holds a chapter settling the page from inside the drag it answered until the thumb is let go', () => {
       const page = scroller();
       const seenHere: ScrollDirection[] = [];
       const off = subscribeScrollGesture(direction => {
@@ -160,57 +160,76 @@ describe('scrollGesture', () => {
       });
       press(page, 1436);
       travel(page, 5200);
-      page.dispatchEvent(new Event('scroll'));
-      travel(page, 5200);
-      expect(seenHere).toEqual(['down']);
+      travel(page, 5260);
+      expect(seenHere).toEqual(['down', 'down']);
+      window.dispatchEvent(new PointerEvent('pointercancel'));
+      expect(page.scrollTop).toBe(5350);
       off();
     });
 
-    it("lets a new drag through once the page's own smooth scroll has ended, been pressed over, or been superseded", () => {
-      // Round 25 (TECH-070): a fixed 1500ms window swallowed a real drag after a short smooth scroll had ended.
+    it("tells the page's own movers the reader took the page, and makes held writes if nobody is left listening", () => {
       const page = scroller();
+      const pressed = vi.fn();
+      const offPress = subscribeScrollbarPress(pressed);
       const off = listen();
-      ownScroll(() => {}, { smooth: true });
-      window.dispatchEvent(new Event('scrollend'));
+      page.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 600, clientY: 400 }));
+      expect(pressed).not.toHaveBeenCalled();
       press(page, 1436);
-      travel(page, 5100);
-      expect(seen).toEqual(['down']);
-      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
-      ownScroll(() => {}, { smooth: true });
-      press(page, 1436);
-      travel(page, 5300);
-      expect(seen).toEqual(['down', 'down']);
-      ownScroll(() => {}, { smooth: true });
-      ownScroll(() => { page.scrollTop = 5310; });
-      travel(page, 5500);
-      expect(seen).toEqual(['down', 'down', 'down']);
+      expect(pressed).toHaveBeenCalledOnce();
+      ownScroll(() => { page.scrollTop = 4000; });
       off();
+      offPress();
+      expect(page.scrollTop).toBe(4000);
     });
   });
 
   it('routes every programmatic scroll write in the app through ownScroll', () => {
-    // Round 25 (TECH-071): a relative write in a portalled focus reveal bypassed it.
+    // Round 25-26 (TECH-071/074): a portalled reveal bypassed it, and a text scan missed writers.
     const root = join(process.cwd(), 'src');
-    const writer = /\.scroll(Top|Left)\s*[+\-*]?=(?!=)|\b(scrollTo|scrollBy|scrollIntoView)\(/;
     const bypasses: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const path = join(dir, entry.name);
-        if (entry.isDirectory()) { walk(path); continue; }
-        if (!/\.(ts|tsx)$/.test(entry.name) || /\.test\.(ts|tsx)$/.test(entry.name) || path.includes(`${sep}test${sep}`)) continue;
-        const lines = readFileSync(path, 'utf8').split(/\r?\n/);
-        lines.forEach((line, index) => {
-          const code = line.trim();
-          if (code.startsWith('*') || code.startsWith('//') || code.startsWith('/*') || !writer.test(code)) return;
-          // A read of the position, not a write.
-          if (/\.scroll(Top|Left)\s*[+\-*]?=(?!=)/.test(code) === false && !/\b(scrollTo|scrollBy|scrollIntoView)\(/.test(code)) return;
-          const context = lines.slice(Math.max(0, index - 4), index + 1).join('\n');
-          if (!context.includes('ownScroll(')) bypasses.push(`${path.slice(root.length + 1)}:${index + 1}: ${code}`);
-        });
+        if (entry.isDirectory()) {
+          if (path !== join(root, 'test')) walk(path);
+          continue;
+        }
+        if (!CENSUS_SOURCE.test(entry.name) || CENSUS_EXCLUDED.test(entry.name)) continue;
+        for (const writer of findUnownedScrollWriters(readFileSync(path, 'utf8'), entry.name)) {
+          bypasses.push(`${path.slice(root.length + 1)}:${writer.line}: ${writer.text}`);
+        }
       }
     };
     walk(root);
     expect(bypasses).toEqual([]);
+  });
+
+  describe('the scroll writer census itself', () => {
+    const flagged = (source: string, fileName = 'fixture.ts') =>
+      findUnownedScrollWriters(source, fileName).map(writer => writer.text);
+
+    it('finds every form of write outside ownScroll', () => {
+      expect(flagged('el.scrollTop = 1;')).toEqual(['el.scrollTop = 1']);
+      expect(flagged('el.scrollTop /= 2;')).toEqual(['el.scrollTop /= 2']);
+      expect(flagged('el.scrollLeft ??= 3;')).toEqual(['el.scrollLeft ??= 3']);
+      expect(flagged('el.scrollTop++; --el.scrollLeft;')).toEqual(['el.scrollTop++', '--el.scrollLeft']);
+      expect(flagged("el['scrollTop'] = 1;")).toEqual(["el['scrollTop'] = 1"]);
+      expect(flagged('el.scrollTo ({ top: 1 });')).toEqual(['el.scrollTo ({ top: 1 })']);
+      expect(flagged('el.scroll({ top: 1 }); scrollBy(0, 1);')).toEqual(['el.scroll({ top: 1 })', 'scrollBy(0, 1)']);
+      expect(flagged('node.scrollIntoView();', 'fixture.js')).toEqual(['node.scrollIntoView()']);
+      expect(flagged('ownScroll(() => {}); el.scrollTop = 2;')).toEqual(['el.scrollTop = 2']);
+      expect(flagged('// ownScroll(() => {\nel.scrollTop = 1;')).toEqual(['el.scrollTop = 1']);
+      expect(flagged('other(() => { el.scrollTop = 1; });')).toEqual(['el.scrollTop = 1']);
+    });
+
+    it('passes writes inside ownScroll however they are laid out, and never flags a read or a string', () => {
+      expect(flagged('ownScroll (() => { el.scrollTop = 1; });')).toEqual([]);
+      expect(flagged('ownScroll(function () { window.scrollBy(0, 1); });')).toEqual([]);
+      expect(flagged(`ownScroll(() => {\n  a();\n  b();\n  c();\n  d();\n  e();\n  el.scrollTop += 1;\n});`)).toEqual([]);
+      expect(flagged('ownScroll(() => el?.scrollIntoView({ block: "start" }));')).toEqual([]);
+      expect(flagged('const y = el.scrollTop; if (el.scrollTop === 0) f(el.scrollLeft);')).toEqual([]);
+      expect(flagged('const doc = "el.scrollTop = 1"; const t = `scrollTo(0)`;')).toEqual([]);
+    });
   });
 
   it('never cancels a wheel event', () => {
@@ -270,8 +289,8 @@ describe('scrollGesture', () => {
     }
     // The scrollbar's press, travel and release are heard the same way: never cancellable.
     const drag = add.mock.calls.filter(([type]) =>
-      ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'scroll', 'scrollend', 'blur'].includes(type as string));
-    expect(drag.length).toBe(7);
+      ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'scroll', 'blur'].includes(type as string));
+    expect(drag.length).toBe(6);
     for (const [, , options] of drag) expect(options).toMatchObject({ passive: true });
     add.mockRestore();
   });

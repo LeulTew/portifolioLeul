@@ -423,12 +423,15 @@ a settle, a glide, a forwarded wheel, a focus reveal -- runs through
 `ownScroll`, which moves a held drag's baseline with it: held still under an
 engaged TV, a forwarded scroll read as a request and the TV began to retreat
 (round 24, TECH-068). A new programmatic scroll write goes through it too.
-A held thumb can put the page back under itself after such a write; that return
-is not the reader either, so a drag keeps both places -- the thumb's and the
-page's own -- and travel is the reader's only once it leaves both (round 25,
-TECH-069). A native smooth scroll of the page's own ends with its scrollend, a
-new press on a scrollbar or a newer write, not after a fixed time regardless
-(round 25, TECH-070).
+While a scrollbar thumb is held, the page writes nothing: every scroll of its
+own waits for the release and then runs in order, and a glide stops where it
+is at the press. The browser puts the page back under a held thumb at places
+neither chose, and telling those from the reader's travel by position reversed,
+lost and invented requests; Chrome sends no pointer movement during a thumb
+drag to tell them apart by (rounds 25-26, TECH-069/070/072/073). With nothing
+written under the thumb, every movement while it is held is the reader's. A
+syntax-aware census test fails on any application scroll write outside
+`ownScroll` (round 26, TECH-074).
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the
