@@ -205,18 +205,17 @@ export function useSkillsPlayback(
       // beneath the hold: the gestures this chapter consumed were requests for its own
       // chapters, not travel past the next one. Wheeling the flat page past the last skill
       // otherwise landed on Contact, Projects skipped (round 9, D-FLAT-003).
-      const rect = rail.getBoundingClientRect();
       if (direction < 0 && !control) {
         // Natural reverse returns to Education's trailing edge; only the
         // explicitly labelled Back to About button jumps to About's heading.
-        scrollContainerBy(findScrollContainer(rail), rect.top - window.innerHeight);
+        scrollContainerBy(findScrollContainer(rail), () => rail.getBoundingClientRect().top - window.innerHeight);
         return;
       }
       const targetId = direction > 0 ? 'projects' : 'about';
       if (onNavigate) onNavigate(targetId);
       else {
         const target = document.getElementById(targetId);
-        if (target) scrollContainerBy(findScrollContainer(rail), target.getBoundingClientRect().top - 80);
+        if (target) scrollContainerBy(findScrollContainer(rail), () => target.getBoundingClientRect().top - 80);
       }
     };
     const leave = (direction: Direction, control = false) => {

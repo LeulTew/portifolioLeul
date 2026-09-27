@@ -425,7 +425,11 @@ engaged TV, a forwarded scroll read as a request and the TV began to retreat
 (round 24, TECH-068). A new programmatic scroll write goes through it too.
 While a scrollbar thumb is held, the page writes nothing: every scroll of its
 own waits for the release and then runs in order, and a glide stops where it
-is at the press. The browser puts the page back under a held thumb at places
+is at the press. A held write measures the page when it runs, and
+carries a key for its purpose so only the latest runs: a glide's frames, a
+focus reveal and a resize anchor's settle had each measured against a page
+that had not moved yet, and a cancelled glide still ran (round 27,
+TECH-075/076/077). The browser puts the page back under a held thumb at places
 neither chose, and telling those from the reader's travel by position reversed,
 lost and invented requests; Chrome sends no pointer movement during a thumb
 drag to tell them apart by (rounds 25-26, TECH-069/070/072/073). With nothing

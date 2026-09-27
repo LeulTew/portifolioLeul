@@ -47,6 +47,8 @@ export function useResizeAnchor(enabled: boolean): void {
     let settling = 0;
     let holding = 0;
     let holdUntil = 0;
+    // One purpose for every settle: held under a scrollbar thumb, only the latest runs, measured then (round 27, TECH-077).
+    const key = {};
 
     const sample = () => {
       sampling = 0;
@@ -59,10 +61,13 @@ export function useResizeAnchor(enabled: boolean): void {
     };
     const restore = () => {
       if (!anchor) return;
-      const rect = document.getElementById(anchor.id)?.getBoundingClientRect();
-      if (!rect || rect.height <= 0) return;
-      const drift = rect.top + anchor.ratio * rect.height - window.innerHeight / 2;
-      if (Math.abs(drift) >= 1) ownScroll(() => window.scrollBy({ top: drift, behavior: 'instant' }));
+      const at = anchor;
+      ownScroll(() => {
+        const rect = document.getElementById(at.id)?.getBoundingClientRect();
+        if (!rect || rect.height <= 0) return;
+        const drift = rect.top + at.ratio * rect.height - window.innerHeight / 2;
+        if (Math.abs(drift) >= 1) window.scrollBy({ top: drift, behavior: 'instant' });
+      }, { key });
     };
     const onResize = () => {
       restore();

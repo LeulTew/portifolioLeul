@@ -193,9 +193,10 @@ export function useProjectsPlayback(
         publishSectionNavigation(target, options);
         const destination = document.getElementById(target);
         if (destination) {
-          const rect = destination.getBoundingClientRect();
-          scrollContainerBy(findScrollContainer(rail),
-            options.edge === 'end' ? rect.bottom - window.innerHeight + 80 : rect.top - 80);
+          scrollContainerBy(findScrollContainer(rail), () => {
+            const rect = destination.getBoundingClientRect();
+            return options.edge === 'end' ? rect.bottom - window.innerHeight + 80 : rect.top - 80;
+          });
         }
       }
       navigating = false;

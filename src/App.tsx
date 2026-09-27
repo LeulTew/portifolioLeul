@@ -465,7 +465,7 @@ function App() {
       return null;
     }
     const offset = restoreTo(nextPages) ?? 0;
-    ownScroll(() => { track.scrollTop = offset * scrollable; });
+    ownScroll(() => { track.scrollTop = offset * scrollable; }, { key: track });
     restoredOffsetRef.current = offset;
     restoreSyncFramesRef.current = 2;
     return offset;
@@ -614,7 +614,7 @@ function App() {
         glideRef.current = null;
         if (scrollStateRef.current) settleScrollPosition(scrollStateRef.current, ratio);
         else {
-          ownScroll(() => { container.scrollTop = ratio * containerScrollable; });
+          ownScroll(() => { container.scrollTop = ratio * containerScrollable; }, { key: container });
           container.dispatchEvent(new Event('scroll'));
         }
         return;
@@ -629,7 +629,7 @@ function App() {
         : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source) : -80;
       const top = landing ? landing.getBoundingClientRect().top + window.scrollY - 80
         : id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
-      ownScroll(() => window.scrollTo({ top: Math.max(0, top), behavior: 'auto' }));
+      ownScroll(() => window.scrollTo({ top: Math.max(0, top), behavior: 'auto' }), { key: window });
       // An unchanged native position emits no scroll event on a repeated visit.
       window.dispatchEvent(new Event('scroll'));
       return;
@@ -641,13 +641,13 @@ function App() {
       const aboutEl = document.getElementById('about');
       if (aboutEl && typeof window !== 'undefined') {
         const top = aboutEl.offsetTop + aboutNavigationInset(window.innerHeight);
-        ownScroll(() => window.scrollTo({ top, behavior: glide }));
+        ownScroll(() => window.scrollTo({ top, behavior: glide }), { key: window });
         return;
       }
     }
 
     // The document's scroll padding clears the navbar for focus reveals; this landing keeps the section's own edge.
-    ownScroll(() => window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide }));
+    ownScroll(() => window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide }), { key: window });
   }, [scrollElement, trackFocus, cancelReplay]);
   useEffect(() => { scrollToSectionRef.current = scrollToSection; }, [scrollToSection]);
 

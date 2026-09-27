@@ -8,7 +8,7 @@ type ScrollPosition = Pick<ScrollControlsState, 'el' | 'fixed' | 'offset' | 'del
 /** Consume travel spent under a completed chapter, once, before its overlay releases. */
 export function settleScrollPosition(scroll: ScrollPosition, offset: number): void {
   const range = Math.max(scroll.el.scrollHeight - scroll.el.clientHeight, 0);
-  ownScroll(() => { scroll.el.scrollTop = Math.min(1, Math.max(0, offset)) * range; });
+  ownScroll(() => { scroll.el.scrollTop = Math.min(1, Math.max(0, offset)) * range; }, { key: scroll.el });
   // Announce the position to Drei's private damping target through its public scrollport.
   scroll.el.dispatchEvent(new Event('scroll'));
   scroll.offset = readScrollOffset(scroll.el);

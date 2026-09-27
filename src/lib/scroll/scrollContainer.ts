@@ -30,20 +30,30 @@ export function findScrollContainer(element: Element | null): HTMLElement | null
  * For wheel input over body-level surfaces (the TV reader, Skills, the rail,
  * the hero cue) that sit outside the scroll layer and would otherwise swallow
  * it. Instant: native smooth scrolling fights drei's own damping.
+ *
+ * A delta worked out from the page's geometry is passed as a function, so it
+ * is measured when the move runs: held under a scrollbar thumb, a move measured
+ * before it ran landed against a page that had not moved (round 27, TECH-077).
  */
 export function scrollContainerBy(
   container: HTMLElement | null,
-  delta: number
+  delta: number | (() => number)
 ): void {
-  if (!Number.isFinite(delta) || delta === 0) return;
+  if (typeof delta === 'number' && (!Number.isFinite(delta) || delta === 0)) return;
   const behavior: ScrollBehavior = 'auto';
+  const amount = () => {
+    const value = typeof delta === 'function' ? delta() : delta;
+    return Number.isFinite(value) ? value : 0;
+  };
 
   if (container) {
     ownScroll(() => {
+      const top = amount();
+      if (top === 0) return;
       if (typeof container.scrollBy === 'function') {
-        container.scrollBy({ top: delta, behavior });
+        container.scrollBy({ top, behavior });
       } else {
-        container.scrollTop += delta;
+        container.scrollTop += top;
       }
     });
     return;
@@ -51,6 +61,9 @@ export function scrollContainerBy(
 
   if (typeof window === 'undefined') return;
   if (typeof window.scrollBy === 'function') {
-    ownScroll(() => window.scrollBy({ top: delta, behavior }));
+    ownScroll(() => {
+      const top = amount();
+      if (top !== 0) window.scrollBy({ top, behavior });
+    });
   }
 }

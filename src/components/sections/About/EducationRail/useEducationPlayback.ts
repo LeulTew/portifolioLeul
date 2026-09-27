@@ -165,10 +165,12 @@ export function useEducationPlayback(
           aligning = false;
         }
       } else {
-        const rect = host.getBoundingClientRect();
-        scrollContainerBy(findScrollContainer(host), target === 'skills'
-          ? rect.bottom
-          : Math.min(rect.top - 1, about?.getBoundingClientRect().top ?? 0));
+        scrollContainerBy(findScrollContainer(host), () => {
+          const rect = host.getBoundingClientRect();
+          return target === 'skills'
+            ? rect.bottom
+            : Math.min(rect.top - 1, about?.getBoundingClientRect().top ?? 0);
+        });
       }
     };
     const settleLanding = () => {

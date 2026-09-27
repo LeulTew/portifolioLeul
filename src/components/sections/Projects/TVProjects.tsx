@@ -179,7 +179,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
 
   useEffect(() => {
     const copy = content.current;
-    if (copy) ownScroll(() => { copy.scrollTop = 0; });
+    if (copy) ownScroll(() => { copy.scrollTop = 0; }, { key: copy });
     paging.current?.reset();
   }, [project?.id, details]);
   useOverflowHint(content, `${project?.id}:${details}:${expanded}`);

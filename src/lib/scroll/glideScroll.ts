@@ -1,5 +1,5 @@
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
-import { ownScroll, subscribeScrollbarPress } from './scrollGesture';
+import { forgetHeldScroll, ownScroll, subscribeScrollbarPress } from './scrollGesture';
 
 /**
  * Scrolls a container to a position, smoothly, without asking the browser to
@@ -50,12 +50,15 @@ export function glideScrollTo(
   let frame = 0;
   let done = false;
   let stopPress: (() => void) | null = null;
+  // One key for all this glide's frames: a newer frame replaces a held one, and stopping forgets it (round 27, TECH-075).
+  const key = {};
 
   const stop = () => {
     if (done) return;
     done = true;
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
+    forgetHeldScroll(key);
     stopPress?.();
     stopPress = null;
     for (const type of INTERRUPTS) {
@@ -84,10 +87,17 @@ export function glideScrollTo(
 
     const elapsed = now() - start;
     const t = Math.min(1, Math.max(0, elapsed / durationMs));
-    ownScroll(() => { container.scrollTop = from + distance * easeInOutCubic(t); });
+    const at = from + distance * easeInOutCubic(t);
+    ownScroll(() => { container.scrollTop = at; }, { key });
 
     if (t >= 1) {
-      stop();
+      // The last frame, if held, still lands: the glide has arrived, not been abandoned.
+      done = true;
+      stopPress?.();
+      stopPress = null;
+      for (const type of INTERRUPTS) {
+        window.removeEventListener(type, stop, { capture: true } as EventListenerOptions);
+      }
       return;
     }
     frame = requestAnimationFrame(step);

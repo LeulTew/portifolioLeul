@@ -126,10 +126,21 @@ let drag: ScrollbarDrag | null = null;
 const DRAG_THRESHOLD = 4;
 
 /** The page's own scroll writes held back while a thumb is held, in order. */
-const heldWrites: (() => void)[] = [];
+const heldWrites: { write: () => void; key?: unknown }[] = [];
 /** A runaway producer is not given an unbounded queue; the latest writes are kept. */
 const HELD_WRITES_MAX = 32;
 const pressListeners = new Set<() => void>();
+
+export interface OwnScrollOptions {
+  /**
+   * What the write is for. A held write is replaced by a newer one for the same
+   * purpose, so only the latest intent runs on release: a glide's frames, a
+   * focus reveal, a resize anchor's settle each measure where they stand when
+   * they finally run, never against a page that has not moved yet (round 27,
+   * TECH-075/076/077).
+   */
+  key?: unknown;
+}
 
 /**
  * Runs a scroll the page makes for itself -- a restore, a settle, a glide, a
@@ -145,15 +156,26 @@ const pressListeners = new Set<() => void>();
  * page no pointer movement during a thumb drag to tell them apart by (round 25,
  * TECH-069/070; round 26, TECH-072/073). With nothing written under the thumb,
  * every movement of the page while it is held is the reader's. The held writes
- * run, in order, when the thumb is let go.
+ * run, in order, when the thumb is let go; a write that works out where to go
+ * from the page's geometry does so inside `write`, so it measures then.
  */
-export function ownScroll(write: () => void): void {
+export function ownScroll(write: () => void, { key }: OwnScrollOptions = {}): void {
   if (!drag) {
     write();
     return;
   }
-  heldWrites.push(write);
+  if (key !== undefined) {
+    const index = heldWrites.findIndex(held => held.key === key);
+    if (index >= 0) heldWrites.splice(index, 1);
+  }
+  heldWrites.push({ write, key });
   if (heldWrites.length > HELD_WRITES_MAX) heldWrites.splice(0, heldWrites.length - HELD_WRITES_MAX);
+}
+
+/** Drops a held write that is no longer wanted, such as a cancelled glide's frame. */
+export function forgetHeldScroll(key: unknown): void {
+  const index = heldWrites.findIndex(held => held.key === key);
+  if (index >= 0) heldWrites.splice(index, 1);
 }
 
 /**
@@ -200,7 +222,7 @@ function endDrag(): void {
   if (!drag) return;
   drag = null;
   const writes = heldWrites.splice(0);
-  for (const write of writes) write();
+  for (const { write } of writes) write();
 }
 
 function onScroll(event: Event): void {

@@ -131,19 +131,22 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   let issuing = false;
 
   const nudge = (element: HTMLElement) => {
-    const content = main();
-    if (!element.isConnected || !content) return;
-    const height = track.clientHeight || view.innerHeight;
-    const box = revealBox(element);
-    const margin = Math.min(REVEAL_MARGIN_PX, height * 0.12);
-    const top = Math.max(margin, chromeClearance());
-    let shift = box.bottom > height - margin ? box.bottom - (height - margin) : 0;
-    if (box.top - shift < top) shift = box.top - top;
-    if (Math.abs(shift) < 1) return;
-    const trackRange = Math.max(track.scrollHeight - track.clientHeight, 1);
-    const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
-    const from = renderedScrollTop?.() ?? track.scrollTop;
-    ownScroll(() => { track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange); });
+    // Measured when it runs, as the latest reveal of this track (round 27, TECH-076).
+    ownScroll(() => {
+      const content = main();
+      if (!element.isConnected || !content) return;
+      const height = track.clientHeight || view.innerHeight;
+      const box = revealBox(element);
+      const margin = Math.min(REVEAL_MARGIN_PX, height * 0.12);
+      const top = Math.max(margin, chromeClearance());
+      let shift = box.bottom > height - margin ? box.bottom - (height - margin) : 0;
+      if (box.top - shift < top) shift = box.top - top;
+      if (Math.abs(shift) < 1) return;
+      const trackRange = Math.max(track.scrollHeight - track.clientHeight, 1);
+      const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
+      const from = renderedScrollTop?.() ?? track.scrollTop;
+      track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange);
+    }, { key: track });
   };
 
   /** `inPlace`: only within the chapter on screen; a chapter the reader left is never brought back. */
@@ -294,18 +297,25 @@ function onNewerIntent(root: Document, issuing: () => boolean, cancel: () => voi
  * are converted to the box's own before scrolling.
  */
 function revealInOwnBox(element: HTMLElement, view: Window): void {
-  for (let box = element.parentElement; box && box !== element.ownerDocument.body; box = box.parentElement) {
-    if (box.scrollHeight <= box.clientHeight + 1 || !/auto|scroll|overlay/.test(view.getComputedStyle(box).overflowY)) continue;
-    const outer = box.getBoundingClientRect();
-    const inner = element.getBoundingClientRect();
-    const scale = box.clientHeight > 0 && outer.height > 0 ? outer.height / box.clientHeight : 1;
-    const margin = OWN_BOX_MARGIN_PX * scale;
-    let shift = inner.bottom > outer.bottom - margin ? inner.bottom - (outer.bottom - margin) : 0;
-    if (inner.top - shift < outer.top + margin) shift = inner.top - (outer.top + margin);
-    if (Math.abs(shift) >= 1) ownScroll(() => { box.scrollTop += shift / scale; });
-    return;
-  }
+  // Measured when it runs, and one per box: a second Tab under a held thumb added its shift to a
+  // page the first had not moved yet, and the focused link ended out of sight (round 27, TECH-076).
+  ownScroll(() => {
+    for (let box = element.parentElement; box && box !== element.ownerDocument.body; box = box.parentElement) {
+      if (box.scrollHeight <= box.clientHeight + 1 || !/auto|scroll|overlay/.test(view.getComputedStyle(box).overflowY)) continue;
+      const outer = box.getBoundingClientRect();
+      const inner = element.getBoundingClientRect();
+      const scale = box.clientHeight > 0 && outer.height > 0 ? outer.height / box.clientHeight : 1;
+      const margin = OWN_BOX_MARGIN_PX * scale;
+      let shift = inner.bottom > outer.bottom - margin ? inner.bottom - (outer.bottom - margin) : 0;
+      if (inner.top - shift < outer.top + margin) shift = inner.top - (outer.top + margin);
+      if (Math.abs(shift) >= 1) box.scrollTop += shift / scale;
+      return;
+    }
+  }, { key: OWN_BOX_REVEAL });
 }
+
+/** The one purpose every portalled-box reveal shares: only the latest focused stop is shown. */
+const OWN_BOX_REVEAL = Symbol('own-box reveal');
 
 /** The direct child of `content` that holds `element`: its section. */
 function sectionOf(content: HTMLElement, element: Element): HTMLElement | null {
@@ -462,8 +472,10 @@ export function installDocumentFocus({ main, navigate }: {
 
   // Native validation aligns the field under the bar; its label, above it, is shown with it.
   const validation = validationPass(root, view, field => Boolean(main()?.contains(field)), field => {
-    const hidden = chromeClearance() - revealBox(field).top;
-    if (hidden >= 1) ownScroll(() => view.scrollBy({ top: -hidden, behavior: 'auto' }));
+    ownScroll(() => {
+      const hidden = chromeClearance() - revealBox(field).top;
+      if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+    }, { key: root });
   });
   // Requested feedback is brought in whole, then clear of the bar if that put it under it --
   // but only in the chapter on screen: a late answer never pulls the reader back to its section.
@@ -474,9 +486,11 @@ export function installDocumentFocus({ main, navigate }: {
     const section = sectionOf(content, element);
     const area = section?.getBoundingClientRect();
     if (!area || area.bottom <= 0 || area.top >= view.innerHeight) return;
-    ownScroll(() => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
-    const hidden = chromeClearance() - revealBox(element).top;
-    if (hidden >= 1) ownScroll(() => view.scrollBy({ top: -hidden, behavior: 'auto' }));
+    ownScroll(() => {
+      element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const hidden = chromeClearance() - revealBox(element).top;
+      if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+    }, { key: root });
   };
 
   root.addEventListener('keydown', key, { capture: true, passive: true });
