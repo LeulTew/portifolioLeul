@@ -36,6 +36,10 @@ describe('deployment response security', () => {
       // Declared, not left to the host: the value Vercel serves by default, so it holds on any host
       // and a review of this file sees the whole set (round 39, TECH-090).
       'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+      // No other site's window keeps a handle on this one, and no other site embeds its files:
+      // every link out is noopener and every asset loads same-origin, so neither costs anything.
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Resource-Policy': 'same-origin',
     });
     expect(policy.get('default-src')).toEqual(["'self'"]);
     for (const directive of ['base-uri', 'object-src', 'frame-src', 'frame-ancestors', 'script-src-attr']) {
