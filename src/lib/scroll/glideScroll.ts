@@ -79,11 +79,11 @@ export function glideScrollTo(
     detach();
   };
 
-  // Nothing to travel: still tidy up the listeners we never added.
+  // Nothing to travel: one write, still retired by cancelling while it waits (round 29, TECH-084).
   if (distance === 0 || durationMs <= 0) {
-    ownScroll(() => { container.scrollTop = to; });
+    ownScroll(() => { container.scrollTop = to; }, { key });
     done = true;
-    return { cancel: () => {} };
+    return { cancel: () => forgetHeldScroll(key) };
   }
 
   for (const type of INTERRUPTS) {

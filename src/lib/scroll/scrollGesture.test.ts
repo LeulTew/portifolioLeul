@@ -128,12 +128,10 @@ describe('scrollGesture', () => {
       ownScroll(() => { page.scrollTop = 4840; });
       ownScroll(() => { page.scrollTop += 10; });
       expect(page.scrollTop).toBe(5000);
-      travel(page, 4900);
-      expect(seen).toEqual(['up']);
       window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
       expect(page.scrollTop).toBe(4850);
       page.dispatchEvent(new Event('scroll'));
-      expect(seen).toEqual(['up']);
+      expect(seen).toEqual([]);
       off();
     });
 
@@ -151,7 +149,8 @@ describe('scrollGesture', () => {
       off();
     });
 
-    it('holds a chapter settling the page from inside the drag it answered until the thumb is let go', () => {
+    it("lets the reader's own travel under the thumb stand over a chapter's settle asked before it", () => {
+      // Round 29 (TECH-081): what the page asked for before the reader moved the thumb is theirs no longer.
       const page = scroller();
       const seenHere: ScrollDirection[] = [];
       const off = subscribeScrollGesture(direction => {
@@ -160,13 +159,51 @@ describe('scrollGesture', () => {
       });
       press(page, 1436);
       travel(page, 5200);
-      travel(page, 5260);
-      expect(seenHere).toEqual(['down', 'down']);
+      expect(seenHere).toEqual(['down']);
+      // Released without moving on: the chapter's settle, asked in answer to that travel, lands.
       window.dispatchEvent(new PointerEvent('pointercancel'));
       expect(page.scrollTop).toBe(5350);
+      seenHere.length = 0;
+      press(page, 1436);
+      travel(page, 5500);
+      travel(page, 5560);
+      expect(seenHere).toEqual(['down', 'down']);
+      window.dispatchEvent(new PointerEvent('pointercancel'));
+      expect(page.scrollTop).toBe(5560);
       off();
     });
 
+    it("retires what the page queued once the reader asks for something else, keeping what that input itself asks", () => {
+      // Round 29 (TECH-081/082): an End landing and reveals queued under the thumb ran over the reader's later travel.
+      const page = scroller();
+      const off = listen();
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 9000; });
+      // The key's own answer, queued by a bubble-phase handler, is what the reader asked for now.
+      const answer = () => ownScroll(() => { page.scrollTop = 4100; });
+      window.addEventListener('keydown', answer);
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+      window.removeEventListener('keydown', answer);
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4100);
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 9000; });
+      travel(page, 4000);
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4000);
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 9000; });
+      window.dispatchEvent(new WheelEvent('wheel', { deltaY: 100 }));
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4000);
+      // A key that asks for no travel retires nothing.
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 5000; });
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(5000);
+      off();
+    });
     it("tells the page's own movers the reader took the page, and makes held writes if nobody is left listening", () => {
       const page = scroller();
       const pressed = vi.fn();
@@ -283,7 +320,7 @@ describe('scrollGesture', () => {
         type as string
       )
     );
-    expect(scrollish.length).toBe(5);
+    expect(scrollish.length).toBe(8);
     for (const [, , options] of scrollish) {
       expect(options).toMatchObject({ passive: true });
     }

@@ -433,7 +433,11 @@ TECH-075/076/077). A held write also ends with the intent that asked
 for it: the reader's newer input, a cancellation or an unmount retires it, and
 an in-place reveal checks its chapter is still on screen when it runs; a
 glide whose clock ran out under the thumb has not landed until its write has
-(round 28, TECH-078/079/080). The browser puts the page back under a held thumb at places
+(round 28, TECH-078/079/080). One rule covers every producer: while a thumb is
+held, the reader's own input -- moving the thumb, a wheel, a touch, a scroll key
+or Tab -- retires everything the page queued before it, heard in the capture
+phase so the input's own answer still stands; an End landing and reveals had
+each run over the reader's later travel (round 29, TECH-081/082). The browser puts the page back under a held thumb at places
 neither chose, and telling those from the reader's travel by position reversed,
 lost and invented requests; Chrome sends no pointer movement during a thumb
 drag to tell them apart by (rounds 25-26, TECH-069/070/072/073). With nothing

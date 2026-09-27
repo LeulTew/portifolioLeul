@@ -204,6 +204,7 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     validation.cancel();
     generation++;
     forgetHeldScroll(revealKey);
+    forgetHeldScroll(OWN_BOX_REVEAL);
   });
 
   const hold = (event: Event) => {
@@ -256,6 +257,10 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     stopNewerIntent();
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    // Its reveals end with it (round 29, TECH-083).
+    generation++;
+    forgetHeldScroll(revealKey);
+    forgetHeldScroll(OWN_BOX_REVEAL);
   };
 }
 
@@ -317,6 +322,8 @@ function revealInOwnBox(element: HTMLElement, view: Window): void {
   // Measured when it runs, and one per box: a second Tab under a held thumb added its shift to a
   // page the first had not moved yet, and the focused link ended out of sight (round 27, TECH-076).
   ownScroll(() => {
+    // Only a stop that still holds focus when it runs: the reader may have moved on (round 29, TECH-082).
+    if (!element.isConnected || element.ownerDocument.activeElement !== element) return;
     for (let box = element.parentElement; box && box !== element.ownerDocument.body; box = box.parentElement) {
       if (box.scrollHeight <= box.clientHeight + 1 || !/auto|scroll|overlay/.test(view.getComputedStyle(box).overflowY)) continue;
       const outer = box.getBoundingClientRect();
@@ -455,6 +462,9 @@ export function installDocumentFocus({ main, navigate }: {
   let from: string | null = null;
   let frame = 0;
   let issuing = false;
+  // Its reveals' own key and a generation newer intent advances, as in the 3D page (round 28, TECH-080).
+  const revealKey = {};
+  let generation = 0;
 
   const key = (event: KeyboardEvent) => {
     if (event.key !== 'Tab') return;
@@ -482,15 +492,16 @@ export function installDocumentFocus({ main, navigate }: {
     view.cancelAnimationFrame(frame);
     frame = view.requestAnimationFrame(() => {
       frame = view.requestAnimationFrame(() => {
-        if (root.activeElement === element) ownScroll(() => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+        const asked = generation;
+        // Checked when it runs: still the focused stop, and no newer intent since (round 29, TECH-082).
+        ownScroll(() => {
+          if (asked === generation && root.activeElement === element) element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }, { key: revealKey });
       });
     });
   };
 
   // Native validation aligns the field under the bar; its label, above it, is shown with it.
-  // Its own key and a generation newer intent advances, as in the 3D page (round 28, TECH-080).
-  const revealKey = {};
-  let generation = 0;
   const validation = validationPass(root, view, field => Boolean(main()?.contains(field)), field => {
     const asked = generation;
     ownScroll(() => {
@@ -539,5 +550,8 @@ export function installDocumentFocus({ main, navigate }: {
     root.removeEventListener(REVEAL_REQUEST, requested, true);
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    // Its reveals end with it (round 29, TECH-083).
+    generation++;
+    forgetHeldScroll(revealKey);
   };
 }

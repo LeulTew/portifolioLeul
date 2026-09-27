@@ -230,6 +230,23 @@ function endDrag(): void {
   for (const { write } of writes) write();
 }
 
+/**
+ * The reader's own input while a thumb is held: whatever the page had queued to
+ * do on release was asked for before it, and the reader has since said what
+ * they want. Heard in the capture phase, so it retires only what came earlier;
+ * a key's own consequence, queued by the handlers that answer it, still stands.
+ * One rule for every producer, rather than each remembering to cancel: an End
+ * landing, a cross-chapter Tab reveal and a portalled reader's reveal had each
+ * run over the reader's later travel (round 29, TECH-081/082).
+ */
+function retireHeldWrites(): void {
+  if (drag) heldWrites.length = 0;
+}
+
+function onReaderKey(event: KeyboardEvent): void {
+  if (event.key === 'Tab' || scrollKeyIntent(event)) retireHeldWrites();
+}
+
 function onScroll(event: Event): void {
   if (!drag) return;
   const source = event.target === document ? document.scrollingElement : event.target;
@@ -238,6 +255,8 @@ function onScroll(event: Event): void {
   const travelled = top - drag.last;
   if (Math.abs(travelled) < DRAG_THRESHOLD) return;
   drag.last = top;
+  // The thumb moving is the reader's travel: nothing asked for before it still stands.
+  heldWrites.length = 0;
   emit(travelled > 0 ? 'down' : 'up', !drag.started, drag.target);
   drag.started = true;
 }
@@ -259,6 +278,10 @@ export function initScrollGesture(): () => void {
   window.addEventListener('blur', endDrag, { passive: true });
   // Capture hears every scroller's own scroll, as well as the document's.
   window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  // The reader's own input while a thumb is held retires what the page queued before it.
+  window.addEventListener('wheel', retireHeldWrites, { capture: true, passive: true });
+  window.addEventListener('touchstart', retireHeldWrites, { capture: true, passive: true });
+  window.addEventListener('keydown', onReaderKey, { capture: true, passive: true });
 
   return cleanupScrollGesture;
 }
@@ -277,6 +300,9 @@ function cleanupScrollGesture(): void {
   window.removeEventListener('pointercancel', endDrag, { capture: true });
   window.removeEventListener('blur', endDrag);
   window.removeEventListener('scroll', onScroll, { capture: true });
+  window.removeEventListener('wheel', retireHeldWrites, { capture: true });
+  window.removeEventListener('touchstart', retireHeldWrites, { capture: true });
+  window.removeEventListener('keydown', onReaderKey, { capture: true });
   // Nothing written for the page is lost with the listeners.
   endDrag();
   touchY = null;
