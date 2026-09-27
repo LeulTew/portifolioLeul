@@ -884,7 +884,9 @@ describe('Skills completed-beat playback', () => {
       staged = false;
       const onNavigate = navigate();
       mount(onNavigate);
-      // Round 15 (TECH-053): a scrollbar drag outlasts any window after a discrete input.
+      // Round 15 (TECH-053): a scrollbar drag outlasts any window after a discrete input. It
+      // begins with the press on the scrollbar, the reader's own input to this layout.
+      act(() => { window.dispatchEvent(new Event('pointerdown')); });
       now += 5000;
       top = -2000;
       act(() => { window.dispatchEvent(new Event('scroll')); });
@@ -895,6 +897,30 @@ describe('Skills completed-beat playback', () => {
       await act(async () => {});
       expect(stage()).toHaveAttribute('data-phase', 'reading');
       expect(index()).toBe(3);
+    });
+
+    it('takes no place from a layout the reader has not touched', async () => {
+      // Round 22 (D-MOTION-005): a window crossing the staging size and back sampled the half-built
+      // page, where Skills lay across the line, and the staged reader resumed chapter 4 over Contact.
+      vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+        if (this.id === 'skills') return DOMRect.fromRect({ x: 0, y: top, width: 1440, height: 4320 });
+        const chapter = this instanceof HTMLElement ? this.dataset.skillChapter : undefined;
+        if (chapter !== undefined) return DOMRect.fromRect({ x: 0, y: top + 200 + Number(chapter) * 700, width: 1440, height: 700 });
+        return originalRect.call(this);
+      });
+      staged = false;
+      const onNavigate = navigate();
+      top = -2600;
+      mount(onNavigate);
+      act(() => { window.dispatchEvent(new Event('scroll')); });
+      advance(20);
+      top = 7000;
+      staged = true;
+      act(() => mediaListeners.get(SKILLS_STAGE_QUERY)?.forEach(listener => listener({ matches: true })));
+      advance(100);
+      await act(async () => {});
+      expect(stage()).toHaveAttribute('data-phase', 'outside');
+      expect(onNavigate).not.toHaveBeenCalledWith('skills', expect.objectContaining({ resume: true }));
     });
   });
 

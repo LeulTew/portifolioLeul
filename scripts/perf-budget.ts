@@ -27,7 +27,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
-  Scope, assertPortFree, awaitOwnedPreview, createCdp, delay, openSocket, ownProcess, scoped, terminateTree, until, type Cdp,
+  Scope, assertPortFree, awaitOwnedPreview, createCdp, delay, openSocket, ownProcess, removeOwnedDirectory, scoped, terminateTree, until, type Cdp,
 } from './perf/harness';
 import {
   PAGE_PROBE, UsageError, checkJourney, journeyPath, judge, parseOptions, summariseFrames, summariseIntervals,
@@ -77,7 +77,9 @@ async function launchChrome(scope: Scope, { executable, headed, width, height }:
 }): Promise<Cdp> {
   const profile = await mkdtemp(join(tmpdir(), 'perf-budget-'));
   // Windows lets go of a closed Chrome's files a moment after its processes exit.
-  scope.defer('remove the Chrome profile', () => rm(profile, { recursive: true, force: true, maxRetries: 50, retryDelay: 200 }));
+  scope.defer('remove the Chrome profile', () => removeOwnedDirectory(profile, {
+    remove: path => rm(path, { recursive: true, force: true }),
+  }));
   const child = spawn(executable, [
     ...(headed ? [] : ['--headless=new']), '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${width},${height}`,

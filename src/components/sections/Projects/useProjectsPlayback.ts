@@ -108,6 +108,40 @@ export function useProjectsPlayback(
      * TECH-065).
      */
     let sideFromLayout = true;
+    /*
+     * The reader this TV held when the layout last replaced it, still to be given back. Taken
+     * where the page actually puts the rail, not where the half-built one did: remounted mid-
+     * rebuild the rail read 2,828px down, the chance passed, and App's restore to the reader
+     * landed on a TV left off (round 22, TECH-066). The reader's input or a newer navigation
+     * ends it; one made while the TV was off decided it already (see below).
+     */
+    let resuming = resumeRef.current;
+    resumeRef.current = false;
+    /*
+     * A drag of the page's own scrollbar is reader travel no wheel or key reports: from Contact
+     * the page reached Projects and rested there, the TV never asked in (round 22, D-MOTION-006).
+     * Only a press on the scrollbar itself counts, never a scroll of the page's own making.
+     */
+    let dragging = false;
+    let dragTop: number | null = null;
+    const onScrollbarPress = (event: PointerEvent) => {
+      const scroller = findScrollContainer(rail);
+      if (!scroller || event.target !== scroller || event.button !== 0) return;
+      const box = scroller.getBoundingClientRect();
+      if (event.clientX - box.left < scroller.clientWidth) return;
+      dragging = true;
+      dragTop = railPosition.readRect().top;
+      bypass = false;
+      pendingNavigation = null;
+      resuming = false;
+    };
+    const onScrollbarRelease = () => {
+      dragging = false;
+      dragTop = null;
+    };
+    window.addEventListener('pointerdown', onScrollbarPress, { capture: true, passive: true });
+    window.addEventListener('pointerup', onScrollbarRelease, { capture: true, passive: true });
+    window.addEventListener('pointercancel', onScrollbarRelease, { capture: true, passive: true });
     let wave: ScrollDirection | null = null;
     let bypass = false;
     let continuedReturn = false;
@@ -305,9 +339,22 @@ export function useProjectsPlayback(
     };
 
     function apply() {
+      if (dragging && !active) {
+        // The page moving under the scrollbar thumb is the reader's own travel: its direction is
+        // the gesture a wheel would have given (round 22, D-MOTION-006).
+        const { top: now } = railPosition.readRect();
+        if (dragTop !== null && Math.abs(now - dragTop) > 2) wave = now > dragTop ? 'up' : 'down';
+        dragTop = now;
+      }
       if (!alive || document.hidden || !rail?.isConnected || active || bypass ||
           previous.some(hasChapterOwnership)) return;
       const { top, height } = railPosition.readRect();
+      // Given back only where the rail holds the window, as it did while it was being read.
+      if (resuming && height > 0 && top <= PROJECTS_ENTRY_EDGE && top + height >= window.innerHeight - PROJECTS_ENTRY_EDGE) {
+        resuming = false;
+        ready();
+        return;
+      }
       // Only a rail wholly past the window, or wholly ahead of it, says which side the reader is on.
       if (sideFromLayout && height > 0) {
         const settledSide = top + height <= 0 ? 'after' : top >= window.innerHeight ? 'before' : side;
@@ -362,6 +409,7 @@ export function useProjectsPlayback(
     window.addEventListener('input', focusEditing, { passive: true });
     const unsubscribeGesture = subscribeScrollGesture(direction => {
       if (document.hidden) return;
+      resuming = false;
       if (active) {
         requestRef.current?.(direction === 'down' ? 1 : -1);
       } else if ((continuedReturn || afterContactEdit) && direction === 'up') {
@@ -376,6 +424,7 @@ export function useProjectsPlayback(
     }, { ignoreTarget: ignoreSceneTarget });
     const unsubscribeEntry = subscribeScrollGesture(direction => {
       if (active || document.hidden) return;
+      resuming = false;
       wave = direction;
       bypass = false;
       pendingNavigation = null;
@@ -399,6 +448,7 @@ export function useProjectsPlayback(
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       if (navigating) return;
       sideFromLayout = false;
+      resuming = false;
       wave = null;
       continuedReturn = false;
       afterContactEdit = false;
@@ -460,11 +510,11 @@ export function useProjectsPlayback(
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', resized);
     document.addEventListener('visibilitychange', visibility);
-    if (resumeRef.current && rail.getBoundingClientRect().top <= PROJECTS_ENTRY_EDGE) ready();
-    else apply();
+    apply();
 
     return () => {
-      resumeRef.current = active;
+      // A reader being read, or one still to be given back, goes on in whatever TV replaces this one.
+      resumeRef.current = active || resuming;
       alive = false;
       // A TV no longer engaged holds no sky: after it handed the reader to Contact, the clearing is Contact's.
       release(false, !active);
@@ -486,11 +536,21 @@ export function useProjectsPlayback(
       window.removeEventListener('input', focusEditing);
       window.removeEventListener('scroll', apply);
       window.removeEventListener('resize', resized);
+      window.removeEventListener('pointerdown', onScrollbarPress, { capture: true });
+      window.removeEventListener('pointerup', onScrollbarRelease, { capture: true });
+      window.removeEventListener('pointercancel', onScrollbarRelease, { capture: true });
       document.removeEventListener('visibilitychange', visibility);
     };
   }, [host, stage, surface, enabled, onNavigate]);
 
   useEffect(() => { preferenceRef.current?.(); }, [reduced]);
+
+  // While the TV is off -- a window below its size -- a choice still decides whether it takes the
+  // reader back when it returns: Projects chosen then is resumed, anywhere else is not (round 22).
+  useEffect(() => {
+    if (enabled) return;
+    return subscribeSectionNavigation(target => { resumeRef.current = target === 'projects'; });
+  }, [enabled]);
 
   return { phase, step, visible: phase !== 'outside', ready: phase === 'reading' };
 }

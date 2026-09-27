@@ -487,10 +487,12 @@ export function useEducationPlayback(
       placing = 0;
       resuming = null;
     };
-    // Every scroll moves the reader's place, except while a resume stands.
+    // Every scroll moves the reader's place, except while a resume stands, and not before this
+    // layout has had the reader's own input or a destination (round 22, D-MOTION-005; see Skills).
+    let readerMoved = false;
     const sample = () => {
       sampling = 0;
-      if (placing || resuming !== null) return;
+      if (placing || resuming !== null || !readerMoved) return;
       const line = window.innerHeight * READING_LINE;
       const area = host.getBoundingClientRect();
       if (area.top > line || area.bottom <= line) {
@@ -509,6 +511,7 @@ export function useEducationPlayback(
     const retire = () => {
       cancelPlacement();
       resumeRef.current = null;
+      readerMoved = true;
       onScroll();
     };
     const stopNavigation = subscribeSectionNavigation((target, options) => {

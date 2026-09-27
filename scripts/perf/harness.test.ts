@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { createServer, type AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  Scope, assertPortFree, awaitOwnedPreview, createCdp, ownProcess, scoped, terminateTree, until, withTimeout, type SocketLike,
+  Scope, assertPortFree, awaitOwnedPreview, createCdp, ownProcess, removeOwnedDirectory, scoped, terminateTree, until, withTimeout, type SocketLike,
 } from './harness';
 
 afterEach(() => { vi.useRealTimers(); });
@@ -145,6 +145,33 @@ describe('owned processes', () => {
     await owned.stop();
     expect(performance.now() - started).toBeLessThan(1000);
     expect(await owned.settle(10)).toBe(true);
+  });
+});
+
+describe('owned directories', () => {
+  const locked = (code: string) => Object.assign(new Error(`${code}: resource busy or locked`), { code });
+
+  it('waits out a file Windows still holds, then removes the directory', async () => {
+    // Round 22 (TECH-064): Bun ignored rm's maxRetries and failed at once on a held file.
+    let calls = 0;
+    await removeOwnedDirectory('profile', {
+      delayMs: 1,
+      remove: async () => { if (++calls < 4) throw locked('EBUSY'); },
+    });
+    expect(calls).toBe(4);
+  });
+
+  it('reports the last lock once its attempts run out, and anything else at once', async () => {
+    let calls = 0;
+    await expect(removeOwnedDirectory('profile', {
+      attempts: 3, delayMs: 1, remove: async () => { calls++; throw locked('EPERM'); },
+    })).rejects.toThrow('EPERM');
+    expect(calls).toBe(3);
+    calls = 0;
+    await expect(removeOwnedDirectory('profile', {
+      delayMs: 1, remove: async () => { calls++; throw locked('EINVAL'); },
+    })).rejects.toThrow('EINVAL');
+    expect(calls).toBe(1);
   });
 
   it("ends a Windows process's whole tree by its id, and signals it elsewhere", () => {
