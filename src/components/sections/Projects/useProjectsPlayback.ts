@@ -152,6 +152,9 @@ export function useProjectsPlayback(
     const show = () => {
       if (active) return;
       active = true;
+      // Read before the writes below, not after them: found after them, the scrollport forced a
+      // style pass over the TV and its reader (as Education's claim did, round 40).
+      const scrollport = findScrollContainer(rail);
       sideFromLayout = false;
       continuedReturn = false;
       afterContactEdit = false;
@@ -159,7 +162,7 @@ export function useProjectsPlayback(
       writeStyleProperty(screen, 'opacity', '0');
       writeAttribute(rail, 'data-projects-active', 'true');
       writeAttribute(panel, 'data-visible', 'true');
-      uncover = coverChapterBackground(rail, panel, 'projects');
+      uncover = coverChapterBackground(rail, panel, 'projects', scrollport);
     };
     const cancel = () => {
       cancelAnimationFrame(frame);
