@@ -166,7 +166,35 @@ export const PAGE_PROBE = String.raw`(() => {
   const mark = () => {
     trace.checkpoints.push(Object.assign({ t: performance.now(), phase: trace.phase }, current));
   };
+  /*
+   * The TV's and Skills' phases are watched as well as sampled: on a loaded machine a reader who kept
+   * scrolling took the TV's reader and left it inside one sample, and the journey check called it
+   * skipped (round 42). Each record's old value is the phase the one before it left, so every phase
+   * a stage passed through is kept, however briefly. One observer per stage, on its own phase alone:
+   * no other write on the page looks for it.
+   */
+  const watching = {};
+  const watch = () => {
+    for (const [selector, field] of [['[data-testid="projects-stage"]', 'tv'], ['[data-testid="skills-stage"]', 'skills']]) {
+      const element = find(selector);
+      const held = watching[selector];
+      if (!element || (held && held.element === element) || typeof MutationObserver !== 'function') continue;
+      if (held) held.observer.disconnect();
+      const observer = new MutationObserver(records => {
+        for (let index = 1; index < records.length; index++) {
+          const passed = records[index].oldValue || '';
+          if (passed === current[field]) continue;
+          current = Object.assign({}, current, { [field]: passed });
+          mark();
+        }
+        record();
+      });
+      observer.observe(element, { attributes: true, attributeFilter: ['data-phase'], attributeOldValue: true });
+      watching[selector] = { element, observer };
+    }
+  };
   const record = () => {
+    watch();
     const next = state();
     if (next.section === current.section && next.skills === current.skills && next.skill === current.skill
       && next.tv === current.tv && next.quality === current.quality && next.about === current.about
