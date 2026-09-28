@@ -145,7 +145,11 @@ three times (round 40): returning-visit medians of 16 long frames, 0.3s of
 blocking, a 153ms worst frame, a 16.8ms p95 and 2.3% missed frames, every
 journey target met, with the host at 27-39% CPU from other work (report
 `perf-budget-2026-09-27T23-57-17-252Z`); an independent run at higher load the
-same hour measured 17 long frames and a 22.1ms p95. The local preview serves files uncompressed, so the transfer
+same hour measured 17 long frames and a 22.1ms p95. Parked Contact keeps one
+long frame against its target of none: traced, it is V8's memory-reducing major
+GC once travel stops (18-29ms of CPU at 4x, a few milliseconds unthrottled), and
+the page itself uses about 1% of the main thread while parked there. The target
+stays at none rather than being loosened to fit. The local preview serves files uncompressed, so the transfer
 figure overstates what a visitor downloads: production serves brotli, which
 takes the welded island terrain from 859 KB to about 570 KB. CPU throttling slows the main
 thread, not the GPU, so it is a proxy for weak hardware rather than a
