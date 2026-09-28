@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { SCENE_GRACE_MS } from '@/components/loader/useAssetLoadingProgress';
 import {
+  beginWorldCompile,
   isSceneReady,
+  isWorldHeld,
   registerScene,
   resetSceneReady,
   setSceneReady,
+  setWorldCompiled,
   subscribeSceneReady,
+  WORLD_COMPILE_MS,
+  WORLD_HOLD_MS,
 } from './sceneReady';
 
 describe('sceneReady', () => {
@@ -67,5 +73,54 @@ describe('sceneReady', () => {
     setSceneReady();
 
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe('the world held for its opening programs (round 31)', () => {
+  beforeEach(() => resetSceneReady());
+  afterEach(() => { resetSceneReady(); vi.restoreAllMocks(); });
+
+  it('holds nothing when no world is coming', () => {
+    expect(isWorldHeld()).toBe(false);
+  });
+
+  it('holds a registered world until its programs are compiled', () => {
+    registerScene();
+    expect(isWorldHeld()).toBe(true);
+    beginWorldCompile();
+    expect(isWorldHeld()).toBe(true);
+    setWorldCompiled();
+    expect(isWorldHeld()).toBe(false);
+  });
+
+  it('never holds a world that has reported itself up', () => {
+    registerScene();
+    setSceneReady();
+    expect(isWorldHeld()).toBe(false);
+  });
+
+  it('lets a world draw that waited its whole allowance for resources', () => {
+    const start = performance.now();
+    registerScene();
+    vi.spyOn(performance, 'now').mockReturnValue(start + WORLD_HOLD_MS - 1);
+    expect(isWorldHeld()).toBe(true);
+    vi.spyOn(performance, 'now').mockReturnValue(start + WORLD_HOLD_MS + 1);
+    expect(isWorldHeld()).toBe(false);
+  });
+
+  it('gives compiling its own shorter allowance, from when it began', () => {
+    const start = performance.now();
+    registerScene();
+    vi.spyOn(performance, 'now').mockReturnValue(start + 20_000);
+    beginWorldCompile();
+    vi.spyOn(performance, 'now').mockReturnValue(start + 20_000 + WORLD_COMPILE_MS - 1);
+    expect(isWorldHeld()).toBe(true);
+    vi.spyOn(performance, 'now').mockReturnValue(start + 20_000 + WORLD_COMPILE_MS + 1);
+    expect(isWorldHeld()).toBe(false);
+  });
+
+  it('keeps the loader the longer wait: compiling gives up before it opens on its own', () => {
+    // The loader opens the page this long after the last byte, whatever the scene says.
+    expect(WORLD_COMPILE_MS).toBeLessThan(SCENE_GRACE_MS);
   });
 });

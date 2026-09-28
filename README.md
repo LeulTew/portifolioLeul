@@ -48,7 +48,7 @@ Representative shipped file sizes are:
 
 | Asset | File | Size on disk | Loading |
 | :---- | :--- | -----------: | :------ |
-| Terrain | `terrain-opt.glb` | 3.85 MB | Opening scene; smaller software-renderer variant available |
+| Terrain | `terrain-opt.glb` | 859 KB | Opening scene; smaller software-renderer variant available |
 | Animated avatar | `me-animated-lite.glb` | 847 KB | Opening scene; smaller software-renderer variant available |
 | Water normals | `waternormals.jpg` | 249 KB | Opening scene |
 | Portrait | `leul-profile.webp` | 42 KB | Hero |
@@ -69,6 +69,18 @@ timed-out prefetch releases that model into the ordinary loader retry.
 Byte-progress prefetch keeps its awaited native stream reader. Failed
 optional prefetches settle visibly and remain recoverable through the ordinary
 scene loader; they are not treated as successful scene readiness.
+
+Once the opening resources are decoded, every material is compiled off the main
+thread (`renderer.compileAsync`, KHR_parallel_shader_compile) for the canvas
+and again for a render target, since the water's reflection draws the scene
+linear and untoned, which is another program. Each program's first use -- its
+uniforms and attributes read back -- follows, one program per task. The world
+is not drawn meanwhile; the opaque loader covers it. A program first compiled
+and used by a draw had held the main thread until the GPU finished it: about a
+second of one task in a throttled cold start. The hold gives up after 8s of
+compiling (30s waiting for resources), inside the loader's own 10s grace, and a
+failed compile draws the world regardless (`src/lib/render/precompileWorld.ts`,
+`src/lib/render/sceneReady.ts`).
 
 `patches/three@0.161.0.patch` also fixes the pinned upstream FileLoader's missing
 body-read rejection forwarding. Without it, an interrupted HTTP-200 response
@@ -117,20 +129,74 @@ the main process). A cold series stops at the first sample whose Chrome or
 profile could not be released, since the next would not have the machine to
 itself. The report in `perf-reports/` (ignored by git)
 records the commit, the dist hash, the browser, WebGL renderer, cores and
-memory, each sample's cache state, and the chapter -- and world quality level --
+memory, how busy the machine was (from other work, over a second before the run,
+and across each sample with the run itself), each sample's cache state, and the
+chapter -- and world quality level --
 each long frame fell in, with the script behind any frame over 150ms.
 
 The gates were calibrated on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti
 through ANGLE/D3D11, Chrome 153): returning-visit medians of 43 long frames,
 0.8s of blocking and a 279ms worst frame over a 42-second journey; cold medians
 of an 11.4-second throttled startup, 6.1 MB transferred and 3.0s of blocking
-during load. The local preview serves files uncompressed, so the transfer
+during load. Welding the terrain and compiling the opening programs off the main
+thread (round 31) took the cold medians, on the same machine under load from
+other work, to a 9.0-second startup, 3.3 MB transferred and 1.5s of blocking,
+and the cold journey to 19 long frames and 0.5s of blocking. Travel then read no
+layout per frame, and Education's entrance styled its chapter once instead of
+three times (round 40): returning-visit medians of 16 long frames, 0.3s of
+blocking, a 153ms worst frame, a 16.8ms p95 and 2.3% missed frames, every
+journey target met, with the host at 27-39% CPU from other work (report
+`perf-budget-2026-09-27T23-57-17-252Z`); an independent run at higher load the
+same hour measured 17 long frames and a 22.1ms p95. Parked Contact keeps one
+long frame against its target of none: traced, it is V8's memory-reducing major
+GC once travel stops (18-29ms of CPU at 4x, a few milliseconds unthrottled), and
+the page itself uses about 1% of the main thread while parked there. The target
+stays at none rather than being loosened to fit. The local preview serves files uncompressed, so the transfer
 figure overstates what a visitor downloads: production serves brotli, which
-takes the island terrain from 3.76 MB to 2.8 MB. CPU throttling slows the main
+takes the welded island terrain from 859 KB to about 570 KB. CPU throttling slows the main
 thread, not the GPU, so it is a proxy for weak hardware rather than a
 measurement of it; another machine should record its own baseline instead of
 loosening these numbers. Under the throttle the world lowers its own quality
 (below), and the report shows when.
+
+### Native scrollbar check
+
+`bun run build && bun run native:scroll` serves `dist` the same way and drives a
+**headed** Chrome -- headless Chrome draws overlay scrollbars, not the 8px thumb
+a reader presses -- with real mouse input on the page's scrollbar, in light and
+dark. It asserts each chapter hand-off a thumb drag makes (past the last skill
+to Projects framed, back from the TV's reader, back from Contact to the reader)
+and what the page may do while the thumb is held: nothing moves under a still
+thumb, a CTA asked for under it lands on release, a glide pressed while it runs
+stops there, and the reader's own key or drag under the thumb outlasts anything
+the page queued (rounds 25-31). Two more journeys land the navbar on About and
+then move the page with no gesture at all -- as a track click or the browser's
+find does -- into About's hand-off and into Skills, and pass only when a chapter
+takes the reader (round 34). A reduced-motion pass reads the story as the linear
+page it becomes there and checks that Skills lands with its own box under the
+navbar, no green above it and no invitation over its text (round 35). A last pass,
+in a 900x560 window, sends the Contact form blank and then as a failed delivery,
+and asks that Name land clear of the navbar and that the failure notice show
+whole: each grows the page, and before round 37 the track rebuild that growth
+set off put the reader back over the answer. The check fails every request that
+would leave the page's origin, whatever the build's configuration or the
+service's endpoint, and counts them: exactly one attempt on the email service
+when the build has one, and none when it has not. A JSON send is preflighted, so
+the attempt failed is its CORS preflight and the draft's POST is never made. No
+message is ever sent. It fails on any page error, and on any response the page
+is refused (4xx/5xx) or cannot load, the form pass's deliberately failed requests
+aside, with the count of requests it heard so a deaf listener cannot pass: a
+header or asset regression shows before any journey looks wrong. It writes its
+measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
+narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
+GPU or a fallback. Before any journey it checks that the page opened its 3D
+stage: a page that fell back to the flat layout -- no WebGL, or a stage that
+missed the app's own 10s deadline on an overloaded machine -- has no scrollport
+to press, and the run fails at once with the renderer and the page's console
+warnings, not a timeout. Its window is exempt from Chrome's occlusion and
+background throttling, so another window over it cannot slow the page into that
+fallback (round 33). With the round-30 fix reverted it fails exactly where that round's
+reviewer did: 35px of drag thrown to Contact.
 
 ### Adaptive world quality
 
@@ -153,12 +219,22 @@ the core and every triangle touching the avatar's complete foot-contact zone,
 the padded TV footprint, or the prism. This changes the actual top edge and land
 volume, not just the faces of the old rectangular tile. Interior position and
 normal streams, original UV coordinates, embedded texture bytes, mesh counts and
-vertex/triangle counts are preserved. One outer diagonal is flipped in the
+vertex/triangle counts are preserved by the shaping; the optimized asset is
+then welded, as below. One outer diagonal is flipped in the
 optimized asset to prevent a measured 3D reversal in a long, thin source face;
 its two replacement faces carry the existing vertices and UVs. No protected
 or unchanged vertex participates. Meshopt is used for lossless buffer encoding without global
 requantization. Both optimized and software assets are baked independently.
 Original terrain heights and the already submerged forward fringe are retained.
+
+The optimized source repeats one normal on each face's three corners, so no two
+faces could share a vertex: 341,574 vertices for 76,862 distinct corners. Both
+terrains are shaded flat at runtime, as the skirt is, so the bake drops that
+stream, welds the corners and reorders the faces for the vertex cache: 3.85 MB
+becomes 859 KB, and the delivered faces are checked to be the shaped ones, bit
+for bit. The source normals lie within 0.5° of their faces' planes at the median
+and 5° at the 99th percentile; rendered side by side with the stored normals,
+no view differs by more than 2 of 255 levels at the 99.9th percentile.
 
 `SceneEdgeContinuity` joins each final decoded boundary with its matching static,
 faceted shoulder and sloped submerged foot. It borrows Terrain's already-uploaded
@@ -281,6 +357,20 @@ the same reader, over a scrim. Its own previous/next take over from the physical
 keys it covers. The same control, Esc, a click beside it or leaving the reader
 returns it to the TV.
 
+A dense capture shrunk whole to that screen cannot be read, so a project may name
+the part of it the screen looks at (`imageFocus`: insets in percent). The TV
+crops to it with `object-view-box`, anchored to the top so a taller screen shows
+more of the capture below rather than a matte above; the enlarged reader and
+"Full image" show the whole capture, and a browser without `object-view-box`
+simply shows the whole. Nine dense captures use it: Mizan, Ignition, Amet AI,
+ProtoChem 3D, Amharic IR Improved, Elona Practice, AgendaFlow AI, System Design
+Guide and CS Exit Practice.
+
+On a 4K canvas at 100% scaling the interface steps up with the scene: the root
+type is 125% from 2880x1600 and 150% from 3400x1900, and chapter widths are
+capped in rem so each step reaches them. Below 2880px nothing changes. The TV
+screen and Skills keep their own container-relative measurement.
+
 The project counter is also a native 48px selection control. It jumps directly
 to any title in the current category, supports the browser's keyboard type-ahead,
 and keeps the selected value synchronized with physical paging. The flat reader
@@ -371,8 +461,10 @@ verify both published aliases on desktop and phone after deployment.
 
 ### Meet the character in the scene
 
-A small, wordless light cue appears only on hover or keyboard focus; the native
-model-aligned target remains clickable wherever the avatar is actionable
+A small, wordless light cue appears only on hover or keyboard focus, and
+keyboard focus also frames the figure with a wordless four-corner reticle over
+a halo of the control surface, so a keyboard reader sees what Enter acts on
+(round 37); the native model-aligned target remains clickable wherever the avatar is actionable
 in the exposed island, including Hero and Projects' revealed pre-TV view. It
 waits for the original Hero name entrance, but is not mounted in Hero or in the
 covered/inert main content. Its portal remains inside the real scrollport.
@@ -403,7 +495,7 @@ revealed controls omit the removed caption while retaining their edge positions.
 ### The green prism's hidden experiment
 
 The green prism uses the same subtle, wordless hover/focus glint in the exposed
-island. Accessible button names remain available to assistive technology,
+island, and the same reticle on keyboard focus. Accessible button names remain available to assistive technology,
 without visible labels, badges or icons. Deliberate activation lifts the existing object, lets the line tie into
 an open spatial knot, and unthreads it back into the exact original beam.
 It does not move the camera, open a panel, retime the character or modify the

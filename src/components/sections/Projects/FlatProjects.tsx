@@ -29,7 +29,7 @@ const READING_SECTIONS = ['projects', 'contact'] as const;
 const categories = [
   { title: 'All', icon: Grid3x3 },
   { title: 'Web Development', icon: Globe },
-  { title: 'AI/DataScience', icon: Brain },
+  { title: 'AI/Data Science', icon: Brain },
   { title: 'Mobile Apps', icon: Smartphone },
   { title: 'Graphics & Algorithms', icon: Shapes },
   { title: 'Desktop & Games', icon: Gamepad2 }

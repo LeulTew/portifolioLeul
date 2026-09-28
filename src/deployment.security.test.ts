@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -33,6 +33,13 @@ describe('deployment response security', () => {
       'X-Frame-Options': 'DENY',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
+      // Declared, not left to the host: the value Vercel serves by default, so it holds on any host
+      // and a review of this file sees the whole set (round 39, TECH-090).
+      'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+      // No other site's window keeps a handle on this one, and no other site embeds its files:
+      // every link out is noopener and every asset loads same-origin, so neither costs anything.
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Resource-Policy': 'same-origin',
     });
     expect(policy.get('default-src')).toEqual(["'self'"]);
     for (const directive of ['base-uri', 'object-src', 'frame-src', 'frame-ancestors', 'script-src-attr']) {
@@ -177,7 +184,9 @@ describe('local Vite exposure', () => {
     expect(result.host).toBe('127.0.0.1');
     expect(result.allowedHosts).not.toBe(true);
     expect(result.strict).toBe(true);
-    expect(result.allow).toEqual([process.cwd().replaceAll('\\', '/')]);
+    // Vite always allows its own client; only a linked node_modules puts that outside the checkout.
+    const viteClient = realpathSync(path.resolve('node_modules', 'vite', 'dist', 'client')).replaceAll('\\', '/');
+    expect(result.allow.filter(root => root !== viteClient)).toEqual([process.cwd().replaceAll('\\', '/')]);
     expect(result.files.entry).toBe(true);
     expect(result.files.outside).toBe(false);
   });
@@ -270,7 +279,8 @@ describe('patched toolchain resolution', () => {
     ['jsdom', 'ws', '8.21.0'],
     ['happy-dom', 'ws', '8.21.0'],
   ])('%s actually resolves %s to %s, without a stale installed copy shadowing the lock', (owner, dependency, version) => {
-    const modules = path.resolve('node_modules');
+    // Resolution answers in real paths: a linked node_modules (a junction, a symlinked store) is its target.
+    const modules = realpathSync(path.resolve('node_modules'));
     const ownerRequire = createRequire(path.join(modules, ...owner.split('/'), 'package.json'));
     let directory = path.dirname(ownerRequire.resolve(dependency));
     while (directory.startsWith(`${modules}${path.sep}`)) {

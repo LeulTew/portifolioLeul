@@ -29,6 +29,13 @@ Detailed rule modules are located in `.agent/rules/`:
 
 ---
 
+## 🚦 Vercel Deployment Rule (owner directive, 2026-09-27)
+- This site deploys on Vercel, on an account shared with other projects and capped at **100 deployments per rolling 24 hours**.
+- Deploy **only** when (a) the owner explicitly tells you to, or (b) the work is finished: every quality metric at 10/10, everything merged, migrations applied, nothing pending. Then deploy once.
+- A deployment is anything that makes Vercel build: pushing any branch or opening/updating a PR (each builds a preview), merging to `main`, `vercel deploy` / `--prod` / redeploys, deploy hooks, empty redeploy commits, or a scheduled automation that does any of these.
+- Until then, commit locally, verify with `bun run build` and a local `vite preview`, and batch everything into one final deployment.
+
+---
 ## ⚡ Local Verification Mandate (ZERO CI WAITING)
 - **GitHub Actions is OVER LIMIT**: Do NOT wait for or check remote GitHub Actions CI.
 - **Always verify locally via Bun**:

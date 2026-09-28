@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // JSDOM drops visibility priorities; restoration needs a conforming CSSOM.
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { coverChapterBackground, coverEducationBackground } from './educationCover';
 
 afterEach(() => { document.body.replaceChildren(); });
@@ -90,4 +90,22 @@ it('preserves the Education entry point and its default owner', () => {
   expect(main.hasAttribute('data-education-covered')).toBe(true);
   expect(main.hasAttribute('data-skills-covered')).toBe(false);
   restore();
+});
+
+it('covers from a scrollport its caller read already, reading no style of its own', () => {
+  // Round 40: found after a claim's writes, the scrollport cost a style pass over the whole chapter.
+  const { container, html, host, stage } = setup();
+  const computed = vi.spyOn(window, 'getComputedStyle');
+  try {
+    const restore = coverChapterBackground(host, stage, 'education', container);
+    expect(computed).not.toHaveBeenCalled();
+    // The same layer is covered as when the scrollport is found here.
+    expect(html.style.visibility).toBe('hidden');
+    restore();
+    // A caller that read no scrollport (the window scrolls) covers main, as before.
+    const again = coverChapterBackground(host, stage, 'education', null);
+    expect(computed).not.toHaveBeenCalled();
+    expect(host.closest('main')!.style.visibility).toBe('hidden');
+    again();
+  } finally { computed.mockRestore(); }
 });

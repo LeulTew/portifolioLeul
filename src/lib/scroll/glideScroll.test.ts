@@ -115,6 +115,22 @@ describe('glideScrollTo', () => {
     expect(el.scrollTop).toBe(interrupted);
   });
 
+  it('stops where it is when the reader presses a scrollbar, and writes nothing under the held thumb', () => {
+    // Round 26 (TECH-073): a glide went on writing under a held thumb, and the browser's replies read as requests.
+    const el = makeContainer();
+    Object.defineProperty(el, 'clientWidth', { value: 1432 });
+    el.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 1440, height: 900 });
+    glideScrollTo(el, 10_000, { now });
+    runFrames(10);
+    const pressedAt = el.scrollTop;
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 1436, clientY: 400 }));
+    runFrames(200);
+    expect(el.scrollTop).toBe(pressedAt);
+    window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+    runFrames(10);
+    expect(el.scrollTop).toBe(pressedAt);
+  });
+
   it('can be cancelled by the caller, so a second link replaces the first', () => {
     const el = makeContainer();
     const first = glideScrollTo(el, 10_000, { now });

@@ -5,6 +5,7 @@ import { phaseFrameDelta } from '@/lib/motion/triggeredPhase';
 import { getPrefersReducedMotion } from '@/lib/gateways/animationGateway';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
+import { subscribeNavigationLeft } from '@/lib/scroll/navigationLeft';
 import {
   publishSectionNavigation, subscribeSectionNavigation,
   type SectionNavigate, type SectionNavigationOptions,
@@ -151,6 +152,9 @@ export function useProjectsPlayback(
     const show = () => {
       if (active) return;
       active = true;
+      // Read before the writes below, not after them: found after them, the scrollport forced a
+      // style pass over the TV and its reader (as Education's claim did, round 40).
+      const scrollport = findScrollContainer(rail);
       sideFromLayout = false;
       continuedReturn = false;
       afterContactEdit = false;
@@ -158,7 +162,7 @@ export function useProjectsPlayback(
       writeStyleProperty(screen, 'opacity', '0');
       writeAttribute(rail, 'data-projects-active', 'true');
       writeAttribute(panel, 'data-visible', 'true');
-      uncover = coverChapterBackground(rail, panel, 'projects');
+      uncover = coverChapterBackground(rail, panel, 'projects', scrollport);
     };
     const cancel = () => {
       cancelAnimationFrame(frame);
@@ -193,9 +197,10 @@ export function useProjectsPlayback(
         publishSectionNavigation(target, options);
         const destination = document.getElementById(target);
         if (destination) {
-          const rect = destination.getBoundingClientRect();
-          scrollContainerBy(findScrollContainer(rail),
-            options.edge === 'end' ? rect.bottom - window.innerHeight + 80 : rect.top - 80);
+          scrollContainerBy(findScrollContainer(rail), () => {
+            const rect = destination.getBoundingClientRect();
+            return options.edge === 'end' ? rect.bottom - window.innerHeight + 80 : rect.top - 80;
+          });
         }
       }
       navigating = false;
@@ -398,6 +403,15 @@ export function useProjectsPlayback(
       pendingNavigation = null;
       apply();
     }, { startsOnly: true, ignoreTarget: ignoreSceneTarget });
+    // A move with no gesture away from a navigation's landing is an entry too (round 34, D-R34-001).
+    const unsubscribeLeft = subscribeNavigationLeft(direction => {
+      if (active || document.hidden) return;
+      resuming = false;
+      wave = direction;
+      bypass = false;
+      pendingNavigation = null;
+      apply();
+    });
     const forwardReturnKey = (event: KeyboardEvent) => {
       if (!active && side === 'after' && isContactEditingTarget(event.target)) {
         focusEditing(event);
@@ -493,6 +507,7 @@ export function useProjectsPlayback(
       unsubscribeHandoff();
       unsubscribeGesture();
       unsubscribeEntry();
+      unsubscribeLeft();
       unsubscribeNavigation();
       unsubscribeContactPose();
       unsubscribeScroll();

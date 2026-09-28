@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import gsap from 'gsap';
 import { subscribeScrollProgress } from '@/lib/scroll/scrollProgress';
 import { subscribeScrollGesture, type ScrollDirection } from '@/lib/scroll/scrollGesture';
+import { subscribeNavigationLeft } from '@/lib/scroll/navigationLeft';
 import { subscribeSectionNavigation, publishSectionNavigation, type SectionNavigate } from '@/lib/scroll/sectionNavigation';
 import { writeAttribute, writeStyleProperty, cachedElement } from '@/lib/dom/cachedElement';
 import { createTranslatedPositionReader, translatedLayerOf } from '@/lib/scroll/translatedPosition';
@@ -144,8 +145,8 @@ export function useEducationPlayback(
     const flag = (name: string, value: boolean) => {
       if (about) writeAttribute(about, name, value ? 'true' : null);
     };
-    const show = (visible: boolean) => {
-      if (visible && !uncover) uncover = coverEducationBackground(host, panel);
+    const show = (visible: boolean, scrollport?: HTMLElement | null) => {
+      if (visible && !uncover) uncover = coverEducationBackground(host, panel, 'education', scrollport);
       else if (!visible) {
         uncover?.();
         uncover = null;
@@ -165,10 +166,12 @@ export function useEducationPlayback(
           aligning = false;
         }
       } else {
-        const rect = host.getBoundingClientRect();
-        scrollContainerBy(findScrollContainer(host), target === 'skills'
-          ? rect.bottom
-          : Math.min(rect.top - 1, about?.getBoundingClientRect().top ?? 0));
+        scrollContainerBy(findScrollContainer(host), () => {
+          const rect = host.getBoundingClientRect();
+          return target === 'skills'
+            ? rect.bottom
+            : Math.min(rect.top - 1, about?.getBoundingClientRect().top ?? 0);
+        });
       }
     };
     const settleLanding = () => {
@@ -253,12 +256,20 @@ export function useEducationPlayback(
       playing.invalidate().restart();
     };
     const claim = () => {
+      /*
+       * Every read first, then every write. Read after this claim's own writes, the scrollport
+       * and the reveal's computed units each forced a style pass over the whole chapter, two in
+       * the entrance's first frame, its longest of the journey (round 40). Read first, each costs
+       * only what the frame had changed before the claim; its writes are styled once, with the frame.
+       */
+      const scrollport = uncover ? undefined : findScrollContainer(host);
+      if (resumeAt === null) prepareReveal(wave === 'up' ? -1 : 1);
       handoffPending = false;
       flag('data-education-released', false);
       flag('data-education-returning', false);
       flag('data-education-owned', true);
       writeStyleProperty(panel, '--release', '0px');
-      show(true);
+      show(true, scrollport);
       if (resumeAt !== null) {
         // A resumed reader was already reading: the record is shown as it was, without the opening.
         current = resumeAt;
@@ -274,7 +285,6 @@ export function useEducationPlayback(
       writeAttribute(heading, 'data-settled', null);
       changePhase('opening');
       writeAttribute(outline, 'data-open', 'true');
-      prepareReveal(wave === 'up' ? -1 : 1);
       playing = open;
       open.play();
     };
@@ -339,6 +349,16 @@ export function useEducationPlayback(
         request(direction === 'down' ? 1 : -1);
       }
     }, { startsOnly: true });
+    // A move with no gesture away from a navigation's landing ends its step aside, as a gesture
+    // would: a jump into the hand-off after the navbar's About rested on blank green (round 34, D-R34-001).
+    const unsubscribeLeft = subscribeNavigationLeft(direction => {
+      if (state !== 'outside') return;
+      wave = direction;
+      bypass = false;
+      navigation = null;
+      if (direction === 'down') handoffPending = true;
+      apply();
+    });
     const unsubscribeNavigation = subscribeSectionNavigation((target, options) => {
       // Its own resume, and the replay of it after a rebuild, are not a new destination.
       if (target === 'about' && options?.resume) return;
@@ -455,6 +475,7 @@ export function useEducationPlayback(
       alive = false;
       requestRef.current = null;
       unsubscribeGesture();
+      unsubscribeLeft();
       unsubscribeNavigation();
       unsubscribeScroll();
       observer.disconnect();

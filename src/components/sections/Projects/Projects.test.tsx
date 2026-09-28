@@ -124,8 +124,8 @@ describe('Projects', () => {
     const mobileTab = screen.getByText('Mobile Apps');
     fireEvent.click(mobileTab);
     
-    // Test AI/DataScience filter
-    const aiTab = screen.getByText('AI/DataScience');
+    // Test AI/Data Science filter
+    const aiTab = screen.getByText('AI/Data Science');
     fireEvent.click(aiTab);
     
     // Test All filter

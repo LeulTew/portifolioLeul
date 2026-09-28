@@ -47,6 +47,25 @@ describe('the in-page probe', () => {
     ]);
   });
 
+  it('keeps a phase the TV passed through between two samples', async () => {
+    // Round 42: on a loaded host the TV's reader was taken and left inside one sample, and the
+    // journey check reported the reader skipped.
+    document.body.insertAdjacentHTML('beforeend', '<div data-testid="projects-stage" data-phase="approaching"></div>');
+    probe().enter('journey');
+    vi.advanceTimersByTime(100);
+    const stage = document.querySelector('[data-testid="projects-stage"]')!;
+    stage.setAttribute('data-phase', 'reading');
+    stage.setAttribute('data-phase', 'departing');
+    await Promise.resolve();
+    const tv = probe().checkpoints.filter(checkpoint => checkpoint.phase === 'journey').map(checkpoint => checkpoint.tv);
+    expect(tv.filter((value, index) => value !== tv[index - 1])).toEqual(['approaching', 'reading', 'departing']);
+    // An unchanged write, or the same phase twice, adds nothing.
+    stage.setAttribute('data-phase', 'departing');
+    await Promise.resolve();
+    vi.advanceTimersByTime(100);
+    expect(probe().checkpoints.filter(checkpoint => checkpoint.phase === 'journey').map(checkpoint => checkpoint.tv).at(-1)).toBe('departing');
+  });
+
   it('reads the chapter on every sampled frame, and a reader that arrives later', () => {
     probe().enter('journey');
     probe().sample(true);

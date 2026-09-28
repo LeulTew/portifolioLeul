@@ -77,7 +77,8 @@ function Terrain({ surfaceColor, theme }: TerrainProps) {
           roughness: 0.5,
           metalness: 0.8,
           envMapIntensity: 1.5,
-          flatShading: softwareRenderer,
+          // Neither terrain ships normals: each face is shaded by its own plane, as the skirt is.
+          flatShading: true,
         });
         
         if (child.material.map) {
@@ -95,7 +96,7 @@ function Terrain({ surfaceColor, theme }: TerrainProps) {
       }
     });
     return clone;
-  }, [scene, surfaceColor, softwareRenderer]);
+  }, [scene, surfaceColor]);
 
   // The clone owns materials/textures, but its geometry belongs to the GLTF cache.
   useEffect(() => {

@@ -1,5 +1,5 @@
 import {
-  useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent,
+  useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent,
   type PointerEvent, type WheelEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -35,6 +35,11 @@ function ProjectDescription({ project }: { project: Project }) {
     ));
 }
 
+/** The part of a capture the TV's screen shows, as the box `object-view-box` crops the image to. */
+function imageFocus({ top, right, bottom, left }: NonNullable<Project['imageFocus']>): string {
+  return `inset(${top}% ${right}% ${bottom}% ${left}%)`;
+}
+
 function ProjectImage({ project }: { project: Project }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -64,6 +69,8 @@ function ProjectImage({ project }: { project: Project }) {
           <img
             src={project.image} alt={project.imageAlt ?? `${project.title} preview`} width={960} height={720}
             aria-busy={!loaded} decoding="async" draggable={false}
+            style={project.imageFocus ? { '--image-focus': imageFocus(project.imageFocus) } as CSSProperties : undefined}
+            data-image-focus={project.imageFocus ? '' : undefined}
             onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
           />
         </span>
@@ -179,7 +186,7 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
 
   useEffect(() => {
     const copy = content.current;
-    if (copy) ownScroll(() => { copy.scrollTop = 0; });
+    if (copy) ownScroll(() => { copy.scrollTop = 0; }, { key: copy });
     paging.current?.reset();
   }, [project?.id, details]);
   useOverflowHint(content, `${project?.id}:${details}:${expanded}`);
@@ -281,6 +288,8 @@ export function TVProjects({ onNavigate }: { onNavigate?: SectionNavigate }) {
               <div
                 ref={content} className={styles.copy} data-projects-scrollable=""
                 tabIndex={interactive ? 0 : -1}
+                // A focusable scroll box is named, so it needs a role to carry the name (round 33, D-R33-003).
+                role="region"
                 aria-label={`${project.title} ${details ? 'details' : 'summary'}`}
               >
                 <p className={styles.tier} data-project-tier={isFeaturedProject(project) ? 'selected' : 'archive'}

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { NodeIO, type Document, type Primitive } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
+import { reorder, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import * as THREE from 'three';
 import {
@@ -47,14 +48,17 @@ export async function createTerrainIO(): Promise<NodeIO> {
 
 export function readTerrainSource(source: typeof TERRAIN_SOURCES[number]): Uint8Array {
   let bytes: Buffer;
+  // A private copy without history (a reviewer's mutation check) may name the repository that has it.
+  const repository = process.env.TERRAIN_SOURCE_REPOSITORY || TERRAIN_REPOSITORY;
   try {
     bytes = execFileSync('git', ['show', `${TERRAIN_SOURCE_REF}:public/models/${source.file}`], {
-      cwd: TERRAIN_REPOSITORY, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: repository, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch (cause) {
     throw new Error(
       `Cannot read pristine ${source.file} at ${TERRAIN_SOURCE_REF}. ` +
-      `Restore history with "git fetch origin ${TERRAIN_SOURCE_REF}" and rerun "bun run bake:island". ` +
+      `Restore history with "git fetch origin ${TERRAIN_SOURCE_REF}" and rerun "bun run bake:island", ` +
+      'or set TERRAIN_SOURCE_REPOSITORY to a checkout that has it. ' +
       'The current, potentially already-shaped asset will NOT be used as input.',
       { cause },
     );
@@ -217,6 +221,85 @@ function textures(document: Document): string[] {
   });
 }
 
+/** One encoded corner of a record: its raw position and UV components. */
+export function cornerKey(record: TerrainRecord, vertex: number): string {
+  const positions = record.position.getArray()!;
+  const uvs = record.uv.getArray()!;
+  return `${positions[vertex * 3]},${positions[vertex * 3 + 1]},${positions[vertex * 3 + 2]}/${uvs[vertex * 2]},${uvs[vertex * 2 + 1]}`;
+}
+
+/**
+ * Every face of a record as its encoded corners, in the least of its three
+ * rotations, so the same triangle with the same winding has one key however
+ * the corners and faces are ordered, repeated corners included.
+ */
+export function faceKeys(record: TerrainRecord): string[] {
+  const keys: string[] = [];
+  visitRecord(record, (a, b, c) => {
+    keys.push(leastRotation([cornerKey(record, a), cornerKey(record, b), cornerKey(record, c)]));
+  });
+  return keys;
+}
+
+/** A face's corners joined in the least of their three rotations: winding kept, start forgotten. */
+export function leastRotation(corners: readonly string[]): string {
+  return [0, 1, 2]
+    .map(start => [0, 1, 2].map(step => corners[(start + step) % 3]).join(';'))
+    .reduce((least, rotation) => (rotation < least ? rotation : least));
+}
+
+/** A record's faces counted by key, since a key may repeat. */
+export function faceCensus(record: TerrainRecord): Map<string, number> {
+  const census = new Map<string, number>();
+  for (const key of faceKeys(record)) census.set(key, (census.get(key) ?? 0) + 1);
+  return census;
+}
+
+function sameCensus(a: Map<string, number>, b: Map<string, number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [key, count] of a) if (b.get(key) !== count) return false;
+  return true;
+}
+
+/**
+ * The optimized terrain's normals are one per face, repeated on its three
+ * corners, so no two faces could share a vertex: 341,574 vertices, 3.8MB, for
+ * 76,862 distinct corners. Shaded flat at runtime, as the software terrain and
+ * the skirt already are, the stream says nothing the faces do not. It goes, the
+ * corners weld, and the faces are reordered for the vertex cache: 0.8MB, and
+ * the same triangles, bit for bit (round 31).
+ */
+async function weldFlatTerrain(io: NodeIO, shaped: Uint8Array): Promise<Uint8Array> {
+  const document = await io.readBinary(shaped);
+  const records = terrainRecords(document);
+  const before = records.map(faceCensus);
+  for (const record of records) {
+    if (!record.normal) continue;
+    if (record.indices) throw new Error('Only split face normals can be shaded flat.');
+    const normals = record.normal.getArray()!;
+    for (let corner = 0; corner < normals.length; corner += 1) {
+      const face = Math.floor(corner / 9) * 9;
+      if (normals[corner] !== normals[face + (corner % 3)]) {
+        throw new Error('A terrain face has more than one normal; flat shading would change it.');
+      }
+    }
+    record.primitive.setAttribute('NORMAL', null);
+  }
+  await document.transform(weld(), reorder({ encoder: MeshoptEncoder, target: 'size' }));
+  document.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({
+    method: EXTMeshoptCompression.EncoderMethod.QUANTIZE,
+  });
+  const bytes = await io.writeBinary(document);
+  const delivered = await io.readBinary(bytes);
+  const after = terrainRecords(delivered);
+  if (after.length !== before.length || after.some(record => record.normal) ||
+      after.some((record, index) => !sameCensus(faceCensus(record), before[index])) ||
+      JSON.stringify(textures(delivered)) !== JSON.stringify(textures(document))) {
+    throw new Error('Welding changed the terrain faces or textures.');
+  }
+  return bytes;
+}
+
 export function surfaceFromSkirt(rim: readonly TerrainRimPoint[]): ShoreMesh {
   const geometry = createTerrainSkirtFromRim(rim);
   const positions = Float64Array.from(geometry.getAttribute('position').array);
@@ -342,7 +425,8 @@ export async function reshapeTerrainAsset(io: NodeIO, source: typeof TERRAIN_SOU
       });
     }
   }
-  // Only lossless buffer encoding: no simplify(), reorder(), or quantize().
+  // Shaping writes only lossless buffer encoding: no simplify(), reorder(), or quantize().
+  // weldFlatTerrain reorders the faces afterwards and proves them unchanged.
   document.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({
     method: EXTMeshoptCompression.EncoderMethod.QUANTIZE,
   });
@@ -443,11 +527,16 @@ export async function reshapeTerrainAsset(io: NodeIO, source: typeof TERRAIN_SOU
   const maximumRimJoinError = measureTerrainRimJoin(after, rim);
   const skirt = surfaceFromSkirt(rim);
   const continuation = surfaceFromContinuation(rim);
+  // The shaped faces are measured above; what ships is the same faces, welded where normals allow it.
+  const delivered = after.some(record => record.normal) ? await weldFlatTerrain(io, bytes) : bytes;
+  const deliveredVertices = terrainRecords(await io.readBinary(delivered))
+    .reduce((sum, record) => sum + record.position.getCount(), 0);
   return {
-    bytes, rim, continuation, meshes: [...after, skirt, continuation],
+    bytes: delivered, rim, continuation, meshes: [...after, skirt, continuation],
     stats: {
-      variant: source.variant, sourceSha256: source.sha256, sha256: sha256(bytes), bytes: bytes.length,
+      variant: source.variant, sourceSha256: source.sha256, sha256: sha256(delivered), bytes: delivered.length,
       meshes: after.length, triangles, vertices: after.reduce((sum, record) => sum + record.position.getCount(), 0),
+      deliveredVertices,
       changedVertices, unchangedVertices, unchangedNormalVertices, pinnedVertices, maximumDisplacement,
       minimumOrientationCosine, minimumJacobianDeterminant,
       diagonalFlips, retriangulatedFaces,

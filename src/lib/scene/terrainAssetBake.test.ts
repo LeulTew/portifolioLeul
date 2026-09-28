@@ -2,10 +2,11 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  createTerrainIO, decodeShorePng, encodeShorePng, measureTerrainRimJoin, readTerrainSource, sha256,
+  cornerKey, createTerrainIO, decodeShorePng, encodeShorePng, faceCensus, faceKeys, leastRotation, measureTerrainRimJoin, readTerrainSource, sha256,
   surfaceFromContinuation, surfaceFromSkirt, terrainRecords, verifyShoreRegistration,
   TERRAIN_REPOSITORY, TERRAIN_SOURCE_REF, TERRAIN_SOURCES,
 } from './terrainAssetBake';
+import * as THREE from 'three';
 import {
   isProtectedTerrainTriangle, terrainPlanarPoint,
   TERRAIN_CORE_RADIUS, type TerrainPoint,
@@ -83,76 +84,86 @@ describe('committed organic terrain assets', () => {
     expect(decodeShorePng(encodeShorePng(pixels))).toEqual(pixels);
   });
 
-  it('preserves every protected face and encoded interior position/normal, not just prop origins', () => {
+  it('preserves every protected face and interior corner, not just prop origins', () => {
+    // Compared by face, not by vertex index: the optimized terrain ships welded and
+    // reordered, the same faces over fewer shared vertices (round 31).
     for (const asset of assets) {
       let protectedFaces = 0;
-      let changedProtectedComponents = 0;
-      let changedCoreComponents = 0;
-      let changedInteriorNormals = 0;
-      let checkedNormalFaces = 0;
-      const changedUvFaces = new Set<string>();
+      let missingProtectedFaces = 0;
+      let coreCorners = 0;
+      let missingCoreCorners = 0;
+      let foreignUvCorners = 0;
+      let changedUvFaces = 0;
       asset.before.forEach((before, recordIndex) => {
         const after = asset.after[recordIndex];
-        const oldPosition = before.position.getArray()!;
-        const newPosition = after.position.getArray()!;
-        expect(newPosition.length).toBe(oldPosition.length);
-        expect(after.indices).toEqual(before.indices);
-        const oldUV = before.uv.getArray()!;
-        const newUV = after.uv.getArray()!;
-        const sourceUVs = new Set<string>();
-        for (let vertex = 0; vertex < before.uv.getCount(); vertex += 1) {
-          sourceUVs.add(`${oldUV[vertex * 2]},${oldUV[vertex * 2 + 1]}`);
-        }
+        const finalFaces = faceCensus(after);
+        const finalKeys = faceKeys(after);
+        const finalCorners = new Set(finalKeys.flatMap(key => key.split(';')));
+        const uvOf = (corner: string) => corner.slice(corner.indexOf('/') + 1);
+        const uvFace = (key: string) => leastRotation(key.split(';').map(uvOf));
+        const sourceKeys = faceKeys(before);
+        const sourceUvs = new Set(sourceKeys.flatMap(key => key.split(';').map(uvOf)));
+        const sourceUvFaces = new Set(sourceKeys.map(uvFace));
         for (let vertex = 0; vertex < before.position.getCount(); vertex += 1) {
-          const point = pointAt(before.positions, vertex);
-          if (oldUV[vertex * 2] !== newUV[vertex * 2] || oldUV[vertex * 2 + 1] !== newUV[vertex * 2 + 1]) {
-            expect(sourceUVs.has(`${newUV[vertex * 2]},${newUV[vertex * 2 + 1]}`)).toBe(true);
-            expect(Math.hypot(...terrainPlanarPoint(point))).toBeGreaterThan(TERRAIN_CORE_RADIUS);
-            changedUvFaces.add(`${recordIndex}:${Math.floor(vertex / 3)}`);
-          }
-          if (Math.hypot(...terrainPlanarPoint(point)) <= TERRAIN_CORE_RADIUS) {
-            for (let axis = 0; axis < 3; axis += 1) {
-              if (oldPosition[vertex * 3 + axis] !== newPosition[vertex * 3 + axis]) changedCoreComponents += 1;
-            }
-          }
+          if (Math.hypot(...terrainPlanarPoint(pointAt(before.positions, vertex))) > TERRAIN_CORE_RADIUS) continue;
+          coreCorners += 1;
+          if (!finalCorners.has(cornerKey(before, vertex))) missingCoreCorners += 1;
         }
         const count = before.indices?.length ?? before.position.getCount();
         for (let triangle = 0; triangle < count; triangle += 3) {
-          const vertices = [0, 1, 2].map(corner => before.indices?.[triangle + corner] ?? triangle + corner);
-          const points = vertices.map(vertex => pointAt(before.positions, vertex));
-          const protectedFace = isProtectedTerrainTriangle(points[0], points[1], points[2]);
-          if (protectedFace) {
-            protectedFaces += 1;
-            for (const vertex of vertices) {
-              expect(newUV[vertex * 2]).toBe(oldUV[vertex * 2]);
-              expect(newUV[vertex * 2 + 1]).toBe(oldUV[vertex * 2 + 1]);
-              for (let axis = 0; axis < 3; axis += 1) {
-                if (oldPosition[vertex * 3 + axis] !== newPosition[vertex * 3 + axis]) changedProtectedComponents += 1;
-              }
-            }
-          }
-          if (before.normal && (protectedFace ||
-              points.every(point => Math.hypot(...terrainPlanarPoint(point)) < TERRAIN_CORE_RADIUS))) {
-            checkedNormalFaces += 1;
-            const oldNormal = before.normal.getArray()!;
-            const newNormal = after.normal!.getArray()!;
-            for (const vertex of vertices) {
-              for (let axis = 0; axis < 3; axis += 1) {
-                if (oldNormal[vertex * 3 + axis] !== newNormal[vertex * 3 + axis]) changedInteriorNormals += 1;
-              }
-            }
-          }
+          const points = [0, 1, 2].map(corner => pointAt(before.positions, before.indices?.[triangle + corner] ?? triangle + corner));
+          if (!isProtectedTerrainTriangle(points[0], points[1], points[2])) continue;
+          protectedFaces += 1;
+          if (!finalFaces.has(sourceKeys[triangle / 3])) missingProtectedFaces += 1;
+        }
+        for (const key of finalKeys) {
+          for (const corner of key.split(';')) if (!sourceUvs.has(uvOf(corner))) foreignUvCorners += 1;
+          if (!sourceUvFaces.has(uvFace(key))) changedUvFaces += 1;
         }
       });
       expect(protectedFaces).toBeGreaterThan(100);
-      expect(changedProtectedComponents).toBe(0);
-      expect(changedCoreComponents).toBe(0);
-      expect(changedInteriorNormals).toBe(0);
-      expect(changedUvFaces.size).toBeLessThanOrEqual(bake.variants[asset.source.variant === 'software' ? 1 : 0].retriangulatedFaces);
-      if (asset.source.variant === 'optimized') expect(checkedNormalFaces).toBeGreaterThan(100);
+      expect(missingProtectedFaces).toBe(0);
+      expect(coreCorners).toBeGreaterThan(1000);
+      expect(missingCoreCorners).toBe(0);
+      expect(foreignUvCorners).toBe(0);
+      expect(changedUvFaces).toBeLessThanOrEqual(bake.variants[asset.source.variant === 'software' ? 1 : 0].retriangulatedFaces);
       expect(asset.final.getRoot().listTextures().map(texture => sha256(texture.getImage()!)))
         .toEqual(asset.original.getRoot().listTextures().map(texture => sha256(texture.getImage()!)));
     }
+  });
+
+  it('ships no normal stream: every face is shaded by its own plane, as its source normals were', () => {
+    // The optimized source repeats one normal on each face's three corners; flat shading
+    // reproduces it from the face itself, so the stream was dropped and the corners welded.
+    for (const asset of assets) expect(asset.after.every(record => !record.normal)).toBe(true);
+    const optimized = assets.find(asset => asset.source.variant === 'optimized')!;
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const c = new THREE.Vector3();
+    const stored = new THREE.Vector3();
+    const angles: number[] = [];
+    let splitFaces = 0;
+    for (const record of optimized.before) {
+      const normals = record.normal!;
+      const matrix = new THREE.Matrix3().getNormalMatrix(record.world);
+      for (let vertex = 0; vertex < record.position.getCount(); vertex += 3) {
+        const face = [0, 1, 2].map(corner => normals.getElement(vertex + corner, []).join(','));
+        if (face[1] !== face[0] || face[2] !== face[0]) splitFaces += 1;
+        a.fromArray(pointAt(record.positions, vertex));
+        b.fromArray(pointAt(record.positions, vertex + 1)).sub(a);
+        c.fromArray(pointAt(record.positions, vertex + 2)).sub(a);
+        b.cross(c);
+        // A zero-area face draws nothing, however it is shaded.
+        if (b.lengthSq() === 0) continue;
+        stored.fromArray(normals.getElement(vertex, [])).applyMatrix3(matrix);
+        angles.push(THREE.MathUtils.radToDeg(b.angleTo(stored)));
+      }
+    }
+    angles.sort((x, y) => x - y);
+    expect(splitFaces).toBe(0);
+    expect(angles.length).toBeGreaterThan(80_000);
+    expect(angles[Math.floor(angles.length * 0.5)]).toBeLessThan(0.5);
+    expect(angles[Math.floor(angles.length * 0.99)]).toBeLessThan(5);
   });
 
   it('removes long axis-aligned rear/left/rear-right cuts in both actual asset profiles', () => {
@@ -204,11 +215,15 @@ describe('committed organic terrain assets', () => {
     });
   });
 
-  it('retains terrain mesh/vertex/triangle counts and adds no terrain draw calls', () => {
+  it('retains terrain mesh/triangle counts, welds only the optimized corners and adds no terrain draw calls', () => {
+    const faces = (records: typeof assets[number]['after']) =>
+      records.map(record => (record.indices?.length ?? record.position.getCount()) / 3);
+    const vertices = (records: typeof assets[number]['after']) =>
+      records.reduce((sum, record) => sum + record.position.getCount(), 0);
     assets.forEach((asset, index) => {
       expect(asset.after).toHaveLength(15);
-      expect(asset.after.map(record => record.position.getCount()))
-        .toEqual(asset.before.map(record => record.position.getCount()));
+      expect(faces(asset.after)).toEqual(faces(asset.before));
+      expect(vertices(asset.after)).toBe(bake.variants[index].deliveredVertices);
       expect(bake.variants[index].triangles).toBe(index ? 75158 : 113858);
       expect(bake.variants[index].skirtTriangles).toBeLessThanOrEqual(4096);
       expect(bake.variants[index].changedVertices).toBeGreaterThan(1000);
@@ -217,5 +232,28 @@ describe('committed organic terrain assets', () => {
       expect(bake.variants[index].minimumOrientationCosine).toBeGreaterThan(0.5);
       expect(bake.variants[index].minimumJacobianDeterminant).toBeGreaterThan(0);
     });
+    // The software terrain was indexed already; the optimized one shares its corners now.
+    expect(vertices(assets[1].after)).toBe(vertices(assets[1].before));
+    expect(bake.variants[0].deliveredVertices).toBeLessThan(bake.variants[0].vertices / 4);
+    expect(assets[0].after.every(record => record.indices)).toBe(true);
+  });
+});
+
+describe('the pristine terrain source', () => {
+  it('can be read from another checkout, and says how when it cannot be read at all', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const previous = process.env.TERRAIN_SOURCE_REPOSITORY;
+    const empty = mkdtempSync(join(tmpdir(), 'no-history-'));
+    try {
+      process.env.TERRAIN_SOURCE_REPOSITORY = TERRAIN_REPOSITORY;
+      expect(sha256(readTerrainSource(TERRAIN_SOURCES[0]))).toBe(TERRAIN_SOURCES[0].sha256);
+      process.env.TERRAIN_SOURCE_REPOSITORY = empty;
+      expect(() => readTerrainSource(TERRAIN_SOURCES[0])).toThrow(/TERRAIN_SOURCE_REPOSITORY/);
+    } finally {
+      if (previous === undefined) delete process.env.TERRAIN_SOURCE_REPOSITORY;
+      else process.env.TERRAIN_SOURCE_REPOSITORY = previous;
+      rmSync(empty, { recursive: true, force: true });
+    }
   });
 });

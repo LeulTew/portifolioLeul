@@ -547,6 +547,22 @@ describe('discreet scene overlay styling', () => {
     expect(declarations('.target:focus-visible .cue').outline).toBe('2px solid var(--avatar-focus)');
   });
 
+  it('frames a focused hotspot, wordlessly, and only for the keyboard', () => {
+    // Round 37 (D-R37-001): a focused hotspot showed only the cue's 5px dot.
+    const focused = declarations('.target:focus-visible');
+    expect(focused.outline).toBe('none');
+    expect(focused['--reticle']).toBe('var(--avatar-focus)');
+    expect(focused['--reticle-halo']).toBe('var(--avatar-surface)');
+    // Four corners of two arms each, every arm over a halo.
+    expect(focused.background.match(/linear-gradient\(var\(--reticle\), var\(--reticle\)\)/g)).toHaveLength(8);
+    expect(focused.background.match(/linear-gradient\(var\(--reticle-halo\), var\(--reticle-halo\)\)/g)).toHaveLength(8);
+    let hoverFrames = false;
+    css.walkRules(rule => {
+      if (rule.selectors.some(selector => selector.includes(':hover') && !selector.includes('.cue'))) hoverFrames = true;
+    });
+    expect(hoverFrames).toBe(false);
+  });
+
   it('never takes over projected geometry or a separate reveal clock, and does not fade Return', () => {
     const target = declarations('.target');
     for (const property of ['width', 'height', 'transform', 'transition', 'animation']) {

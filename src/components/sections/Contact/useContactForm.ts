@@ -7,6 +7,14 @@ import {
   type ContactDeliveryFailure,
 } from './contactDelivery';
 import { CONTACT_LIMITS } from './contactLimits';
+import { requestReveal } from '@/lib/scroll/layerFocus';
+
+const FIELDS = ['name', 'email', 'message'] as const;
+
+function fieldOf(form: HTMLFormElement | null | undefined, name: keyof ContactFormData) {
+  const field = form?.elements.namedItem(name);
+  return field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement ? field : null;
+}
 
 export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>) {
   const [formData, setFormData] = useState<ContactFormData>({
@@ -33,7 +41,8 @@ export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>
     };
   }, []);
 
-  const validateForm = (): keyof ContactFormData | null => {
+  /** The draft's own rules, and the browser's constraints on the fields, reported in one voice. */
+  const validateForm = (form?: HTMLFormElement | null): keyof ContactFormData | null => {
     const newErrors: FormErrors = {};
 
     if (!formData.name.trim()) {
@@ -44,7 +53,7 @@ export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (formData.email.length > CONTACT_LIMITS.email ||
+    } else if (formData.email.length > CONTACT_LIMITS.email || fieldOf(form, 'email')?.validity.typeMismatch ||
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Please enter a valid email address';
     }
@@ -55,8 +64,13 @@ export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>
       newErrors.message = `Please keep the message under ${CONTACT_LIMITS.message.toLocaleString('en-US')} characters`;
     }
 
+    // A constraint the rules above do not name still gets a message, never a silent block.
+    for (const name of FIELDS) {
+      if (!newErrors[name] && fieldOf(form, name)?.validity.valid === false) newErrors[name] = 'Please check this field';
+    }
+
     setErrors(newErrors);
-    return newErrors.name ? 'name' : newErrors.email ? 'email' : newErrors.message ? 'message' : null;
+    return FIELDS.find(name => newErrors[name]) ?? null;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -64,9 +78,12 @@ export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>
     if (pending.current || accepted.current) return;
     setSubmitStatus('idle');
     setSubmitError(null);
-    const invalidField = validateForm();
+    const invalidField = validateForm(e.currentTarget);
     if (invalidField) {
-      e.currentTarget.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${invalidField}"]`)?.focus();
+      const field = fieldOf(e.currentTarget, invalidField);
+      field?.focus();
+      // Clear of the navbar, as a field the browser's own validation focuses is (round 8, D-A11Y-002).
+      if (field) requestReveal(field);
       return;
     }
 
@@ -101,6 +118,20 @@ export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>
     }
   };
 
+  /*
+   * The browser's constraints still decide (`required`, `type="email"`, `maxlength`): a blank or
+   * malformed draft is still never submitted. Only the report is the form's own. Cancelling each
+   * `invalid` keeps the browser's bubble off the design, and the form focuses the first field in
+   * its place, as the browser would, so the page's reveal of a validated field is unchanged.
+   */
+  const handleInvalid = (e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.preventDefault();
+    if (pending.current || accepted.current) return;
+    const form = e.currentTarget.form;
+    const first = validateForm(form);
+    if (first) fieldOf(form, first)?.focus();
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (pending.current) return;
     const { name, value } = e.target;
@@ -129,6 +160,7 @@ export function useContactForm(submitFn?: (signal: AbortSignal) => Promise<void>
     submitStatus,
     submitError,
     handleSubmit,
+    handleInvalid,
     handleChange,
     resetForm,
   };

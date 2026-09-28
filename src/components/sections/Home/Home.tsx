@@ -833,7 +833,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
     ownScroll(() => document.getElementById('about')?.scrollIntoView({ 
       behavior: prefersReduced ? 'auto' : 'smooth', 
       block: 'start' 
-    }), { smooth: !prefersReduced });
+    }));
     landSectionFocus('about');
   };
 
@@ -847,7 +847,7 @@ export function Home({ onNavigate, theme = 'light', flat = false, introReady = t
     ownScroll(() => document.getElementById('contact')?.scrollIntoView({ 
       behavior: prefersReduced ? 'auto' : 'smooth', 
       block: 'start' 
-    }), { smooth: !prefersReduced });
+    }));
     landSectionFocus('contact');
   };
 

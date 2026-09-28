@@ -11,7 +11,7 @@
  * section navigation, which settles the chapters in between like the navbar.
  */
 import { chromeClearance } from './chromeInset';
-import { ownScroll } from './scrollGesture';
+import { forgetHeldScroll, ownScroll, readerIntent } from './scrollGesture';
 import { landSectionFocus } from './sectionLanding';
 import { subscribeSectionNavigation } from './sectionNavigation';
 import { viewOwner } from './viewOwner';
@@ -120,30 +120,51 @@ export interface LayerFocusOptions {
   navigate: (section: string) => void;
   /** Where the damped layer is drawn now, in track pixels; defaults to the track's target. */
   renderedScrollTop?: () => number;
+  /** Holds a reveal while the track is owed a rebuild, whose restore would undo it; defaults to now. */
+  whenSettled?: (run: () => void) => void;
 }
 
-export function installLayerFocus({ track, main, navigate, renderedScrollTop }: LayerFocusOptions): () => void {
+export function installLayerFocus({ track, main, navigate, renderedScrollTop, whenSettled = run => run() }: LayerFocusOptions): () => void {
   const root = track.ownerDocument;
   const view = root.defaultView;
   if (!view) return () => {};
   let frame = 0;
   /** True while this module's own navigation is being published. */
   let issuing = false;
+  /**
+   * This module's reveals: their own key, so retiring one never drops another producer's write
+   * to the track, and a generation that a newer intent advances. A reveal still waiting for a
+   * held thumb is the reader's no longer once they have moved on (round 28, TECH-080).
+   */
+  const revealKey = {};
+  let generation = 0;
 
-  const nudge = (element: HTMLElement) => {
-    const content = main();
-    if (!element.isConnected || !content) return;
-    const height = track.clientHeight || view.innerHeight;
-    const box = revealBox(element);
-    const margin = Math.min(REVEAL_MARGIN_PX, height * 0.12);
-    const top = Math.max(margin, chromeClearance());
-    let shift = box.bottom > height - margin ? box.bottom - (height - margin) : 0;
-    if (box.top - shift < top) shift = box.top - top;
-    if (Math.abs(shift) < 1) return;
-    const trackRange = Math.max(track.scrollHeight - track.clientHeight, 1);
-    const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
-    const from = renderedScrollTop?.() ?? track.scrollTop;
-    ownScroll(() => { track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange); });
+  const nudge = (element: HTMLElement, inPlace = false, reader = readerIntent()) => {
+    const asked = generation;
+    // Measured when it runs, as the latest reveal of this track (round 27, TECH-076), and on the
+    // page a rebuild owed leaves: made before it, the rebuild's restore took it back (round 37).
+    whenSettled(() => ownScroll(() => {
+      const content = main();
+      if (asked !== generation || !element.isConnected || !content) return;
+      const height = track.clientHeight || view.innerHeight;
+      // An in-place reveal never brings back a chapter the reader has left while it waited.
+      if (inPlace) {
+        let section: HTMLElement = element;
+        while (section.parentElement && section.parentElement !== content) section = section.parentElement;
+        const area = section.getBoundingClientRect();
+        if (area.bottom <= 0 || area.top >= height || content.closest('[inert]')) return;
+      }
+      const box = revealBox(element);
+      const margin = Math.min(REVEAL_MARGIN_PX, height * 0.12);
+      const top = Math.max(margin, chromeClearance());
+      let shift = box.bottom > height - margin ? box.bottom - (height - margin) : 0;
+      if (box.top - shift < top) shift = box.top - top;
+      if (Math.abs(shift) < 1) return;
+      const trackRange = Math.max(track.scrollHeight - track.clientHeight, 1);
+      const contentRange = Math.max(content.scrollHeight - track.clientHeight, 1);
+      const from = renderedScrollTop?.() ?? track.scrollTop;
+      track.scrollTop = Math.min(Math.max(from + (shift * trackRange) / contentRange, 0), trackRange);
+    }, { key: revealKey, intent: reader }));
   };
 
   /** `inPlace`: only within the chapter on screen; a chapter the reader left is never brought back. */
@@ -159,6 +180,8 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     const offscreen = area.bottom <= 0 || area.top >= height;
     if (inPlace && (offscreen || content.closest('[inert]'))) return;
     view.cancelAnimationFrame(frame);
+    // The reader's intent at the reveal's request, not at its frames (round 30, TECH-085).
+    const reader = readerIntent();
     if (section.id && offscreen) {
       issuing = true;
       try {
@@ -169,9 +192,9 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
       // Still the reader's focus two frames on, and no newer navigation between: a later choice
       // owns the view, and this nudge must not scroll back over it (round 12, TECH-038).
       frame = view.requestAnimationFrame(() => {
-        frame = view.requestAnimationFrame(() => { if (root.activeElement === element) nudge(element); });
+        frame = view.requestAnimationFrame(() => { if (root.activeElement === element) nudge(element, false, reader); });
       });
-    } else nudge(element);
+    } else nudge(element, inPlace, reader);
   };
   /*
    * Native validation focuses the first invalid field and scrolls it into
@@ -184,6 +207,9 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
   const stopNewerIntent = onNewerIntent(root, () => issuing, () => {
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    generation++;
+    forgetHeldScroll(revealKey);
+    forgetHeldScroll(OWN_BOX_REVEAL);
   });
 
   const hold = (event: Event) => {
@@ -236,6 +262,10 @@ export function installLayerFocus({ track, main, navigate, renderedScrollTop }: 
     stopNewerIntent();
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    // Its reveals end with it (round 29, TECH-083).
+    generation++;
+    forgetHeldScroll(revealKey);
+    forgetHeldScroll(OWN_BOX_REVEAL);
   };
 }
 
@@ -294,18 +324,27 @@ function onNewerIntent(root: Document, issuing: () => boolean, cancel: () => voi
  * are converted to the box's own before scrolling.
  */
 function revealInOwnBox(element: HTMLElement, view: Window): void {
-  for (let box = element.parentElement; box && box !== element.ownerDocument.body; box = box.parentElement) {
-    if (box.scrollHeight <= box.clientHeight + 1 || !/auto|scroll|overlay/.test(view.getComputedStyle(box).overflowY)) continue;
-    const outer = box.getBoundingClientRect();
-    const inner = element.getBoundingClientRect();
-    const scale = box.clientHeight > 0 && outer.height > 0 ? outer.height / box.clientHeight : 1;
-    const margin = OWN_BOX_MARGIN_PX * scale;
-    let shift = inner.bottom > outer.bottom - margin ? inner.bottom - (outer.bottom - margin) : 0;
-    if (inner.top - shift < outer.top + margin) shift = inner.top - (outer.top + margin);
-    if (Math.abs(shift) >= 1) box.scrollTop += shift / scale;
-    return;
-  }
+  // Measured when it runs, and one per box: a second Tab under a held thumb added its shift to a
+  // page the first had not moved yet, and the focused link ended out of sight (round 27, TECH-076).
+  ownScroll(() => {
+    // Only a stop that still holds focus when it runs: the reader may have moved on (round 29, TECH-082).
+    if (!element.isConnected || element.ownerDocument.activeElement !== element) return;
+    for (let box = element.parentElement; box && box !== element.ownerDocument.body; box = box.parentElement) {
+      if (box.scrollHeight <= box.clientHeight + 1 || !/auto|scroll|overlay/.test(view.getComputedStyle(box).overflowY)) continue;
+      const outer = box.getBoundingClientRect();
+      const inner = element.getBoundingClientRect();
+      const scale = box.clientHeight > 0 && outer.height > 0 ? outer.height / box.clientHeight : 1;
+      const margin = OWN_BOX_MARGIN_PX * scale;
+      let shift = inner.bottom > outer.bottom - margin ? inner.bottom - (outer.bottom - margin) : 0;
+      if (inner.top - shift < outer.top + margin) shift = inner.top - (outer.top + margin);
+      if (Math.abs(shift) >= 1) box.scrollTop += shift / scale;
+      return;
+    }
+  }, { key: OWN_BOX_REVEAL });
 }
+
+/** The one purpose every portalled-box reveal shares: only the latest focused stop is shown. */
+const OWN_BOX_REVEAL = Symbol('own-box reveal');
 
 /** The direct child of `content` that holds `element`: its section. */
 function sectionOf(content: HTMLElement, element: Element): HTMLElement | null {
@@ -428,6 +467,9 @@ export function installDocumentFocus({ main, navigate }: {
   let from: string | null = null;
   let frame = 0;
   let issuing = false;
+  // Its reveals' own key and a generation newer intent advances, as in the 3D page (round 28, TECH-080).
+  const revealKey = {};
+  let generation = 0;
 
   const key = (event: KeyboardEvent) => {
     if (event.key !== 'Tab') return;
@@ -453,17 +495,27 @@ export function installDocumentFocus({ main, navigate }: {
       issuing = false;
     }
     view.cancelAnimationFrame(frame);
+    // Asked now, at the focus change: the reader's travel before the frames come supersedes it (round 30, TECH-085).
+    const asked = generation;
+    const reader = readerIntent();
     frame = view.requestAnimationFrame(() => {
       frame = view.requestAnimationFrame(() => {
-        if (root.activeElement === element) ownScroll(() => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+        // Checked when it runs: still the focused stop, and no newer intent since (round 29, TECH-082).
+        ownScroll(() => {
+          if (asked === generation && root.activeElement === element) element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }, { key: revealKey, intent: reader });
       });
     });
   };
 
   // Native validation aligns the field under the bar; its label, above it, is shown with it.
   const validation = validationPass(root, view, field => Boolean(main()?.contains(field)), field => {
-    const hidden = chromeClearance() - revealBox(field).top;
-    if (hidden >= 1) ownScroll(() => view.scrollBy({ top: -hidden, behavior: 'auto' }));
+    const asked = generation;
+    ownScroll(() => {
+      if (asked !== generation) return;
+      const hidden = chromeClearance() - revealBox(field).top;
+      if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+    }, { key: revealKey });
   });
   // Requested feedback is brought in whole, then clear of the bar if that put it under it --
   // but only in the chapter on screen: a late answer never pulls the reader back to its section.
@@ -474,9 +526,15 @@ export function installDocumentFocus({ main, navigate }: {
     const section = sectionOf(content, element);
     const area = section?.getBoundingClientRect();
     if (!area || area.bottom <= 0 || area.top >= view.innerHeight) return;
-    ownScroll(() => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
-    const hidden = chromeClearance() - revealBox(element).top;
-    if (hidden >= 1) ownScroll(() => view.scrollBy({ top: -hidden, behavior: 'auto' }));
+    const asked = generation;
+    ownScroll(() => {
+      // Still the chapter on screen when it runs: the reader may have left it while it waited.
+      const now = section?.getBoundingClientRect();
+      if (asked !== generation || !element.isConnected || !now || now.bottom <= 0 || now.top >= view.innerHeight) return;
+      element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const hidden = chromeClearance() - revealBox(element).top;
+      if (hidden >= 1) view.scrollBy({ top: -hidden, behavior: 'auto' });
+    }, { key: revealKey });
   };
 
   root.addEventListener('keydown', key, { capture: true, passive: true });
@@ -487,6 +545,8 @@ export function installDocumentFocus({ main, navigate }: {
   const stopNewerIntent = onNewerIntent(root, () => issuing, () => {
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    generation++;
+    forgetHeldScroll(revealKey);
   });
   return () => {
     stopNewerIntent();
@@ -497,5 +557,8 @@ export function installDocumentFocus({ main, navigate }: {
     root.removeEventListener(REVEAL_REQUEST, requested, true);
     view.cancelAnimationFrame(frame);
     validation.cancel();
+    // Its reveals end with it (round 29, TECH-083).
+    generation++;
+    forgetHeldScroll(revealKey);
   };
 }

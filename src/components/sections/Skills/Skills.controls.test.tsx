@@ -97,4 +97,35 @@ describe('Skills chapter controls', () => {
       outline: '2px solid var(--skill-accent)', 'outline-offset': '2px',
     });
   });
+
+  it('lands a linear Skills on one screen: its first chapter reaches the window edge, never a cut heading', () => {
+    // Round 37 (D-R37-002): at 3840x2160 the first chapter ended above the edge and the next
+    // chapter's heading was cut by it. The floor reckons everything above the first chapter.
+    const css = postcss.parse(readFileSync(join(__dirname, 'Skills.module.css'), 'utf8'));
+    const app = postcss.parse(readFileSync(join(__dirname, '..', '..', '..', 'App.module.css'), 'utf8'));
+    const rule = (sheet: postcss.Root, selector: string) => {
+      const values: Record<string, string> = {};
+      sheet.walkRules(found => {
+        if (found.parent?.type !== 'root' || !found.selectors.includes(selector)) return;
+        found.walkDecls(declaration => { values[declaration.prop] = declaration.value; });
+      });
+      return values;
+    };
+    const floor = rule(css, ".stage[data-staged='false'] .chapter:first-child")['min-height'];
+    for (const part of ['100svh', 'var(--section-lead', 'var(--skills-content-top)', 'var(--skills-title-size)',
+      'var(--skills-header-gap)']) expect(floor).toContain(part);
+    // Each named part is what the page actually lays out above the chapter.
+    expect(rule(app, '.main > *')).toMatchObject({ '--section-lead': '100px', 'padding-top': 'var(--section-lead)' });
+    expect(rule(css, '.content').padding).toMatch(/^var\(--skills-content-top\) /);
+    expect(rule(css, '.sectionTitle')['font-size']).toBe('var(--skills-title-size)');
+    expect(rule(css, '.header')['padding-bottom']).toBe('var(--skills-header-gap)');
+    // A floor, never a cap: a taller chapter keeps its height.
+    expect(rule(css, ".stage[data-staged='false'] .chapter:first-child")['max-height']).toBeUndefined();
+    // Round 38 (D-R38-001): the content stays under the header; the added room closes the chapter.
+    expect(rule(css, ".stage[data-staged='false'] .chapter:first-child")['align-content']).toBe('start');
+    // Every media query that moves the content's top moves the named value, not the padding.
+    css.walkAtRules('media', media => media.walkRules('.content', found => {
+      found.walkDecls('padding-top', () => { throw new Error(`${media.params} sets .content padding-top directly`); });
+    }));
+  });
 });

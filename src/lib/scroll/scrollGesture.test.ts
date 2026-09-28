@@ -1,11 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   initScrollGesture,
   ownScroll,
   resetScrollGesture,
+  subscribeScrollbarPress,
   subscribeScrollGesture,
   type ScrollDirection,
 } from './scrollGesture';
+import { CENSUS_EXCLUDED, CENSUS_SOURCE, findUnownedScrollWriters } from '@/test/scrollWriterCensus';
 
 /**
  * A gesture is an intention, never a permission.
@@ -109,29 +113,159 @@ describe('scrollGesture', () => {
       ownScroll(() => { page.scrollTop = 4840; });
       page.dispatchEvent(new Event('scroll'));
       expect(seen).toEqual([]);
-      // What the reader moves the thumb by afterwards is still theirs.
+      // What the reader moves the thumb by is still theirs, measured from the thumb.
       travel(page, 4700);
       expect(seen).toEqual(['up']);
       off();
     });
 
-    it('keeps a smooth scroll of the page its own while it runs, whichever scroller moves', () => {
-      vi.useFakeTimers({ toFake: ['performance'] });
-      try {
-        const page = scroller();
-        const off = listen();
-        press(page, 1436);
-        ownScroll(() => {}, { smooth: true });
-        travel(page, 4600);
-        travel(page, 4200);
-        expect(seen).toEqual([]);
-        vi.advanceTimersByTime(1600);
-        travel(page, 4000);
-        expect(seen).toEqual(['up']);
-        off();
-      } finally {
-        vi.useRealTimers();
+    it('writes nothing under a held thumb, and makes the held writes, in order, on release', () => {
+      // Round 25-26 (TECH-069/072/073): the browser put the page back under the thumb at places neither
+      // chose, and telling those from the reader's travel by position reversed, lost and invented requests.
+      const page = scroller();
+      const off = listen();
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 4840; });
+      ownScroll(() => { page.scrollTop += 10; });
+      expect(page.scrollTop).toBe(5000);
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4850);
+      page.dispatchEvent(new Event('scroll'));
+      expect(seen).toEqual([]);
+      off();
+    });
+
+    it('keeps the direction of a small genuine drag whatever the page asked for meanwhile', () => {
+      // Round 26 (TECH-072): after an own write to 4840, a 6px thumb move up read as down.
+      const page = scroller();
+      const off = listen();
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 4840; });
+      travel(page, 4994);
+      ownScroll(() => { page.scrollTop = 5160; });
+      travel(page, 4900);
+      travel(page, 5000);
+      expect(seen).toEqual(['up', 'up', 'down']);
+      off();
+    });
+
+    it("lets the reader's own travel under the thumb stand over a chapter's settle asked before it", () => {
+      // Round 29 (TECH-081): what the page asked for before the reader moved the thumb is theirs no longer.
+      const page = scroller();
+      const seenHere: ScrollDirection[] = [];
+      const off = subscribeScrollGesture(direction => {
+        seenHere.push(direction);
+        if (seenHere.length === 1) ownScroll(() => { page.scrollTop = 5350; });
+      });
+      press(page, 1436);
+      travel(page, 5200);
+      expect(seenHere).toEqual(['down']);
+      // Released without moving on: the chapter's settle, asked in answer to that travel, lands.
+      window.dispatchEvent(new PointerEvent('pointercancel'));
+      expect(page.scrollTop).toBe(5350);
+      seenHere.length = 0;
+      press(page, 1436);
+      travel(page, 5500);
+      travel(page, 5560);
+      expect(seenHere).toEqual(['down', 'down']);
+      window.dispatchEvent(new PointerEvent('pointercancel'));
+      expect(page.scrollTop).toBe(5560);
+      off();
+    });
+
+    it("retires what the page queued once the reader asks for something else, keeping what that input itself asks", () => {
+      // Round 29 (TECH-081/082): an End landing and reveals queued under the thumb ran over the reader's later travel.
+      const page = scroller();
+      const off = listen();
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 9000; });
+      // The key's own answer, queued by a bubble-phase handler, is what the reader asked for now.
+      const answer = () => ownScroll(() => { page.scrollTop = 4100; });
+      window.addEventListener('keydown', answer);
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+      window.removeEventListener('keydown', answer);
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4100);
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 9000; });
+      travel(page, 4000);
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4000);
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 9000; });
+      window.dispatchEvent(new WheelEvent('wheel', { deltaY: 100 }));
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(4000);
+      // A key that asks for no travel retires nothing.
+      press(page, 1436);
+      ownScroll(() => { page.scrollTop = 5000; });
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+      window.dispatchEvent(new PointerEvent('pointerup', { button: 0 }));
+      expect(page.scrollTop).toBe(5000);
+      off();
+    });
+    it("tells the page's own movers the reader took the page, and makes held writes if nobody is left listening", () => {
+      const page = scroller();
+      const pressed = vi.fn();
+      const offPress = subscribeScrollbarPress(pressed);
+      const off = listen();
+      page.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 600, clientY: 400 }));
+      expect(pressed).not.toHaveBeenCalled();
+      press(page, 1436);
+      expect(pressed).toHaveBeenCalledOnce();
+      ownScroll(() => { page.scrollTop = 4000; });
+      off();
+      offPress();
+      expect(page.scrollTop).toBe(4000);
+    });
+  });
+
+  it('routes every programmatic scroll write in the app through ownScroll', () => {
+    // Round 25-26 (TECH-071/074): a portalled reveal bypassed it, and a text scan missed writers.
+    const root = join(process.cwd(), 'src');
+    const bypasses: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (path !== join(root, 'test')) walk(path);
+          continue;
+        }
+        if (!CENSUS_SOURCE.test(entry.name) || CENSUS_EXCLUDED.test(entry.name)) continue;
+        for (const writer of findUnownedScrollWriters(readFileSync(path, 'utf8'), entry.name)) {
+          bypasses.push(`${path.slice(root.length + 1)}:${writer.line}: ${writer.text}`);
+        }
       }
+    };
+    walk(root);
+    expect(bypasses).toEqual([]);
+  });
+
+  describe('the scroll writer census itself', () => {
+    const flagged = (source: string, fileName = 'fixture.ts') =>
+      findUnownedScrollWriters(source, fileName).map(writer => writer.text);
+
+    it('finds every form of write outside ownScroll', () => {
+      expect(flagged('el.scrollTop = 1;')).toEqual(['el.scrollTop = 1']);
+      expect(flagged('el.scrollTop /= 2;')).toEqual(['el.scrollTop /= 2']);
+      expect(flagged('el.scrollLeft ??= 3;')).toEqual(['el.scrollLeft ??= 3']);
+      expect(flagged('el.scrollTop++; --el.scrollLeft;')).toEqual(['el.scrollTop++', '--el.scrollLeft']);
+      expect(flagged("el['scrollTop'] = 1;")).toEqual(["el['scrollTop'] = 1"]);
+      expect(flagged('el.scrollTo ({ top: 1 });')).toEqual(['el.scrollTo ({ top: 1 })']);
+      expect(flagged('el.scroll({ top: 1 }); scrollBy(0, 1);')).toEqual(['el.scroll({ top: 1 })', 'scrollBy(0, 1)']);
+      expect(flagged('node.scrollIntoView();', 'fixture.js')).toEqual(['node.scrollIntoView()']);
+      expect(flagged('ownScroll(() => {}); el.scrollTop = 2;')).toEqual(['el.scrollTop = 2']);
+      expect(flagged('// ownScroll(() => {\nel.scrollTop = 1;')).toEqual(['el.scrollTop = 1']);
+      expect(flagged('other(() => { el.scrollTop = 1; });')).toEqual(['el.scrollTop = 1']);
+    });
+
+    it('passes writes inside ownScroll however they are laid out, and never flags a read or a string', () => {
+      expect(flagged('ownScroll (() => { el.scrollTop = 1; });')).toEqual([]);
+      expect(flagged('ownScroll(function () { window.scrollBy(0, 1); });')).toEqual([]);
+      expect(flagged(`ownScroll(() => {\n  a();\n  b();\n  c();\n  d();\n  e();\n  el.scrollTop += 1;\n});`)).toEqual([]);
+      expect(flagged('ownScroll(() => el?.scrollIntoView({ block: "start" }));')).toEqual([]);
+      expect(flagged('const y = el.scrollTop; if (el.scrollTop === 0) f(el.scrollLeft);')).toEqual([]);
+      expect(flagged('const doc = "el.scrollTop = 1"; const t = `scrollTo(0)`;')).toEqual([]);
     });
   });
 
@@ -186,7 +320,7 @@ describe('scrollGesture', () => {
         type as string
       )
     );
-    expect(scrollish.length).toBe(5);
+    expect(scrollish.length).toBe(8);
     for (const [, , options] of scrollish) {
       expect(options).toMatchObject({ passive: true });
     }

@@ -7,6 +7,7 @@ import App from "./App";
 import { ThemeProvider } from "./components/sections/theme/ThemeProvider";
 import { setScrollProgress, subscribeScrollProgress } from "./lib/scroll/scrollProgress";
 import { subscribeSectionNavigation } from "./lib/scroll/sectionNavigation";
+import { requestReveal } from "./lib/scroll/layerFocus";
 import * as sectionTracking from "./lib/scroll/useActiveSection";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -313,6 +314,29 @@ describe("App Component", () => {
       expect(document.querySelector('[data-chapter-ink-layer] [data-ink-text="Scroll to explore"]')).not.toBeNull();
     });
 
+    it("steps the scroll invitation aside past Home on a reduced-motion page, whose chapters read as a linear page", () => {
+      // Round 35 (D-R35-001): it sat over Skills' proof link, as it once did on the flat page.
+      const tracking = vi.spyOn(sectionTracking, "useActiveSection").mockReturnValue("home");
+      // Swapped, not spied: the setup's matchMedia is itself a mock, and restoring a spy on it empties it.
+      const original = window.matchMedia;
+      window.matchMedia = (query: string) => ({
+        matches: query.includes("prefers-reduced-motion"), media: query, onchange: null,
+        addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+      try {
+        const { rerender } = render(<ThemeProvider><App /></ThemeProvider>);
+        const footer = () => screen.getByTestId("page-footer");
+        expect(footer()).toHaveTextContent("Scroll to explore");
+        tracking.mockReturnValue("skills");
+        rerender(<ThemeProvider><App /></ThemeProvider>);
+        expect(footer()).not.toHaveTextContent("Scroll to explore");
+        expect(footer()).toHaveTextContent(`© ${new Date().getFullYear()}`);
+      } finally {
+        window.matchMedia = original;
+      }
+    });
+
     it("provides an in-flow document-end copyright lane instead of a compact reading overlay", () => {
       render(<ThemeProvider><App /></ThemeProvider>);
       const footer = screen.getByTestId("compact-page-footer");
@@ -519,6 +543,26 @@ describe("App without a WebGL context", () => {
       scrollTo.mockRestore();
     }
   });
+
+  it.each([["linear", "false", 1], ["staged", "true", -80]])(
+    "lands %s Skills on its own edge only while linear, in the flat document", async (_layout, staged, inset) => {
+      // Round 35 (D-R35-001): linear, the 80px above Skills showed Education's green under the navbar.
+      const user = userEvent.setup();
+      const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+      try {
+        await renderSettled();
+        const target = screen.getByTestId("skills-section");
+        target.id = "skills";
+        target.dataset.landingEdge = "own";
+        target.dataset.staged = staged;
+        target.getBoundingClientRect = () => DOMRect.fromRect({ y: 5000, height: 4000 });
+        await user.click(screen.getByRole("button", { name: "Skills" }));
+        expect((scrollTo.mock.lastCall?.[0] as ScrollToOptions).top).toBe(5000 + window.scrollY + inset);
+      } finally {
+        scrollTo.mockRestore();
+      }
+    },
+  );
 
   it("lands a navigation that names an element of its section on that element, in the flat document", async () => {
     // Round 14 (D-MOTION-001): Skills resumes the chapter being read after a change of layout.
@@ -767,6 +811,59 @@ describe("App scroll position across a track resize", () => {
     });
   });
 
+  /** Contact on screen, with a notice at its foot that grows the page past the rebuild's deadband. */
+  const growingNotice = () => {
+    const view = renderApp();
+    const contact = screen.getByTestId("contact-section");
+    contact.id = "contact";
+    Object.defineProperty(contact, "offsetTop", { configurable: true, value: 7000 });
+    act(() => runFrames(4));
+    const main = contact.closest("main")!;
+    let chapter: HTMLElement = contact;
+    while (chapter.parentElement !== main) chapter = chapter.parentElement!;
+    const notice = document.createElement("p");
+    contact.append(notice);
+    const rect = (top: number, bottom: number) =>
+      ({ top, bottom, left: 0, right: 100, width: 100, height: bottom - top, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(chapter, "getBoundingClientRect").mockReturnValue(rect(200, 1300));
+    vi.spyOn(notice, "getBoundingClientRect").mockReturnValue(rect(1100, 1180));
+    act(() => {
+      contentHeight = 11000;
+      window.dispatchEvent(new Event("resize"));
+      requestReveal(notice);
+    });
+    return view;
+  };
+
+  it("makes a reveal asked for during a rebuild on the rebuilt page, not before it", () => {
+    // Round 37: a failed send's notice grew Contact and was revealed, then the rebuild that growth
+    // owed restored the place sampled before it, and the notice sat below the window.
+    vi.useFakeTimers();
+    try {
+      growingNotice();
+      act(() => runFrames(3));
+      const restored = mockScroll.el.scrollTop;
+      act(() => vi.advanceTimersByTime(1));
+      const trackRange = mockScroll.el.scrollHeight - track.clientHeight;
+      // The notice's bottom brought to 96px above the window's edge, on the rebuilt track.
+      const shift = 1180 - (track.clientHeight - 96);
+      expect(mockScroll.el.scrollTop).toBeCloseTo(restored + (shift * trackRange) / (contentHeight - track.clientHeight));
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("drops a reveal still waiting for its release when the page goes away", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = growingNotice();
+      // The rebuild has landed and the release is queued for the next task.
+      act(() => runFrames(3));
+      const restored = mockScroll.el.scrollTop;
+      unmount();
+      act(() => vi.advanceTimersByTime(1));
+      expect(mockScroll.el.scrollTop).toBe(restored);
+    } finally { vi.useRealTimers(); }
+  });
+
   it("settles navbar intent and physical/damped position together without traversing intermediate sections", () => {
     renderApp();
     const target = screen.getByTestId('contact-section');
@@ -884,6 +981,18 @@ describe("App scroll position across a track resize", () => {
     act(() => runFrames(3));
     expect(track.pages).toBeCloseTo(11, 5);
     expect(mockScroll.offset * (track.pages - 1) * track.clientHeight).toBeCloseTo(9100, 0);
+  });
+
+  it("samples the reader's place without reading the track's layout on a frame of travel", () => {
+    // Round 40: the track's clientHeight, read after that frame's writes, forced a style pass per frame.
+    renderApp();
+    act(() => runFrames(4));
+    act(() => { window.dispatchEvent(new Event("resize")); });
+    const height = vi.spyOn(mockScroll.el, "clientHeight", "get");
+    try {
+      act(() => { for (let frame = 1; frame <= 30; frame++) setScrollProgress(frame / 100); });
+      expect(height).not.toHaveBeenCalled();
+    } finally { height.mockRestore(); }
   });
 
   it("does not throw the reader back to the top when content grows", () => {

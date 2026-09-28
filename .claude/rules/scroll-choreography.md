@@ -400,6 +400,11 @@ from a settled layout, one where it lies wholly past or wholly ahead of the
 window, until the reader's first gesture or a navigation fixes it. The TV,
 re-enabled at Contact after a resize, decided it was still ahead, and a
 reverse wheel crossed Projects without its reader (round 21, TECH-065).
+A reveal asked for while the track is owed a rebuild -- measured, restored,
+or grown past the deadband and not yet reported -- is made after it, on the
+rebuilt page: a failed send's notice and a blank send's field errors grew
+Contact, were revealed, and the rebuild that growth owed restored the place
+sampled before it, leaving them below the window at 900x560 (round 37).
 A reader a chapter held when the layout replaced it is given back where the
 settled page puts the chapter, not only in the replacement's first frame: the
 TV, re-enabled mid-rebuild, read its rail 2,828px down, spent its one chance,
@@ -423,6 +428,48 @@ a settle, a glide, a forwarded wheel, a focus reveal -- runs through
 `ownScroll`, which moves a held drag's baseline with it: held still under an
 engaged TV, a forwarded scroll read as a request and the TV began to retreat
 (round 24, TECH-068). A new programmatic scroll write goes through it too.
+While a scrollbar thumb is held, the page writes nothing: every scroll of its
+own waits for the release and then runs in order, and a glide stops where it
+is at the press. A held write measures the page when it runs, and
+carries a key for its purpose so only the latest runs: a glide's frames, a
+focus reveal and a resize anchor's settle had each measured against a page
+that had not moved yet, and a cancelled glide still ran (round 27,
+TECH-075/076/077). A held write also ends with the intent that asked
+for it: the reader's newer input, a cancellation or an unmount retires it, and
+an in-place reveal checks its chapter is still on screen when it runs; a
+glide whose clock ran out under the thumb has not landed until its write has
+(round 28, TECH-078/079/080). One rule covers every producer: while a thumb is
+held, the reader's own input -- moving the thumb, a wheel, a touch, a scroll key
+or Tab -- retires everything the page queued before it, heard in the capture
+phase so the input's own answer still stands; an End landing and reveals had
+each run over the reader's later travel (round 29, TECH-081/082). That input
+also retires the producers still at work, not only what they had queued: it
+moves the reader's intent on, a producer carries the intent it began under into
+every later frame or callback, and `ownScroll` refuses a write answering an
+older one; a running glide stops. A glide still running under the thumb had put
+its destination back after the reader dragged away, throwing a reader 35px from
+Home to Contact (round 30, TECH-085). The browser puts the page back under a held thumb at places
+neither chose, and telling those from the reader's travel by position reversed,
+lost and invented requests; Chrome sends no pointer movement during a thumb
+drag to tell them apart by (rounds 25-26, TECH-069/070/072/073). With nothing
+written under the thumb, every movement while it is held is the reader's. A
+syntax-aware census test fails on any application scroll write outside
+`ownScroll` (round 26, TECH-074). jsdom has no scrollbar to hold: verify any
+change here with `bun run build && bun run native:scroll`, which presses the
+real thumb in a headed Chrome and asserts every hand-off and held-thumb journey
+above (round 31).
+
+**A navigation's step aside ends when the reader moves on, by any means
+(2026-09-27):** a staged chapter steps aside for a navigation so a jump across
+it is not taken over mid-flight. That hold ends at the reader's next gesture,
+and also once the page has rested where the navigation left it and then moved a
+clear distance (a third of the window) with no gesture at all -- a scrollbar
+track click, the browser's find, a restored position. The chapters hear that
+move as the start of a gesture in its direction (`navigationLeft.ts`). Only a
+gesture had ended it, so after the navbar's About a jump into About's hand-off
+or into Skills rested on a blank green or empty chapter for good (round 34,
+D-R34-001). Travel still never skips a chapter: past About, Education is owed
+first, as a thumb drag over it gives.
 
 **A chapter enters where the one before it has left (2026-09-27):** where
 a linear chapter leads into a staged one, the staged one enters once the

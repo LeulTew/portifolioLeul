@@ -40,6 +40,13 @@ export interface Project {
   imageAlt?: string;
   /** Anything more the image needs said, after its kind. */
   imageNote?: string;
+  /**
+   * Where the TV's small screen looks: insets, in percent of the capture, around
+   * the part that says what the project is. A dense dashboard shrunk whole to
+   * that screen is unreadable; the full capture stays one link away, and the
+   * enlarged reader shows all of it (round 33, D-R33-001).
+   */
+  imageFocus?: { top: number; right: number; bottom: number; left: number };
   githubUrl: string;
   demoUrl?: string;
   categories: string[];
@@ -54,6 +61,7 @@ const projectRecords: Project[] = [
     longDescription: "Mizan brings spending and lending into one personal ledger, with a mobile-first layout for checking everyday money activity.",
     tech: "Next.js, React, TypeScript, Supabase, Tailwind CSS",
     image: "/images/projects/my-money.webp",
+    imageFocus: { top: 3, right: 20, bottom: 50, left: 30 },
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://my-money-lac.vercel.app",
@@ -72,10 +80,11 @@ const projectRecords: Project[] = [
     longDescription: "An English–Amharic planning interface that pairs a Next.js frontend with a FastAPI service and Gemini-generated steps.",
     tech: "Next.js, React, FastAPI, Google Gemini, PostgreSQL",
     image: "/images/projects/ignition.webp",
+    imageFocus: { top: 4, right: 26, bottom: 50, left: 26 },
     imageKind: "interface",
     githubUrl: "https://github.com/LeulTew/Ignition",
     demoUrl: "https://ignition-ivory.vercel.app",
-    categories: ["AI/DataScience", "Web Development"],
+    categories: ["AI/Data Science", "Web Development"],
     evidence: {
       inspect: "Enter a goal, inspect the five-step result, then open a step for sub-actions. Switch between English and Amharic.",
       access: "Plan generation depends on the live AI service. The demo publicly lists other visitors' recent goals.",
@@ -95,9 +104,11 @@ const projectRecords: Project[] = [
     tech: "React, TypeScript, MediaPipe, Vite",
     image: "/projects/kitefew.webp",
     imageKind: "interface",
+    imageAlt: "Kitefew in play: the tracked fingertip's neon blade trail beside a flying orange, score 1 on a 1x streak, and the camera preview of the pointing hand",
+    imageNote: "Played by a recorded hand",
     githubUrl: "https://github.com/LeulTew/Kitefew",
     demoUrl: "https://kitefew.vercel.app/",
-    categories: ["AI/DataScience", "Desktop & Games", "Web Development"],
+    categories: ["AI/Data Science", "Desktop & Games", "Web Development"],
     evidence: {
       inspect: "Open How to Play, then start the camera and move an index finger to slice fruit while avoiding bombs.",
       access: "The game asks for a player name, and camera play needs camera access.",
@@ -129,10 +140,11 @@ const projectRecords: Project[] = [
     longDescription: "**Amet AI** (Bible Learn) turns a 365-day Ethiopian Orthodox reading plan into daily study cards.\n\n• **Daily lessons**: English and Amharic flashcards for each day's reading.\n• **Archive**: Every past lesson stays browsable.\n• **Gemini curation**: Lessons are prepared with Google Gemini, as the site states.\n• **Calm interface**: A clean, focused layout for daily study.",
     tech: "Next.js, React, TypeScript, Tailwind CSS, Google Gemini",
     image: "/projects/bible-learn.webp",
+    imageFocus: { top: 15, right: 24, bottom: 38, left: 26 },
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://bible-learn-webapp.vercel.app",
-    categories: ["Web Development", "AI/DataScience"]
+    categories: ["Web Development", "AI/Data Science"]
   },
   {
     id: 31,
@@ -141,6 +153,7 @@ const projectRecords: Project[] = [
     longDescription: "A browser-based experiment connecting MediaPipe hand tracking to molecular models rendered with React Three Fiber.",
     tech: "React, TypeScript, Three.js, React Three Fiber, MediaPipe",
     image: "/projects/chem-hands.webp",
+    imageFocus: { top: 22, right: 30, bottom: 38, left: 30 },
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://chem-hands-3d.vercel.app",
@@ -158,6 +171,7 @@ const projectRecords: Project[] = [
     longDescription: "An exam-preparation app, currently set up for Chemistry of Natural Products.\n\n• **Practice and exam modes**: Untimed practice or timed exams across several question types.\n• **Grading**: Every attempt is marked and kept.\n• **Analytics**: Average score, questions answered and time spent, from recorded attempts.\n• **Dashboard**: One place to resume practice and review recent activity.",
     tech: "Next.js, React, TypeScript, Supabase, Tailwind CSS, shadcn/ui",
     image: "/projects/elona-practice.webp",
+    imageFocus: { top: 5, right: 38, bottom: 40, left: 2 },
     imageKind: "interface",
     githubUrl: "https://github.com/LeulTew/ElonaPractice",
     demoUrl: "https://elona-practice.vercel.app",
@@ -182,10 +196,11 @@ const projectRecords: Project[] = [
     longDescription: "**AgendaFlow AI** uses **Google Gemini** to turn raw material into structured meeting agendas.\n\n• **Scanner**: Photograph a handwritten or printed agenda and let Gemini structure it.\n• **Documents**: Upload a PDF, or describe the meeting, to generate its outline.\n• **Spreadsheet views**: Manage topics, owners and durations, with Excel import and export.\n• **Multi-modal input**: Text, documents and camera images in one flow.",
     tech: "REACT, TYPESCRIPT, TAILWIND CSS, GOOGLE GEMINI, LUCIDE REACT",
     image: "/projects/agenda-flow.webp",
+    imageFocus: { top: 10, right: 8, bottom: 32, left: 26 },
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://agenda-flow-ai.vercel.app",
-    categories: ["AI/DataScience", "Web Development"],
+    categories: ["AI/Data Science", "Web Development"],
     evidence: {
       inspect: "Open Wizard and compare Step-by-Step with Quick Create, then describe a meeting and generate its agenda.",
       access: "No sign-in is needed to open the builder; generation depends on the live Gemini service.",
@@ -215,6 +230,7 @@ const projectRecords: Project[] = [
     longDescription: "A reading-first guide to **system design**.\n\n• **Core topics**: Networking, load balancing, cascading failures and distributed-system trade-offs.\n• **Engineering first**: Built on the idea that prototypes are vibe-coded, production is engineered.\n• **Diagrams**: Topic navigation with diagrams beside the explanations.\n• **Focused UI**: A minimal dark theme for long technical reading.",
     tech: "React, TypeScript, Tailwind CSS",
     image: "/projects/system-design.webp",
+    imageFocus: { top: 4, right: 25, bottom: 38, left: 1 },
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://system-design-guide-blog.vercel.app/",
@@ -227,6 +243,7 @@ const projectRecords: Project[] = [
     longDescription: "A practice room for the Computer Science exit exam.\n\n• **Exam sets**: Pick a past exam and move freely through its questions.\n• **Study tools**: Bookmarks, a quick-jump grid, answer checking and a countdown timer.\n• **Progress**: Counts of bookmarked and unanswered questions, with quick stats.\n• **Hosting**: Served from Wasmer Edge.",
     tech: "HTML, CSS, JavaScript, Wasmer Edge",
     image: "/images/projects/exit.webp",
+    imageFocus: { top: 3, right: 12, bottom: 36, left: 18 },
     imageKind: "interface",
     githubUrl: "",
     demoUrl: "https://exitpractice.wasmer.app/",
@@ -273,7 +290,7 @@ const projectRecords: Project[] = [
     image: "/images/projects/routegna.webp",
     imageKind: "mockup",
     githubUrl: "https://github.com/kidusm001/multi-fleet-managment/",
-    categories: ["AI/DataScience", "Web Development"]
+    categories: ["AI/Data Science", "Web Development"]
   },
   {
     id: 2,
@@ -293,9 +310,10 @@ const projectRecords: Project[] = [
     longDescription: "An Amharic information-retrieval project combining text preprocessing, a document index, and a Flask search interface, with Gemini-assisted summaries.",
     tech: "Python, Flask, Google Gemini",
     image: "/images/projects/amharic-ir.webp",
+    imageFocus: { top: 8, right: 20, bottom: 38, left: 20 },
     imageKind: "mockup",
     githubUrl: "https://github.com/LeulTew/Amharic-IR-Improved",
-    categories: ["AI/DataScience", "Web Development"],
+    categories: ["AI/Data Science", "Web Development"],
     evidence: {
       inspect: "In a local setup, try an Amharic query, compare result snippets, and open an article. Review the ranking formula alongside the results.",
       access: "Source and local setup are linked; summarization requires a Gemini API key.",
@@ -441,7 +459,7 @@ const projectRecords: Project[] = [
     image: "/images/projects/deepFakeAlew.webp",
     imageKind: "mockup",
     githubUrl: "https://github.com/LeulTew/DeepFakeAlew",
-    categories: ["AI/DataScience"]
+    categories: ["AI/Data Science"]
   },
   {
     id: 13,
@@ -452,7 +470,7 @@ const projectRecords: Project[] = [
     image: "/images/projects/fikirFix.webp",
     imageKind: "mockup",
     githubUrl: "https://github.com/LeulTew/FikirFix",
-    categories: ["AI/DataScience"]
+    categories: ["AI/Data Science"]
   },
   {
     id: 14,
@@ -463,7 +481,7 @@ const projectRecords: Project[] = [
     image: "/images/projects/IrisDatasetML.webp",
     imageKind: "mockup",
     githubUrl: "https://github.com/LeulTew/Iris-Dataset-Machine-Learning",
-    categories: ["AI/DataScience"]
+    categories: ["AI/Data Science"]
   },
   {
     id: 15,
@@ -474,7 +492,7 @@ const projectRecords: Project[] = [
     image: "/images/projects/Clustering.webp",
     imageKind: "artwork",
     githubUrl: "https://github.com/LeulTew/clustering-demo",
-    categories: ["AI/DataScience"]
+    categories: ["AI/Data Science"]
   },
   {
     id: 16,
@@ -541,7 +559,7 @@ const projectRecords: Project[] = [
     image: "/images/projects/CelestialDB.webp",
     imageKind: "mockup",
     githubUrl: "https://github.com/LeulTew/Celestial-Bodies-Database",
-    categories: ["AI/DataScience"]
+    categories: ["AI/Data Science"]
   },
 ];
 

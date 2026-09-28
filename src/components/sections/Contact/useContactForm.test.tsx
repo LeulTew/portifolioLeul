@@ -321,4 +321,45 @@ describe('useContactForm', () => {
     expect(console.error).not.toHaveBeenCalled();
     expect(screen.queryByTestId('success-message')).not.toBeInTheDocument();
   });
+
+  it('asks the page to show the first field it rejects, clear of the navbar', () => {
+    const requests: EventTarget[] = [];
+    const listen = (event: Event) => requests.push(event.target!);
+    document.addEventListener('portfolio:reveal', listen, true);
+    try {
+      render(<TestComponent />);
+      fireEvent.change(screen.getByTestId('name-input'), { target: { value: 'Ada' } });
+      fireEvent.change(screen.getByTestId('email-input'), { target: { value: '   ' } });
+      fireEvent.submit(screen.getByTestId('submit-button'));
+      expect(requests).toEqual([screen.getByTestId('email-input')]);
+      expect(screen.getByTestId('email-input')).toHaveFocus();
+    } finally {
+      document.removeEventListener('portfolio:reveal', listen, true);
+    }
+  });
+
+  it('never blocks silently: a browser constraint its rules do not name still gets a message', async () => {
+    const Constrained = () => {
+      const { formData, errors, handleSubmit, handleInvalid, handleChange } = useContactForm();
+      return (
+        <form onSubmit={handleSubmit}>
+          <input name="name" pattern="[0-9]+" value={formData.name} onChange={handleChange}
+            onInvalid={handleInvalid} data-testid="name-input" />
+          {errors.name && <span data-testid="name-error">{errors.name}</span>}
+          <input name="email" value={formData.email} onChange={handleChange} data-testid="email-input" />
+          <textarea name="message" value={formData.message} onChange={handleChange} data-testid="message-input" />
+          <button type="submit" data-testid="submit-button">Submit</button>
+        </form>
+      );
+    };
+    const user = userEvent.setup({ delay: null });
+    render(<Constrained />);
+    await user.type(screen.getByTestId('name-input'), 'Ada');
+    await user.type(screen.getByTestId('email-input'), 'ada@example.com');
+    await user.type(screen.getByTestId('message-input'), 'Hello');
+    await user.click(screen.getByTestId('submit-button'));
+    expect(screen.getByTestId('name-error')).toHaveTextContent('Please check this field');
+    expect(screen.getByTestId('name-input')).toHaveFocus();
+    expect(sendContactMessage).not.toHaveBeenCalled();
+  });
 });

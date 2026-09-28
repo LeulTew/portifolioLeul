@@ -5,7 +5,7 @@ import { getCriticalAssets, getCriticalModels, resolveSceneModel } from './criti
 
 interface ModelDocument {
   accessors: { count: number }[];
-  meshes: { primitives: { attributes: Record<string, number> }[] }[];
+  meshes: { primitives: { attributes: Record<string, number>; indices?: number }[] }[];
   animations?: unknown[];
   skins?: unknown[];
   extensionsRequired?: string[];
@@ -33,9 +33,17 @@ describe('software graphics assets', () => {
   it.each(originals)('preserves the scene and animations while reducing vertices for %s', original => {
     const full = readModel(original);
     const compact = readModel(resolveSceneModel(original, true));
-    const vertices = (model: ModelDocument) => model.meshes.flatMap(mesh => mesh.primitives)
+    const primitives = (model: ModelDocument) => model.meshes.flatMap(mesh => mesh.primitives);
+    const vertices = (model: ModelDocument) => primitives(model)
       .reduce((sum, primitive) => sum + model.accessors[primitive.attributes.POSITION].count, 0);
-    expect(vertices(compact)).toBeLessThan(vertices(full) * 0.5);
+    const triangles = (model: ModelDocument) => primitives(model).reduce((sum, primitive) =>
+      sum + model.accessors[primitive.indices ?? primitive.attributes.POSITION].count / 3, 0);
+    if (original.includes('terrain')) {
+      // The full terrain shares its corners since round 31, so it no longer spends three
+      // vertices on every face: what the software terrain saves is its simplified faces.
+      expect(triangles(compact)).toBeLessThan(triangles(full) * 0.7);
+      expect(vertices(compact)).toBeLessThan(vertices(full) * 0.75);
+    } else expect(vertices(compact)).toBeLessThan(vertices(full) * 0.5);
     expect(compact.meshes.length).toBe(full.meshes.length);
     expect(compact.animations?.length ?? 0).toBe(full.animations?.length ?? 0);
     expect(compact.skins?.length ?? 0).toBe(full.skins?.length ?? 0);

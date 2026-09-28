@@ -20,104 +20,24 @@
  * (README > Performance budget); a slower machine should record its own
  * baseline rather than loosen them.
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cpus } from 'node:os';
+import { resolve } from 'node:path';
 import {
-  Scope, assertPortFree, awaitOwnedPreview, createCdp, delay, openSocket, ownProcess, removeOwnedDirectory, scoped, terminateTree, until, type Cdp,
+  Scope, delay, scoped, until, type Cdp,
 } from './perf/harness';
+import { busyPercent, cpuTimes, measureBusy } from './perf/hostLoad';
 import {
   PAGE_PROBE, UsageError, checkJourney, journeyPath, judge, parseOptions, summariseFrames, summariseIntervals,
   type BudgetConfig, type PageTrace, type Phase, type Sample,
 } from './perf/measures';
+import { chromeExecutable, launchChrome, servePreview } from './perf/launch';
 
 const USAGE = 'Usage: bun run perf:budget [--runs 1-15] [--cold] [--headed] [--chrome <path>] [--url <origin> | --port <port>]';
 
-function chromeExecutable(explicit: string | undefined): string {
-  if (explicit) return explicit;
-  const local = process.env.LOCALAPPDATA ?? '';
-  const candidates: Record<string, string[]> = {
-    win32: [
-      'C:/Program Files/Google/Chrome/Application/chrome.exe',
-      'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-      join(local, 'Google/Chrome/Application/chrome.exe'),
-      'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    ],
-    darwin: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'],
-  };
-  return (candidates[process.platform] ?? []).find(path => existsSync(path)) ?? 'google-chrome';
-}
-
-/** Serves dist on the port, and only accepts the server once it is serving this build. */
-async function servePreview(scope: Scope, port: number): Promise<string> {
-  const indexPath = resolve('dist/index.html');
-  if (!existsSync(indexPath)) throw new Error('No dist build: run `bun run build` first.');
-  await assertPortFree(port);
-  const child = spawn(process.execPath, [resolve('node_modules/vite/bin/vite.js'), 'preview',
-    '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { stdio: ['ignore', 'ignore', 'pipe'] });
-  const preview = ownProcess(child, 'vite preview');
-  scope.defer('stop vite preview', () => preview.stop());
-  let log = '';
-  child.stderr?.on('data', chunk => { log = (log + String(chunk)).slice(-2000); });
-  const origin = `http://127.0.0.1:${port}`;
-  try {
-    await awaitOwnedPreview(preview, origin, await readFile(indexPath, 'utf8'));
-  } catch (error) {
-    throw new Error(`${(error as Error).message}${log.trim() ? `\n${log.trim()}` : ''}`);
-  }
-  return origin;
-}
-
-/** A Chrome of its own, on a profile of its own; both go when the scope closes. */
-async function launchChrome(scope: Scope, { executable, headed, width, height }: {
-  executable: string; headed: boolean; width: number; height: number;
-}): Promise<Cdp> {
-  const profile = await mkdtemp(join(tmpdir(), 'perf-budget-'));
-  // Windows lets go of a closed Chrome's files a moment after its processes exit.
-  scope.defer('remove the Chrome profile', () => removeOwnedDirectory(profile, {
-    remove: path => rm(path, { recursive: true, force: true }),
-  }));
-  const child = spawn(executable, [
-    ...(headed ? [] : ['--headless=new']), '--remote-debugging-port=0', `--user-data-dir=${profile}`,
-    '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${width},${height}`,
-    // No crash handler, updater or background fetches: nothing that outlives Chrome or competes with the page.
-    '--disable-breakpad', '--disable-crash-reporter', '--disable-background-networking',
-    '--disable-component-update', '--disable-sync', '--no-service-autorun',
-    'about:blank',
-  ], { stdio: ['ignore', 'ignore', 'pipe'] });
-  const chrome = ownProcess(child, 'Chrome', {
-    // A loaded machine takes a while to reap a whole browser; a forced tree stop is final, only slow.
-    graceMs: 10_000,
-    terminate: terminateTree(child, { run: (command, args) => { spawnSync(command, args, { stdio: 'ignore' }); } }),
-  });
-  scope.defer('stop Chrome', () => chrome.stop());
-  let log = '';
-  let endpoint: string | undefined;
-  child.stderr?.on('data', chunk => {
-    if (endpoint) return;
-    log += String(chunk);
-    endpoint = /DevTools listening on (ws:\/\/\S+)/.exec(log)?.[1];
-  });
-  const url = await until(() => {
-    if (chrome.exitCode !== undefined) {
-      throw new Error(`Chrome exited (${chrome.startError?.message ?? `code ${chrome.exitCode}`}) before DevTools started`);
-    }
-    return endpoint;
-  }, { timeoutMs: 30_000, label: 'Chrome DevTools' });
-  const cdp = createCdp(await openSocket(url));
-  scope.defer('close the DevTools connection', () => cdp.close());
-  // Asked to close, Chrome takes its renderer and GPU processes with it and lets go of the profile --
-  // once it has exited. Stopping it while it was still closing ended only its main process on
-  // Windows and left the rest running (round 20, TECH-064).
-  scope.defer('close Chrome', async () => {
-    await cdp.send('Browser.close', {}, { timeoutMs: 5000 }).catch(() => {});
-    await chrome.settle(15_000);
-  });
-  return cdp;
-}
 
 interface Page {
   send<T = Record<string, unknown>>(method: string, params?: Record<string, unknown>, timeoutMs?: number): Promise<T>;
@@ -352,6 +272,10 @@ async function main() {
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
   try {
+    // The load of everything else, before this run adds its own: a report is read against it.
+    const busyBeforePercent = await measureBusy(1000);
+    const samplesBusyPercent: (number | null)[] = [];
+    console.log(`host busy before the run: ${busyBeforePercent ?? '?'}% of ${cpus().length} cores, from other work`);
     const origin = options.url ?? await servePreview(scope, options.port);
     const chrome = { executable: chromeExecutable(options.chrome), headed: options.headed, width, height };
     const samples: Sample[] = [];
@@ -374,9 +298,12 @@ async function main() {
       };
     };
     const run = async (index: number, cache: string, sample: () => Promise<Sample>) => {
+      const from = cpuTimes();
       const result = await sample().catch(error => failedSample(cache, error));
+      const busy = busyPercent(from, cpuTimes());
       samples.push(result);
-      console.log(`sample ${index}/${options.runs} (${cache})\n${describeSample(result)}`);
+      samplesBusyPercent.push(busy);
+      console.log(`sample ${index}/${options.runs} (${cache}; host ${busy ?? '?'}% busy, this run included)\n${describeSample(result)}`);
     };
 
     if (options.cold) {
@@ -437,7 +364,9 @@ async function main() {
       distIndexSha256: !options.url && existsSync(indexPath)
         ? createHash('sha256').update(await readFile(indexPath)).digest('hex') : null,
       mode: options.cold ? 'cold' : 'returning visit',
-      headed: options.headed, platform: process.platform, ...provenance, config, samples, cleanup, verdict,
+      headed: options.headed, platform: process.platform, ...provenance,
+      host: { cores: cpus().length, busyBeforePercent, samplesBusyPercent },
+      config, samples, cleanup, verdict,
     }, null, 2));
     for (const failure of verdict.failures) console.error(`FAILED: ${failure}`);
     console.log(`${verdict.pass ? 'PASS' : 'FAIL'}: ${report}`);

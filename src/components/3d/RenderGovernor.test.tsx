@@ -5,6 +5,7 @@ import { RenderGovernor } from './RenderGovernor';
 import { CinematicCameraController } from './CinematicCameraController';
 import { ChapterGrading } from './ChapterGrading';
 import { resetFrameGate } from '@/lib/render/frameGate';
+import { registerScene, resetSceneReady, setWorldCompiled } from '@/lib/render/sceneReady';
 import { setOverlayOcclusion } from '@/lib/camera/cameraHold';
 import { parkContactSky, releaseContactSky } from '@/lib/contact/contactScene';
 
@@ -71,6 +72,24 @@ function scene(maxFps: number) {
   for (let frame = 1; frame <= 180; frame++) tick(frame);
   return { ...mounted, clock, position: camera.position.clone(), ambient: ambient.intensity };
 }
+
+describe('a world waiting on its opening programs', () => {
+  afterEach(() => resetSceneReady());
+
+  it('is not drawn until they are compiled, while every other frame callback still runs', () => {
+    // Round 31: a draw before them stalls on each program's compile, the loader frozen meanwhile.
+    resetSceneReady();
+    registerScene();
+    const result = scene(60);
+    expect(harness.draw).not.toHaveBeenCalled();
+    expect(result.position.z).not.toBe(0);
+    setWorldCompiled();
+    const frames = [...harness.frames].sort((a, b) => a.priority - b.priority);
+    result.clock.elapsedTime = 2;
+    for (const { callback } of frames) callback(harness.state, 1 / 60);
+    expect(harness.draw).toHaveBeenCalledOnce();
+  });
+});
 
 describe('one render decision for every producer in a frame', () => {
   it('publishes the rate and quality level the world is drawing at', () => {

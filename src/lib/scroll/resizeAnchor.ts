@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { subscribeSectionNavigation } from './sectionNavigation';
-import { ownScroll } from './scrollGesture';
+import { forgetHeldScroll, ownScroll, readerIntent } from './scrollGesture';
 
 const SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
 
@@ -47,6 +47,10 @@ export function useResizeAnchor(enabled: boolean): void {
     let settling = 0;
     let holding = 0;
     let holdUntil = 0;
+    // The reader's intent a hold or a settle answers, taken when it starts (round 30, TECH-085).
+    let holdIntent = 0;
+    // One purpose for every settle: held under a scrollbar thumb, only the latest runs, measured then (round 27, TECH-077).
+    const key = {};
 
     const sample = () => {
       sampling = 0;
@@ -57,21 +61,25 @@ export function useResizeAnchor(enabled: boolean): void {
     const onScroll = () => {
       if (!sampling) sampling = requestAnimationFrame(sample);
     };
-    const restore = () => {
+    const restore = (reader = readerIntent()) => {
       if (!anchor) return;
-      const rect = document.getElementById(anchor.id)?.getBoundingClientRect();
-      if (!rect || rect.height <= 0) return;
-      const drift = rect.top + anchor.ratio * rect.height - window.innerHeight / 2;
-      if (Math.abs(drift) >= 1) ownScroll(() => window.scrollBy({ top: drift, behavior: 'instant' }));
+      const at = anchor;
+      ownScroll(() => {
+        const rect = document.getElementById(at.id)?.getBoundingClientRect();
+        if (!rect || rect.height <= 0) return;
+        const drift = rect.top + at.ratio * rect.height - window.innerHeight / 2;
+        if (Math.abs(drift) >= 1) window.scrollBy({ top: drift, behavior: 'instant' });
+      }, { key, intent: reader });
     };
     const onResize = () => {
-      restore();
+      const reader = readerIntent();
+      restore(reader);
       if (anchor) anchor = { ...anchor, width: window.innerWidth, height: window.innerHeight };
       // Sections finish re-measuring over the next frame; hold the anchor until then.
       cancelAnimationFrame(settling);
       settling = requestAnimationFrame(() => {
         settling = 0;
-        restore();
+        restore(reader);
       });
     };
 
@@ -82,10 +90,12 @@ export function useResizeAnchor(enabled: boolean): void {
       // the next scroll samples the anchor afresh.
       cancelAnimationFrame(settling);
       settling = 0;
+      // So would a settle still waiting for a held thumb: the reader has moved on (round 28, TECH-079).
+      forgetHeldScroll(key);
     };
     const hold = (now: number) => {
       if (!holding) return;
-      restore();
+      restore(holdIntent);
       holding = now < holdUntil ? requestAnimationFrame(hold) : 0;
     };
     const motion = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
@@ -94,7 +104,10 @@ export function useResizeAnchor(enabled: boolean): void {
       // reduced-motion rules have already re-laid the page before this event arrives.
       anchor ??= readAnchor();
       holdUntil = performance.now() + MOTION_HOLD_MS;
-      if (!holding) holding = requestAnimationFrame(hold);
+      if (!holding) {
+        holdIntent = readerIntent();
+        holding = requestAnimationFrame(hold);
+      }
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });

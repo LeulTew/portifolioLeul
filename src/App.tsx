@@ -12,6 +12,9 @@ import type { ScrollControlsState } from '@react-three/drei';
 import { Contact } from './components/sections/Contact/Contact';
 import { useTheme } from './components/sections/theme/useTheme';
 import { useGpuTier } from './lib/gateways/gpuTier';
+import { usePrefersReducedMotion } from './lib/gateways/animationGateway';
+import { landingInset } from './lib/scroll/navigationLanding';
+import { contentOutgrewTrack, contentPages, pagesChanged } from './lib/scroll/trackPages';
 import { preserveScrollOffset, readScrollOffset } from './lib/scroll/preserveScrollOffset';
 import { createTrackFocusRecovery } from './lib/scroll/preserveTrackFocus';
 import { computeHoldRange, NO_HOLD } from './lib/camera/holdRange';
@@ -30,6 +33,7 @@ import { subscribeScrollProgress } from './lib/scroll/scrollProgress';
 import { settleScrollPosition } from './lib/scroll/settleScrollPosition';
 import { ownScroll } from './lib/scroll/scrollGesture';
 import { installDocumentFocus, installLayerFocus } from './lib/scroll/layerFocus';
+import { createSettledQueue } from './lib/scroll/settledQueue';
 import { installKeyboardScroll } from './lib/scroll/keyboardScroll';
 import { installStoryKeys } from './lib/scroll/storyKeys';
 import { useResizeAnchor } from './lib/scroll/resizeAnchor';
@@ -42,14 +46,6 @@ import styles from './App.module.css';
 
 /** The world and its scroll track: downloaded only when the page can draw them (round 10, TECH-029). */
 const SpatialStage = lazy(loadSpatialStage);
-
-/**
- * Page-count churn below this is ignored. Every applied change makes
- * ScrollControls rebuild its track, so the threshold is set well above routine
- * layout jitter -- roughly 135px on a 900px viewport -- while staying small
- * enough that no section becomes unreachable.
- */
-const SCROLL_PAGE_EPSILON = 0.15;
 
 /** The story's chapters, in order: where a reader's place is anchored. */
 const STORY_SECTIONS = ['home', 'about', 'skills', 'projects', 'contact'] as const;
@@ -118,11 +114,14 @@ function App() {
    */
   const readingAnchorRef = useRef<ReadingAnchor | null>(null);
   /**
-   * Each chapter's top in the content, measured with the page and dropped the
-   * moment the content changes, so sampling the reader's place reads no layout
-   * per frame (a rect per scroll publication cost 672ms in round 8's profile).
+   * Each chapter's top in the content, and the window's height, measured with
+   * the page and dropped the moment the content changes, so sampling the
+   * reader's place reads no layout per frame (a rect per scroll publication cost
+   * 672ms in round 8's profile). The height too: the track's `clientHeight`,
+   * read after that frame's writes, forced a style pass on every frame of travel
+   * (round 40).
    */
-  const sectionTopsRef = useRef<{ id: string; top: number }[] | null>(null);
+  const sectionTopsRef = useRef<{ height: number; tops: { id: string; top: number }[] } | null>(null);
   /**
    * A navbar destination chosen while the track was about to rebuild. The
    * rebuild resets the track, and restoring the old offset afterwards threw
@@ -139,6 +138,13 @@ function App() {
   const restoreSyncFramesRef = useRef(0);
   const restoredOffsetRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Reveals asked for while the track is owed a rebuild: measured, re-measured, restored, or grown
+   * past the rebuild's deadband and not yet reported. Made after it, or its restore undoes them.
+   */
+  const settledReveals = useMemo(() => createSettledQueue(() =>
+    Boolean(pendingRestoreRef.current || settleTimerRef.current) || restoreSyncFramesRef.current > 0 ||
+      contentOutgrewTrack(mainRef.current, scrollPagesRef.current, window.innerHeight)), []);
 
   // The context is optional by type -- it has no sensible default -- and this
   // hook is the project's existing way of asserting the provider is there.
@@ -165,6 +171,7 @@ function App() {
   const show3D = canRender3D && !webglRuntimeError;
   // The flat page scrolls the document itself; the 3D track preserves its own offset.
   useResizeAnchor(!show3D);
+  const reducedMotion = usePrefersReducedMotion();
   useEffect(() => {
     if (!show3D) trackFocus.cancel();
   }, [show3D, trackFocus]);
@@ -273,16 +280,15 @@ function App() {
     if (!node) return;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight || 1 : 1;
     const contentHeight = node.scrollHeight || viewportHeight;
-
-    // ScrollControls translates the html layer by -(pages - 1) * viewportHeight
-    // across the full scroll, so pages === contentHeight / viewportHeight maps
-    // the content 1:1 onto the scroll track. Every section stays reachable and
-    // the track ends exactly where the content does, with no dead scroll.
-    const calculatedPages = Math.max(contentHeight / viewportHeight, 1);
-    sectionTopsRef.current = STORY_SECTIONS.flatMap(id => {
-      const section = document.getElementById(id);
-      return section ? [{ id, top: section.offsetTop - (node.offsetTop || 0) }] : [];
-    });
+    // The content 1:1 onto the track: every section reachable, no dead scroll (see trackPages).
+    const calculatedPages = contentPages(contentHeight, viewportHeight);
+    sectionTopsRef.current = {
+      height: scrollElementRef.current?.clientHeight || viewportHeight,
+      tops: STORY_SECTIONS.flatMap(id => {
+        const section = document.getElementById(id);
+        return section ? [{ id, top: section.offsetTop - (node.offsetTop || 0) }] : [];
+      }),
+    };
 
     /*
      * Where the camera stands still, and where nothing is drawn at all.
@@ -334,7 +340,7 @@ function App() {
 
     const previousPages = scrollPagesRef.current;
 
-    if (Math.abs(previousPages - calculatedPages) <= SCROLL_PAGE_EPSILON) {
+    if (!pagesChanged(calculatedPages, previousPages)) {
       setAvatarLayoutReady(!pendingRestoreRef.current && restoreSyncFramesRef.current === 0 &&
         !settleTimerRef.current);
       return;
@@ -408,7 +414,7 @@ function App() {
       }
     }, 0);
   }, [cancelReplay]);
-  const applyPendingRestore = useCallback((): number | null => {
+  const restoreFrame = useCallback((): number | null => {
     const track = scrollElementRef.current;
     const pending = pendingRestoreRef.current;
     /**
@@ -465,11 +471,16 @@ function App() {
       return null;
     }
     const offset = restoreTo(nextPages) ?? 0;
-    ownScroll(() => { track.scrollTop = offset * scrollable; });
+    ownScroll(() => { track.scrollTop = offset * scrollable; }, { key: track });
     restoredOffsetRef.current = offset;
     restoreSyncFramesRef.current = 2;
     return offset;
   }, [trackFocus, replayNavigation]);
+  const applyPendingRestore = useCallback((): number | null => {
+    const restored = restoreFrame();
+    settledReveals.flush();
+    return restored;
+  }, [restoreFrame, settledReveals]);
 
   const attachMain = useCallback((node: HTMLElement | null) => {
     contentObserverRef.current?.disconnect();
@@ -517,9 +528,9 @@ function App() {
     if (!scrollElement) return;
     return subscribeScrollProgress(progress => {
       // Changed content, until it is measured again, would show the old place over new content.
-      const tops = sectionTopsRef.current;
-      if (!tops || pendingRestoreRef.current || settleTimerRef.current || restoreSyncFramesRef.current > 0) return;
-      const height = scrollElement.clientHeight || window.innerHeight || 1;
+      const measured = sectionTopsRef.current;
+      if (!measured || pendingRestoreRef.current || settleTimerRef.current || restoreSyncFramesRef.current > 0) return;
+      const { height, tops } = measured;
       const drawn = progress * Math.max(scrollPagesRef.current - 1, 0) * height;
       let anchor: ReadingAnchor | null = null;
       for (const { id, top } of tops) if (top <= drawn + height / 2) anchor = { id, fromTop: drawn - top };
@@ -558,9 +569,8 @@ function App() {
     // So would a layout already changed but not yet reported -- a motion-preference remount in
     // the frame before the content observer runs -- whose page count the track does not yet draw
     // (round 16, TECH-055).
-    const content = mainRef.current;
-    const unmeasured = Boolean(scrollElement) && content !== null &&
-      Math.abs(Math.max(content.scrollHeight / (window.innerHeight || 1), 1) - scrollPagesRef.current) > SCROLL_PAGE_EPSILON;
+    const unmeasured = Boolean(scrollElement) &&
+      contentOutgrewTrack(mainRef.current, scrollPagesRef.current, window.innerHeight);
     const rebuilding = Boolean(pendingRestoreRef.current || settleTimerRef.current) || unmeasured;
     navigationAfterRebuildRef.current = rebuilding ? { id, options } : null;
     restoreSyncFramesRef.current = 0;
@@ -577,24 +587,11 @@ function App() {
       // Skills landed 25px outside its entry at 1280x720 (round 15, TECH-049).
       const renderedPages = container.clientHeight > 0 ? container.scrollHeight / container.clientHeight - 1 : 1;
       const contentScrollable = Math.max((renderedPages - 1) * container.clientHeight, 1);
-      const rawOffset = id === 'home' ? 0 : target.offsetTop - (main.offsetTop || 0);
-
-      let adjustedOffset = 0;
-      if (id === 'home') {
-        adjustedOffset = 0;
-      } else if (landing) {
-        // Both boxes share the layer's translation, so their difference is the layout offset.
-        adjustedOffset = Math.max(rawOffset + landing.getBoundingClientRect().top - target.getBoundingClientRect().top - 80, 0);
-      } else if (id === 'about') {
-        // Only navbar intent lands inside the first readable beat. Natural
-        // handoffs retain the authored heading entry and completion gates.
-        const clientHeight = container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
-        adjustedOffset = rawOffset + aboutNavigationInset(clientHeight, options?.source);
-      } else if (options?.edge === 'end') {
-        adjustedOffset = Math.max(rawOffset + target.offsetHeight - container.clientHeight + 80, 0);
-      } else {
-        adjustedOffset = Math.max(rawOffset - 80, 0);
-      }
+      const inset = landingInset({
+        id, target, landing, options, aboutInset: aboutNavigationInset,
+        viewportHeight: container.clientHeight || window.innerHeight || 800,
+      });
+      const adjustedOffset = inset === null ? 0 : Math.max(target.offsetTop - (main.offsetTop || 0) + inset, 0);
 
       const ratio = Math.min(1, Math.max(0, adjustedOffset / contentScrollable));
 
@@ -614,7 +611,7 @@ function App() {
         glideRef.current = null;
         if (scrollStateRef.current) settleScrollPosition(scrollStateRef.current, ratio);
         else {
-          ownScroll(() => { container.scrollTop = ratio * containerScrollable; });
+          ownScroll(() => { container.scrollTop = ratio * containerScrollable; }, { key: container });
           container.dispatchEvent(new Event('scroll'));
         }
         return;
@@ -624,12 +621,11 @@ function App() {
     }
 
     if (immediate) {
-      const inset = options?.edge === 'end'
-        ? target.offsetHeight - window.innerHeight + 80
-        : id === 'about' ? aboutNavigationInset(window.innerHeight, options?.source) : -80;
-      const top = landing ? landing.getBoundingClientRect().top + window.scrollY - 80
-        : id === 'home' ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
-      ownScroll(() => window.scrollTo({ top: Math.max(0, top), behavior: 'auto' }));
+      const inset = landingInset({
+        id, target, landing, options, aboutInset: aboutNavigationInset, viewportHeight: window.innerHeight,
+      });
+      const top = inset === null ? 0 : target.getBoundingClientRect().top + window.scrollY + inset;
+      ownScroll(() => window.scrollTo({ top: Math.max(0, top), behavior: 'auto' }), { key: window });
       // An unchanged native position emits no scroll event on a repeated visit.
       window.dispatchEvent(new Event('scroll'));
       return;
@@ -637,31 +633,31 @@ function App() {
 
     const glide: ScrollBehavior = typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-    const smooth = glide === 'smooth';
     if (id === 'about') {
       const aboutEl = document.getElementById('about');
       if (aboutEl && typeof window !== 'undefined') {
         const top = aboutEl.offsetTop + aboutNavigationInset(window.innerHeight);
-        ownScroll(() => window.scrollTo({ top, behavior: glide }), { smooth });
+        ownScroll(() => window.scrollTo({ top, behavior: glide }), { key: window });
         return;
       }
     }
 
     // The document's scroll padding clears the navbar for focus reveals; this landing keeps the section's own edge.
-    ownScroll(() => window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide }), { smooth });
+    ownScroll(() => window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: glide }), { key: window });
   }, [scrollElement, trackFocus, cancelReplay]);
   useEffect(() => { scrollToSectionRef.current = scrollToSection; }, [scrollToSection]);
 
   // Keyboard focus is navigation intent: the page follows it as it follows the navbar.
   useEffect(() => {
     if (!show3D) {
+      settledReveals.clear();
       return installDocumentFocus({
         main: () => mainRef.current,
         navigate: section => scrollToSection(section, { source: 'navbar' }),
       });
     }
     if (!scrollElement) return;
-    return installLayerFocus({
+    const stop = installLayerFocus({
       track: scrollElement,
       main: () => mainRef.current,
       navigate: section => scrollToSection(section, { source: 'navbar' }),
@@ -670,8 +666,13 @@ function App() {
         const range = Math.max(scrollElement.scrollHeight - scrollElement.clientHeight, 0);
         return state ? state.offset * range : scrollElement.scrollTop;
       },
+      whenSettled: run => settledReveals.whenSettled(run),
     });
-  }, [show3D, scrollElement, scrollToSection]);
+    return () => {
+      stop();
+      settledReveals.clear();
+    };
+  }, [show3D, scrollElement, scrollToSection, settledReveals]);
 
   // Scroll keys pressed with focus outside drei's track still walk the story.
   useEffect(() => (show3D && scrollElement ? installKeyboardScroll(scrollElement) : undefined),
@@ -754,7 +755,8 @@ function App() {
       <AvatarEncounter enabled={!isLoading && show3D} scrollElement={scrollElement} />
       <TVControls enabled={!isLoading && show3D} scrollElement={scrollElement} />
 
-      {!isLoading && <PageFooter flat={!show3D} />}
+      {/* Reduced motion reads the chapters as a linear page too, under the footer (round 35, D-R35-001). */}
+      {!isLoading && <PageFooter flat={!show3D || reducedMotion} />}
     </div>
   );
 }

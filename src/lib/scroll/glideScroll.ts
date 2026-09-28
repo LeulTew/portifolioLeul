@@ -1,5 +1,5 @@
 import { easeInOutCubic } from '@/lib/motion/triggeredPhase';
-import { ownScroll } from './scrollGesture';
+import { forgetHeldScroll, isScrollHeld, ownScroll, readerIntent, subscribeScrollbarPress } from './scrollGesture';
 
 /**
  * Scrolls a container to a position, smoothly, without asking the browser to
@@ -49,27 +49,50 @@ export function glideScrollTo(
 
   let frame = 0;
   let done = false;
+  let stopPress: (() => void) | null = null;
+  // One key for all this glide's frames: a newer frame replaces a held one, and stopping forgets it (round 27, TECH-075).
+  const key = {};
+  /** The last frame's write, while it still waits for a held thumb: the glide is not over until it runs. */
+  let landing = false;
+  // The reader's intent the glide answers: once their own travel moves it on, no frame of this glide lands (round 30, TECH-085).
+  const reader = readerIntent();
 
-  const stop = () => {
-    if (done) return;
-    done = true;
-    if (frame) cancelAnimationFrame(frame);
-    frame = 0;
+  const detach = () => {
+    stopPress?.();
+    stopPress = null;
     for (const type of INTERRUPTS) {
       window.removeEventListener(type, stop, { capture: true } as EventListenerOptions);
     }
   };
-
-  // Nothing to travel: still tidy up the listeners we never added.
-  if (distance === 0 || durationMs <= 0) {
-    ownScroll(() => { container.scrollTop = to; });
+  const stop = () => {
+    // A timer that ran out under a held thumb has not landed yet: cancelling or the reader's own
+    // input still retires the write it left (round 28, TECH-078).
+    if (landing) {
+      landing = false;
+      forgetHeldScroll(key);
+      detach();
+      return;
+    }
+    if (done) return;
     done = true;
-    return { cancel: () => {} };
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    forgetHeldScroll(key);
+    detach();
+  };
+
+  // Nothing to travel: one write, still retired by cancelling while it waits (round 29, TECH-084).
+  if (distance === 0 || durationMs <= 0) {
+    ownScroll(() => { container.scrollTop = to; }, { key, intent: reader });
+    done = true;
+    return { cancel: () => forgetHeldScroll(key) };
   }
 
   for (const type of INTERRUPTS) {
     window.addEventListener(type, stop, { passive: true, capture: true });
   }
+  // A press on a scrollbar is the reader taking the page too (round 26, TECH-073).
+  stopPress = subscribeScrollbarPress(stop);
 
   const start = now();
 
@@ -79,10 +102,21 @@ export function glideScrollTo(
 
     const elapsed = now() - start;
     const t = Math.min(1, Math.max(0, elapsed / durationMs));
-    ownScroll(() => { container.scrollTop = from + distance * easeInOutCubic(t); });
+    const at = from + distance * easeInOutCubic(t);
+    const last = t >= 1;
+    ownScroll(() => {
+      container.scrollTop = at;
+      if (last && landing) {
+        landing = false;
+        detach();
+      }
+    }, { key, intent: reader });
 
-    if (t >= 1) {
-      stop();
+    if (last) {
+      done = true;
+      // Written already, or waiting for the thumb: until it runs, the glide can still be retired.
+      if (!isScrollHeld()) detach();
+      else landing = true;
       return;
     }
     frame = requestAnimationFrame(step);
