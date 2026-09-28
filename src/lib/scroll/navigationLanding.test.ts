@@ -46,4 +46,16 @@ describe('landingInset', () => {
     expect(ask({ id: 'skills', target: section({ 'data-landing-edge': 'own', 'data-staged': 'false' }) })).toBe(1);
     expect(ask({ id: 'skills', target: section({ 'data-landing-edge': 'own', 'data-staged': 'true' }) })).toBe(-NAVBAR_CLEARANCE_PX);
   });
+
+  it('answers combinations the page never asks for by one fixed precedence: Home, a landing, About, the end', () => {
+    // The page asks for anchors only in About and Skills, and for the end only of Skills and Contact.
+    // Asked for more, the order below holds, so no caller can come to rely on an accident of order.
+    const target = section({ 'data-landing-edge': 'own', 'data-staged': 'false' }, 3000, 500);
+    const landing = document.createElement('div');
+    landing.getBoundingClientRect = () => box(900);
+    expect(ask({ id: 'home', target, landing })).toBeNull();
+    expect(ask({ id: 'contact', target, landing, options: { edge: 'end' } })).toBe(900 - 500 - NAVBAR_CLEARANCE_PX);
+    expect(ask({ id: 'about', target, options: { source: 'navbar', edge: 'end' } })).toBe(1800);
+    expect(ask({ id: 'skills', target, options: { edge: 'end' } })).toBe(3000 - 900 + NAVBAR_CLEARANCE_PX);
+  });
 });

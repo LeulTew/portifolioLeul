@@ -45,6 +45,10 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
   const { targetId } = await cdp.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank', browserContextId });
   const errors: string[] = [];
   const warnings: string[] = [];
+  // Every response the page is refused or cannot load: a header or asset regression shows here
+  // before any journey looks wrong (round 40). Cancelled loads are the browser's own business.
+  const refused: { url: string; reason: string }[] = [];
+  const requested = new Map<string, string>();
   let unsubscribe = () => {};
   try {
     const { sessionId } = await cdp.send<{ sessionId: string }>('Target.attachToTarget', { targetId, flatten: true });
@@ -59,6 +63,17 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
         const { exceptionDetails } = params as unknown as Thrown;
         errors.push(exceptionDetails.exception?.description ?? exceptionDetails.text);
       }),
+      cdp.on('Network.requestWillBeSent', (params, session) => {
+        if (session === sessionId) requested.set(String(params.requestId), (params as { request: { url: string } }).request.url);
+      }),
+      cdp.on('Network.responseReceived', (params, session) => {
+        const { response } = params as { response: { url: string; status: number } };
+        if (session === sessionId && response.status >= 400) refused.push({ url: response.url, reason: `HTTP ${response.status}` });
+      }),
+      cdp.on('Network.loadingFailed', (params, session) => {
+        const { requestId, errorText, canceled } = params as { requestId: string; errorText: string; canceled?: boolean };
+        if (session === sessionId && !canceled) refused.push({ url: requested.get(requestId) ?? '(unknown)', reason: errorText });
+      }),
       cdp.on('Runtime.consoleAPICalled', (params, session) => {
         const { type, args } = params as unknown as Logged;
         if (session !== sessionId) return;
@@ -68,7 +83,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       }),
     ];
     unsubscribe = () => stops.forEach(stop => stop());
-    for (const domain of ['Page', 'Runtime']) await send(`${domain}.enable`);
+    for (const domain of ['Page', 'Runtime', 'Network']) await send(`${domain}.enable`);
     // In front, so no other window covers it: a covered window is throttled like a background tab.
     await send('Page.bringToFront');
     await send('Emulation.setScrollbarsHidden', { hidden: false });
@@ -137,6 +152,14 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       outcomes.push({ theme: label, journey, pass, expected, measured });
       console.log(`${pass ? 'PASS' : 'FAIL'} ${label.padEnd(5)} ${journey}: ${expected} -> ${JSON.stringify(measured)}`);
     };
+    const pageOrigin = new URL(origin).origin;
+    /** `offsite`: requests off the page's origin, which the form pass fails on purpose and counts itself. */
+    const checkRequests = (offsite: 'counted' | 'refused') => {
+      const unexpected = refused.filter(({ url }) => offsite === 'refused' || !/^https?:/.test(url) || new URL(url).origin === pageOrigin);
+      // Requests observed at all, so a listener that heard nothing cannot pass.
+      check('no refused requests', 'every response 2xx/3xx, nothing failed to load', { observed: requested.size, refused: unexpected },
+        requested.size > 0 && unexpected.length === 0);
+    };
 
     if (reduced) {
       // Round 35 (D-R35-001): read as a linear page, Skills landed under a band of Education's green,
@@ -154,6 +177,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       check('Skills landing, linear', 'Skills under the navbar, no green above it, no invitation over its text', landing,
         landing.staged !== 'true' && landing.skillsTop <= 0 && landing.greenBottom <= 0 && !landing.invitation);
       check('no page errors', 'none', errors, errors.length === 0);
+      checkRequests('refused');
       return;
     }
 
@@ -193,7 +217,6 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       // email service out, so a configured send makes exactly one attempt on it, and an unconfigured
       // one none. A JSON send is preflighted: the attempt failed is the preflight, so the draft's POST
       // is never even made (round 38, TECH-089).
-      const pageOrigin = new URL(origin).origin;
       const blocked: string[] = [];
       await send('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
       const stopFailing = cdp.on('Fetch.requestPaused', (params, session) => {
@@ -229,6 +252,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       // The failed send says so in the console, by design; nothing else may.
       const unexpected = errors.filter(error => !error.startsWith('Contact submission failed'));
       check('no page errors', 'none', unexpected, unexpected.length === 0);
+      checkRequests('counted');
       return;
     }
 
@@ -360,6 +384,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
     }
 
     check('no page errors', 'none', errors, errors.length === 0);
+    checkRequests('refused');
   } catch (error) {
     // What the page said is usually why a journey could not go on.
     const said = warnings.concat(errors);

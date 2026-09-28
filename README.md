@@ -143,7 +143,9 @@ and the cold journey to 19 long frames and 0.5s of blocking. Travel then read no
 layout per frame, and Education's entrance styled its chapter once instead of
 three times (round 40): returning-visit medians of 16 long frames, 0.3s of
 blocking, a 153ms worst frame, a 16.8ms p95 and 2.3% missed frames, every
-journey target met. The local preview serves files uncompressed, so the transfer
+journey target met, with the host at 27-39% CPU from other work (report
+`perf-budget-2026-09-27T23-57-17-252Z`); an independent run at higher load the
+same hour measured 17 long frames and a 22.1ms p95. The local preview serves files uncompressed, so the transfer
 figure overstates what a visitor downloads: production serves brotli, which
 takes the welded island terrain from 859 KB to about 570 KB. CPU throttling slows the main
 thread, not the GPU, so it is a proxy for weak hardware rather than a
@@ -175,7 +177,10 @@ would leave the page's origin, whatever the build's configuration or the
 service's endpoint, and counts them: exactly one attempt on the email service
 when the build has one, and none when it has not. A JSON send is preflighted, so
 the attempt failed is its CORS preflight and the draft's POST is never made. No
-message is ever sent. It fails on any page error, and writes its
+message is ever sent. It fails on any page error, and on any response the page
+is refused (4xx/5xx) or cannot load, the form pass's deliberately failed requests
+aside, with the count of requests it heard so a deaf listener cannot pass: a
+header or asset regression shows before any journey looks wrong. It writes its
 measurements to `perf-reports/`. `--theme`, `--chrome`, `--url` and `--port`
 narrow it; `--chrome-arg <switch>` passes a switch to Chrome, for diagnosing a
 GPU or a fallback. Before any journey it checks that the page opened its 3D
