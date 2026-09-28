@@ -139,7 +139,11 @@ of an 11.4-second throttled startup, 6.1 MB transferred and 3.0s of blocking
 during load. Welding the terrain and compiling the opening programs off the main
 thread (round 31) took the cold medians, on the same machine under load from
 other work, to a 9.0-second startup, 3.3 MB transferred and 1.5s of blocking,
-and the cold journey to 19 long frames and 0.5s of blocking. The local preview serves files uncompressed, so the transfer
+and the cold journey to 19 long frames and 0.5s of blocking. Travel then read no
+layout per frame, and Education's entrance styled its chapter once instead of
+three times (round 40): returning-visit medians of 16 long frames, 0.3s of
+blocking, a 153ms worst frame, a 16.8ms p95 and 2.3% missed frames, every
+journey target met. The local preview serves files uncompressed, so the transfer
 figure overstates what a visitor downloads: production serves brotli, which
 takes the welded island terrain from 859 KB to about 570 KB. CPU throttling slows the main
 thread, not the GPU, so it is a proxy for weak hardware rather than a
