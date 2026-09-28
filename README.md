@@ -129,7 +129,9 @@ the main process). A cold series stops at the first sample whose Chrome or
 profile could not be released, since the next would not have the machine to
 itself. The report in `perf-reports/` (ignored by git)
 records the commit, the dist hash, the browser, WebGL renderer, cores and
-memory, each sample's cache state, and the chapter -- and world quality level --
+memory, how busy the machine was (from other work, over a second before the run,
+and across each sample with the run itself), each sample's cache state, and the
+chapter -- and world quality level --
 each long frame fell in, with the script behind any frame over 150ms.
 
 The gates were calibrated on a Windows desktop (8 cores, 32 GB, RTX 5070 Ti

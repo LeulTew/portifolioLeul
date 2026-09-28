@@ -24,10 +24,12 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cpus } from 'node:os';
 import { resolve } from 'node:path';
 import {
   Scope, delay, scoped, until, type Cdp,
 } from './perf/harness';
+import { busyPercent, cpuTimes, measureBusy } from './perf/hostLoad';
 import {
   PAGE_PROBE, UsageError, checkJourney, journeyPath, judge, parseOptions, summariseFrames, summariseIntervals,
   type BudgetConfig, type PageTrace, type Phase, type Sample,
@@ -270,6 +272,10 @@ async function main() {
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
   try {
+    // The load of everything else, before this run adds its own: a report is read against it.
+    const busyBeforePercent = await measureBusy(1000);
+    const samplesBusyPercent: (number | null)[] = [];
+    console.log(`host busy before the run: ${busyBeforePercent ?? '?'}% of ${cpus().length} cores, from other work`);
     const origin = options.url ?? await servePreview(scope, options.port);
     const chrome = { executable: chromeExecutable(options.chrome), headed: options.headed, width, height };
     const samples: Sample[] = [];
@@ -292,9 +298,12 @@ async function main() {
       };
     };
     const run = async (index: number, cache: string, sample: () => Promise<Sample>) => {
+      const from = cpuTimes();
       const result = await sample().catch(error => failedSample(cache, error));
+      const busy = busyPercent(from, cpuTimes());
       samples.push(result);
-      console.log(`sample ${index}/${options.runs} (${cache})\n${describeSample(result)}`);
+      samplesBusyPercent.push(busy);
+      console.log(`sample ${index}/${options.runs} (${cache}; host ${busy ?? '?'}% busy, this run included)\n${describeSample(result)}`);
     };
 
     if (options.cold) {
@@ -355,7 +364,9 @@ async function main() {
       distIndexSha256: !options.url && existsSync(indexPath)
         ? createHash('sha256').update(await readFile(indexPath)).digest('hex') : null,
       mode: options.cold ? 'cold' : 'returning visit',
-      headed: options.headed, platform: process.platform, ...provenance, config, samples, cleanup, verdict,
+      headed: options.headed, platform: process.platform, ...provenance,
+      host: { cores: cpus().length, busyBeforePercent, samplesBusyPercent },
+      config, samples, cleanup, verdict,
     }, null, 2));
     for (const failure of verdict.failures) console.error(`FAILED: ${failure}`);
     console.log(`${verdict.pass ? 'PASS' : 'FAIL'}: ${report}`);
