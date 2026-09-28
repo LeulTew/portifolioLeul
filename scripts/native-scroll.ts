@@ -20,6 +20,7 @@ import { resolve } from 'node:path';
 import { Scope, delay, until, type Cdp } from './perf/harness';
 import { chromeExecutable, launchChrome, servePreview } from './perf/launch';
 import { NativeScrollUsageError, parseNativeScrollOptions } from './perf/nativeScrollOptions';
+import { unexcusedRefusals, type ExcusedWindow, type RefusedRequest } from './perf/requestGate';
 
 const WIDTH = 1440;
 const HEIGHT = 900;
@@ -47,7 +48,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
   const warnings: string[] = [];
   // Every response the page is refused or cannot load: a header or asset regression shows here
   // before any journey looks wrong (round 40). Cancelled loads are the browser's own business.
-  const refused: { url: string; reason: string }[] = [];
+  const refused: RefusedRequest[] = [];
   const requested = new Map<string, string>();
   let unsubscribe = () => {};
   try {
@@ -153,15 +154,9 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       console.log(`${pass ? 'PASS' : 'FAIL'} ${label.padEnd(5)} ${journey}: ${expected} -> ${JSON.stringify(measured)}`);
     };
     const pageOrigin = new URL(origin).origin;
-    const address = (url: string) => { try { const at = new URL(url); return at.origin + at.pathname; } catch { return url; } };
-    /**
-     * `excused`: the requests the form pass failed on purpose, and counts itself -- only those, and
-     * only while it was failing them. Any other off-origin failure, before or after, counts
-     * (round 41, TECH-091).
-     */
-    const checkRequests = (excused?: { from: number; to: number; addresses: Set<string> }) => {
-      const unexpected = refused.filter(({ url }, index) => !excused ||
-        index < excused.from || index >= excused.to || !excused.addresses.has(address(url)));
+    /** `excused`: the requests the form pass failed on purpose and counts itself (see requestGate). */
+    const checkRequests = (excused?: ExcusedWindow) => {
+      const unexpected = unexcusedRefusals(refused, excused);
       // Requests observed at all, so a listener that heard nothing cannot pass.
       check('no refused requests', 'every response 2xx/3xx, nothing failed to load', { observed: requested.size, refused: unexpected },
         requested.size > 0 && unexpected.length === 0);
