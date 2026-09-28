@@ -153,9 +153,15 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       console.log(`${pass ? 'PASS' : 'FAIL'} ${label.padEnd(5)} ${journey}: ${expected} -> ${JSON.stringify(measured)}`);
     };
     const pageOrigin = new URL(origin).origin;
-    /** `offsite`: requests off the page's origin, which the form pass fails on purpose and counts itself. */
-    const checkRequests = (offsite: 'counted' | 'refused') => {
-      const unexpected = refused.filter(({ url }) => offsite === 'refused' || !/^https?:/.test(url) || new URL(url).origin === pageOrigin);
+    const address = (url: string) => { try { const at = new URL(url); return at.origin + at.pathname; } catch { return url; } };
+    /**
+     * `excused`: the requests the form pass failed on purpose, and counts itself -- only those, and
+     * only while it was failing them. Any other off-origin failure, before or after, counts
+     * (round 41, TECH-091).
+     */
+    const checkRequests = (excused?: { from: number; to: number; addresses: Set<string> }) => {
+      const unexpected = refused.filter(({ url }, index) => !excused ||
+        index < excused.from || index >= excused.to || !excused.addresses.has(address(url)));
       // Requests observed at all, so a listener that heard nothing cannot pass.
       check('no refused requests', 'every response 2xx/3xx, nothing failed to load', { observed: requested.size, refused: unexpected },
         requested.size > 0 && unexpected.length === 0);
@@ -177,7 +183,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       check('Skills landing, linear', 'Skills under the navbar, no green above it, no invitation over its text', landing,
         landing.staged !== 'true' && landing.skillsTop <= 0 && landing.greenBottom <= 0 && !landing.invitation);
       check('no page errors', 'none', errors, errors.length === 0);
-      checkRequests('refused');
+      checkRequests();
       return;
     }
 
@@ -218,6 +224,8 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       // one none. A JSON send is preflighted: the attempt failed is the preflight, so the draft's POST
       // is never even made (round 38, TECH-089).
       const blocked: string[] = [];
+      const failedHere = new Set<string>();
+      const failingFrom = refused.length;
       await send('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
       const stopFailing = cdp.on('Fetch.requestPaused', (params, session) => {
         if (session !== sessionId) return;
@@ -225,6 +233,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
         const url = new URL(request.url);
         if (/^https?:$/.test(url.protocol) && url.origin !== pageOrigin) {
           blocked.push(`${request.method} ${url.origin}${url.pathname}`);
+          failedHere.add(url.origin + url.pathname);
           void send('Fetch.failRequest', { requestId, errorReason: 'Failed' });
         } else void send('Fetch.continueRequest', { requestId });
       });
@@ -242,6 +251,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
         stopFailing();
         await send('Fetch.disable');
       }
+      const failingTo = refused.length;
       const failed = await evaluate<View>(view);
       check('failed send', 'its notice and draft link whole, clear of the navbar', failed,
         failed.alerts === 1 && !!failed.last && failed.last.top >= failed.bar && failed.last.bottom <= height);
@@ -252,7 +262,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
       // The failed send says so in the console, by design; nothing else may.
       const unexpected = errors.filter(error => !error.startsWith('Contact submission failed'));
       check('no page errors', 'none', unexpected, unexpected.length === 0);
-      checkRequests('counted');
+      checkRequests({ from: failingFrom, to: failingTo, addresses: failedHere });
       return;
     }
 
@@ -384,7 +394,7 @@ async function journeys(cdp: Cdp, origin: string, theme: string, outcomes: Outco
     }
 
     check('no page errors', 'none', errors, errors.length === 0);
-    checkRequests('refused');
+    checkRequests();
   } catch (error) {
     // What the page said is usually why a journey could not go on.
     const said = warnings.concat(errors);
